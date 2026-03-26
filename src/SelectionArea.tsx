@@ -1,3 +1,4 @@
+import './SelectionArea.css'
 import { onMount, onCleanup, type JSX } from 'solid-js'
 import VanillaSelectionArea from '@viselect/vanilla'
 import type { SelectionEvent, SelectionOptions } from '@viselect/vanilla'
@@ -23,23 +24,16 @@ export type SelectionAreaProps = {
   behaviour?: Partial<SelectionOptions['behaviour']>
   /** Доп. настройки фич */
   features?: Partial<SelectionOptions['features']>
+  /** Boundaries — элементы-границы выделения (по умолчанию container) */
+  boundaries?: (string | HTMLElement)[]
+  /**
+   * Автоскролл window при drag за край viewport.
+   * Использует невидимый text selection для нативного скролла браузера.
+   * Полезно когда контейнер не имеет overflow (скроллится страница).
+   * Требует CSS: .viselect-window-scroll *::selection { background: inherit; color: inherit; }
+   */
+  windowScroll?: boolean
   children: JSX.Element
-}
-
-let stylesInjected = false
-
-function injectStyles() {
-  if (stylesInjected) return
-  stylesInjected = true
-  const style = document.createElement('style')
-  style.textContent = `
-.viselect-area {
-  background: oklch(from currentColor l c h / 0.08);
-  border: 1.5px solid oklch(from currentColor l c h / 0.3);
-  border-radius: 4px;
-  pointer-events: none;
-}`
-  document.head.appendChild(style)
 }
 
 /**
@@ -67,11 +61,9 @@ export function SelectionArea(props: SelectionAreaProps) {
   let containerRef!: HTMLDivElement
 
   onMount(() => {
-    injectStyles()
-
     const selection = new VanillaSelectionArea({
       selectables: [props.selectables],
-      boundaries: [containerRef],
+      boundaries: props.boundaries ?? [containerRef],
       container: containerRef,
       selectionAreaClass: props.selectionAreaClass ?? 'viselect-area',
       behaviour: {
@@ -93,6 +85,7 @@ export function SelectionArea(props: SelectionAreaProps) {
       .on('beforestart', (e) => {
         const target = e.event?.target as HTMLElement | null
         if (target?.closest('button, a, input, [data-no-select]')) return false
+        if (props.windowScroll) containerRef.classList.add('viselect-window-scroll')
         return props.onBeforeStart?.(e) ?? true
       })
       .on('start', ({ store, event }) => {
@@ -113,6 +106,10 @@ export function SelectionArea(props: SelectionAreaProps) {
         props.onSelect?.(e)
       })
       .on('stop', (e) => {
+        if (props.windowScroll) {
+          containerRef.classList.remove('viselect-window-scroll')
+          setTimeout(() => window.getSelection()?.removeAllRanges(), 50)
+        }
         props.onStop?.(e)
       })
 

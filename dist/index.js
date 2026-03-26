@@ -6,27 +6,12 @@ import * as v from 'valibot';
 
 // src/SelectionArea.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
-var stylesInjected = false;
-function injectStyles() {
-  if (stylesInjected) return;
-  stylesInjected = true;
-  const style = document.createElement("style");
-  style.textContent = `
-.viselect-area {
-  background: oklch(from currentColor l c h / 0.08);
-  border: 1.5px solid oklch(from currentColor l c h / 0.3);
-  border-radius: 4px;
-  pointer-events: none;
-}`;
-  document.head.appendChild(style);
-}
 function SelectionArea(props) {
   let containerRef;
   onMount(() => {
-    injectStyles();
     const selection = new VanillaSelectionArea({
       selectables: [props.selectables],
-      boundaries: [containerRef],
+      boundaries: props.boundaries ?? [containerRef],
       container: containerRef,
       selectionAreaClass: props.selectionAreaClass ?? "viselect-area",
       behaviour: {
@@ -49,6 +34,7 @@ function SelectionArea(props) {
     selection.on("beforestart", (e) => {
       const target = e.event?.target;
       if (target?.closest("button, a, input, [data-no-select]")) return false;
+      if (props.windowScroll) containerRef.classList.add("viselect-window-scroll");
       return props.onBeforeStart?.(e) ?? true;
     }).on("start", ({
       store,
@@ -69,6 +55,10 @@ function SelectionArea(props) {
       removed.forEach((el) => el.classList.remove("viselect-selected"));
       props.onSelect?.(e);
     }).on("stop", (e) => {
+      if (props.windowScroll) {
+        containerRef.classList.remove("viselect-window-scroll");
+        setTimeout(() => window.getSelection()?.removeAllRanges(), 50);
+      }
       props.onStop?.(e);
     });
     onCleanup(() => selection.destroy());
@@ -335,9 +325,9 @@ function ResizableGrid(props) {
     return _el$;
   })();
 }
-var stylesInjected2 = false;
-if (typeof document !== "undefined" && !stylesInjected2) {
-  stylesInjected2 = true;
+var stylesInjected = false;
+if (typeof document !== "undefined" && !stylesInjected) {
+  stylesInjected = true;
   const style = document.createElement("style");
   style.textContent = `
 .resizable-grid-handle-col {

@@ -21,6 +21,15 @@ type SelectionAreaProps = {
     behaviour?: Partial<SelectionOptions['behaviour']>;
     /** Доп. настройки фич */
     features?: Partial<SelectionOptions['features']>;
+    /** Boundaries — элементы-границы выделения (по умолчанию container) */
+    boundaries?: (string | HTMLElement)[];
+    /**
+     * Автоскролл window при drag за край viewport.
+     * Использует невидимый text selection для нативного скролла браузера.
+     * Полезно когда контейнер не имеет overflow (скроллится страница).
+     * Требует CSS: .viselect-window-scroll *::selection { background: inherit; color: inherit; }
+     */
+    windowScroll?: boolean;
     children: JSX.Element;
 };
 /**

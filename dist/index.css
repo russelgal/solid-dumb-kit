@@ -1,0 +1,11 @@
+/* src/SelectionArea.css */
+.viselect-area {
+  background: oklch(from currentColor l c h / 0.08);
+  border: 1.5px solid oklch(from currentColor l c h / 0.3);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.viselect-window-scroll *::selection {
+  background: inherit;
+  color: inherit;
+}
