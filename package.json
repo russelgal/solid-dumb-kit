@@ -4,7 +4,8 @@
   "description": "SolidJS UI components: SelectionArea, ResizableGrid and more",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "sideEffects": false,
   "publishConfig": {
