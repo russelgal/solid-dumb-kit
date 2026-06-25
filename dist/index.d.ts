@@ -83,4 +83,46 @@ type ResizableGridProps = {
 };
 declare function ResizableGrid(props: ResizableGridProps): JSX.Element;
 
-export { type GridPanel, ResizableGrid, type ResizableGridProps, SelectionArea, type SelectionAreaProps };
+type DumbSortableProps<T> = {
+    items: Array<T>;
+    /** позвать с новым порядком (на дропе) */
+    setItems: (next: Array<T>) => void;
+    /** стабильный id элемента */
+    id: (item: T) => string;
+    axis?: 'y' | 'grid';
+    disabled?: () => boolean;
+    pressDelay?: number;
+    mousePressDelay?: number;
+    mouseThreshold?: number;
+    /** ВЕРНИ один корневой элемент — компонент привяжется прямо к нему */
+    children: (item: T, index: () => number) => JSX.Element;
+};
+declare function DumbSortable<T>(props: DumbSortableProps<T>): JSX.Element;
+
+type DumbSortableHandle = {
+    /** самодостаточный ref на элемент (ручка = дочка с [data-drag-handle]) */
+    bind: (id: string) => (el: HTMLElement) => void;
+    /** низкоуровневый ref на элемент-ячейку */
+    row: (id: string) => (el: HTMLElement) => void;
+    /** низкоуровневый ref на ручку-хендл */
+    handle: (id: string) => (el: HTMLElement) => void;
+};
+type DumbSortableOptions = {
+    /** текущий визуальный порядок id (совпадает с порядком data) */
+    order: () => string[];
+    /** 'y' — вертикальный список (по умолчанию), 'grid' — двумерная сетка */
+    axis?: 'y' | 'grid';
+    /** drag запрещён (напр. активна сортировка колонки) */
+    disabled?: () => boolean;
+    /** тач: удержание до старта драга, мс (0 = сразу). По умолчанию 350 */
+    pressDelay?: number;
+    /** мышь: long-press до старта, мс (0 = выкл). Имеет приоритет над mouseThreshold */
+    mousePressDelay?: number;
+    /** мышь: дистанция до старта драга, px (0 = сразу, как было). По умолчанию 0 */
+    mouseThreshold?: number;
+    /** на дропе: переставить из fromIndex в toIndex (индексы в order()) */
+    onEnd: (fromIndex: number, toIndex: number) => void;
+};
+declare function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandle;
+
+export { DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, type GridPanel, ResizableGrid, type ResizableGridProps, SelectionArea, type SelectionAreaProps, createDumbSortable };
