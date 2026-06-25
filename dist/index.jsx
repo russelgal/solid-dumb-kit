@@ -324,7 +324,6 @@ var MAX_SPEED = 18;
 var ACCEL = 3.5;
 var LONGPRESS = 350;
 var MOVE_TOL = 10;
-var LIFT = 1.03;
 var LIFT_SHADOW = "0 10px 24px -6px rgba(0,0,0,.28)";
 function scrollParent(el) {
   let n = el.parentElement;
@@ -413,7 +412,7 @@ function createDumbSortable(opts) {
         tx = left - cell.left;
       }
     }
-    d.dragEl.style.transform = `translate(${tx}px,${ty}px) scale(${LIFT})`;
+    d.dragEl.style.transform = `translate(${tx}px,${ty}px)`;
     if (d.ready) {
       const pX = d.lastX - vv.left + vv.sx;
       const pY = d.lastY - vv.top + vv.sy;

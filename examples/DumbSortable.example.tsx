@@ -73,7 +73,7 @@ export default function DumbSortableExample() {
           <p style={{ margin: '0 0 10px', 'font-size': '13px', color: '#64748b' }}>
             100 rows, fixed-height scroll area — drag near an edge and it auto-scrolls.
           </p>
-          <div style={{ display: 'grid', gap: '6px', 'max-height': '52vh', overflow: 'auto',
+          <div style={{ display: 'grid', gap: '6px', 'max-height': '52vh', 'overflow-y': 'auto', 'overflow-x': 'hidden',
                         padding: '10px', border: '1px solid #e2e8f0', 'border-radius': '12px', background: '#f8fafc' }}>
             <DumbSortable items={list()} setItems={setList} id={(x) => x.id}>
               {(item, i) => (
@@ -101,7 +101,7 @@ export default function DumbSortableExample() {
             100 tiles, <code>axis="grid"</code> — items reflow in 2D and jump across rows.
           </p>
           <div style={{ display: 'grid', 'grid-template-columns': 'repeat(auto-fill, minmax(64px, 1fr))', gap: '8px',
-                        'max-height': '52vh', overflow: 'auto', padding: '10px',
+                        'max-height': '52vh', 'overflow-y': 'auto', 'overflow-x': 'hidden', padding: '10px',
                         border: '1px solid #e2e8f0', 'border-radius': '12px', background: '#f8fafc' }}>
             <DumbSortable items={tiles()} setItems={setTiles} id={(x) => x.id} axis="grid">
               {(item, i) => (

@@ -48,7 +48,7 @@ export default function SelectionAreaExample() {
             'grid-template-columns': 'repeat(auto-fill, minmax(92px, 1fr))',
             gap: '10px',
             'max-height': '60vh',
-            overflow: 'auto',
+            'overflow-y': 'auto', 'overflow-x': 'hidden',
             padding: '12px',
             border: '1px solid #e2e8f0',
             'border-radius': '12px',
