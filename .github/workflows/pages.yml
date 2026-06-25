@@ -22,11 +22,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Install playground deps
+      - name: Install deps (repo root)
         run: npm install
-        working-directory: playground
       - name: Build demo
-        run: npm run build
+        run: npx vite build
         working-directory: playground
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
