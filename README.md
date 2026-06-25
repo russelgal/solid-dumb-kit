@@ -27,6 +27,8 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 import 'solid-dumb-kit/dist/index.css' // only needed for SelectionArea
 ```
 
+Runnable examples (one per component) live in [`examples/`](examples/).
+
 ## Exports
 
 | Export | Kind | Doc |
