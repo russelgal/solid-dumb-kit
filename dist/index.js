@@ -425,14 +425,16 @@ function createDumbSortable(opts) {
     const d = drag;
     const v2 = view(d.scroller);
     let speed = 0;
-    const distTop = d.lastY - v2.top;
-    const distBot = v2.top + v2.clientH - d.lastY;
-    if (distTop < EDGE && v2.sy > 0) {
-      const over = (EDGE - distTop) / EDGE;
-      speed = -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-    } else if (distBot < EDGE && v2.sy < d.scrollMax0) {
-      const over = (EDGE - distBot) / EDGE;
-      speed = Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+    if (d.moved) {
+      const distTop = d.lastY - v2.top;
+      const distBot = v2.top + v2.clientH - d.lastY;
+      if (distTop < EDGE && v2.sy > 0) {
+        const over = (EDGE - distTop) / EDGE;
+        speed = -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+      } else if (distBot < EDGE && v2.sy < d.scrollMax0) {
+        const over = (EDGE - distBot) / EDGE;
+        speed = Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+      }
     }
     if (speed) doScroll(d.scroller, speed);
     const vv = speed ? view(d.scroller) : v2;
@@ -490,6 +492,7 @@ function createDumbSortable(opts) {
   }
   function onMove(ev) {
     if (!drag || ev.pointerId !== drag.pid) return;
+    if (!drag.moved && (Math.abs(ev.clientX - drag.startX) > 2 || Math.abs(ev.clientY - drag.startY) > 2)) drag.moved = true;
     drag.lastX = ev.clientX;
     drag.lastY = ev.clientY;
   }
@@ -547,7 +550,8 @@ function createDumbSortable(opts) {
       scrollY0: v0.sy,
       scrollMax0: v0.max,
       raf: 0,
-      ready: false
+      ready: false,
+      moved: false
     };
     dragEl.style.position = "relative";
     dragEl.style.zIndex = "2";

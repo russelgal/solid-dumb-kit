@@ -45,6 +45,7 @@ type Drag = {
     scrollMax0: number;     // предел прокрутки на старте (до трансформа dragged)
     raf: number;
     ready: boolean;
+    moved: boolean;         // указатель реально сдвинулся (иначе не авто-скроллим — иначе дёрг при захвате у края)
 };
 
 const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
@@ -142,17 +143,21 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         const d = drag;
         const v = view(d.scroller);
 
-        // авто-скролл: чем дальше указатель за краем контейнера — тем быстрее (до ACCEL× потолка)
+        // авто-скролл: чем дальше указатель за краем контейнера — тем быстрее (до ACCEL× потолка).
+        // ВАЖНО: только после реального движения — иначе захват у нижнего края сразу скроллит,
+        // dragged получает +ty, его трансформ растит scrollHeight → скроллбар/сдвиг/съезд сортировки.
         let speed = 0;
-        const distTop = d.lastY - v.top;
-        const distBot = v.top + v.clientH - d.lastY;
-        // предел снизу — снятый на старте (живой scrollHeight растёт от трансформа dragged → гонка)
-        if (distTop < EDGE && v.sy > 0) {
-            const over = (EDGE - distTop) / EDGE;          // 0 у границы зоны, 1 у края, >1 за пределами
-            speed = -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-        } else if (distBot < EDGE && v.sy < d.scrollMax0) {
-            const over = (EDGE - distBot) / EDGE;
-            speed = Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+        if (d.moved) {
+            const distTop = d.lastY - v.top;
+            const distBot = v.top + v.clientH - d.lastY;
+            // предел снизу — снятый на старте (живой scrollHeight растёт от трансформа dragged → гонка)
+            if (distTop < EDGE && v.sy > 0) {
+                const over = (EDGE - distTop) / EDGE;          // 0 у границы зоны, 1 у края, >1 за пределами
+                speed = -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+            } else if (distBot < EDGE && v.sy < d.scrollMax0) {
+                const over = (EDGE - distBot) / EDGE;
+                speed = Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+            }
         }
         if (speed) doScroll(d.scroller, speed);
 
@@ -213,6 +218,7 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
 
     function onMove(ev: PointerEvent) {
         if (!drag || ev.pointerId !== drag.pid) return;
+        if (!drag.moved && (Math.abs(ev.clientX - drag.startX) > 2 || Math.abs(ev.clientY - drag.startY) > 2)) drag.moved = true;
         drag.lastX = ev.clientX;
         drag.lastY = ev.clientY;
     }
@@ -260,7 +266,7 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
             id, pid,
             startX: x, startY: y, lastX: x, lastY: y,
             dragEl, ids, fromIndex, cells: [], others: [], toIndex: fromIndex,
-            scroller, scrollX0: v0.sx, scrollY0: v0.sy, scrollMax0: v0.max, raf: 0, ready: false,
+            scroller, scrollX0: v0.sx, scrollY0: v0.sy, scrollMax0: v0.max, raf: 0, ready: false, moved: false,
         };
         dragEl.style.position = 'relative';
         dragEl.style.zIndex = '2';
