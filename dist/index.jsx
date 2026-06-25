@@ -406,8 +406,8 @@ function createDumbSortable(opts) {
     const vv = speed ? view(d.scroller) : v2;
     let tx = grid ? d.lastX - d.startX + (vv.sx - d.scrollX0) : 0;
     let ty = d.lastY - d.startY + (vv.sy - d.scrollY0);
-    if (d.ready && d.cells.length) {
-      const cell = d.cells[d.fromIndex];
+    const cell = d.cells.length ? d.cells[d.fromIndex] : d.selfCell;
+    if (cell) {
       const top = Math.max(vv.sy, Math.min(vv.sy + vv.clientH - cell.height, cell.top + ty));
       ty = top - cell.top;
       if (grid) {
@@ -428,8 +428,8 @@ function createDumbSortable(opts) {
           if (!el) return;
           const ri = i < d.fromIndex ? i : i - 1;
           const newVis = ri < k ? ri : ri + 1;
-          const cell = d.cells[newVis], me = d.cells[i];
-          const dx = cell.left - me.left, dy = cell.top - me.top;
+          const cell2 = d.cells[newVis], me = d.cells[i];
+          const dx = cell2.left - me.left, dy = cell2.top - me.top;
           el.style.transform = dx || dy ? `translate(${dx}px,${dy}px)` : "";
         });
       } else {
@@ -498,6 +498,8 @@ function createDumbSortable(opts) {
     if (fromIndex < 0) return;
     const scroller = scrollParent(dragEl);
     const v0 = view(scroller);
+    const r0 = dragEl.getBoundingClientRect();
+    const selfCell = { left: r0.left - v0.left + v0.sx, top: r0.top - v0.top + v0.sy, width: r0.width, height: r0.height };
     drag = {
       id,
       pid,
@@ -509,6 +511,7 @@ function createDumbSortable(opts) {
       ids,
       fromIndex,
       cells: [],
+      selfCell,
       others: [],
       toIndex: fromIndex,
       scroller,

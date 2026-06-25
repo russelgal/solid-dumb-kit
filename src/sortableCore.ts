@@ -38,6 +38,7 @@ type Drag = {
     ids: string[];
     fromIndex: number;
     cells: Cell[];          // позиции ячеек по визуальному индексу (порядок ids)
+    selfCell: Cell;         // позиция самой перетаскиваемой (синхронный замер на старте — кламп с 1-го кадра)
     others: Item[];         // чужие ячейки в порядке чтения (для хиттеста)
     toIndex: number;
     scroller: HTMLElement | null;
@@ -165,9 +166,10 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         // перетаскиваемая следует за курсором (+ компенсация прокрутки контента)
         let tx = grid ? (d.lastX - d.startX) + (vv.sx - d.scrollX0) : 0;
         let ty = (d.lastY - d.startY) + (vv.sy - d.scrollY0);
-        // кламп: перетаскиваемый не выходит за видимую область контейнера
-        if (d.ready && d.cells.length) {
-            const cell = d.cells[d.fromIndex];
+        // кламп: перетаскиваемый не выходит за видимую область контейнера.
+        // С первого кадра — по self-замеру; после снапшота — по точной ячейке.
+        const cell = d.cells.length ? d.cells[d.fromIndex] : d.selfCell;
+        if (cell) {
             const top = Math.max(vv.sy, Math.min(vv.sy + vv.clientH - cell.height, cell.top + ty));
             ty = top - cell.top;
             if (grid) {
@@ -262,10 +264,14 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
 
         const scroller = scrollParent(dragEl);
         const v0 = view(scroller);
+        // синхронный замер самой перетаскиваемой (1 элемент, не цикл — без reflow-шторма):
+        // даёт кламп с первого кадра, пока не приехал асинхронный снапшот всех ячеек.
+        const r0 = dragEl.getBoundingClientRect();
+        const selfCell: Cell = { left: r0.left - v0.left + v0.sx, top: r0.top - v0.top + v0.sy, width: r0.width, height: r0.height };
         drag = {
             id, pid,
             startX: x, startY: y, lastX: x, lastY: y,
-            dragEl, ids, fromIndex, cells: [], others: [], toIndex: fromIndex,
+            dragEl, ids, fromIndex, cells: [], selfCell, others: [], toIndex: fromIndex,
             scroller, scrollX0: v0.sx, scrollY0: v0.sy, scrollMax0: v0.max, raf: 0, ready: false, moved: false,
         };
         dragEl.style.position = 'relative';
