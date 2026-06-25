@@ -253,16 +253,18 @@ export function ResizableGrid(props: ResizableGridProps) {
   return (
     <div
       ref={containerRef}
-      class={`grid h-full w-full ${props.class ?? ''}`}
+      class={props.class}
       style={{
+        display: 'grid',
+        height: '100%',
+        width: '100%',
         'grid-template-rows': rowTemplate(),
         overflow: 'hidden',
       }}
     >
       {/* ─── Первый ряд ─── */}
       <div
-        class="grid min-h-0"
-        style={{ 'grid-template-columns': colTemplate() }}
+        style={{ display: 'grid', 'min-height': '0', 'grid-template-columns': colTemplate() }}
       >
         <For each={props.cols}>
           {(col, i) => (
@@ -273,7 +275,7 @@ export function ResizableGrid(props: ResizableGridProps) {
                   onMouseDown={(e) => startColResize(i() - 1, e)}
                 />
               </Show>
-              <div class="min-w-0 min-h-0 overflow-auto">{col.content()}</div>
+              <div style={{ 'min-width': '0', 'min-height': '0', overflow: 'auto' }}>{col.content()}</div>
             </>
           )}
         </For>
@@ -290,8 +292,7 @@ export function ResizableGrid(props: ResizableGridProps) {
       {/* ─── Второй ряд ─── */}
       <Show when={hasRows()}>
         <div
-          class="grid min-h-0"
-          style={{ 'grid-template-columns': row2Template() }}
+          style={{ display: 'grid', 'min-height': '0', 'grid-template-columns': row2Template() }}
         >
           <For each={props.rows}>
             {(panel, i) => (
@@ -302,7 +303,7 @@ export function ResizableGrid(props: ResizableGridProps) {
                     onMouseDown={(e) => startRow2ColResize(i() - 1, e)}
                   />
                 </Show>
-                <div class="min-w-0 min-h-0 overflow-auto">{panel.content()}</div>
+                <div style={{ 'min-width': '0', 'min-height': '0', overflow: 'auto' }}>{panel.content()}</div>
               </>
             )}
           </For>

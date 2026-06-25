@@ -73,10 +73,10 @@ function SelectionArea(props) {
   })();
 }
 var _tmpl$2 = /* @__PURE__ */ template(`<div class=resizable-grid-handle-row>`);
-var _tmpl$22 = /* @__PURE__ */ template(`<div class="grid min-h-0">`);
-var _tmpl$3 = /* @__PURE__ */ template(`<div style=overflow:hidden><div class="grid min-h-0">`);
+var _tmpl$22 = /* @__PURE__ */ template(`<div style=display:grid;min-height:0>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<div style=display:grid;height:100%;width:100%;overflow:hidden><div style=display:grid;min-height:0>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<div class=resizable-grid-handle-col>`);
-var _tmpl$5 = /* @__PURE__ */ template(`<div class="min-w-0 min-h-0 overflow-auto">`);
+var _tmpl$5 = /* @__PURE__ */ template(`<div style=min-width:0;min-height:0;overflow:auto>`);
 var HANDLE_SIZE = 6;
 var DEFAULT_MIN = 100;
 var SizesSchema = v.object({
@@ -312,7 +312,7 @@ function ResizableGrid(props) {
       }
     }), null);
     effect((_p$) => {
-      var _v$ = `grid h-full w-full ${props.class ?? ""}`, _v$2 = rowTemplate(), _v$3 = colTemplate();
+      var _v$ = props.class, _v$2 = rowTemplate(), _v$3 = colTemplate();
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
       _v$2 !== _p$.t && setStyleProperty(_el$, "grid-template-rows", _p$.t = _v$2);
       _v$3 !== _p$.a && setStyleProperty(_el$2, "grid-template-columns", _p$.a = _v$3);
