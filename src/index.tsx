@@ -17,3 +17,10 @@ export {
   type DumbSortableHandle,
   type DumbSortableOptions,
 } from './sortableCore'
+export {
+  DumbTree,
+  type DumbTreeProps,
+  type DumbTreeNode,
+  type DumbTreeIcons,
+  type DumbTreeLabels,
+} from './DumbTree'

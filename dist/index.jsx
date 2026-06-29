@@ -679,8 +679,199 @@ function DumbSortable(props) {
   }}
     </For2>;
 }
+
+// src/DumbTree.tsx
+import { createMemo, createSignal as createSignal2, For as For3, Show as Show2 } from "solid-js";
+import { makePersisted as makePersisted2 } from "@solid-primitives/storage";
+function fuzzy(q, text) {
+  if (!q) return true;
+  q = q.toLowerCase();
+  text = (text || "").toLowerCase();
+  if (text.includes(q)) return true;
+  let i = 0;
+  for (const ch of text) {
+    if (ch === q[i]) i++;
+    if (i === q.length) return true;
+  }
+  return false;
+}
+var DEFAULT_ICONS = {
+  folder: "icon-[solar--folder-linear] text-secondary",
+  folderOpen: "icon-[solar--folder-open-linear] text-primary",
+  leaf: "icon-[solar--tag-linear] text-secondary",
+  expanded: "icon-[solar--alt-arrow-down-linear]",
+  collapsed: "icon-[solar--alt-arrow-right-linear]",
+  search: "icon-[solar--magnifer-linear]",
+  sortIndex: "icon-[solar--sort-vertical-linear]",
+  sortName: "icon-[solar--sort-by-alphabet-linear]",
+  dragHandle: "icon-[solar--hamburger-menu-linear]"
+};
+var DEFAULT_LABELS = {
+  search: "\u041F\u043E\u0438\u0441\u043A",
+  sortIndex: "\u0418\u043D\u0434\u0435\u043A\u0441",
+  sortName: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435"
+};
+function DumbTree(props) {
+  const nodes = () => props.nodes;
+  const icons = () => ({ ...DEFAULT_ICONS, ...props.icons });
+  const labels = () => ({ ...DEFAULT_LABELS, ...props.labels });
+  const activeId = () => props.activeId?.();
+  const [q, setQ] = createSignal2("");
+  const key = props.storageKey ?? "dumb-tree";
+  const [expanded, setExpanded] = makePersisted2(createSignal2(/* @__PURE__ */ new Set()), {
+    name: `${key}:expanded`,
+    serialize: (s) => JSON.stringify([...s]),
+    deserialize: (str) => new Set(JSON.parse(str))
+  });
+  const [sort, setSort] = makePersisted2(createSignal2("index"), {
+    name: `${key}:sort`,
+    serialize: (vv) => vv,
+    deserialize: (s) => s === "name" ? "name" : "index"
+  });
+  const sortMode = () => props.hideSort ? "index" : sort();
+  const cmp = (a, b) => sortMode() === "name" ? a.title.localeCompare(b.title, props.locale) || (a.index ?? 0) - (b.index ?? 0) : (a.index ?? 0) - (b.index ?? 0) || a.title.localeCompare(b.title, props.locale);
+  const byId = createMemo(() => new Map((nodes() ?? []).map((n) => [n.id, n])));
+  const childrenOf = createMemo(() => {
+    const m = /* @__PURE__ */ new Map();
+    for (const n of nodes() ?? []) {
+      let a = m.get(n.parent);
+      if (!a) {
+        a = [];
+        m.set(n.parent, a);
+      }
+      a.push(n);
+    }
+    for (const a of m.values()) a.sort(cmp);
+    return m;
+  });
+  const rootId = createMemo(() => {
+    const ns = nodes() ?? [];
+    if (!ns.length) return 0;
+    const ids = new Set(ns.map((n) => n.id));
+    return (ns.find((n) => !ids.has(n.parent)) ?? ns[0]).id;
+  });
+  const matches = (n, query) => props.match ? props.match(n, query) : fuzzy(query, n.title) || !!n.meta && fuzzy(query, n.meta) || String(n.id).includes(query);
+  const visible = createMemo(() => {
+    const query = q().trim().toLowerCase();
+    if (!query) return null;
+    const ids = byId();
+    const show = /* @__PURE__ */ new Set();
+    for (const n of nodes() ?? []) {
+      if (matches(n, query)) {
+        let cur = n;
+        while (cur) {
+          show.add(cur.id);
+          cur = ids.get(cur.parent);
+        }
+      }
+    }
+    return show;
+  });
+  const flatList = createMemo(() => {
+    const query = q().trim().toLowerCase();
+    return (nodes() ?? []).filter((n) => !query || matches(n, query)).sort(cmp);
+  });
+  const fs = createDumbSortable({
+    order: () => flatList().map((n) => String(n.id)),
+    disabled: () => !!q().trim(),
+    onEnd: (from, to) => props.sortable?.(from, to)
+  });
+  const toggle = (id) => setExpanded((s) => {
+    const n = new Set(s);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+  const defaultTitle = (n) => `${n.title}${n.meta ? " \xB7 " + n.meta : ""} \xB7 id ${n.id}`;
+  const RowLink = (p) => <a
+    class={`flex items-center gap-1.5 flex-1 min-w-0 cursor-pointer rounded px-1.5 py-0.5 ${activeId() === p.node.id ? "bg-primary/10 text-primary" : "hover:bg-base-200"} ${props.rowClass?.(p.node) ?? ""}`}
+    onClick={() => props.onSelect?.(p.node.id, p.node)}
+    title={props.rowTitle ? props.rowTitle(p.node) : defaultTitle(p.node)}
+  >
+      <span class={`size-4 shrink-0 ${p.icon}`} />
+      <span class={`truncate ${props.titleClass?.(p.node) ?? ""}`}>{p.node.title}</span>
+      <Show2 when={props.rowExtra}>
+        <span class="ml-auto shrink-0 flex items-center gap-1">{props.rowExtra(p.node)}</span>
+      </Show2>
+    </a>;
+  function Node2(p) {
+    const node = () => byId().get(p.id);
+    const kids = () => childrenOf().get(p.id) ?? [];
+    const isExpanded = () => visible() ? true : expanded().has(p.id);
+    return <Show2 when={node() && (!visible() || visible().has(p.id))}>
+        <li>
+          <div class="flex items-center">
+            <Show2 when={kids().length} fallback={<span class="w-5 shrink-0" />}>
+              <button class="btn btn-ghost btn-xs btn-square" onClick={() => toggle(p.id)}>
+                <span class={`size-4 ${isExpanded() ? icons().expanded : icons().collapsed}`} />
+              </button>
+            </Show2>
+            <RowLink
+      node={node()}
+      icon={isExpanded() && kids().length ? icons().folderOpen : icons().folder}
+    />
+          </div>
+          <Show2 when={isExpanded() && kids().length}>
+            <ul class="pl-3 border-l border-base-200 ml-3">
+              <For3 each={kids()}>{(k) => <Node2 id={k.id} />}</For3>
+            </ul>
+          </Show2>
+        </li>
+      </Show2>;
+  }
+  return <aside class={`w-64 shrink-0 sticky top-0 self-start max-h-screen overflow-y-auto ${props.class ?? ""}`}>
+      <Show2 when={props.title}>
+        <div class="text-xs opacity-50 mb-2 px-1">{props.title}</div>
+      </Show2>
+      <Show2 when={!props.hideSearch}>
+        <label class="input input-sm input-bordered flex items-center gap-2 mb-2 w-full">
+          <span class={`size-4 opacity-50 ${icons().search}`} />
+          <input value={q()} onInput={(e) => setQ(e.currentTarget.value)} placeholder={props.placeholder ?? labels().search} class="grow" />
+        </label>
+      </Show2>
+      <Show2 when={!props.hideSort}>
+        <div class="join mb-2 w-full">
+          <button
+    class={`btn btn-xs join-item grow gap-1 ${sort() === "index" ? "btn-active btn-primary" : "btn-ghost"}`}
+    onClick={() => setSort("index")}
+    title={labels().sortIndex}
+  >
+            <span class={`size-3.5 ${icons().sortIndex}`} />
+            {labels().sortIndex}
+          </button>
+          <button
+    class={`btn btn-xs join-item grow gap-1 ${sort() === "name" ? "btn-active btn-primary" : "btn-ghost"}`}
+    onClick={() => setSort("name")}
+    title={labels().sortName}
+  >
+            <span class={`size-3.5 ${icons().sortName}`} />
+            {labels().sortName}
+          </button>
+        </div>
+      </Show2>
+      <Show2 when={nodes()} fallback={<span class="loading loading-spinner" />}>
+        <ul class="bg-base-100 rounded-box shadow w-full text-sm p-2 max-h-[80vh] overflow-auto">
+          <Show2
+    when={props.flat}
+    fallback={<For3 each={childrenOf().get(rootId()) ?? []}>{(n) => <Node2 id={n.id} />}</For3>}
+  >
+            <For3 each={flatList()}>
+              {(n) => <li ref={props.sortable ? fs.bind(String(n.id)) : void 0} class="flex items-center">
+                  <Show2 when={props.sortable}>
+                    <button data-drag-handle type="button" class="cursor-grab text-base-content/30 hover:text-base-content shrink-0" title="Перетащить">
+                      <span class={`size-4 ${icons().dragHandle}`} />
+                    </button>
+                  </Show2>
+                  <RowLink node={n} icon={icons().leaf} />
+                </li>}
+            </For3>
+          </Show2>
+        </ul>
+      </Show2>
+    </aside>;
+}
 export {
   DumbSortable,
+  DumbTree,
   ResizableGrid,
   SelectionArea,
   createDumbSortable
