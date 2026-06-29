@@ -695,17 +695,6 @@ function fuzzy(q, text) {
   }
   return false;
 }
-var DEFAULT_ICONS = {
-  folder: "icon-[solar--folder-linear] text-secondary",
-  folderOpen: "icon-[solar--folder-open-linear] text-primary",
-  leaf: "icon-[solar--tag-linear] text-secondary",
-  expanded: "icon-[solar--alt-arrow-down-linear]",
-  collapsed: "icon-[solar--alt-arrow-right-linear]",
-  search: "icon-[solar--magnifer-linear]",
-  sortIndex: "icon-[solar--sort-vertical-linear]",
-  sortName: "icon-[solar--sort-by-alphabet-linear]",
-  dragHandle: "icon-[solar--hamburger-menu-linear]"
-};
 var DEFAULT_LABELS = {
   search: "\u041F\u043E\u0438\u0441\u043A",
   sortIndex: "\u0418\u043D\u0434\u0435\u043A\u0441",
@@ -713,7 +702,7 @@ var DEFAULT_LABELS = {
 };
 function DumbTree(props) {
   const nodes = () => props.nodes;
-  const icons = () => ({ ...DEFAULT_ICONS, ...props.icons });
+  const icons = () => props.icons;
   const labels = () => ({ ...DEFAULT_LABELS, ...props.labels });
   const activeId = () => props.activeId?.();
   const [q, setQ] = createSignal2("");

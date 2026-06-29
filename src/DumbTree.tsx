@@ -37,7 +37,10 @@ function fuzzy(q: string, text: string): boolean {
   return false
 }
 
-export type DumbTreeIcons = Partial<{
+// Классы иконок передаёт ПОТРЕБИТЕЛЬ — кит не завязан на конкретный набор
+// (Solar/Lucide/…). Так строки `icon-[…]` живут в исходниках приложения, и его
+// собственный Tailwind/iconify компилирует CSS — без сканирования node_modules.
+export type DumbTreeIcons = {
   /** папка свёрнута */
   folder: string
   /** папка раскрыта */
@@ -52,7 +55,7 @@ export type DumbTreeIcons = Partial<{
   sortIndex: string
   sortName: string
   dragHandle: string
-}>
+}
 
 export type DumbTreeLabels = Partial<{
   search: string
@@ -100,20 +103,9 @@ export type DumbTreeProps<T extends DumbTreeNode> = {
 
   /** доп. класс на корневой <aside> */
   class?: string
-  icons?: DumbTreeIcons
+  /** классы иконок (обязательно — кит не несёт свой набор) */
+  icons: DumbTreeIcons
   labels?: DumbTreeLabels
-}
-
-const DEFAULT_ICONS: Required<DumbTreeIcons> = {
-  folder: 'icon-[solar--folder-linear] text-secondary',
-  folderOpen: 'icon-[solar--folder-open-linear] text-primary',
-  leaf: 'icon-[solar--tag-linear] text-secondary',
-  expanded: 'icon-[solar--alt-arrow-down-linear]',
-  collapsed: 'icon-[solar--alt-arrow-right-linear]',
-  search: 'icon-[solar--magnifer-linear]',
-  sortIndex: 'icon-[solar--sort-vertical-linear]',
-  sortName: 'icon-[solar--sort-by-alphabet-linear]',
-  dragHandle: 'icon-[solar--hamburger-menu-linear]',
 }
 
 const DEFAULT_LABELS: Required<DumbTreeLabels> = {
@@ -124,7 +116,7 @@ const DEFAULT_LABELS: Required<DumbTreeLabels> = {
 
 export function DumbTree<T extends DumbTreeNode>(props: DumbTreeProps<T>) {
   const nodes = () => props.nodes
-  const icons = (): Required<DumbTreeIcons> => ({ ...DEFAULT_ICONS, ...props.icons })
+  const icons = () => props.icons
   const labels = (): Required<DumbTreeLabels> => ({ ...DEFAULT_LABELS, ...props.labels })
   const activeId = () => props.activeId?.()
   const [q, setQ] = createSignal('')

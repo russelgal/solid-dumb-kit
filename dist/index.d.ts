@@ -135,7 +135,7 @@ type DumbTreeNode = {
     meta?: string | null;
 };
 type Id = number | string;
-type DumbTreeIcons = Partial<{
+type DumbTreeIcons = {
     /** папка свёрнута */
     folder: string;
     /** папка раскрыта */
@@ -150,7 +150,7 @@ type DumbTreeIcons = Partial<{
     sortIndex: string;
     sortName: string;
     dragHandle: string;
-}>;
+};
 type DumbTreeLabels = Partial<{
     search: string;
     sortIndex: string;
@@ -190,7 +190,8 @@ type DumbTreeProps<T extends DumbTreeNode> = {
     rowTitle?: (node: T) => string;
     /** доп. класс на корневой <aside> */
     class?: string;
-    icons?: DumbTreeIcons;
+    /** классы иконок (обязательно — кит не несёт свой набор) */
+    icons: DumbTreeIcons;
     labels?: DumbTreeLabels;
 };
 declare function DumbTree<T extends DumbTreeNode>(props: DumbTreeProps<T>): JSX.Element;
