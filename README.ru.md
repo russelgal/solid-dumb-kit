@@ -1,0 +1,68 @@
+[English](README.md) · **Русский**
+
+# solid-dumb-kit
+
+Небольшой набор **SolidJS**-примитивов почти без зависимостей: их легко вставить и полностью подчинить своим стилям — разметка твоя, кит берёт на себя поведение.
+
+- **[SelectionArea](docs/ru/SelectionArea.md)** — выделение рамкой «как в Finder» по списку/сетке (`Shift`/`Cmd` — добавить к выделению).
+- **[ResizableGrid](docs/ru/ResizableGrid.md)** — панельная раскладка с тянущимися колонками/рядами, размеры сохраняются в `localStorage`.
+- **[DumbSortable](docs/ru/DumbSortable.md)** — FLIP-перетаскивание для смены порядка (список **или** сетка) без зависимостей и без reflow во время драга. Есть декларативный компонент и низкоуровневый примитив `createDumbSortable`.
+- **[DumbTree](docs/ru/DumbTree.md)** — сайдбар-дерево *или* плоский список с нечётким поиском, сортировкой, сохранением раскрытых папок и опциональным drag-reorder. Оформлен под Tailwind + daisyUI.
+- **[Утилиты](docs/ru/utils.md)** — хелперы без фреймворка: форматирование чисел/дат/размеров под `ru-RU`, слаги, извлечение картинок из ZIP, URL для imgproxy.
+
+**🔗 Живое демо:** https://russelgal.github.io/solid-dumb-kit/ · запускаемые исходники в [`examples/`](examples/).
+
+Ветка `0.x` рассчитана на **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
+
+## Установка
+
+```bash
+pnpm add solid-dumb-kit
+# peer-зависимость:
+pnpm add solid-js
+```
+
+Установка прямо с GitHub тоже работает (в репозитории лежат и `src/`, и собранный `dist/`):
+
+```bash
+pnpm add github:russelgal/solid-dumb-kit
+```
+
+## Быстрый старт
+
+```tsx
+import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
+import 'solid-dumb-kit/dist/index.css' // нужен только для SelectionArea
+```
+
+Запускаемые примеры (по одному на компонент) лежат в [`examples/`](examples/).
+
+## Экспорты
+
+| Экспорт | Что это | Документация |
+| --- | --- | --- |
+| `SelectionArea` / `SelectionAreaProps` / `SelectionEvent` | компонент | [docs/ru/SelectionArea.md](docs/ru/SelectionArea.md) |
+| `ResizableGrid` / `ResizableGridProps` / `GridPanel` | компонент | [docs/ru/ResizableGrid.md](docs/ru/ResizableGrid.md) |
+| `DumbSortable` / `DumbSortableProps` | компонент | [docs/ru/DumbSortable.md](docs/ru/DumbSortable.md) |
+| `createDumbSortable` / `DumbSortableHandle` / `DumbSortableOptions` | примитив | [docs/ru/DumbSortable.md#примитив-createdumbsortable](docs/ru/DumbSortable.md#примитив-createdumbsortable) |
+| `DumbTree` / `DumbTreeProps` / `DumbTreeNode` / `DumbTreeIcons` / `DumbTreeLabels` | компонент | [docs/ru/DumbTree.md](docs/ru/DumbTree.md) |
+| `Rub0` / `Rub2` / `Rub4` / `Rub0R` / `RubR2` / `fmtNum` / `fmtPrice` | форматирование | [docs/ru/utils.md#числа](docs/ru/utils.md#числа) |
+| `fmtDate` / `fmtDateTime` / `fmtDateTimeShort` / `fmtTime` / `fmtDateMonth` / `timeAgo` / `fmtSize` | форматирование | [docs/ru/utils.md#даты](docs/ru/utils.md#даты) |
+| `genSlug` | утилита | [docs/ru/utils.md#genslug--слаги-для-url](docs/ru/utils.md#genslug--слаги-для-url) |
+| `extractImagesFromZip` | утилита | [docs/ru/utils.md#extractimagesfromzip--картинки-из-zip](docs/ru/utils.md#extractimagesfromzip--картинки-из-zip) |
+| `imgproxyUrl` / `configureImgproxy` / `ImgproxyOps` / `ImgproxyConfig` | утилита | [docs/ru/utils.md#imgproxyurl--сборка-url-для-imgproxy](docs/ru/utils.md#imgproxyurl--сборка-url-для-imgproxy) |
+
+## CSS
+
+- **SelectionArea** несёт крошечный стиль (рамка выделения + помощник для прокрутки окна) — импортируй `solid-dumb-kit/dist/index.css` один раз.
+- **ResizableGrid** инжектит стили ручек в рантайме — импорт не нужен.
+- **DumbSortable** обходится инлайновым `transform` — CSS не нужен вовсе.
+- **DumbTree** — исключение: он рендерит классы Tailwind + daisyUI, то есть рассчитывает на них в твоём приложении. Иконки передаются классами (своего набора кит не несёт).
+
+## Зависимости
+
+Единственная peer-зависимость — `solid-js ^1.8.0`. Рантайм-зависимости маленькие и точечные: `@viselect/vanilla` (SelectionArea), `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `slug` (`genSlug`) и `fflate` — причём последний за динамическим `import()`, поэтому грузится только при реальной распаковке ZIP.
+
+## Лицензия
+
+MIT

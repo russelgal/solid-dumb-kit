@@ -1,3 +1,5 @@
+**English** · [Русский](ru/utils.md)
+
 # Utils
 
 Framework-free helpers that ship with the kit — no SolidJS, no DOM (except `extractImagesFromZip`, which needs `File`/`DataTransfer`).

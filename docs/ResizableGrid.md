@@ -1,3 +1,5 @@
+**English** · [Русский](ru/ResizableGrid.md)
+
 # ResizableGrid
 
 A panel layout with **drag-to-resize** columns (and an optional second row), with sizes **persisted to `localStorage`**. Sizes are kept in `fr` units, so the layout stays proportional when the container resizes.

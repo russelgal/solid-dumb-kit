@@ -1,3 +1,5 @@
+**English** · [Русский](ru/SelectionArea.md)
+
 # SelectionArea
 
 Finder-style **rubber-band selection**: drag the mouse to draw a box and select the elements it touches. `Shift` / `Cmd` / `Ctrl` add to the current selection. A thin SolidJS wrapper over [`@viselect/vanilla`](https://github.com/Simonwep/selection).

@@ -1,3 +1,5 @@
+**English** · [Русский](README.ru.md)
+
 # solid-dumb-kit
 
 A small set of dependency-light **SolidJS** UI primitives that are easy to drop in and fully styleable — you own the markup, the kit wires the behaviour.
