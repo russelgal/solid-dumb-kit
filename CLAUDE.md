@@ -47,14 +47,15 @@ pnpm build          # tsup → dist/ (dist закоммичен, ставитс�
 pnpm dev            # tsup --watch
 pnpm demo           # dev-сервер демо (playground/)
 pnpm demo:build     # сборка демо → playground/dist
-pnpm test           # vitest run (тесты утилит, окружение happy-dom)
+pnpm test           # vitest run (утилиты + смоук-монтирование всех примеров, happy-dom)
 ```
 
 - `pnpm-workspace.yaml` — только для `onlyBuiltDependencies: [esbuild]` (pnpm 10 блокирует postinstall-скрипты; без esbuild сборка падает). Воркспейсов нет, пакет один.
 - `@solid-primitives/storage` **запинен на 4.3.4** (без `^`): в 4.4.0 сломана инференция типов `makePersisted` — dts-сборка `ResizableGrid` падает. Апать только вместе с проверкой `pnpm build`.
 - Рантайм-зависимости утилит: `slug` (статический импорт — `genSlug` синхронный) и `fflate` (**динамический** `import()` внутри `extractImagesFromZip`, грузится только при фактической распаковке — не тащить его в top-level).
 - `@types/node` **не ставим**: `process.env` в `src/` читается через каст `globalThis`, иначе dts-сборка требует типы Node.
-- `tsup-preset-solid` запускает **два инстанса tsup параллельно** (esm + solid-jsx), и один из них чистит `dist/` пока второй пишет. Изредка это даёт мусорный результат: вместо `index.js` появляются `index.mjs` и `dist/browser/*`, размеры раздуты (зависимости заинлайнены). Лечится `rm -rf dist && pnpm build` — чистая сборка воспроизводима байт в байт. Перед коммитом `dist/` сверяйся с `git status dist`.
+- В `tsup.config.ts` **нельзя** вызывать `preset.writePackageJson()`. `tsup-preset-solid` поднимает два инстанса tsup параллельно, и запись `package.json` на лету ловится вторым инстансом в момент усечения файла: он не видит `dependencies`, external становится пустым и **все зависимости инлайнятся в бандл** (`index.js` раздувается втрое, появляется чанк `dist/browser/*` из fflate). Симптом плавающий — сборка «через раз». Поля `exports` в `package.json` и так уже верные; пресет только печатает их справочно.
+- Перед коммитом `dist/` сверяйся с `git status dist` — тишина означает, что сборка воспроизвелась байт в байт.
 
 ## Донорская репа (источник для переноса)
 `/Volumes/sites/_shops/_pioneer/packages/solid-dumb-kit` — **старая/внутренняя** версия кита внутри монорепы `_pioneer`. Читать оттуда можно свободно, **править — нельзя** (только читаем и переносим сюда по кусочкам, по явной просьбе).
@@ -69,6 +70,12 @@ pnpm test           # vitest run (тесты утилит, окружение ha
 2. Любой перенос проходит проверку «ЖЕЛЕЗНОЕ ПРАВИЛО: никакого reflow». Замеры layout в доноре: `ResizableGrid.tsx`, `ContextMenu.tsx` — переписывать под IntersectionObserver + transform.
    Tailwind-классы в разметке: `SelectionArea`, `ResizableGrid`, `ContextMenu`, `UniversalTree`, `MediaGallery`, `S3Dashboard`, `UserManager` — заменять на инлайн/инжект стили.
 3. Донор — на TS-конфиге монорепы; после переноса обязательно `pnpm build` (dts тоже собирается).
+
+## Примеры и тесты
+- `examples/*.example.tsx` — по одному на компонент, импортируют пакет **по имени** (`solid-dumb-kit`); в playground и vitest имя заворачивается алиасом на `src/`. Каждый пример подключён вкладкой в `playground/src/main.tsx` — добавил пример, добавь вкладку.
+- `examples/__tests__/examples.test.tsx` — смоук: каждый пример монтируется в DOM и проверяется, что он что-то отрисовал. Ловит рассинхрон примеров с API кита.
+- `vitest.setup.ts` подкладывает in-memory `localStorage`: happy-dom 20 отдаёт `globalThis.localStorage` **без** `getItem`/`setItem`, и `makePersisted` (ResizableGrid, DumbTree) падает. Если тест на компоненте с персистом внезапно валится с `storage.getItem is not a function` — смотри туда.
+- `DumbTree` в примере оформлен CSS-шимом (~60 строк, подделывает нужные daisyUI-классы) и эмодзи-иконками — чтобы витрина оставалась самодостаточной.
 
 ## Версии: линия 0.x — под Solid 1
 `0.1.0` и вся ветка `0.x` — для **SolidJS 1.x**. `peerDependencies.solid-js` = `^1.8.0` (именно каретка, не `>=1.8.0` — чтобы Solid 2 не подхватился молча и не сломался в рантайме у потребителя).
