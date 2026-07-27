@@ -3,11 +3,15 @@ import { createSignal, For, Show } from 'solid-js'
 import SelectionAreaExample from '../../examples/SelectionArea.example'
 import DumbSortableExample from '../../examples/DumbSortable.example'
 import ResizableGridExample from '../../examples/ResizableGrid.example'
+import DumbTreeExample from '../../examples/DumbTree.example'
+import UtilsExample from '../../examples/utils.example'
 
 const TABS = [
   { id: 'selection', label: 'SelectionArea', Comp: SelectionAreaExample },
   { id: 'sortable', label: 'DumbSortable', Comp: DumbSortableExample },
   { id: 'grid', label: 'ResizableGrid', Comp: ResizableGridExample },
+  { id: 'tree', label: 'DumbTree', Comp: DumbTreeExample },
+  { id: 'utils', label: 'utils', Comp: UtilsExample },
 ] as const
 
 function App() {

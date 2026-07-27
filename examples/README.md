@@ -7,8 +7,12 @@ Self-contained, copy-pasteable examples — one per component. Each file default
 | [SelectionArea.example.tsx](SelectionArea.example.tsx) | `SelectionArea` — rubber-band select over a card grid |
 | [ResizableGrid.example.tsx](ResizableGrid.example.tsx) | `ResizableGrid` — 3 columns + a second row, persisted |
 | [DumbSortable.example.tsx](DumbSortable.example.tsx) | `DumbSortable` — reorder a list (by handle) and a grid |
+| [DumbTree.example.tsx](DumbTree.example.tsx) | `DumbTree` — tree + flat drag-reorderable list, search, sorting |
+| [utils.example.tsx](utils.example.tsx) | `utils` — live playground for fmt / genSlug / imgproxyUrl / extractImagesFromZip |
 
-`DumbTree` has no example here on purpose: it renders Tailwind + daisyUI classes and needs an icon set, so it can't be shown dependency-free like the rest. See [docs/DumbTree.md](../docs/DumbTree.md). The `utils` helpers are plain functions — [docs/utils.md](../docs/utils.md) has runnable snippets.
+> `DumbTree` normally expects Tailwind + daisyUI. To keep this example standalone it ships a ~60-line CSS shim faking just the classes the component touches, plus emoji "icons" — delete both in a real daisyUI app and pass your own icon classes.
+
+Every example is smoke-tested (`pnpm test`): each one is mounted into a DOM and asserted to render, so an example can't silently drift away from the API.
 
 ## Run them
 
