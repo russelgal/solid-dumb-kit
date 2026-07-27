@@ -19,14 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Install deps (repo root)
-        run: npm install
+          cache: pnpm
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
       - name: Build demo
-        run: npx vite build
-        working-directory: playground
+        run: pnpm demo:build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

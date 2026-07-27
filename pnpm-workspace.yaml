@@ -1,0 +1,4 @@
+# Разрешённые build-скрипты (pnpm 10 блокирует их по умолчанию).
+# esbuild — бинарник для tsup/vite, без postinstall сборка падает.
+onlyBuiltDependencies:
+  - esbuild

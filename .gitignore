@@ -1,3 +1,6 @@
 node_modules
 .DS_Store
+.idea
 playground/dist
+package-lock.json
+yarn.lock
