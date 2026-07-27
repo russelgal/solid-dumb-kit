@@ -12,7 +12,7 @@ export default defineConfig({
   plugins: [solid()],
   resolve: {
     alias: [
-      { find: /^solid-dumb-kit\/dist\/index\.css$/, replacement: src('../src/SelectionArea.css') },
+      { find: /^solid-dumb-kit\/dist\/index\.css$/, replacement: src('../src/SelectionArea/SelectionArea.css') },
       { find: /^solid-dumb-kit$/, replacement: src('../src/index.tsx') },
     ],
   },
