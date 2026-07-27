@@ -22,3 +22,4 @@ export {
   type DumbTreeIcons,
   type DumbTreeLabels,
 } from './DumbTree'
+export * from './utils'

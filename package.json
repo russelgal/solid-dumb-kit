@@ -1,11 +1,12 @@
 {
   "name": "solid-dumb-kit",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "SolidJS UI components: SelectionArea, ResizableGrid and more",
   "type": "module",
   "files": [
     "dist",
-    "src"
+    "src",
+    "!src/**/__tests__/**"
   ],
   "sideEffects": false,
   "publishConfig": {
@@ -13,23 +14,37 @@
   },
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch"
+    "dev": "tsup --watch",
+    "demo": "vite playground",
+    "demo:build": "vite build playground",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "packageManager": "pnpm@10.30.1",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
   },
   "peerDependencies": {
-    "solid-js": ">=1.8.0"
+    "solid-js": "^1.8.0"
   },
   "dependencies": {
-    "@solid-primitives/storage": "^4.3.4",
+    "@solid-primitives/storage": "4.3.4",
     "@viselect/vanilla": "^3.9.0",
+    "fflate": "^0.8.3",
+    "slug": "^11.0.1",
     "valibot": "^1.2.0"
   },
   "devDependencies": {
-    "solid-js": "^1.8.0",
+    "@types/slug": "^5.0.9",
+    "happy-dom": "^20.11.1",
+    "solid-js": "^1.9.14",
     "tsup": "^8.5.1",
     "tsup-preset-solid": "^2.2.0",
     "typescript": "^6.0.2",
-    "vite": "^5.4.11",
-    "vite-plugin-solid": "^2.11.0"
+    "vite": "^8.1.5",
+    "vite-plugin-solid": "^2.11.13",
+    "vitest": "^4.1.10"
   },
   "license": "MIT",
   "repository": {
