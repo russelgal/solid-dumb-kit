@@ -13,6 +13,9 @@
 - `offsetTop/offsetLeft/offsetWidth/offsetHeight`, `clientWidth/clientHeight`, `scrollWidth/scrollHeight`, `getComputedStyle(...)` — НЕ читать в циклах/покадрово.
 - Никаких «синхронно замерю один элемент, это дёшево» — это всё равно forced reflow. **Не предлагать и не писать такое.**
 
+### `@dnd-kit` — забыть навсегда
+`@dnd-kit/solid`, `@dnd-kit/helpers` и любые их обёртки в этой репе **запрещены**: они меряют `getBoundingClientRect` покадрово во время драга, то есть тормозят ровно по причине из правила выше. Не ставить, не предлагать как вариант, не тащить вместе с кодом из донора. Любое перетаскивание — только через `createDumbSortable` (`src/Sortable/sortableCore.ts`).
+
 ### Как правильно
 - Позиции/размеры элементов снимаются **один раз** через **IntersectionObserver** (`entry.boundingClientRect` считается off-main-thread, без reflow). См. `snapshot()` в `src/Sortable/sortableCore.ts`.
 - Движение — **только `transform`** (GPU/compositor), не трогаем layout-свойства.
@@ -64,7 +67,7 @@ pnpm test           # vitest run (утилиты + смоук-монтирова
 
 Что там есть сверх текущей репы:
 - Компоненты: `Lightbox` + `lightbox-api`/`lightbox-types`/`lightbox.css`, `ContextMenu`, `toast`, `Img`, `MediaGallery`, `UniversalTree`, `S3Dashboard`, `UserManager`
-- Sortable-семейство на `@dnd-kit/solid`: `SortableList`, `SortableTable`, `SortableGrid` (здесь заменено на свой `sortableCore` + `DumbSortable`)
+- ~~Sortable-семейство `SortableList`/`SortableTable`/`SortableGrid`~~ — **не переносим**, оно на `@dnd-kit` (см. запрет ниже). Всё это уже закрыто своими `sortableCore` + `DumbSortable` + `DumbTable`
 - ~~Утилиты `fmt`/`slug`/`zip`/`imgproxy`~~ — **перенесены** 27.07.2026 в `src/utils/` вместе с тестами
 
 Правила переноса:
