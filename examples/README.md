@@ -8,6 +8,8 @@ Self-contained, copy-pasteable examples — one per component. Each file default
 | [ResizableGrid.example.tsx](ResizableGrid.example.tsx) | `ResizableGrid` — 3 columns + a second row, persisted |
 | [DumbSortable.example.tsx](DumbSortable.example.tsx) | `DumbSortable` — reorder a list (by handle) and a grid |
 
+`DumbTree` has no example here on purpose: it renders Tailwind + daisyUI classes and needs an icon set, so it can't be shown dependency-free like the rest. See [docs/DumbTree.md](../docs/DumbTree.md). The `utils` helpers are plain functions — [docs/utils.md](../docs/utils.md) has runnable snippets.
+
 ## Run them
 
 These import from the published package name (`solid-dumb-kit`), so they run as-is in any Solid + Vite app:
