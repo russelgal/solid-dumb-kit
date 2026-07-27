@@ -6,6 +6,7 @@ import SelectionAreaExample from '../SelectionArea.example'
 import DumbSortableExample from '../DumbSortable.example'
 import ResizableGridExample from '../ResizableGrid.example'
 import DumbTreeExample from '../DumbTree.example'
+import DumbTableExample from '../DumbTable.example'
 import UtilsExample from '../utils.example'
 
 const mounted: Array<() => void> = []
@@ -23,6 +24,7 @@ const EXAMPLES = [
   ['DumbSortable', DumbSortableExample],
   ['ResizableGrid', ResizableGridExample],
   ['DumbTree', DumbTreeExample],
+  ['DumbTable', DumbTableExample],
   ['utils', UtilsExample],
 ] as const
 

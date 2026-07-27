@@ -1,8 +1,9 @@
-import { delegateEvents, use, insert, effect, className, createComponent, setStyleProperty, setAttribute, memo, template } from 'solid-js/web';
+import { delegateEvents, use, insert, effect, className, createComponent, setStyleProperty, setAttribute, addEventListener, style, memo, template } from 'solid-js/web';
 import { onMount, onCleanup, createSignal, For, Show, createMemo } from 'solid-js';
 import VanillaSelectionArea from '@viselect/vanilla';
 import { makePersisted } from '@solid-primitives/storage';
 import * as v from 'valibot';
+import { createSolidTable, getSortedRowModel, getCoreRowModel, flexRender } from '@tanstack/solid-table';
 import slug from 'slug';
 
 // src/SelectionArea/SelectionArea.tsx
@@ -1028,6 +1029,392 @@ function DumbTree(props) {
   })();
 }
 delegateEvents(["click", "input"]);
+var _tmpl$13 = /* @__PURE__ */ template(`<span aria-hidden=true style=margin-left:4px>`);
+var _tmpl$24 = /* @__PURE__ */ template(`<tfoot>`);
+var _tmpl$33 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
+var _tmpl$43 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
+var _tmpl$53 = /* @__PURE__ */ template(`<th style=width:1%>`);
+var _tmpl$63 = /* @__PURE__ */ template(`<tr>`);
+var _tmpl$72 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
+var _tmpl$82 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
+var _tmpl$92 = /* @__PURE__ */ template(`<td style="padding:6px 8px">`);
+function SortMark(props) {
+  return (() => {
+    var _el$ = _tmpl$13();
+    insert(_el$, (() => {
+      var _c$ = memo(() => props.dir === "asc");
+      return () => _c$() ? "\u25B2" : props.dir === "desc" ? "\u25BC" : "\u21C5";
+    })());
+    effect((_$p) => setStyleProperty(_el$, "opacity", props.dir ? "1" : ".3"));
+    return _el$;
+  })();
+}
+function DumbTable(props) {
+  const [localSort, setLocalSort] = createSignal([]);
+  const serverMode = () => !!props.onSort;
+  const sorting = () => serverMode() ? props.sort ? [{
+    id: props.sort,
+    desc: props.order === "desc"
+  }] : [] : localSort();
+  const defs = () => props.columns.map((c) => ({
+    id: c.key,
+    // accessorFn обязателен: без него TanStack считает колонку display-колонкой,
+    // getCanSort() всегда false и сортировка молча выключается — даже когда
+    // сортирует сервер и само значение не используется.
+    accessorFn: (row) => c.value ? c.value(row) : row[c.key],
+    header: () => c.label ?? c.key,
+    enableSorting: !!c.sortable,
+    ...props.sortDescFirst === void 0 ? {} : {
+      sortDescFirst: props.sortDescFirst
+    },
+    cell: (ctx) => c.render ? c.render(ctx.row.original, ctx.row.index) : String(ctx.getValue() ?? ""),
+    meta: {
+      col: c
+    }
+  }));
+  const table = createSolidTable({
+    get data() {
+      return props.rows;
+    },
+    get columns() {
+      return defs();
+    },
+    state: {
+      get sorting() {
+        return sorting();
+      }
+    },
+    get manualSorting() {
+      return serverMode();
+    },
+    enableSortingRemoval: false,
+    onSortingChange: (updater) => {
+      const next = typeof updater === "function" ? updater(sorting()) : updater;
+      if (!next.length) return;
+      if (serverMode()) props.onSort(next[0].id, next[0].desc ? "desc" : "asc");
+      else setLocalSort(next);
+    },
+    getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel()
+  });
+  const visibleRows = () => table.getRowModel().rows;
+  const dragDisabled = () => !props.onReorder || sorting().length > 0;
+  const sortable = createDumbSortable({
+    order: () => visibleRows().map((r) => r.id),
+    disabled: dragDisabled,
+    onEnd: (from, to) => props.onReorder?.(from, to)
+  });
+  const colOf = (columnDef) => columnDef.meta.col;
+  const cellStyle = (c) => ({
+    "text-align": c.align ?? "left",
+    ...c.width ? {
+      width: c.width
+    } : {}
+  });
+  return (() => {
+    var _el$2 = _tmpl$43();
+    insert(_el$2, createComponent(Show, {
+      get when() {
+        return visibleRows().length;
+      },
+      get fallback() {
+        return props.empty;
+      },
+      get children() {
+        var _el$3 = _tmpl$33(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
+        insert(_el$4, createComponent(For, {
+          get each() {
+            return table.getHeaderGroups();
+          },
+          children: (hg) => (() => {
+            var _el$7 = _tmpl$63();
+            insert(_el$7, createComponent(Show, {
+              get when() {
+                return props.onReorder;
+              },
+              get children() {
+                return _tmpl$53();
+              }
+            }), null);
+            insert(_el$7, createComponent(For, {
+              get each() {
+                return hg.headers;
+              },
+              children: (header) => {
+                const c = () => colOf(header.column.columnDef);
+                const canSort = () => header.column.getCanSort();
+                return (() => {
+                  var _el$9 = _tmpl$72();
+                  addEventListener(_el$9, "click", header.column.getToggleSortingHandler(), true);
+                  insert(_el$9, () => flexRender(header.column.columnDef.header, header.getContext()), null);
+                  insert(_el$9, createComponent(Show, {
+                    get when() {
+                      return canSort();
+                    },
+                    get children() {
+                      return createComponent(SortMark, {
+                        get dir() {
+                          return header.column.getIsSorted();
+                        }
+                      });
+                    }
+                  }), null);
+                  effect((_p$) => {
+                    var _v$5 = `${c().class ?? ""} ${c().headClass ?? ""}`.trim() || void 0, _v$6 = {
+                      ...cellStyle(c()),
+                      cursor: canSort() ? "pointer" : void 0,
+                      "user-select": canSort() ? "none" : void 0
+                    };
+                    _v$5 !== _p$.e && className(_el$9, _p$.e = _v$5);
+                    _p$.t = style(_el$9, _v$6, _p$.t);
+                    return _p$;
+                  }, {
+                    e: void 0,
+                    t: void 0
+                  });
+                  return _el$9;
+                })();
+              }
+            }), null);
+            return _el$7;
+          })()
+        }));
+        insert(_el$5, createComponent(For, {
+          get each() {
+            return visibleRows();
+          },
+          children: (row) => (() => {
+            var _el$0 = _tmpl$63();
+            _el$0.$$click = () => props.onRowClick?.(row.original, row.index);
+            var _ref$ = props.onReorder ? sortable.bind(row.id) : void 0;
+            typeof _ref$ === "function" && use(_ref$, _el$0);
+            insert(_el$0, createComponent(Show, {
+              get when() {
+                return props.onReorder;
+              },
+              get children() {
+                var _el$1 = _tmpl$82(), _el$10 = _el$1.firstChild;
+                _el$1.$$click = (e) => e.stopPropagation();
+                insert(_el$10, () => props.handle ?? "\u283F");
+                effect((_p$) => {
+                  var _v$7 = dragDisabled() ? "not-allowed" : "grab", _v$8 = dragDisabled() ? ".3" : "1", _v$9 = dragDisabled() ? "reset sorting to reorder" : "drag";
+                  _v$7 !== _p$.e && setStyleProperty(_el$10, "cursor", _p$.e = _v$7);
+                  _v$8 !== _p$.t && setStyleProperty(_el$10, "opacity", _p$.t = _v$8);
+                  _v$9 !== _p$.a && setAttribute(_el$10, "title", _p$.a = _v$9);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0,
+                  a: void 0
+                });
+                return _el$1;
+              }
+            }), null);
+            insert(_el$0, createComponent(For, {
+              get each() {
+                return row.getVisibleCells();
+              },
+              children: (cell) => {
+                const c = () => colOf(cell.column.columnDef);
+                return (() => {
+                  var _el$11 = _tmpl$92();
+                  addEventListener(_el$11, "click", c().stopClick ? (e) => e.stopPropagation() : void 0, true);
+                  insert(_el$11, () => flexRender(cell.column.columnDef.cell, cell.getContext()));
+                  effect((_p$) => {
+                    var _v$10 = c().class, _v$11 = {
+                      ...cellStyle(c())
+                    };
+                    _v$10 !== _p$.e && className(_el$11, _p$.e = _v$10);
+                    _p$.t = style(_el$11, _v$11, _p$.t);
+                    return _p$;
+                  }, {
+                    e: void 0,
+                    t: void 0
+                  });
+                  return _el$11;
+                })();
+              }
+            }), null);
+            effect((_p$) => {
+              var _v$0 = props.rowClass?.(row.original, row.index), _v$1 = props.onRowClick ? "pointer" : void 0;
+              _v$0 !== _p$.e && className(_el$0, _p$.e = _v$0);
+              _v$1 !== _p$.t && setStyleProperty(_el$0, "cursor", _p$.t = _v$1);
+              return _p$;
+            }, {
+              e: void 0,
+              t: void 0
+            });
+            return _el$0;
+          })()
+        }));
+        insert(_el$3, createComponent(Show, {
+          get when() {
+            return props.footer;
+          },
+          get children() {
+            var _el$6 = _tmpl$24();
+            insert(_el$6, () => props.footer);
+            return _el$6;
+          }
+        }), null);
+        effect((_p$) => {
+          var _v$ = props.tableClass, _v$2 = props.headClass;
+          _v$ !== _p$.e && className(_el$3, _p$.e = _v$);
+          _v$2 !== _p$.t && className(_el$4, _p$.t = _v$2);
+          return _p$;
+        }, {
+          e: void 0,
+          t: void 0
+        });
+        return _el$3;
+      }
+    }));
+    effect((_p$) => {
+      var _v$3 = props.class, _v$4 = props.loading ? ".5" : "1";
+      _v$3 !== _p$.e && className(_el$2, _p$.e = _v$3);
+      _v$4 !== _p$.t && setStyleProperty(_el$2, "opacity", _p$.t = _v$4);
+      return _p$;
+    }, {
+      e: void 0,
+      t: void 0
+    });
+    return _el$2;
+  })();
+}
+delegateEvents(["click"]);
+var _tmpl$14 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px>`);
+var _tmpl$25 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px;flex-wrap:wrap><button>\xAB</button><button>\xBB`);
+var _tmpl$34 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
+var _tmpl$44 = /* @__PURE__ */ template(`<button>`);
+var _tmpl$54 = /* @__PURE__ */ template(`<span style="padding:3px 4px;opacity:.4">\u2026`);
+function buildPageNumbers(current, total) {
+  if (total <= 10) return Array.from({
+    length: total
+  }, (_, i) => i + 1);
+  const pages = [1];
+  let start = Math.max(2, current - 4);
+  let end = Math.min(total - 1, current + 4);
+  if (end - start < 7) {
+    if (start === 2) end = Math.min(total - 1, start + 7);
+    else start = Math.max(2, end - 7);
+  }
+  if (start > 2) pages.push("\u2026");
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (end < total - 1) pages.push("\u2026");
+  pages.push(total);
+  return pages;
+}
+function DumbPagination(props) {
+  const pages = () => Math.max(1, Math.ceil(props.total / props.pageSize));
+  const summary = () => props.summary ? props.summary({
+    page: props.page,
+    pages: pages(),
+    total: props.total
+  }) : `${props.total} \xB7 ${props.page}/${pages()}`;
+  const btn = (active, disabled) => ({
+    padding: "3px 9px",
+    "min-width": "32px",
+    border: "1px solid currentColor",
+    "border-radius": "6px",
+    background: "transparent",
+    color: "inherit",
+    font: "inherit",
+    opacity: disabled ? ".35" : active ? "1" : ".7",
+    cursor: disabled ? "default" : "pointer",
+    "font-weight": active ? "700" : "400"
+  });
+  return (() => {
+    var _el$ = _tmpl$34(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
+    insert(_el$3, summary);
+    insert(_el$2, createComponent(Show, {
+      get when() {
+        return memo(() => !!props.pageSizes?.length)() && props.onPageSizeChange;
+      },
+      get children() {
+        var _el$4 = _tmpl$14();
+        insert(_el$4, createComponent(For, {
+          get each() {
+            return props.pageSizes;
+          },
+          children: (size) => (() => {
+            var _el$8 = _tmpl$44();
+            _el$8.$$click = () => props.onPageSizeChange(size);
+            insert(_el$8, size);
+            effect((_p$) => {
+              var _v$7 = `${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`.trim() || void 0, _v$8 = btn(props.pageSize === size, false);
+              _v$7 !== _p$.e && className(_el$8, _p$.e = _v$7);
+              _p$.t = style(_el$8, _v$8, _p$.t);
+              return _p$;
+            }, {
+              e: void 0,
+              t: void 0
+            });
+            return _el$8;
+          })()
+        }));
+        return _el$4;
+      }
+    }), null);
+    insert(_el$, createComponent(Show, {
+      get when() {
+        return pages() > 1;
+      },
+      get children() {
+        var _el$5 = _tmpl$25(), _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling;
+        _el$6.$$click = () => props.onPageChange(props.page - 1);
+        insert(_el$5, createComponent(For, {
+          get each() {
+            return buildPageNumbers(props.page, pages());
+          },
+          children: (p) => createComponent(Show, {
+            when: p !== "\u2026",
+            get fallback() {
+              return _tmpl$54();
+            },
+            get children() {
+              var _el$9 = _tmpl$44();
+              _el$9.$$click = () => props.onPageChange(p);
+              insert(_el$9, p);
+              effect((_p$) => {
+                var _v$9 = `${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`.trim() || void 0, _v$0 = btn(props.page === p, false);
+                _v$9 !== _p$.e && className(_el$9, _p$.e = _v$9);
+                _p$.t = style(_el$9, _v$0, _p$.t);
+                return _p$;
+              }, {
+                e: void 0,
+                t: void 0
+              });
+              return _el$9;
+            }
+          })
+        }), _el$7);
+        _el$7.$$click = () => props.onPageChange(props.page + 1);
+        effect((_p$) => {
+          var _v$ = props.buttonClass, _v$2 = btn(false, props.page <= 1), _v$3 = props.page <= 1, _v$4 = props.buttonClass, _v$5 = btn(false, props.page >= pages()), _v$6 = props.page >= pages();
+          _v$ !== _p$.e && className(_el$6, _p$.e = _v$);
+          _p$.t = style(_el$6, _v$2, _p$.t);
+          _v$3 !== _p$.a && (_el$6.disabled = _p$.a = _v$3);
+          _v$4 !== _p$.o && className(_el$7, _p$.o = _v$4);
+          _p$.i = style(_el$7, _v$5, _p$.i);
+          _v$6 !== _p$.n && (_el$7.disabled = _p$.n = _v$6);
+          return _p$;
+        }, {
+          e: void 0,
+          t: void 0,
+          a: void 0,
+          o: void 0,
+          i: void 0,
+          n: void 0
+        });
+        return _el$5;
+      }
+    }), null);
+    effect(() => className(_el$, props.class));
+    return _el$;
+  })();
+}
+delegateEvents(["click"]);
 
 // src/utils/fmt.ts
 var RubIntl2 = new Intl.NumberFormat("ru-RU", {
@@ -1233,4 +1620,4 @@ function imgproxyUrl(src, opts = {}) {
   return `${base}/insecure/${processing}/${base64url(resolveSource(src))}${ext}`;
 }
 
-export { DumbSortable, DumbTree, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, configureImgproxy, createDumbSortable, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };
+export { DumbPagination, DumbSortable, DumbTable, DumbTree, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, configureImgproxy, createDumbSortable, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };

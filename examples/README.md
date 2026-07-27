@@ -8,6 +8,7 @@ Self-contained, copy-pasteable examples — one per component. Each file default
 | [ResizableGrid.example.tsx](ResizableGrid.example.tsx) | `ResizableGrid` — 3 columns + a second row, persisted |
 | [DumbSortable.example.tsx](DumbSortable.example.tsx) | `DumbSortable` — reorder a list (by handle) and a grid |
 | [DumbTree.example.tsx](DumbTree.example.tsx) | `DumbTree` — tree + flat drag-reorderable list, search, sorting |
+| [DumbTable.example.tsx](DumbTable.example.tsx) | `DumbTable` — sortable columns, row drag-reorder, pagination |
 | [utils.example.tsx](utils.example.tsx) | `utils` — live playground for fmt / genSlug / imgproxyUrl / extractImagesFromZip |
 
 > `DumbTree` normally expects Tailwind + daisyUI. To keep this example standalone it ships a ~60-line CSS shim faking just the classes the component touches, plus emoji "icons" — delete both in a real daisyUI app and pass your own icon classes.

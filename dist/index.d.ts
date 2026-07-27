@@ -1,3 +1,4 @@
+import * as solid_js from 'solid-js';
 import { JSX } from 'solid-js';
 import { SelectionEvent, SelectionOptions } from '@viselect/vanilla';
 export { SelectionEvent } from '@viselect/vanilla';
@@ -196,6 +197,83 @@ type DumbTreeProps<T extends DumbTreeNode> = {
 };
 declare function DumbTree<T extends DumbTreeNode>(props: DumbTreeProps<T>): JSX.Element;
 
+type DumbColumn<T> = {
+    /** ключ колонки: id для сортировки и путь к значению по умолчанию */
+    key: string;
+    /** содержимое `<th>` */
+    label?: JSX.Element;
+    /** разрешить сортировку по этой колонке */
+    sortable?: boolean;
+    /** класс на `<th>` и `<td>` */
+    class?: string;
+    /** класс только на `<th>` */
+    headClass?: string;
+    /** выравнивание содержимого */
+    align?: 'left' | 'center' | 'right';
+    /** ширина колонки (CSS-значение, напр. '80px' или '12%') */
+    width?: string;
+    /** не пускать клик по ячейке в onRowClick (для кнопок/инпутов внутри) */
+    stopClick?: boolean;
+    /** содержимое `<td>`; по умолчанию — значение по `key` */
+    render?: (row: T, index: number) => JSX.Element;
+    /** значение для сортировки; по умолчанию — `row[key]` */
+    value?: (row: T) => unknown;
+};
+type DumbTableProps<T> = {
+    rows: Array<T>;
+    columns: Array<DumbColumn<T>>;
+    /** стабильный id строки (нужен перетаскиванию); по умолчанию — индекс */
+    rowId?: (row: T, index: number) => string;
+    /** активная колонка сортировки — задаёт СЕРВЕРНЫЙ режим (вместе с onSort) */
+    sort?: string;
+    order?: 'asc' | 'desc';
+    /** есть onSort → сортирует сервер (manualSorting); нет → сортируем на клиенте */
+    onSort?: (key: string, order: 'asc' | 'desc') => void;
+    /**
+     * Направление ПЕРВОГО клика по заголовку. По умолчанию — как у TanStack:
+     * текстовые колонки начинают с asc, числовые с desc. `false` заставляет
+     * все колонки начинать с asc, `true` — с desc.
+     */
+    sortDescFirst?: boolean;
+    /** включает перетаскивание строк за ручку; индексы — в текущем показанном порядке */
+    onReorder?: (from: number, to: number) => void;
+    /** содержимое ручки перетаскивания */
+    handle?: JSX.Element;
+    onRowClick?: (row: T, index: number) => void;
+    /** приглушить таблицу на время загрузки */
+    loading?: boolean;
+    /** показывается вместо таблицы, когда строк нет */
+    empty?: JSX.Element;
+    class?: string;
+    tableClass?: string;
+    headClass?: string;
+    rowClass?: (row: T, index: number) => string | undefined;
+    /** содержимое `<tfoot>` */
+    footer?: JSX.Element;
+};
+declare function DumbTable<T>(props: DumbTableProps<T>): JSX.Element;
+
+type DumbPaginationProps = {
+    page: number;
+    total: number;
+    pageSize: number;
+    onPageChange: (page: number) => void;
+    /** показывает переключатель размера страницы */
+    pageSizes?: Array<number>;
+    onPageSizeChange?: (size: number) => void;
+    /** подпись слева; по умолчанию «total · page/pages» */
+    summary?: (info: {
+        page: number;
+        pages: number;
+        total: number;
+    }) => string;
+    class?: string;
+    buttonClass?: string;
+    activeClass?: string;
+};
+declare function buildPageNumbers(current: number, total: number): Array<number | '…'>;
+declare function DumbPagination(props: DumbPaginationProps): solid_js.JSX.Element;
+
 type Numeric = number | string | null | undefined;
 /** 1 234,56 ₽ */
 declare function RubR2(v: Numeric): string;
@@ -285,4 +363,4 @@ declare function configureImgproxy(c: ImgproxyConfig): void;
  */
 declare function imgproxyUrl(src: string, opts?: ImgproxyOps): string;
 
-export { DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, configureImgproxy, createDumbSortable, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };
+export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, buildPageNumbers, configureImgproxy, createDumbSortable, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };

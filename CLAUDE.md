@@ -30,6 +30,7 @@ src/
   ResizableGrid/       index.ts, ResizableGrid.tsx
   Sortable/            index.ts, sortableCore.ts, DumbSortable.tsx
   DumbTree/            index.ts, DumbTree.tsx
+  DumbTable/           index.ts, DumbTable.tsx, DumbPagination.tsx, __tests__/
   utils/               index.ts, fmt.ts, slug.ts, zip.ts, imgproxy.ts, __tests__/
 ```
 
@@ -53,6 +54,7 @@ pnpm test           # vitest run (утилиты + смоук-монтирова
 - `pnpm-workspace.yaml` — только для `onlyBuiltDependencies: [esbuild]` (pnpm 10 блокирует postinstall-скрипты; без esbuild сборка падает). Воркспейсов нет, пакет один.
 - `@solid-primitives/storage` **запинен на 4.3.4** (без `^`): в 4.4.0 сломана инференция типов `makePersisted` — dts-сборка `ResizableGrid` падает. Апать только вместе с проверкой `pnpm build`.
 - Рантайм-зависимости утилит: `slug` (статический импорт — `genSlug` синхронный) и `fflate` (**динамический** `import()` внутри `extractImagesFromZip`, грузится только при фактической распаковке — не тащить его в top-level).
+- `@tanstack/solid-table` (v8, peer `solid-js >=1.3`) — под `DumbTable`. Свою сортировку/модель строк не пишем. v9 пока в бете, не берём.
 - `@types/node` **не ставим**: `process.env` в `src/` читается через каст `globalThis`, иначе dts-сборка требует типы Node.
 - В `tsup.config.ts` **нельзя** вызывать `preset.writePackageJson()`. `tsup-preset-solid` поднимает два инстанса tsup параллельно, и запись `package.json` на лету ловится вторым инстансом в момент усечения файла: он не видит `dependencies`, external становится пустым и **все зависимости инлайнятся в бандл** (`index.js` раздувается втрое, появляется чанк `dist/browser/*` из fflate). Симптом плавающий — сборка «через раз». Поля `exports` в `package.json` и так уже верные; пресет только печатает их справочно.
 - Перед коммитом `dist/` сверяйся с `git status dist` — тишина означает, что сборка воспроизвелась байт в байт.
@@ -76,6 +78,13 @@ pnpm test           # vitest run (утилиты + смоук-монтирова
 - `examples/__tests__/examples.test.tsx` — смоук: каждый пример монтируется в DOM и проверяется, что он что-то отрисовал. Ловит рассинхрон примеров с API кита.
 - `vitest.setup.ts` подкладывает in-memory `localStorage`: happy-dom 20 отдаёт `globalThis.localStorage` **без** `getItem`/`setItem`, и `makePersisted` (ResizableGrid, DumbTree) падает. Если тест на компоненте с персистом внезапно валится с `storage.getItem is not a function` — смотри туда.
 - `DumbTree` в примере оформлен CSS-шимом (~60 строк, подделывает нужные daisyUI-классы) и эмодзи-иконками — чтобы витрина оставалась самодостаточной.
+
+## DumbTable: грабли TanStack
+- Колонке **обязателен `accessorFn`**, даже когда сортирует сервер и значение не используется. Без него TanStack считает колонку display-колонкой, `getCanSort()` всегда `false`, и сортировка молча выключается.
+- Первый клик по заголовку: текстовые колонки начинают с `asc`, **числовые с `desc`** (дефолт TanStack). Перебивается пропом `sortDescFirst`. Тесты на сортировку пиши с оглядкой на это.
+- При `onReorder` слева добавляется колонка с ручкой, поэтому индексы `<th>` сдвигаются на единицу — легко ошибиться в тестах.
+- Драг строк выключается, пока активна сортировка: `from → to` описывают отображаемый порядок, который при сортировке не совпадает с порядком данных. Та же логика, что у `DumbTree` при активном поиске.
+- Таблица **не пагинирует** — строки режет потребитель, `DumbPagination` только рисует пагинатор. При драге на странице не забывать про смещение `(page-1) * pageSize`.
 
 ## Версии: линия 0.x — под Solid 1
 `0.1.0` и вся ветка `0.x` — для **SolidJS 1.x**. `peerDependencies.solid-js` = `^1.8.0` (именно каретка, не `>=1.8.0` — чтобы Solid 2 не подхватился молча и не сломался в рантайме у потребителя).

@@ -4,6 +4,7 @@ import SelectionAreaExample from '../../examples/SelectionArea.example'
 import DumbSortableExample from '../../examples/DumbSortable.example'
 import ResizableGridExample from '../../examples/ResizableGrid.example'
 import DumbTreeExample from '../../examples/DumbTree.example'
+import DumbTableExample from '../../examples/DumbTable.example'
 import UtilsExample from '../../examples/utils.example'
 
 const TABS = [
@@ -11,6 +12,7 @@ const TABS = [
   { id: 'sortable', label: 'DumbSortable', Comp: DumbSortableExample },
   { id: 'grid', label: 'ResizableGrid', Comp: ResizableGridExample },
   { id: 'tree', label: 'DumbTree', Comp: DumbTreeExample },
+  { id: 'table', label: 'DumbTable', Comp: DumbTableExample },
   { id: 'utils', label: 'utils', Comp: UtilsExample },
 ] as const
 

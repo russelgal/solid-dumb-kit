@@ -856,6 +856,255 @@ function DumbTree(props) {
     </aside>;
 }
 
+// src/DumbTable/DumbTable.tsx
+import { For as For4, Show as Show3, createSignal as createSignal3 } from "solid-js";
+import {
+  createSolidTable,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel
+} from "@tanstack/solid-table";
+function SortMark(props) {
+  return <span aria-hidden="true" style={{ "margin-left": "4px", opacity: props.dir ? "1" : ".3" }}>
+      {props.dir === "asc" ? "\u25B2" : props.dir === "desc" ? "\u25BC" : "\u21C5"}
+    </span>;
+}
+function DumbTable(props) {
+  const [localSort, setLocalSort] = createSignal3([]);
+  const serverMode = () => !!props.onSort;
+  const sorting = () => serverMode() ? props.sort ? [{ id: props.sort, desc: props.order === "desc" }] : [] : localSort();
+  const defs = () => props.columns.map((c) => ({
+    id: c.key,
+    // accessorFn обязателен: без него TanStack считает колонку display-колонкой,
+    // getCanSort() всегда false и сортировка молча выключается — даже когда
+    // сортирует сервер и само значение не используется.
+    accessorFn: (row) => c.value ? c.value(row) : row[c.key],
+    header: () => c.label ?? c.key,
+    enableSorting: !!c.sortable,
+    ...props.sortDescFirst === void 0 ? {} : { sortDescFirst: props.sortDescFirst },
+    cell: (ctx) => c.render ? c.render(ctx.row.original, ctx.row.index) : String(ctx.getValue() ?? ""),
+    meta: { col: c }
+  }));
+  const table = createSolidTable({
+    get data() {
+      return props.rows;
+    },
+    get columns() {
+      return defs();
+    },
+    state: {
+      get sorting() {
+        return sorting();
+      }
+    },
+    get manualSorting() {
+      return serverMode();
+    },
+    enableSortingRemoval: false,
+    onSortingChange: (updater) => {
+      const next = typeof updater === "function" ? updater(sorting()) : updater;
+      if (!next.length) return;
+      if (serverMode()) props.onSort(next[0].id, next[0].desc ? "desc" : "asc");
+      else setLocalSort(next);
+    },
+    getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel()
+  });
+  const visibleRows = () => table.getRowModel().rows;
+  const dragDisabled = () => !props.onReorder || sorting().length > 0;
+  const sortable = createDumbSortable({
+    order: () => visibleRows().map((r) => r.id),
+    disabled: dragDisabled,
+    onEnd: (from, to) => props.onReorder?.(from, to)
+  });
+  const colOf = (columnDef) => columnDef.meta.col;
+  const cellStyle = (c) => ({
+    "text-align": c.align ?? "left",
+    ...c.width ? { width: c.width } : {}
+  });
+  return <div
+    class={props.class}
+    style={{ opacity: props.loading ? ".5" : "1", transition: "opacity .15s" }}
+  >
+      <Show3 when={visibleRows().length} fallback={props.empty}>
+        <table
+    class={props.tableClass}
+    style={{ width: "100%", "border-collapse": "collapse" }}
+  >
+          <thead class={props.headClass}>
+            <For4 each={table.getHeaderGroups()}>
+              {(hg) => <tr>
+                  <Show3 when={props.onReorder}>
+                    <th style={{ width: "1%" }} />
+                  </Show3>
+                  <For4 each={hg.headers}>
+                    {(header) => {
+    const c = () => colOf(header.column.columnDef);
+    const canSort = () => header.column.getCanSort();
+    return <th
+      class={`${c().class ?? ""} ${c().headClass ?? ""}`.trim() || void 0}
+      style={{
+        ...cellStyle(c()),
+        padding: "6px 8px",
+        "white-space": "nowrap",
+        cursor: canSort() ? "pointer" : void 0,
+        "user-select": canSort() ? "none" : void 0
+      }}
+      onClick={header.column.getToggleSortingHandler()}
+    >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          <Show3 when={canSort()}>
+                            <SortMark dir={header.column.getIsSorted()} />
+                          </Show3>
+                        </th>;
+  }}
+                  </For4>
+                </tr>}
+            </For4>
+          </thead>
+
+          <tbody>
+            <For4 each={visibleRows()}>
+              {(row) => <tr
+    ref={props.onReorder ? sortable.bind(row.id) : void 0}
+    class={props.rowClass?.(row.original, row.index)}
+    style={{ cursor: props.onRowClick ? "pointer" : void 0 }}
+    onClick={() => props.onRowClick?.(row.original, row.index)}
+  >
+                  <Show3 when={props.onReorder}>
+                    <td style={{ padding: "6px 4px", width: "1%" }} onClick={(e) => e.stopPropagation()}>
+                      <span
+    data-drag-handle
+    style={{
+      display: "inline-block",
+      cursor: dragDisabled() ? "not-allowed" : "grab",
+      opacity: dragDisabled() ? ".3" : "1",
+      "touch-action": "none"
+    }}
+    title={dragDisabled() ? "reset sorting to reorder" : "drag"}
+  >
+                        {props.handle ?? "\u283F"}
+                      </span>
+                    </td>
+                  </Show3>
+                  <For4 each={row.getVisibleCells()}>
+                    {(cell) => {
+    const c = () => colOf(cell.column.columnDef);
+    return <td
+      class={c().class}
+      style={{ ...cellStyle(c()), padding: "6px 8px" }}
+      onClick={c().stopClick ? (e) => e.stopPropagation() : void 0}
+    >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>;
+  }}
+                  </For4>
+                </tr>}
+            </For4>
+          </tbody>
+
+          <Show3 when={props.footer}>
+            <tfoot>{props.footer}</tfoot>
+          </Show3>
+        </table>
+      </Show3>
+    </div>;
+}
+
+// src/DumbTable/DumbPagination.tsx
+import { For as For5, Show as Show4 } from "solid-js";
+function buildPageNumbers(current, total) {
+  if (total <= 10) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = [1];
+  let start = Math.max(2, current - 4);
+  let end = Math.min(total - 1, current + 4);
+  if (end - start < 7) {
+    if (start === 2) end = Math.min(total - 1, start + 7);
+    else start = Math.max(2, end - 7);
+  }
+  if (start > 2) pages.push("\u2026");
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (end < total - 1) pages.push("\u2026");
+  pages.push(total);
+  return pages;
+}
+function DumbPagination(props) {
+  const pages = () => Math.max(1, Math.ceil(props.total / props.pageSize));
+  const summary = () => props.summary ? props.summary({ page: props.page, pages: pages(), total: props.total }) : `${props.total} \xB7 ${props.page}/${pages()}`;
+  const btn = (active, disabled) => ({
+    padding: "3px 9px",
+    "min-width": "32px",
+    border: "1px solid currentColor",
+    "border-radius": "6px",
+    background: "transparent",
+    color: "inherit",
+    font: "inherit",
+    opacity: disabled ? ".35" : active ? "1" : ".7",
+    cursor: disabled ? "default" : "pointer",
+    "font-weight": active ? "700" : "400"
+  });
+  return <div
+    class={props.class}
+    style={{
+      display: "flex",
+      "align-items": "center",
+      "justify-content": "space-between",
+      gap: "12px",
+      "flex-wrap": "wrap"
+    }}
+  >
+      <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
+        <span style={{ opacity: ".7", "font-size": "13px" }}>{summary()}</span>
+        <Show4 when={props.pageSizes?.length && props.onPageSizeChange}>
+          <div style={{ display: "flex", gap: "4px" }}>
+            <For5 each={props.pageSizes}>
+              {(size) => <button
+    class={`${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`.trim() || void 0}
+    style={btn(props.pageSize === size, false)}
+    onClick={() => props.onPageSizeChange(size)}
+  >
+                  {size}
+                </button>}
+            </For5>
+          </div>
+        </Show4>
+      </div>
+
+      <Show4 when={pages() > 1}>
+        <div style={{ display: "flex", gap: "4px", "flex-wrap": "wrap" }}>
+          <button
+    class={props.buttonClass}
+    style={btn(false, props.page <= 1)}
+    disabled={props.page <= 1}
+    onClick={() => props.onPageChange(props.page - 1)}
+  >
+            «
+          </button>
+          <For5 each={buildPageNumbers(props.page, pages())}>
+            {(p) => <Show4 when={p !== "\u2026"} fallback={<span style={{ padding: "3px 4px", opacity: ".4" }}>…</span>}>
+                <button
+    class={`${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`.trim() || void 0}
+    style={btn(props.page === p, false)}
+    onClick={() => props.onPageChange(p)}
+  >
+                  {p}
+                </button>
+              </Show4>}
+          </For5>
+          <button
+    class={props.buttonClass}
+    style={btn(false, props.page >= pages())}
+    disabled={props.page >= pages()}
+    onClick={() => props.onPageChange(props.page + 1)}
+  >
+            »
+          </button>
+        </div>
+      </Show4>
+    </div>;
+}
+
 // src/utils/fmt.ts
 var RubIntl2 = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 2,
@@ -1063,7 +1312,9 @@ function imgproxyUrl(src, opts = {}) {
   return `${base}/insecure/${processing}/${base64url(resolveSource(src))}${ext}`;
 }
 export {
+  DumbPagination,
   DumbSortable,
+  DumbTable,
   DumbTree,
   ResizableGrid,
   Rub0,
@@ -1072,6 +1323,7 @@ export {
   Rub4,
   RubR2,
   SelectionArea,
+  buildPageNumbers,
   configureImgproxy,
   createDumbSortable,
   extractImagesFromZip,

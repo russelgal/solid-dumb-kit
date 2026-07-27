@@ -22,4 +22,12 @@ export {
   type DumbTreeIcons,
   type DumbTreeLabels,
 } from './DumbTree'
+export {
+  DumbTable,
+  type DumbTableProps,
+  type DumbColumn,
+  DumbPagination,
+  buildPageNumbers,
+  type DumbPaginationProps,
+} from './DumbTable'
 export * from './utils'

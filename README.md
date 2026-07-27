@@ -8,6 +8,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[ResizableGrid](docs/ResizableGrid.md)** — resizable columns/rows panel layout, sizes persisted to `localStorage`.
 - **[DumbSortable](docs/DumbSortable.md)** — zero-dep FLIP drag-reorder (vertical list **or** grid), no reflow during drag. Ships as a declarative component and a low-level `createDumbSortable` primitive.
 - **[DumbTree](docs/DumbTree.md)** — sidebar tree *or* flat list with fuzzy search, sorting, persisted expand state and optional drag-reorder. Styled for Tailwind + daisyUI.
+- **[DumbTable](docs/DumbTable.md)** — bring-your-own-columns table: sorting (client or server) on TanStack Table, row drag-reorder, pagination.
 - **[utils](docs/utils.md)** — framework-free helpers: `ru-RU` number/date/size formatting, slugs, image extraction from a ZIP, imgproxy URLs.
 
 **🔗 Live demo:** https://russelgal.github.io/solid-dumb-kit/ · runnable source in [`examples/`](examples/).
@@ -46,6 +47,8 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 | `DumbSortable` / `DumbSortableProps` | component | [docs/DumbSortable.md](docs/DumbSortable.md) |
 | `createDumbSortable` / `DumbSortableHandle` / `DumbSortableOptions` | primitive | [docs/DumbSortable.md#createdumbsortable-primitive](docs/DumbSortable.md#createdumbsortable-primitive) |
 | `DumbTree` / `DumbTreeProps` / `DumbTreeNode` / `DumbTreeIcons` / `DumbTreeLabels` | component | [docs/DumbTree.md](docs/DumbTree.md) |
+| `DumbTable` / `DumbTableProps` / `DumbColumn` | component | [docs/DumbTable.md](docs/DumbTable.md) |
+| `DumbPagination` / `DumbPaginationProps` / `buildPageNumbers` | component | [docs/DumbTable.md#dumbpagination](docs/DumbTable.md#dumbpagination) |
 | `Rub0` / `Rub2` / `Rub4` / `Rub0R` / `RubR2` / `fmtNum` / `fmtPrice` | formatting | [docs/utils.md#fmt--numbers-dates-sizes](docs/utils.md#fmt--numbers-dates-sizes) |
 | `fmtDate` / `fmtDateTime` / `fmtDateTimeShort` / `fmtTime` / `fmtDateMonth` / `timeAgo` / `fmtSize` | formatting | [docs/utils.md#dates](docs/utils.md#dates) |
 | `genSlug` | util | [docs/utils.md#genslug--url-slugs](docs/utils.md#genslug--url-slugs) |
@@ -57,11 +60,12 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 - **SelectionArea** ships a tiny stylesheet (rubber-band box + window-scroll helper) — import `solid-dumb-kit/dist/index.css` once.
 - **ResizableGrid** injects its handle styles at runtime — no import needed.
 - **DumbSortable** uses inline transforms only — no CSS needed.
+- **DumbTable** inlines structural styles only — colours, borders and hovers come from your `tableClass`/`headClass`/`rowClass`.
 - **DumbTree** is the exception: it renders Tailwind + daisyUI class names, so it expects those in your app. Icons are passed in as class names (the kit bundles no icon set).
 
 ## Dependencies
 
-`solid-js ^1.8.0` is the only peer. Runtime deps are small and scoped: `@viselect/vanilla` (SelectionArea), `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `slug` (`genSlug`), and `fflate` — the latter behind a dynamic `import()`, so it loads only when a ZIP is actually unpacked.
+`solid-js ^1.8.0` is the only peer. Runtime deps are small and scoped: `@viselect/vanilla` (SelectionArea), `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`), and `fflate` — the latter behind a dynamic `import()`, so it loads only when a ZIP is actually unpacked.
 
 ## License
 
