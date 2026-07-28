@@ -39,6 +39,23 @@ describe('examples — монтируются и рендерят разметк
   }
 })
 
+describe('SelectionArea.example — обе доски на месте', () => {
+  it('рисует и прокручиваемую, и длинную без overflow', () => {
+    const host = mount(SelectionAreaExample)
+    const text = host.textContent ?? ''
+    expect(text).toContain('Прокручиваемый контейнер')
+    expect(text).toContain('Длинный грид без overflow')
+    expect(host.querySelectorAll('.sa-card').length).toBe(340)   // 100 + 240
+  })
+
+  it('у прокручиваемой доски overflow на самом контейнере', () => {
+    const host = mount(SelectionAreaExample)
+    const boards = host.querySelectorAll('section > div:last-child')
+    expect((boards[0] as HTMLElement).style.overflowY).toBe('auto')
+    expect((boards[1] as HTMLElement).style.overflowY).toBe('')
+  })
+})
+
 describe('DumbTree.example — дерево реально построилось', () => {
   it('рисует корневые категории и вложенных детей', () => {
     const host = mount(DumbTreeExample)

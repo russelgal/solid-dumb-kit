@@ -1,50 +1,59 @@
-// SelectionArea — Finder-style rubber-band selection over 100 file tiles.
-// Drag an empty area to draw a box; Shift / Cmd / Ctrl to add to the selection.
-import { createSignal, For } from 'solid-js'
+// SelectionArea — Finder-style rubber-band selection.
+// Two setups on purpose: a scrolling container, and a long grid with no
+// overflow at all (the page scrolls). The engine handles both — in the second
+// case the band is clamped to the container and auto-scroll drives the window.
+import { createSignal, For, type JSX } from 'solid-js'
 import { SelectionArea } from 'solid-dumb-kit'
 
 const ICONS = ['🗂️', '🖼️', '🎵', '🎬', '📄', '📦', '🧩', '🗒️']
-const FILES = Array.from({ length: 100 }, (_, i) => ({
-  id: `f${i}`,
-  name: `file-${String(i + 1).padStart(3, '0')}`,
-  icon: ICONS[i % ICONS.length],
-}))
+const files = (n: number, prefix: string) =>
+  Array.from({ length: n }, (_, i) => ({
+    id: `${prefix}${i}`,
+    name: `file-${String(i + 1).padStart(3, '0')}`,
+    icon: ICONS[i % ICONS.length],
+  }))
 
-export default function SelectionAreaExample() {
+const SCROLLING = files(100, 's')
+const LONG = files(240, 'l')
+
+function Board(props: {
+  title: string
+  hint: JSX.Element
+  items: { id: string; name: string; icon: string }[]
+  /** контейнер прокручивается сам; иначе скроллится страница */
+  scroll?: boolean
+}) {
   const [selected, setSelected] = createSignal<Set<string>>(new Set())
 
   return (
-    <div style={{ padding: '16px', color: '#0f172a', 'max-width': '900px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', 'align-items': 'center', gap: '12px', 'margin-bottom': '10px' }}>
-        <h3 style={{ margin: '0' }}>SelectionArea</h3>
-        <span style={{ 'font-size': '13px', color: '#64748b' }}>
-          drag to select · hold <kbd>Shift</kbd>/<kbd>⌘</kbd> to add
-        </span>
+    <section style={{ 'margin-bottom': '28px' }}>
+      <div style={{ display: 'flex', 'align-items': 'center', gap: '12px', 'margin-bottom': '8px', 'flex-wrap': 'wrap' }}>
+        <h3 style={{ margin: '0', 'font-size': '15px' }}>{props.title}</h3>
+        <span style={{ 'font-size': '13px', color: '#64748b' }}>{props.hint}</span>
         <span style={{ 'margin-left': 'auto', 'font-size': '14px' }}>
-          selected <b>{selected().size}</b> / {FILES.length}
+          выделено <b>{selected().size}</b> / {props.items.length}
         </span>
         <button
           onClick={() => setSelected(new Set())}
           disabled={!selected().size}
           style={{ padding: '4px 10px', 'border-radius': '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
         >
-          clear
+          сбросить
         </button>
       </div>
 
-      {/* Прокрутка на самом контейнере: рамка живёт в координатах контента,
-          поэтому при скролле она растёт вместе с ним и задетое не выпадает. */}
       <SelectionArea
-        class="sa-board"
         selectables=".sa-card"
         selected={selected}
         onChange={setSelected}
         style={{
-          'max-height': '60vh',
-          'overflow-y': 'auto', 'overflow-x': 'hidden',
+          padding: '12px',
           border: '1px solid #e2e8f0',
           'border-radius': '12px',
           background: '#f8fafc',
+          ...(props.scroll
+            ? { 'max-height': '60vh', 'overflow-y': 'auto', 'overflow-x': 'hidden' }
+            : {}),
         }}
       >
         <div
@@ -52,10 +61,9 @@ export default function SelectionAreaExample() {
             display: 'grid',
             'grid-template-columns': 'repeat(auto-fill, minmax(92px, 1fr))',
             gap: '10px',
-            padding: '12px',
           }}
         >
-          <For each={FILES}>
+          <For each={props.items}>
             {(f) => {
               const on = () => selected().has(f.id)
               return (
@@ -78,6 +86,32 @@ export default function SelectionAreaExample() {
           </For>
         </div>
       </SelectionArea>
+    </section>
+  )
+}
+
+export default function SelectionAreaExample() {
+  return (
+    <div style={{ padding: '16px', color: '#0f172a', 'max-width': '900px', margin: '0 auto' }}>
+      <p style={{ margin: '0 0 16px', 'font-size': '13px', color: '#64748b', 'max-width': '76ch' }}>
+        Тяни рамку по пустому месту. <kbd>Shift</kbd>/<kbd>⌘</kbd> — добавить к выделению
+        (по уже выделенному рамка не гасит). Клик выделяет один элемент, с модификатором —
+        переключает, клик мимо — сбрасывает. Позиции снимаются один раз за жест, в кадре
+        только арифметика — ноль reflow даже на сотнях плиток.
+      </p>
+
+      <Board
+        title="Прокручиваемый контейнер"
+        hint={<>у контейнера <code>overflow: auto</code> — скроллится он сам</>}
+        items={SCROLLING}
+        scroll
+      />
+
+      <Board
+        title="Длинный грид без overflow"
+        hint={<>контейнер не обрезан — скроллится страница, автоскролл ведёт окно</>}
+        items={LONG}
+      />
     </div>
   )
 }
