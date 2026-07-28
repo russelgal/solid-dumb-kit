@@ -20,6 +20,7 @@ import {
     autoScrollSpeed, gapOf, nextInsertIndex, stackLayout, viewOrigin,
     type Cell, type ViewGeom,
 } from './geometry';
+import { measure, scrollOf, scrollParent } from '../shared/viewport';
 
 export type SortableGroupOptions = {
     /** перенос завершён: откуда (зона+индекс) и куда */
@@ -139,41 +140,6 @@ function makeGhost(src: HTMLElement, r: DOMRectReadOnly): HTMLElement {
     return ghost;
 }
 
-function scrollParent(el: HTMLElement): HTMLElement | null {
-    let n: HTMLElement | null = el;
-    while (n) {
-        const oy = getComputedStyle(n).overflowY;
-        if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && n.scrollHeight > n.clientHeight) return n;
-        n = n.parentElement;
-    }
-    return null;
-}
-
-function measure(scroller: HTMLElement | null): ViewGeom {
-    if (scroller) {
-        const r = scroller.getBoundingClientRect();
-        return {
-            top: r.top, left: r.left,
-            clientH: scroller.clientHeight, clientW: scroller.clientWidth,
-            max: scroller.scrollHeight - scroller.clientHeight,
-            winX: window.scrollX, winY: window.scrollY,
-        };
-    }
-    const se = document.scrollingElement || document.documentElement;
-    return {
-        top: 0, left: 0,
-        clientH: window.innerHeight, clientW: window.innerWidth,
-        max: se.scrollHeight - window.innerHeight,
-        winX: 0, winY: 0,
-    };
-}
-
-function scrollOf(scroller: HTMLElement | null) {
-    return scroller
-        ? { sx: scroller.scrollLeft, sy: scroller.scrollTop }
-        : { sx: window.scrollX, sy: window.scrollY };
-}
-
 function originOf(z: ZoneSnap) {
     return z.scroller ? viewOrigin(z.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
 }
@@ -239,7 +205,7 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         const snaps = new Map<string, ZoneSnap>();
         for (const z of zones.values()) {
             if (!z.el) continue;
-            const scroller = scrollParent(z.el);
+            const scroller = scrollParent(z.el, true);
             const geom = measure(scroller);
             const s0 = scrollOf(scroller);
             const box = rects.get(z.el);

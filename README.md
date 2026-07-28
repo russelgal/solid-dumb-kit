@@ -4,7 +4,7 @@
 
 A small set of dependency-light **SolidJS** UI primitives that are easy to drop in and fully styleable — you own the markup, the kit wires the behaviour.
 
-- **[SelectionArea](docs/SelectionArea.md)** — Finder-style rubber-band selection over a list/grid (Shift/Cmd to add).
+- **[SelectionArea](docs/SelectionArea.md)** — Finder-style rubber-band selection over a list/grid (Shift/Cmd to add). Zero-dep, no reflow.
 - **[ResizableGrid](docs/ResizableGrid.md)** — resizable columns/rows panel layout, sizes persisted to `localStorage`.
 - **[DumbSortable](docs/DumbSortable.md)** — zero-dep FLIP drag-reorder (vertical list **or** grid), no reflow during drag. Ships as a declarative component and a low-level `createDumbSortable` primitive.
 - **[DumbTree](docs/DumbTree.md)** — sidebar tree *or* flat list with fuzzy search, sorting, persisted expand state and optional drag-reorder. Styled for Tailwind + daisyUI.
@@ -33,7 +33,6 @@ npm i github:russelgal/solid-dumb-kit
 
 ```tsx
 import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
-import 'solid-dumb-kit/dist/index.css' // only needed for SelectionArea
 ```
 
 Runnable examples (one per component) live in [`examples/`](examples/).
@@ -42,9 +41,10 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 
 | Export | Kind | Doc |
 | --- | --- | --- |
-| `SelectionArea` / `SelectionAreaProps` / `SelectionEvent` | component | [docs/SelectionArea.md](docs/SelectionArea.md) |
+| `SelectionArea` / `SelectionAreaProps` / `IntersectMode` | component | [docs/SelectionArea.md](docs/SelectionArea.md) |
 | `ResizableGrid` / `ResizableGridProps` / `GridPanel` | component | [docs/ResizableGrid.md](docs/ResizableGrid.md) |
 | `DumbSortable` / `DumbSortableProps` | component | [docs/DumbSortable.md](docs/DumbSortable.md) |
+| `createSelectionArea` / `SelectionCoreOptions` | primitive | [docs/SelectionArea.md](docs/SelectionArea.md) |
 | `createDumbSortable` / `DumbSortableHandle` / `DumbSortableOptions` | primitive | [docs/DumbSortable.md#createdumbsortable-primitive](docs/DumbSortable.md#createdumbsortable-primitive) |
 | `DumbTree` / `DumbTreeProps` / `DumbTreeNode` / `DumbTreeIcons` / `DumbTreeLabels` | component | [docs/DumbTree.md](docs/DumbTree.md) |
 | `DumbTable` / `DumbTableProps` / `DumbColumn` | component | [docs/DumbTable.md](docs/DumbTable.md) |
@@ -57,7 +57,7 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 
 ## CSS
 
-- **SelectionArea** ships a tiny stylesheet (rubber-band box + window-scroll helper) — import `solid-dumb-kit/dist/index.css` once.
+- **SelectionArea** draws its rubber band inline — nothing to import.
 - **ResizableGrid** injects its handle styles at runtime — no import needed.
 - **DumbSortable** uses inline transforms only — no CSS needed.
 - **DumbTable** inlines structural styles only — colours, borders and hovers come from your `tableClass`/`headClass`/`rowClass`.
@@ -65,7 +65,7 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 
 ## Dependencies
 
-`solid-js ^1.8.0` is the only peer. Runtime deps are small and scoped: `@viselect/vanilla` (SelectionArea), `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`), and `fflate` — the latter behind a dynamic `import()`, so it loads only when a ZIP is actually unpacked.
+`solid-js ^1.8.0` is the only peer. Runtime deps are small and scoped: `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`), and `fflate` — the latter behind a dynamic `import()`, so it loads only when a ZIP is actually unpacked.
 
 ## License
 

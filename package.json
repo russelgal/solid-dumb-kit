@@ -1,6 +1,6 @@
 {
   "name": "solid-dumb-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SolidJS UI components: SelectionArea, ResizableGrid and more",
   "type": "module",
   "files": [
@@ -31,7 +31,6 @@
   "dependencies": {
     "@solid-primitives/storage": "4.3.4",
     "@tanstack/solid-table": "^8.21.3",
-    "@viselect/vanilla": "^3.9.0",
     "fflate": "^0.8.3",
     "slug": "^11.0.1",
     "valibot": "^1.2.0"

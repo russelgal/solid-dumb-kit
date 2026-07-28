@@ -26,6 +26,7 @@ import {
     autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, nextInsertIndex, viewOrigin,
     type Cell, type Item, type ViewGeom,
 } from './geometry';
+import { doScroll, measure, scrollOf, scrollParent } from '../shared/viewport';
 
 export type DumbSortableHandle = {
     /** самодостаточный ref на элемент (ручка = дочка с [data-drag-handle]) */
@@ -63,51 +64,9 @@ const LONGPRESS = 350;    // тач: удержание до старта дра
 const MOVE_TOL = 10;      // тач: сдвиг за время удержания = скролл, отменяем, px
 const LIFT_SHADOW = '0 10px 24px -6px rgba(0,0,0,.28)';
 
-function scrollParent(el: HTMLElement): HTMLElement | null {
-    let n = el.parentElement;
-    while (n) {
-        const oy = getComputedStyle(n).overflowY;
-        if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && n.scrollHeight > n.clientHeight) return n;
-        n = n.parentElement;
-    }
-    return null;
-}
-
-/** Единственное синхронное чтение геометрии — один раз на старте драга. */
-function measure(scroller: HTMLElement | null): ViewGeom {
-    if (scroller) {
-        const r = scroller.getBoundingClientRect();
-        return {
-            top: r.top, left: r.left,
-            clientH: scroller.clientHeight, clientW: scroller.clientWidth,
-            max: scroller.scrollHeight - scroller.clientHeight,
-            winX: window.scrollX, winY: window.scrollY,
-        };
-    }
-    const se = document.scrollingElement || document.documentElement;
-    return {
-        top: 0, left: 0,
-        clientH: window.innerHeight, clientW: window.innerWidth,
-        max: se.scrollHeight - window.innerHeight,
-        winX: 0, winY: 0,
-    };
-}
-
-/** Живой скролл — дешёвое чтение, layout не форсит. */
-function scrollOf(scroller: HTMLElement | null) {
-    return scroller
-        ? { sx: scroller.scrollLeft, sy: scroller.scrollTop }
-        : { sx: window.scrollX, sy: window.scrollY };
-}
-
 /** Позиция скроллера во вьюпорте сейчас: для окна это всегда начало координат. */
 function originOf(d: Drag) {
     return d.scroller ? viewOrigin(d.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
-}
-
-function doScroll(scroller: HTMLElement | null, dy: number) {
-    if (scroller) scroller.scrollTop += dy;
-    else window.scrollBy(0, dy);
 }
 
 export type DumbSortableOptions = {
@@ -172,7 +131,7 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
             })
             : 0;
         if (speed) {
-            doScroll(d.scroller, speed);
+            doScroll(d.scroller, 0, speed);
             ({ sx, sy } = scrollOf(d.scroller));   // скролл изменился — перечитываем (это не reflow)
             origin = originOf(d);
         }

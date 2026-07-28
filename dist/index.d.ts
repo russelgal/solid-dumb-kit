@@ -1,67 +1,90 @@
 import * as solid_js from 'solid-js';
 import { JSX } from 'solid-js';
-import { SelectionEvent, SelectionOptions } from '@viselect/vanilla';
-export { SelectionEvent } from '@viselect/vanilla';
+
+/** Как элемент попадает в выделение */
+type IntersectMode = 
+/** рамка коснулась элемента */
+'touch'
+/** рамка накрыла элемент целиком */
+ | 'cover'
+/** рамка накрыла центр элемента */
+ | 'center';
 
 type SelectionAreaProps = {
     /** CSS-селектор выбираемых элементов */
     selectables: string;
-    /** Вызывается при изменении выделения */
-    onSelect?: (e: SelectionEvent) => void;
-    /** Вызывается при завершении выделения */
-    onStop?: (e: SelectionEvent) => void;
-    /** Вызывается перед началом — return false чтобы отменить */
-    onBeforeStart?: (e: SelectionEvent) => boolean | void;
-    /** Доп. класс контейнера */
+    /** текущее выделение (ключи элементов) — состояние держит потребитель */
+    selected: () => Set<string>;
+    /** выделение изменилось */
+    onChange: (selected: Set<string>) => void;
+    /** жест завершён */
+    onStop?: (selected: Set<string>) => void;
+    /** старт запрещён — вернуть false */
+    onBeforeStart?: (ev: PointerEvent) => boolean | void;
+    /** атрибут-ключ элемента. По умолчанию `data-key` */
+    keyAttr?: string;
+    /** режим попадания: касание рамкой / полное покрытие / центр */
+    intersect?: IntersectMode;
+    /** сколько px пройти до появления рамки. По умолчанию 10 */
+    threshold?: number;
+    /** класс прямоугольника рамки (структурные стили и так инлайном) */
+    areaClass?: string;
+    /** доп. класс контейнера */
     class?: string;
-    /**
-     * Стили контейнера. Если список прокручивается — вешай overflow/max-height
-     * ИМЕННО сюда (или укажи скроллер в `boundaries`): viselect считает рамку
-     * относительно boundary, и когда прокручивается кто-то другой, выделение
-     * при скролле схлопывается до видимой части.
-     */
+    /** стили контейнера: если список прокручивается — overflow вешать сюда */
     style?: JSX.CSSProperties;
-    /** Класс для прямоугольника выделения */
-    selectionAreaClass?: string;
-    /** Режим пересечения: touch (касание), cover (полное покрытие), center */
-    intersect?: 'touch' | 'cover' | 'center';
-    /** Доп. настройки поведения */
-    behaviour?: Partial<SelectionOptions['behaviour']>;
-    /** Доп. настройки фич */
-    features?: Partial<SelectionOptions['features']>;
-    /** Boundaries — элементы-границы выделения (по умолчанию container) */
-    boundaries?: (string | HTMLElement)[];
-    /**
-     * Автоскролл window при drag за край viewport.
-     * Использует невидимый text selection для нативного скролла браузера.
-     * Полезно когда контейнер не имеет overflow (скроллится страница).
-     * Требует CSS: .viselect-window-scroll *::selection { background: inherit; color: inherit; }
-     */
-    windowScroll?: boolean;
     children: JSX.Element;
 };
 /**
- * Обёртка над @viselect/vanilla для SolidJS.
- * Рисует прямоугольник выделения при перетаскивании мыши (как в Finder).
- * Shift/Cmd — добавление к выделению.
+ * Выделение рамкой «как в Finder»: тянешь мышью — выделяется всё, чего коснулась
+ * рамка. Shift/Cmd/Ctrl — добавить к выделению (повторное касание снимает).
+ *
+ * Без зависимостей и без reflow: позиции элементов снимаются один раз на старте
+ * жеста через IntersectionObserver, дальше в кадре только арифметика.
  *
  * @example
  * ```tsx
- * <SelectionArea
- *   selectables=".file-card"
- *   onSelect={({ store }) => setSelected(new Set(
- *     [...store.stored, ...store.selected].map(el => el.dataset.key!)
- *   ))}
- * >
- *   <div class="grid">
- *     <For each={files()}>
- *       {(f) => <div class="file-card" data-key={f.id}>{f.name}</div>}
- *     </For>
- *   </div>
+ * const [sel, setSel] = createSignal<Set<string>>(new Set())
+ *
+ * <SelectionArea selectables=".card" selected={sel} onChange={setSel}
+ *                style={{ 'max-height': '60vh', 'overflow-y': 'auto' }}>
+ *   <For each={files()}>
+ *     {(f) => <div class="card" data-key={f.id} classList={{ on: sel().has(f.id) }} />}
+ *   </For>
  * </SelectionArea>
  * ```
  */
 declare function SelectionArea(props: SelectionAreaProps): JSX.Element;
+
+type SelectionCoreOptions = {
+    /** контейнер: и область жеста, и (обычно) скроллер */
+    container: () => HTMLElement | null;
+    /** CSS-селектор выбираемых элементов */
+    selectables: string;
+    /** атрибут-ключ элемента (по умолчанию data-key) */
+    keyAttr?: string;
+    /** режим попадания в рамку */
+    intersect?: () => IntersectMode;
+    /** выделение изменилось (в процессе жеста и по его окончании) */
+    onChange: (selected: Set<string>, info: {
+        added: string[];
+        removed: string[];
+    }) => void;
+    /** жест завершён */
+    onStop?: (selected: Set<string>) => void;
+    /** старт запрещён (вернуть false) */
+    onBeforeStart?: (ev: PointerEvent) => boolean | void;
+    /** выделение на момент старта жеста */
+    current: () => Set<string>;
+    /** сколько px пройти до старта рамки */
+    threshold?: number;
+    /** класс на прямоугольник рамки */
+    areaClass?: string;
+};
+declare function createSelectionArea(opts: SelectionCoreOptions): {
+    /** повесить на контейнер */
+    attach(el: HTMLElement): void;
+};
 
 type GridPanel = {
     /** Уникальный id панели */
@@ -410,4 +433,4 @@ declare function configureImgproxy(c: ImgproxyConfig): void;
  */
 declare function imgproxyUrl(src: string, opts?: ImgproxyOps): string;
 
-export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, buildPageNumbers, configureImgproxy, createDumbSortable, createSortableGroup, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };
+export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, buildPageNumbers, configureImgproxy, createDumbSortable, createSelectionArea, createSortableGroup, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };

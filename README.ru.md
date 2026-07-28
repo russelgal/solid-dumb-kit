@@ -4,7 +4,7 @@
 
 Небольшой набор **SolidJS**-примитивов почти без зависимостей: их легко вставить и полностью подчинить своим стилям — разметка твоя, кит берёт на себя поведение.
 
-- **[SelectionArea](docs/ru/SelectionArea.md)** — выделение рамкой «как в Finder» по списку/сетке (`Shift`/`Cmd` — добавить к выделению).
+- **[SelectionArea](docs/ru/SelectionArea.md)** — выделение рамкой «как в Finder» по списку/сетке (`Shift`/`Cmd` — добавить). Без зависимостей и без reflow.
 - **[ResizableGrid](docs/ru/ResizableGrid.md)** — панельная раскладка с тянущимися колонками/рядами, размеры сохраняются в `localStorage`.
 - **[DumbSortable](docs/ru/DumbSortable.md)** — FLIP-перетаскивание для смены порядка (список **или** сетка) без зависимостей и без reflow во время драга. Есть декларативный компонент и низкоуровневый примитив `createDumbSortable`.
 - **[DumbTree](docs/ru/DumbTree.md)** — сайдбар-дерево *или* плоский список с нечётким поиском, сортировкой, сохранением раскрытых папок и опциональным drag-reorder. Оформлен под Tailwind + daisyUI.
@@ -33,7 +33,6 @@ pnpm add github:russelgal/solid-dumb-kit
 
 ```tsx
 import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
-import 'solid-dumb-kit/dist/index.css' // нужен только для SelectionArea
 ```
 
 Запускаемые примеры (по одному на компонент) лежат в [`examples/`](examples/).
@@ -42,9 +41,10 @@ import 'solid-dumb-kit/dist/index.css' // нужен только для Selecti
 
 | Экспорт | Что это | Документация |
 | --- | --- | --- |
-| `SelectionArea` / `SelectionAreaProps` / `SelectionEvent` | компонент | [docs/ru/SelectionArea.md](docs/ru/SelectionArea.md) |
+| `SelectionArea` / `SelectionAreaProps` / `IntersectMode` | компонент | [docs/ru/SelectionArea.md](docs/ru/SelectionArea.md) |
 | `ResizableGrid` / `ResizableGridProps` / `GridPanel` | компонент | [docs/ru/ResizableGrid.md](docs/ru/ResizableGrid.md) |
 | `DumbSortable` / `DumbSortableProps` | компонент | [docs/ru/DumbSortable.md](docs/ru/DumbSortable.md) |
+| `createSelectionArea` / `SelectionCoreOptions` | примитив | [docs/ru/SelectionArea.md](docs/ru/SelectionArea.md) |
 | `createDumbSortable` / `DumbSortableHandle` / `DumbSortableOptions` | примитив | [docs/ru/DumbSortable.md#примитив-createdumbsortable](docs/ru/DumbSortable.md#примитив-createdumbsortable) |
 | `DumbTree` / `DumbTreeProps` / `DumbTreeNode` / `DumbTreeIcons` / `DumbTreeLabels` | компонент | [docs/ru/DumbTree.md](docs/ru/DumbTree.md) |
 | `DumbTable` / `DumbTableProps` / `DumbColumn` | компонент | [docs/ru/DumbTable.md](docs/ru/DumbTable.md) |
@@ -57,7 +57,7 @@ import 'solid-dumb-kit/dist/index.css' // нужен только для Selecti
 
 ## CSS
 
-- **SelectionArea** несёт крошечный стиль (рамка выделения + помощник для прокрутки окна) — импортируй `solid-dumb-kit/dist/index.css` один раз.
+- **SelectionArea** рисует рамку инлайном — импортировать нечего.
 - **ResizableGrid** инжектит стили ручек в рантайме — импорт не нужен.
 - **DumbSortable** обходится инлайновым `transform` — CSS не нужен вовсе.
 - **DumbTable** инлайнит только структурные стили — цвета, рамки и ховеры задаются твоими `tableClass`/`headClass`/`rowClass`.
@@ -65,7 +65,7 @@ import 'solid-dumb-kit/dist/index.css' // нужен только для Selecti
 
 ## Зависимости
 
-Единственная peer-зависимость — `solid-js ^1.8.0`. Рантайм-зависимости маленькие и точечные: `@viselect/vanilla` (SelectionArea), `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`) и `fflate` — причём последний за динамическим `import()`, поэтому грузится только при реальной распаковке ZIP.
+Единственная peer-зависимость — `solid-js ^1.8.0`. Рантайм-зависимости маленькие и точечные: `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`) и `fflate` — причём последний за динамическим `import()`, поэтому грузится только при реальной распаковке ZIP.
 
 ## Лицензия
 

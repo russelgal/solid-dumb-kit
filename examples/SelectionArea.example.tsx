@@ -2,7 +2,6 @@
 // Drag an empty area to draw a box; Shift / Cmd / Ctrl to add to the selection.
 import { createSignal, For } from 'solid-js'
 import { SelectionArea } from 'solid-dumb-kit'
-import 'solid-dumb-kit/dist/index.css'
 
 const ICONS = ['🗂️', '🖼️', '🎵', '🎬', '📄', '📦', '🧩', '🗒️']
 const FILES = Array.from({ length: 100 }, (_, i) => ({
@@ -33,12 +32,13 @@ export default function SelectionAreaExample() {
         </button>
       </div>
 
-      {/* Прокручивается САМ контейнер выделения: viselect считает рамку
-          относительно своего boundary, и если скроллится кто-то внутри,
-          при прокрутке выделение схлопывается до видимой части. */}
+      {/* Прокрутка на самом контейнере: рамка живёт в координатах контента,
+          поэтому при скролле она растёт вместе с ним и задетое не выпадает. */}
       <SelectionArea
         class="sa-board"
         selectables=".sa-card"
+        selected={selected}
+        onChange={setSelected}
         style={{
           'max-height': '60vh',
           'overflow-y': 'auto', 'overflow-x': 'hidden',
@@ -46,11 +46,6 @@ export default function SelectionAreaExample() {
           'border-radius': '12px',
           background: '#f8fafc',
         }}
-        onSelect={({ store }) =>
-          setSelected(new Set(
-            [...store.stored, ...store.selected].map(el => (el as HTMLElement).dataset.key!),
-          ))
-        }
       >
         <div
           style={{

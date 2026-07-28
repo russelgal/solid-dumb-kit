@@ -2,12 +2,15 @@
 
 # SelectionArea
 
-Finder-style **rubber-band selection**: drag the mouse to draw a box and select the elements it touches. `Shift` / `Cmd` / `Ctrl` add to the current selection. A thin SolidJS wrapper over [`@viselect/vanilla`](https://github.com/Simonwep/selection).
+Finder-style **rubber-band selection**: drag to draw a box and select what it touches. `Shift` / `Cmd` / `Ctrl` add to the selection. Clicking works too — plain click selects one item, modifier-click toggles it.
 
 ```tsx
 import { SelectionArea } from 'solid-dumb-kit'
-import 'solid-dumb-kit/dist/index.css'
 ```
+
+No CSS to import, no dependencies. Element positions are snapshotted **once** per gesture via `IntersectionObserver`, and each frame only does arithmetic — so the hot path never touches layout.
+
+> Previously this wrapped `@viselect/vanilla`. That library calls `getBoundingClientRect()` on *every* selectable on *every* move — hundreds of forced layouts per frame, which is exactly what this kit forbids. The engine is now our own; the API changed with it (see [Migrating](#migrating-from-the-viselect-based-version)).
 
 ## Example
 
@@ -21,20 +24,14 @@ function Files(props: { files: { id: string; name: string }[] }) {
   return (
     <SelectionArea
       selectables=".file-card"
-      onSelect={({ store }) =>
-        setSelected(new Set(
-          [...store.stored, ...store.selected].map(el => (el as HTMLElement).dataset.key!),
-        ))
-      }
+      selected={selected}
+      onChange={setSelected}
+      style={{ 'max-height': '60vh', 'overflow-y': 'auto' }}
     >
       <div class="grid">
         <For each={props.files}>
           {(f) => (
-            <div
-              class="file-card"
-              data-key={f.id}
-              classList={{ active: selected().has(f.id) }}
-            >
+            <div class="file-card" data-key={f.id} classList={{ active: selected().has(f.id) }}>
               {f.name}
             </div>
           )}
@@ -45,85 +42,60 @@ function Files(props: { files: { id: string; name: string }[] }) {
 }
 ```
 
+Selection state lives in **your** signal — the component never owns it. Each item is identified by `data-key`.
+
 ## Props
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `selectables` | `string` | — (required) | CSS selector of selectable elements. |
-| `children` | `JSX.Element` | — (required) | Container content. Rendered inside a `position: relative` wrapper. |
-| `onSelect` | `(e: SelectionEvent) => void` | — | Fires on every selection change during drag. |
-| `onStop` | `(e: SelectionEvent) => void` | — | Fires when the drag ends. |
-| `onBeforeStart` | `(e: SelectionEvent) => boolean \| void` | — | Return `false` to cancel a selection before it starts. |
-| `intersect` | `'touch' \| 'cover' \| 'center'` | `'touch'` | How an element counts as selected: `touch` = box touches it, `cover` = box fully covers it, `center` = box covers its center. |
-| `class` | `string` | — | Extra class on the container `<div>`. |
-| `style` | `JSX.CSSProperties` | — | Inline styles on the container. Put `overflow`/`max-height` **here** if the list scrolls — see below. |
-| `selectionAreaClass` | `string` | `'viselect-area'` | Class applied to the rubber-band rectangle. |
-| `boundaries` | `(string \| HTMLElement)[]` | `[container]` | Elements that constrain where selection can start/extend. |
-| `behaviour` | `Partial<SelectionOptions['behaviour']>` | see below | Passed through to `@viselect/vanilla`. |
-| `features` | `Partial<SelectionOptions['features']>` | see below | Passed through to `@viselect/vanilla`. |
-| `windowScroll` | `boolean` | `false` | Auto-scroll the **window** while dragging past the viewport edge (for pages without an overflow container). See notes. |
+| `selected` | `() => Set<string>` | — (required) | Current selection (keys). |
+| `onChange` | `(selected: Set<string>) => void` | — (required) | Fires whenever the selection changes, during the drag too. |
+| `onStop` | `(selected: Set<string>) => void` | — | Gesture finished. |
+| `onBeforeStart` | `(ev: PointerEvent) => boolean \| void` | — | Return `false` to prevent a gesture. |
+| `keyAttr` | `string` | `'data-key'` | Attribute holding an item's key. |
+| `intersect` | `'touch' \| 'cover' \| 'center'` | `'touch'` | How an element counts as selected: box touches it, covers it fully, or covers its centre. |
+| `threshold` | `number` | `10` | Pixels to move before the band appears; below that it's a click. |
+| `areaClass` | `string` | — | Class on the band (structural styles are inline already). |
+| `class` | `string` | — | Extra class on the container. |
+| `style` | `JSX.CSSProperties` | — | Container styles — put `overflow`/`max-height` here if the list scrolls. |
 
-### Built-in defaults
+## Behaviour
 
-`behaviour`: `{ overlap: 'invert', intersect: 'touch', startThreshold: 10 }`
-`features`: `{ touch: true, range: true, singleTap: { allow: true, intersect: 'native' }, deselectOnBlur: false }`
-
-Your `behaviour` / `features` props are shallow-merged on top of these.
-
-## Behaviour baked in
-
-- **Additive modifiers** — holding `Shift`, `Cmd`, or `Ctrl` keeps the existing selection and adds to it; a plain drag clears it first.
-- **`.viselect-selected` class** — added/removed automatically on elements as they enter/leave the selection. Style this class to show the selected state.
-- **Ignored targets** — a drag starting on `button, a, input, [data-no-select]` is suppressed, so interactive controls keep working. Add `data-no-select` to opt an element out.
+- **Modifiers** — holding `Shift`/`Cmd`/`Ctrl` while dragging only ever **adds** to the existing selection; sweeping over already-selected items never clears them. A plain drag replaces the selection.
+- **Clicks** — a click on an item selects just it; with a modifier it toggles. A click on empty space clears the selection (with a modifier, nothing happens).
+- **Ignored targets** — a gesture starting on `button, a, input, select, textarea, [data-no-select]` is skipped, so controls keep working. Add `data-no-select` to opt an element out.
+- **Auto-scroll** — dragging near the container edge scrolls it, speeding up the further you push.
+- **Scrolling keeps the selection** — the band lives in *content* coordinates, so it grows with the scroll and items you already swept don't fall out. (The viselect-based version dropped them; that's fixed by construction now.)
 
 ## Styling
 
-The bundled CSS (`solid-dumb-kit/dist/index.css`) styles:
+The band is drawn inline using `currentColor`, so it adapts to the surrounding theme out of the box. Pass `areaClass` if you want your own look — structural styles (`position`, `pointer-events`) stay inline regardless.
 
-- `.viselect-area` — the rubber-band rectangle (uses `currentColor`, so it adopts the surrounding text color).
-- `.viselect-window-scroll *::selection` — keeps native text-selection invisible while `windowScroll` is active.
+Selected items are styled by **you**, from your own state — as in the example's `classList`.
 
-You style the **selected items** yourself via `.viselect-selected` (or your own derived state, as in the example).
+## `createSelectionArea` primitive
 
-## Scrolling lists: the container must be the scroller
-
-The rubber band is measured against the **boundary** — by default the component's own container. If something *inside* it scrolls instead, the box stays pinned to the viewport while the items move under it, and scrolling silently drops everything that left the visible area from the selection.
-
-So put the scroll on the container itself:
+The component is a thin wrapper; the engine is usable directly when you own the markup:
 
 ```tsx
-<SelectionArea
-  selectables=".card"
-  style={{ 'max-height': '60vh', 'overflow-y': 'auto' }}   // ← here, not on a child
->
-  <div class="grid">…</div>
-</SelectionArea>
+import { createSelectionArea } from 'solid-dumb-kit'
+
+const area = createSelectionArea({
+  container: () => hostEl,
+  selectables: '.row',
+  current: () => selected(),
+  onChange: (next) => setSelected(next),
+})
+area.attach(hostEl)
 ```
 
-Or point `boundaries` at whatever actually scrolls:
+## Migrating from the viselect-based version
 
-```tsx
-<SelectionArea selectables=".card" boundaries={['.my-scroll-area']}>
-```
-
-**Known limitation.** Even wired correctly, the selection is always “whatever the box currently covers” — that's how `@viselect/vanilla` works (`_updateElementSelection` recomputes from live rects, so anything leaving the box is deselected). Scroll far enough during a drag and earlier items can drop out. The same happens in viselect's own demos; we're not working around it.
-
-If you ever need selection to stick, accumulate it yourself instead of mirroring the store:
-
-```tsx
-onSelect={({ store }) =>
-  setSelected(prev => new Set([...prev, ...store.changed.added.map(el => el.dataset.key!)]))
-}
-```
-
-## `windowScroll` notes
-
-When the selectable area isn't inside its own scroll container (the whole page scrolls), set `windowScroll` so dragging near the viewport edge scrolls the window. It works by briefly enabling a native text selection to trigger the browser's built-in autoscroll; the bundled CSS hides that selection, and it's cleared shortly after the drag stops.
-
-## `SelectionEvent`
-
-Re-exported from `@viselect/vanilla`. The most useful field is `store`:
-
-- `store.selected` — elements selected in the current drag.
-- `store.stored` — elements selected in previous (additive) drags.
-- `store.changed.added` / `store.changed.removed` — delta for the latest move.
+| Before | Now |
+| --- | --- |
+| `onSelect={({ store }) => …}` with `store.stored`/`store.selected` | `selected={sig}` + `onChange={setSig}` — plain `Set<string>` |
+| element lookup via `el.dataset.key` in your handler | keys resolved for you (`keyAttr`, default `data-key`) |
+| `import 'solid-dumb-kit/dist/index.css'` | not needed, band is inline |
+| `behaviour` / `features` / `boundaries` / `windowScroll` | dropped — `intersect`, `threshold`, `areaClass` cover the useful parts |
+| `SelectionEvent` type | gone with viselect |

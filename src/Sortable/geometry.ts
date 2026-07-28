@@ -4,64 +4,16 @@
 // (б) при переходе на несколько контейнеров эта математика переиспользовалась
 // как есть — меняется только то, откуда приходят снимки.
 
+// Работа со скроллером/вьюпортом общая с выделением рамкой — живёт в shared.
+export {
+  viewOrigin, autoScrollSpeed, EDGE, MAX_SPEED, ACCEL, type ViewGeom,
+} from '../shared/viewport'
+
 /** позиция ячейки в координатах контента контейнера */
 export type Cell = { left: number; top: number; width: number; height: number }
 
 /** чужая ячейка для хиттеста: центры и вертикальные границы */
 export type Item = { id: string; cx: number; cy: number; top: number; bottom: number }
-
-/** снятая на старте геометрия скроллера (живыми остаются только scrollTop/Left) */
-export type ViewGeom = {
-  /** позиция скроллера во вьюпорте на момент старта */
-  top: number
-  left: number
-  clientH: number
-  clientW: number
-  /** предел прокрутки на старте */
-  max: number
-  /** скролл окна на момент старта — по нему компенсируем сдвиг контейнера */
-  winX: number
-  winY: number
-}
-
-export const EDGE = 48          // зона авто-скролла у края, px
-export const MAX_SPEED = 18     // скорость авто-скролла у самого края, px/кадр
-export const ACCEL = 3.5        // во сколько раз быстрее при сильном уходе за контейнер
-
-/**
- * Позиция скроллера во вьюпорте СЕЙЧАС: снятая на старте, сдвинутая на то,
- * насколько с тех пор прокрутилось окно. Так покадровый getBoundingClientRect
- * (forced layout!) заменяется на чтение window.scrollX/Y.
- */
-export function viewOrigin(geom: ViewGeom, winX: number, winY: number) {
-  return { top: geom.top - (winY - geom.winY), left: geom.left - (winX - geom.winX) }
-}
-
-/**
- * Скорость авто-скролла: чем дальше указатель за краем контейнера, тем быстрее
- * (до ACCEL× потолка). 0 — если указатель не в краевой зоне либо скроллить некуда.
- */
-export function autoScrollSpeed(args: {
-  pointerY: number
-  viewTop: number
-  clientH: number
-  scrollY: number
-  scrollMax: number
-}): number {
-  const { pointerY, viewTop, clientH, scrollY, scrollMax } = args
-  const distTop = pointerY - viewTop
-  const distBot = viewTop + clientH - pointerY
-
-  if (distTop < EDGE && scrollY > 0) {
-    const over = (EDGE - distTop) / EDGE       // 0 у границы зоны, 1 у края, >1 за пределами
-    return -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over)
-  }
-  if (distBot < EDGE && scrollY < scrollMax) {
-    const over = (EDGE - distBot) / EDGE
-    return Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over)
-  }
-  return 0
-}
 
 /** Перетаскиваемый не должен выезжать за видимую область контейнера. */
 export function clampDragged(args: {

@@ -1,7 +1,9 @@
 export {
   SelectionArea,
   type SelectionAreaProps,
-  type SelectionEvent,
+  createSelectionArea,
+  type SelectionCoreOptions,
+  type IntersectMode,
 } from './SelectionArea'
 export {
   ResizableGrid,

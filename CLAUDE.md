@@ -29,18 +29,18 @@
 src/
   index.tsx            # публичный API либы (единственный entry для tsup)
   env.d.ts
-  SelectionArea/       index.ts, SelectionArea.tsx, SelectionArea.css
+  shared/              viewport.ts — общая работа со скроллером/вьюпортом
+  SelectionArea/       index.ts, SelectionArea.tsx, selectionCore.ts, selectionMath.ts, __tests__/
   ResizableGrid/       index.ts, ResizableGrid.tsx
-  Sortable/            index.ts, sortableCore.ts, DumbSortable.tsx
+  Sortable/            index.ts, sortableCore.ts, sortableGroup.ts, geometry.ts, DumbSortable.tsx, __tests__/
   DumbTree/            index.ts, DumbTree.tsx
   DumbTable/           index.ts, DumbTable.tsx, DumbPagination.tsx, __tests__/
   utils/               index.ts, fmt.ts, slug.ts, zip.ts, imgproxy.ts, __tests__/
 ```
 
 - Имена папок — PascalCase, как экспортируемые компоненты (у Kobalte kebab, потому что там папка = публичный подпуть `@kobalte/core/accordion`; у нас подпутей нет).
-- CSS живёт рядом со своим компонентом; tsup склеивает всё в `dist/index.css`.
+- CSS-файлов в ките больше нет: структурные стили инлайном или инжектом, `dist/index.css` не собирается.
 - Кросс-фичевые импорты — через файл, не через барр (`../Sortable/sortableCore`), чтобы не ловить циклы барр↔барр.
-- Демо алиасит `solid-dumb-kit/dist/index.css` на `../src/SelectionArea/SelectionArea.css` (`playground/vite.config.ts`) — при переезде css не забыть.
 
 ## Пакетный менеджер: ТОЛЬКО pnpm
 `npm`/`yarn` в этой репе **запрещены** — лок-файл один: `pnpm-lock.yaml` (закоммичен). `package-lock.json`/`yarn.lock` в .gitignore.
@@ -56,6 +56,7 @@ pnpm test           # vitest run (утилиты + смоук-монтирова
 
 - `pnpm-workspace.yaml` — только для `onlyBuiltDependencies: [esbuild]` (pnpm 10 блокирует postinstall-скрипты; без esbuild сборка падает). Воркспейсов нет, пакет один.
 - `@solid-primitives/storage` **запинен на 4.3.4** (без `^`): в 4.4.0 сломана инференция типов `makePersisted` — dts-сборка `ResizableGrid` падает. Апать только вместе с проверкой `pnpm build`.
+- `@viselect/vanilla` **выкинут** (июль 2026): он звал `getBoundingClientRect` по каждому selectable на каждый move — сотни forced layout в кадр. Выделение рамкой теперь своё (`selectionCore` + `selectionMath`), по той же схеме, что драг: снимок через IntersectionObserver + арифметика в кадре.
 - Рантайм-зависимости утилит: `slug` (статический импорт — `genSlug` синхронный) и `fflate` (**динамический** `import()` внутри `extractImagesFromZip`, грузится только при фактической распаковке — не тащить его в top-level).
 - `@tanstack/solid-table` (v8, peer `solid-js >=1.3`) — под `DumbTable`. Свою сортировку/модель строк не пишем. v9 пока в бете, не берём.
 - `@types/node` **не ставим**: `process.env` в `src/` читается через каст `globalThis`, иначе dts-сборка требует типы Node.

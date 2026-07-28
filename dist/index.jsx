@@ -1,59 +1,356 @@
 // src/SelectionArea/SelectionArea.tsx
-import { onMount, onCleanup } from "solid-js";
-import VanillaSelectionArea from "@viselect/vanilla";
+import { onMount } from "solid-js";
+
+// src/SelectionArea/selectionCore.ts
+import { onCleanup } from "solid-js";
+
+// src/shared/viewport.ts
+var EDGE = 48;
+var MAX_SPEED = 18;
+var ACCEL = 3.5;
+function scrollParent(el, includeSelf = false) {
+  let n = includeSelf ? el : el.parentElement;
+  while (n) {
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === "auto" || oy === "scroll" || oy === "overlay") && n.scrollHeight > n.clientHeight) return n;
+    n = n.parentElement;
+  }
+  return null;
+}
+function measure(scroller) {
+  if (scroller) {
+    const r = scroller.getBoundingClientRect();
+    return {
+      top: r.top,
+      left: r.left,
+      clientH: scroller.clientHeight,
+      clientW: scroller.clientWidth,
+      max: scroller.scrollHeight - scroller.clientHeight,
+      winX: window.scrollX,
+      winY: window.scrollY
+    };
+  }
+  const se = document.scrollingElement || document.documentElement;
+  return {
+    top: 0,
+    left: 0,
+    clientH: window.innerHeight,
+    clientW: window.innerWidth,
+    max: se.scrollHeight - window.innerHeight,
+    winX: 0,
+    winY: 0
+  };
+}
+function scrollOf(scroller) {
+  return scroller ? { sx: scroller.scrollLeft, sy: scroller.scrollTop } : { sx: window.scrollX, sy: window.scrollY };
+}
+function doScroll(scroller, dx, dy) {
+  if (scroller) {
+    if (dy) scroller.scrollTop += dy;
+    if (dx) scroller.scrollLeft += dx;
+  } else {
+    window.scrollBy(dx, dy);
+  }
+}
+function viewOrigin(geom, winX, winY) {
+  return { top: geom.top - (winY - geom.winY), left: geom.left - (winX - geom.winX) };
+}
+function autoScrollSpeed(args) {
+  const { pointerY, viewTop, clientH, scrollY, scrollMax } = args;
+  const distTop = pointerY - viewTop;
+  const distBot = viewTop + clientH - pointerY;
+  if (distTop < EDGE && scrollY > 0) {
+    const over = (EDGE - distTop) / EDGE;
+    return -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+  }
+  if (distBot < EDGE && scrollY < scrollMax) {
+    const over = (EDGE - distBot) / EDGE;
+    return Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+  }
+  return 0;
+}
+
+// src/SelectionArea/selectionMath.ts
+function areaFrom(x1, y1, x2, y2) {
+  return {
+    left: Math.min(x1, x2),
+    top: Math.min(y1, y2),
+    width: Math.abs(x2 - x1),
+    height: Math.abs(y2 - y1)
+  };
+}
+function hits(area, cell, mode) {
+  const aRight = area.left + area.width;
+  const aBottom = area.top + area.height;
+  const cRight = cell.left + cell.width;
+  const cBottom = cell.top + cell.height;
+  if (mode === "center") {
+    const cx = cell.left + cell.width / 2;
+    const cy = cell.top + cell.height / 2;
+    return cx >= area.left && cx <= aRight && cy >= area.top && cy <= aBottom;
+  }
+  if (mode === "cover") {
+    return cell.left >= area.left && cRight <= aRight && cell.top >= area.top && cBottom <= aBottom;
+  }
+  return cell.left < aRight && cRight > area.left && cell.top < aBottom && cBottom > area.top;
+}
+function pickHits(area, cells, mode) {
+  const out = [];
+  for (let i = 0; i < cells.length; i++) if (hits(area, cells[i], mode)) out.push(i);
+  return out;
+}
+function resolveSelection(args) {
+  const { base, touched, additive } = args;
+  if (!additive) return new Set(touched);
+  return /* @__PURE__ */ new Set([...base, ...touched]);
+}
+function tapSelection(args) {
+  const { current, key, additive } = args;
+  if (key === null) return additive ? new Set(current) : /* @__PURE__ */ new Set();
+  if (!additive) return /* @__PURE__ */ new Set([key]);
+  const next = new Set(current);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  return next;
+}
+function diffSelection(prev, next) {
+  const added = [];
+  const removed = [];
+  for (const id of next) if (!prev.has(id)) added.push(id);
+  for (const id of prev) if (!next.has(id)) removed.push(id);
+  return { added, removed };
+}
+
+// src/SelectionArea/selectionCore.ts
+var IGNORE = "button, a, input, select, textarea, [data-no-select]";
+function createSelectionArea(opts) {
+  const threshold = opts.threshold ?? 10;
+  let drag = null;
+  let pending = null;
+  function snapshot(host, cb) {
+    const els = Array.from(host.querySelectorAll(opts.selectables));
+    if (!els.length) {
+      cb([], []);
+      return;
+    }
+    const scroller = scrollParent(host, true);
+    const geom = measure(scroller);
+    const origin = scroller ? viewOrigin(geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
+    const s = scrollOf(scroller);
+    const rects = /* @__PURE__ */ new Map();
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) rects.set(e.target, e.boundingClientRect);
+      io.disconnect();
+      const cells = [];
+      const keys = [];
+      const attr = opts.keyAttr ?? "data-key";
+      for (const el of els) {
+        const r = rects.get(el);
+        const key = el.getAttribute(attr);
+        if (!r || key == null) continue;
+        cells.push({
+          left: r.left - origin.left + s.sx,
+          top: r.top - origin.top + s.sy,
+          width: r.width,
+          height: r.height
+        });
+        keys.push(key);
+      }
+      cb(cells, keys);
+    });
+    for (const el of els) io.observe(el);
+  }
+  function frame() {
+    if (!drag) return;
+    const d = drag;
+    const origin = d.scroller ? viewOrigin(d.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
+    let { sx, sy } = scrollOf(d.scroller);
+    const speed = autoScrollSpeed({
+      pointerY: d.lastY,
+      viewTop: origin.top,
+      clientH: d.geom.clientH,
+      scrollY: sy,
+      scrollMax: d.geom.max
+    });
+    if (speed) {
+      doScroll(d.scroller, 0, speed);
+      ({ sx, sy } = scrollOf(d.scroller));
+    }
+    const px = d.lastX - origin.left + sx;
+    const py = d.lastY - origin.top + sy;
+    const area = areaFrom(d.x0, d.y0, px, py);
+    d.box.style.transform = `translate(${area.left - d.hostX}px,${area.top - d.hostY}px)`;
+    d.box.style.width = `${area.width}px`;
+    d.box.style.height = `${area.height}px`;
+    if (d.ready) {
+      const touched = pickHits(area, d.cells, opts.intersect?.() ?? "touch").map((i) => d.keys[i]);
+      const next = resolveSelection({ base: d.base, touched, additive: d.additive });
+      const info = diffSelection(d.prev, next);
+      if (info.added.length || info.removed.length) {
+        d.prev = next;
+        opts.onChange(next, info);
+      }
+    }
+    d.raf = requestAnimationFrame(frame);
+  }
+  function begin(ev) {
+    const host = opts.container();
+    if (!host) return;
+    const scroller = scrollParent(host, true);
+    const geom = measure(scroller);
+    const origin = scroller ? viewOrigin(geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
+    const s = scrollOf(scroller);
+    const box = document.createElement("div");
+    if (opts.areaClass) box.className = opts.areaClass;
+    Object.assign(box.style, {
+      position: "absolute",
+      top: "0",
+      left: "0",
+      pointerEvents: "none",
+      willChange: "transform",
+      zIndex: "9999",
+      background: "oklch(from currentColor l c h / 0.08)",
+      border: "1.5px solid oklch(from currentColor l c h / 0.3)",
+      borderRadius: "4px"
+    });
+    host.appendChild(box);
+    let hostX = 0, hostY = 0;
+    if (scroller !== host) {
+      const hr = host.getBoundingClientRect();
+      hostX = hr.left - origin.left + s.sx;
+      hostY = hr.top - origin.top + s.sy;
+    }
+    const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
+    drag = {
+      pid: ev.pointerId,
+      x0: ev.clientX - origin.left + s.sx,
+      y0: ev.clientY - origin.top + s.sy,
+      lastX: ev.clientX,
+      lastY: ev.clientY,
+      scroller,
+      geom,
+      hostX,
+      hostY,
+      cells: [],
+      keys: [],
+      base: additive ? new Set(opts.current()) : /* @__PURE__ */ new Set(),
+      prev: new Set(opts.current()),
+      additive,
+      box,
+      raf: 0,
+      ready: false
+    };
+    if (!additive && drag.prev.size) {
+      const empty = /* @__PURE__ */ new Set();
+      opts.onChange(empty, diffSelection(drag.prev, empty));
+      drag.prev = empty;
+    }
+    snapshot(host, (cells, keys) => {
+      if (!drag) return;
+      drag.cells = cells;
+      drag.keys = keys;
+      drag.ready = true;
+    });
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    drag.raf = requestAnimationFrame(frame);
+  }
+  function onMove(ev) {
+    if (!drag || ev.pointerId !== drag.pid) return;
+    drag.lastX = ev.clientX;
+    drag.lastY = ev.clientY;
+    ev.preventDefault();
+  }
+  function cleanup() {
+    if (!drag) return;
+    if (drag.raf) cancelAnimationFrame(drag.raf);
+    drag.box.remove();
+    document.body.style.userSelect = "";
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+    drag = null;
+  }
+  function onUp(ev) {
+    if (!drag || ev.pointerId !== drag.pid) return;
+    const selected = drag.prev;
+    cleanup();
+    opts.onStop?.(selected);
+  }
+  function pendMove(ev) {
+    if (!pending || ev.pointerId !== pending.pid) return;
+    if (Math.abs(ev.clientX - pending.x) < threshold && Math.abs(ev.clientY - pending.y) < threshold) return;
+    const start = pending.ev;
+    clearPending();
+    begin(start);
+    if (drag) {
+      drag.lastX = ev.clientX;
+      drag.lastY = ev.clientY;
+    }
+  }
+  function pendUp(ev) {
+    if (!pending || ev.pointerId !== pending.pid) return;
+    const down = pending.ev;
+    clearPending();
+    const attr = opts.keyAttr ?? "data-key";
+    const el = ev.target?.closest(opts.selectables);
+    const key = el?.getAttribute(attr) ?? null;
+    const additive = down.shiftKey || down.metaKey || down.ctrlKey;
+    const current = opts.current();
+    const next = tapSelection({ current, key, additive });
+    const info = diffSelection(current, next);
+    if (!info.added.length && !info.removed.length) return;
+    opts.onChange(next, info);
+    opts.onStop?.(next);
+  }
+  function clearPending() {
+    pending = null;
+    window.removeEventListener("pointermove", pendMove);
+    window.removeEventListener("pointerup", pendUp);
+    window.removeEventListener("pointercancel", pendUp);
+  }
+  function onDown(ev) {
+    if (ev.button !== 0 || drag || pending) return;
+    const target = ev.target;
+    if (target?.closest(IGNORE)) return;
+    if (opts.onBeforeStart?.(ev) === false) return;
+    pending = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, ev };
+    window.addEventListener("pointermove", pendMove);
+    window.addEventListener("pointerup", pendUp);
+    window.addEventListener("pointercancel", pendUp);
+  }
+  onCleanup(() => {
+    clearPending();
+    cleanup();
+  });
+  return {
+    /** повесить на контейнер */
+    attach(el) {
+      el.addEventListener("pointerdown", onDown);
+      onCleanup(() => el.removeEventListener("pointerdown", onDown));
+    }
+  };
+}
+
+// src/SelectionArea/SelectionArea.tsx
 function SelectionArea(props) {
   let containerRef;
-  const autoBoundary = () => {
-    const scrolls = (el) => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
-    if (scrolls(containerRef)) return containerRef;
-    const kid = Array.from(containerRef.children).find((c) => c instanceof HTMLElement && scrolls(c));
-    return kid ?? containerRef;
-  };
   onMount(() => {
-    const selection = new VanillaSelectionArea({
-      selectables: [props.selectables],
-      boundaries: props.boundaries ?? [autoBoundary()],
-      container: containerRef,
-      selectionAreaClass: props.selectionAreaClass ?? "viselect-area",
-      behaviour: {
-        overlap: "invert",
-        intersect: props.intersect ?? "touch",
-        startThreshold: 10,
-        ...props.behaviour
-      },
-      features: {
-        touch: true,
-        range: true,
-        singleTap: { allow: true, intersect: "native" },
-        deselectOnBlur: false,
-        ...props.features
-      }
+    const area = createSelectionArea({
+      container: () => containerRef,
+      selectables: props.selectables,
+      keyAttr: props.keyAttr,
+      intersect: () => props.intersect ?? "touch",
+      threshold: props.threshold,
+      areaClass: props.areaClass,
+      current: () => props.selected(),
+      onBeforeStart: (ev) => props.onBeforeStart?.(ev),
+      onChange: (selected) => props.onChange(selected),
+      onStop: (selected) => props.onStop?.(selected)
     });
-    selection.on("beforestart", (e) => {
-      const target = e.event?.target;
-      if (target?.closest("button, a, input, [data-no-select]")) return false;
-      if (props.windowScroll) containerRef.classList.add("viselect-window-scroll");
-      return props.onBeforeStart?.(e) ?? true;
-    }).on("start", ({ store, event }) => {
-      const e = event;
-      const isAdditive = e instanceof MouseEvent ? e.shiftKey || e.metaKey || e.ctrlKey : false;
-      if (!isAdditive) {
-        selection.clearSelection();
-        store.stored.forEach((el) => el.classList.remove("viselect-selected"));
-      }
-    }).on("move", (e) => {
-      const { added, removed } = e.store.changed;
-      added.forEach((el) => el.classList.add("viselect-selected"));
-      removed.forEach((el) => el.classList.remove("viselect-selected"));
-      props.onSelect?.(e);
-    }).on("stop", (e) => {
-      if (props.windowScroll) {
-        containerRef.classList.remove("viselect-window-scroll");
-        setTimeout(() => window.getSelection()?.removeAllRanges(), 50);
-      }
-      props.onStop?.(e);
-    });
-    onCleanup(() => selection.destroy());
+    area.attach(containerRef);
   });
   return <div ref={containerRef} class={props.class} style={{ position: "relative", ...props.style }}>
       {props.children}
@@ -327,26 +624,6 @@ import { For as For2 } from "solid-js";
 import { onCleanup as onCleanup2 } from "solid-js";
 
 // src/Sortable/geometry.ts
-var EDGE = 48;
-var MAX_SPEED = 18;
-var ACCEL = 3.5;
-function viewOrigin(geom, winX, winY) {
-  return { top: geom.top - (winY - geom.winY), left: geom.left - (winX - geom.winX) };
-}
-function autoScrollSpeed(args) {
-  const { pointerY, viewTop, clientH, scrollY, scrollMax } = args;
-  const distTop = pointerY - viewTop;
-  const distBot = viewTop + clientH - pointerY;
-  if (distTop < EDGE && scrollY > 0) {
-    const over = (EDGE - distTop) / EDGE;
-    return -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-  }
-  if (distBot < EDGE && scrollY < scrollMax) {
-    const over = (EDGE - distBot) / EDGE;
-    return Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-  }
-  return 0;
-}
 function clampDragged(args) {
   const { cell, scrollX, scrollY, clientW, clientH, grid } = args;
   const top = Math.max(scrollY, Math.min(scrollY + clientH - cell.height, cell.top + args.ty));
@@ -454,48 +731,8 @@ var SLIDE = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS = 350;
 var MOVE_TOL = 10;
 var LIFT_SHADOW = "0 10px 24px -6px rgba(0,0,0,.28)";
-function scrollParent(el) {
-  let n = el.parentElement;
-  while (n) {
-    const oy = getComputedStyle(n).overflowY;
-    if ((oy === "auto" || oy === "scroll" || oy === "overlay") && n.scrollHeight > n.clientHeight) return n;
-    n = n.parentElement;
-  }
-  return null;
-}
-function measure(scroller) {
-  if (scroller) {
-    const r = scroller.getBoundingClientRect();
-    return {
-      top: r.top,
-      left: r.left,
-      clientH: scroller.clientHeight,
-      clientW: scroller.clientWidth,
-      max: scroller.scrollHeight - scroller.clientHeight,
-      winX: window.scrollX,
-      winY: window.scrollY
-    };
-  }
-  const se = document.scrollingElement || document.documentElement;
-  return {
-    top: 0,
-    left: 0,
-    clientH: window.innerHeight,
-    clientW: window.innerWidth,
-    max: se.scrollHeight - window.innerHeight,
-    winX: 0,
-    winY: 0
-  };
-}
-function scrollOf(scroller) {
-  return scroller ? { sx: scroller.scrollLeft, sy: scroller.scrollTop } : { sx: window.scrollX, sy: window.scrollY };
-}
 function originOf(d) {
   return d.scroller ? viewOrigin(d.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
-}
-function doScroll(scroller, dy) {
-  if (scroller) scroller.scrollTop += dy;
-  else window.scrollBy(0, dy);
 }
 function createDumbSortable(opts) {
   const grid = opts.axis === "grid";
@@ -537,7 +774,7 @@ function createDumbSortable(opts) {
       scrollMax: d.geom.max
     }) : 0;
     if (speed) {
-      doScroll(d.scroller, speed);
+      doScroll(d.scroller, 0, speed);
       ({ sx, sy } = scrollOf(d.scroller));
       origin = originOf(d);
     }
@@ -853,42 +1090,6 @@ function makeGhost(src, r) {
   ghost.style.cursor = "grabbing";
   return ghost;
 }
-function scrollParent2(el) {
-  let n = el;
-  while (n) {
-    const oy = getComputedStyle(n).overflowY;
-    if ((oy === "auto" || oy === "scroll" || oy === "overlay") && n.scrollHeight > n.clientHeight) return n;
-    n = n.parentElement;
-  }
-  return null;
-}
-function measure2(scroller) {
-  if (scroller) {
-    const r = scroller.getBoundingClientRect();
-    return {
-      top: r.top,
-      left: r.left,
-      clientH: scroller.clientHeight,
-      clientW: scroller.clientWidth,
-      max: scroller.scrollHeight - scroller.clientHeight,
-      winX: window.scrollX,
-      winY: window.scrollY
-    };
-  }
-  const se = document.scrollingElement || document.documentElement;
-  return {
-    top: 0,
-    left: 0,
-    clientH: window.innerHeight,
-    clientW: window.innerWidth,
-    max: se.scrollHeight - window.innerHeight,
-    winX: 0,
-    winY: 0
-  };
-}
-function scrollOf2(scroller) {
-  return scroller ? { sx: scroller.scrollLeft, sy: scroller.scrollTop } : { sx: window.scrollX, sy: window.scrollY };
-}
 function originOf2(z) {
   return z.scroller ? viewOrigin(z.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
 }
@@ -930,9 +1131,9 @@ function createSortableGroup(opts) {
     const snaps = /* @__PURE__ */ new Map();
     for (const z of zones.values()) {
       if (!z.el) continue;
-      const scroller = scrollParent2(z.el);
-      const geom = measure2(scroller);
-      const s0 = scrollOf2(scroller);
+      const scroller = scrollParent(z.el, true);
+      const geom = measure(scroller);
+      const s0 = scrollOf(scroller);
       const box = rects.get(z.el);
       const origin = scroller ? viewOrigin(geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
       const ids = [];
@@ -1016,7 +1217,7 @@ function createSortableGroup(opts) {
       const z = d.zones.get(active);
       if (z) {
         const origin = originOf2(z);
-        let { sx, sy } = scrollOf2(z.scroller);
+        let { sx, sy } = scrollOf(z.scroller);
         const speed = d.moved ? autoScrollSpeed({
           pointerY: d.lastY,
           viewTop: origin.top,
@@ -1027,7 +1228,7 @@ function createSortableGroup(opts) {
         if (speed) {
           if (z.scroller) z.scroller.scrollTop += speed;
           else window.scrollBy(0, speed);
-          ({ sx, sy } = scrollOf2(z.scroller));
+          ({ sx, sy } = scrollOf(z.scroller));
         }
         const pY = d.lastY - origin.top + sy;
         const from = active === prevActive ? d.k : 0;
@@ -1901,6 +2102,7 @@ export {
   buildPageNumbers,
   configureImgproxy,
   createDumbSortable,
+  createSelectionArea,
   createSortableGroup,
   extractImagesFromZip,
   fmtDate,
