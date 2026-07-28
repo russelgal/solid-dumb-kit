@@ -33,9 +33,19 @@ export default function SelectionAreaExample() {
         </button>
       </div>
 
+      {/* Прокручивается САМ контейнер выделения: viselect считает рамку
+          относительно своего boundary, и если скроллится кто-то внутри,
+          при прокрутке выделение схлопывается до видимой части. */}
       <SelectionArea
         class="sa-board"
         selectables=".sa-card"
+        style={{
+          'max-height': '60vh',
+          'overflow-y': 'auto', 'overflow-x': 'hidden',
+          border: '1px solid #e2e8f0',
+          'border-radius': '12px',
+          background: '#f8fafc',
+        }}
         onSelect={({ store }) =>
           setSelected(new Set(
             [...store.stored, ...store.selected].map(el => (el as HTMLElement).dataset.key!),
@@ -47,12 +57,7 @@ export default function SelectionAreaExample() {
             display: 'grid',
             'grid-template-columns': 'repeat(auto-fill, minmax(92px, 1fr))',
             gap: '10px',
-            'max-height': '60vh',
-            'overflow-y': 'auto', 'overflow-x': 'hidden',
             padding: '12px',
-            border: '1px solid #e2e8f0',
-            'border-radius': '12px',
-            background: '#f8fafc',
           }}
         >
           <For each={FILES}>

@@ -56,6 +56,7 @@ function Files(props: { files: { id: string; name: string }[] }) {
 | `onBeforeStart` | `(e: SelectionEvent) => boolean \| void` | — | Return `false` to cancel a selection before it starts. |
 | `intersect` | `'touch' \| 'cover' \| 'center'` | `'touch'` | How an element counts as selected: `touch` = box touches it, `cover` = box fully covers it, `center` = box covers its center. |
 | `class` | `string` | — | Extra class on the container `<div>`. |
+| `style` | `JSX.CSSProperties` | — | Inline styles on the container. Put `overflow`/`max-height` **here** if the list scrolls — see below. |
 | `selectionAreaClass` | `string` | `'viselect-area'` | Class applied to the rubber-band rectangle. |
 | `boundaries` | `(string \| HTMLElement)[]` | `[container]` | Elements that constrain where selection can start/extend. |
 | `behaviour` | `Partial<SelectionOptions['behaviour']>` | see below | Passed through to `@viselect/vanilla`. |
@@ -83,6 +84,27 @@ The bundled CSS (`solid-dumb-kit/dist/index.css`) styles:
 - `.viselect-window-scroll *::selection` — keeps native text-selection invisible while `windowScroll` is active.
 
 You style the **selected items** yourself via `.viselect-selected` (or your own derived state, as in the example).
+
+## Scrolling lists: the container must be the scroller
+
+The rubber band is measured against the **boundary** — by default the component's own container. If something *inside* it scrolls instead, the box stays pinned to the viewport while the items move under it, and scrolling silently drops everything that left the visible area from the selection.
+
+So put the scroll on the container itself:
+
+```tsx
+<SelectionArea
+  selectables=".card"
+  style={{ 'max-height': '60vh', 'overflow-y': 'auto' }}   // ← here, not on a child
+>
+  <div class="grid">…</div>
+</SelectionArea>
+```
+
+Or point `boundaries` at whatever actually scrolls:
+
+```tsx
+<SelectionArea selectables=".card" boundaries={['.my-scroll-area']}>
+```
 
 ## `windowScroll` notes
 

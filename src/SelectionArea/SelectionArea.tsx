@@ -16,6 +16,13 @@ export type SelectionAreaProps = {
   onBeforeStart?: (e: SelectionEvent) => boolean | void
   /** Доп. класс контейнера */
   class?: string
+  /**
+   * Стили контейнера. Если список прокручивается — вешай overflow/max-height
+   * ИМЕННО сюда (или укажи скроллер в `boundaries`): viselect считает рамку
+   * относительно boundary, и когда прокручивается кто-то другой, выделение
+   * при скролле схлопывается до видимой части.
+   */
+  style?: JSX.CSSProperties
   /** Класс для прямоугольника выделения */
   selectionAreaClass?: string
   /** Режим пересечения: touch (касание), cover (полное покрытие), center */
@@ -117,7 +124,7 @@ export function SelectionArea(props: SelectionAreaProps) {
   })
 
   return (
-    <div ref={containerRef} class={props.class} style={{ position: 'relative' }}>
+    <div ref={containerRef} class={props.class} style={{ position: 'relative', ...props.style }}>
       {props.children}
     </div>
   )

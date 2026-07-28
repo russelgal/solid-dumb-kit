@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, effect, className, createComponent, setStyleProperty, setAttribute, addEventListener, style, memo, template } from 'solid-js/web';
+import { delegateEvents, use, insert, effect, className, style, createComponent, setStyleProperty, setAttribute, addEventListener, memo, template } from 'solid-js/web';
 import { onMount, onCleanup, createSignal, For, Show, createMemo } from 'solid-js';
 import VanillaSelectionArea from '@viselect/vanilla';
 import { makePersisted } from '@solid-primitives/storage';
@@ -70,7 +70,17 @@ function SelectionArea(props) {
     var _ref$ = containerRef;
     typeof _ref$ === "function" ? use(_ref$, _el$) : containerRef = _el$;
     insert(_el$, () => props.children);
-    effect(() => className(_el$, props.class));
+    effect((_p$) => {
+      var _v$ = props.class, _v$2 = {
+        ...props.style
+      };
+      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
+      _p$.t = style(_el$, _v$2, _p$.t);
+      return _p$;
+    }, {
+      e: void 0,
+      t: void 0
+    });
     return _el$;
   })();
 }

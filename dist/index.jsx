@@ -49,7 +49,7 @@ function SelectionArea(props) {
     });
     onCleanup(() => selection.destroy());
   });
-  return <div ref={containerRef} class={props.class} style={{ position: "relative" }}>
+  return <div ref={containerRef} class={props.class} style={{ position: "relative", ...props.style }}>
       {props.children}
     </div>;
 }

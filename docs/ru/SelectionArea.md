@@ -56,6 +56,7 @@ function Files(props: { files: { id: string; name: string }[] }) {
 | `onBeforeStart` | `(e: SelectionEvent) => boolean \| void` | — | Верни `false`, чтобы отменить выделение до его начала. |
 | `intersect` | `'touch' \| 'cover' \| 'center'` | `'touch'` | Когда элемент считается выделенным: `touch` — рамка его коснулась, `cover` — рамка накрыла целиком, `center` — рамка накрыла его центр. |
 | `class` | `string` | — | Доп. класс на контейнерный `<div>`. |
+| `style` | `JSX.CSSProperties` | — | Инлайн-стили контейнера. Если список прокручивается — `overflow`/`max-height` вешай **сюда**, см. ниже. |
 | `selectionAreaClass` | `string` | `'viselect-area'` | Класс на самом прямоугольнике выделения. |
 | `boundaries` | `(string \| HTMLElement)[]` | `[контейнер]` | Элементы, ограничивающие область, где выделение может начинаться и продолжаться. |
 | `behaviour` | `Partial<SelectionOptions['behaviour']>` | см. ниже | Пробрасывается в `@viselect/vanilla`. |
@@ -83,6 +84,27 @@ function Files(props: { files: { id: string; name: string }[] }) {
 - `.viselect-window-scroll *::selection` — держит нативное выделение текста невидимым, пока работает `windowScroll`.
 
 **Выделенные элементы** стилизуешь сам — через `.viselect-selected` (или через своё производное состояние, как в примере).
+
+## Прокручиваемые списки: скроллером должен быть сам контейнер
+
+Рамка считается относительно **boundary** — по умолчанию это собственный контейнер компонента. Если прокручивается что-то *внутри* него, рамка остаётся приклеенной к вьюпорту, элементы уезжают под ней, и при скролле из выделения молча вылетает всё, что ушло за пределы видимой части.
+
+Поэтому прокрутку вешай на сам контейнер:
+
+```tsx
+<SelectionArea
+  selectables=".card"
+  style={{ 'max-height': '60vh', 'overflow-y': 'auto' }}   // ← сюда, а не на потомка
+>
+  <div class="grid">…</div>
+</SelectionArea>
+```
+
+Либо укажи в `boundaries` тот элемент, который реально скроллится:
+
+```tsx
+<SelectionArea selectables=".card" boundaries={['.my-scroll-area']}>
+```
 
 ## Про `windowScroll`
 
