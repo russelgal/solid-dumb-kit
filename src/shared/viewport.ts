@@ -13,6 +13,9 @@ export type ViewGeom = {
   clientW: number
   /** предел прокрутки на старте */
   max: number
+  /** полный размер содержимого (scrollWidth/scrollHeight) */
+  scrollW: number
+  scrollH: number
   /** скролл окна на момент старта — по нему компенсируем сдвиг контейнера */
   winX: number
   winY: number
@@ -41,6 +44,7 @@ export function measure(scroller: HTMLElement | null): ViewGeom {
       top: r.top, left: r.left,
       clientH: scroller.clientHeight, clientW: scroller.clientWidth,
       max: scroller.scrollHeight - scroller.clientHeight,
+      scrollW: scroller.scrollWidth, scrollH: scroller.scrollHeight,
       winX: window.scrollX, winY: window.scrollY,
     }
   }
@@ -49,6 +53,7 @@ export function measure(scroller: HTMLElement | null): ViewGeom {
     top: 0, left: 0,
     clientH: window.innerHeight, clientW: window.innerWidth,
     max: se.scrollHeight - window.innerHeight,
+    scrollW: se.scrollWidth, scrollH: se.scrollHeight,
     winX: 0, winY: 0,
   }
 }

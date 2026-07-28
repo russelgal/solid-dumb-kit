@@ -26,6 +26,23 @@ export function areaFrom(x1: number, y1: number, x2: number, y2: number): Box {
   }
 }
 
+/** границы, за которые рамка не выезжает (координаты контента) */
+export type Bounds = { minX: number; minY: number; maxX: number; maxY: number }
+
+/**
+ * Прижать точку к границам контейнера.
+ *
+ * Нужно не только ради вида: рамка — absolute внутри контейнера, и уехав за
+ * его пределы она растянула бы scrollWidth/scrollHeight, то есть добавила бы
+ * полосы прокрутки прямо во время выделения.
+ */
+export function clampPoint(x: number, y: number, b: Bounds) {
+  return {
+    x: Math.min(Math.max(x, b.minX), b.maxX),
+    y: Math.min(Math.max(y, b.minY), b.maxY),
+  }
+}
+
 export function hits(area: Box, cell: Box, mode: IntersectMode): boolean {
   const aRight = area.left + area.width
   const aBottom = area.top + area.height

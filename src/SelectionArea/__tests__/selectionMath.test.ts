@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  areaFrom, hits, pickHits, resolveSelection, tapSelection, diffSelection, type Box,
+  areaFrom, clampPoint, hits, pickHits, resolveSelection, tapSelection, diffSelection, type Box,
 } from '../selectionMath'
 
 const box = (left: number, top: number, width = 10, height = 10): Box => ({ left, top, width, height })
@@ -14,6 +14,25 @@ describe('areaFrom — прямоугольник по двум точкам', (
   })
   it('вырожденная рамка (клик без движения)', () => {
     expect(areaFrom(5, 5, 5, 5)).toEqual({ left: 5, top: 5, width: 0, height: 0 })
+  })
+})
+
+describe('clampPoint — рамка не выезжает за контейнер', () => {
+  const b = { minX: 0, minY: 0, maxX: 100, maxY: 200 }
+
+  it('внутри границ точка не меняется', () => {
+    expect(clampPoint(50, 60, b)).toEqual({ x: 50, y: 60 })
+  })
+  it('увели курсор вправо-вниз за край', () => {
+    expect(clampPoint(999, 999, b)).toEqual({ x: 100, y: 200 })
+  })
+  it('увели влево-вверх за край', () => {
+    expect(clampPoint(-50, -10, b)).toEqual({ x: 0, y: 0 })
+  })
+  it('контейнер со смещением (не сам скроллер)', () => {
+    const off = { minX: 20, minY: 30, maxX: 120, maxY: 130 }
+    expect(clampPoint(0, 0, off)).toEqual({ x: 20, y: 30 })
+    expect(clampPoint(500, 500, off)).toEqual({ x: 120, y: 130 })
   })
 })
 

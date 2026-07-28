@@ -15,8 +15,8 @@ import {
   type ViewGeom,
 } from '../shared/viewport'
 import {
-  areaFrom, diffSelection, pickHits, resolveSelection, tapSelection,
-  type Box, type IntersectMode,
+  areaFrom, clampPoint, diffSelection, pickHits, resolveSelection, tapSelection,
+  type Bounds, type Box, type IntersectMode,
 } from './selectionMath'
 
 export type SelectionCoreOptions = {
@@ -51,6 +51,8 @@ type Drag = {
   geom: ViewGeom
   /** смещение контейнера в системе координат контента (для отрисовки рамки) */
   hostX: number; hostY: number
+  /** границы, за которые рамка не выезжает */
+  bounds: Bounds
   cells: Box[]
   keys: string[]
   base: Set<string>
@@ -118,10 +120,11 @@ export function createSelectionArea(opts: SelectionCoreOptions) {
     }
 
     // указатель в координатах КОНТЕНТА: рамка растёт вместе с прокруткой,
-    // поэтому задетое выше не выпадает из выделения при скролле
-    const px = d.lastX - origin.left + sx
-    const py = d.lastY - origin.top + sy
-    const area = areaFrom(d.x0, d.y0, px, py)
+    // поэтому задетое выше не выпадает из выделения при скролле.
+    // Прижимаем к границам контейнера — иначе рамка вылезет наружу и заодно
+    // растянет ему scrollWidth/Height, добавив полосы прокрутки на ходу.
+    const p = clampPoint(d.lastX - origin.left + sx, d.lastY - origin.top + sy, d.bounds)
+    const area = areaFrom(d.x0, d.y0, p.x, p.y)
 
     // Рамка — absolute внутри контейнера, а такой элемент прибит к КОНТЕНТУ
     // (не к видимой области), поэтому вычитаем только смещение самого контейнера.
@@ -168,10 +171,15 @@ export function createSelectionArea(opts: SelectionCoreOptions) {
     // его собственная, и смещение нулевое. Иначе берём его положение в этой
     // системе (одно чтение на старт жеста, не в кадре).
     let hostX = 0, hostY = 0
-    if (scroller !== host) {
+    let bounds: Bounds
+    if (scroller === host) {
+      // контейнер сам прокручивается: рамка живёт в его контенте целиком
+      bounds = { minX: 0, minY: 0, maxX: geom.scrollW, maxY: geom.scrollH }
+    } else {
       const hr = host.getBoundingClientRect()
       hostX = hr.left - origin.left + s.sx
       hostY = hr.top - origin.top + s.sy
+      bounds = { minX: hostX, minY: hostY, maxX: hostX + hr.width, maxY: hostY + hr.height }
     }
 
     const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey
@@ -180,7 +188,7 @@ export function createSelectionArea(opts: SelectionCoreOptions) {
       x0: ev.clientX - origin.left + s.sx,
       y0: ev.clientY - origin.top + s.sy,
       lastX: ev.clientX, lastY: ev.clientY,
-      scroller, geom, hostX, hostY,
+      scroller, geom, hostX, hostY, bounds,
       cells: [], keys: [],
       base: additive ? new Set(opts.current()) : new Set(),
       prev: new Set(opts.current()),

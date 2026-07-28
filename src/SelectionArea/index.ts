@@ -8,6 +8,7 @@ export {
 } from './selectionCore'
 export {
   areaFrom,
+  clampPoint,
   hits,
   pickHits,
   resolveSelection,

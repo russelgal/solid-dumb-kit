@@ -29,6 +29,8 @@ function measure(scroller) {
       clientH: scroller.clientHeight,
       clientW: scroller.clientWidth,
       max: scroller.scrollHeight - scroller.clientHeight,
+      scrollW: scroller.scrollWidth,
+      scrollH: scroller.scrollHeight,
       winX: window.scrollX,
       winY: window.scrollY
     };
@@ -40,6 +42,8 @@ function measure(scroller) {
     clientH: window.innerHeight,
     clientW: window.innerWidth,
     max: se.scrollHeight - window.innerHeight,
+    scrollW: se.scrollWidth,
+    scrollH: se.scrollHeight,
     winX: 0,
     winY: 0
   };
@@ -79,6 +83,12 @@ function areaFrom(x1, y1, x2, y2) {
     top: Math.min(y1, y2),
     width: Math.abs(x2 - x1),
     height: Math.abs(y2 - y1)
+  };
+}
+function clampPoint(x, y, b) {
+  return {
+    x: Math.min(Math.max(x, b.minX), b.maxX),
+    y: Math.min(Math.max(y, b.minY), b.maxY)
   };
 }
 function hits(area, cell, mode) {
@@ -178,9 +188,8 @@ function createSelectionArea(opts) {
       doScroll(d.scroller, 0, speed);
       ({ sx, sy } = scrollOf(d.scroller));
     }
-    const px = d.lastX - origin.left + sx;
-    const py = d.lastY - origin.top + sy;
-    const area = areaFrom(d.x0, d.y0, px, py);
+    const p = clampPoint(d.lastX - origin.left + sx, d.lastY - origin.top + sy, d.bounds);
+    const area = areaFrom(d.x0, d.y0, p.x, p.y);
     d.box.style.transform = `translate(${area.left - d.hostX}px,${area.top - d.hostY}px)`;
     d.box.style.width = `${area.width}px`;
     d.box.style.height = `${area.height}px`;
@@ -217,10 +226,14 @@ function createSelectionArea(opts) {
     });
     host.appendChild(box);
     let hostX = 0, hostY = 0;
-    if (scroller !== host) {
+    let bounds;
+    if (scroller === host) {
+      bounds = { minX: 0, minY: 0, maxX: geom.scrollW, maxY: geom.scrollH };
+    } else {
       const hr = host.getBoundingClientRect();
       hostX = hr.left - origin.left + s.sx;
       hostY = hr.top - origin.top + s.sy;
+      bounds = { minX: hostX, minY: hostY, maxX: hostX + hr.width, maxY: hostY + hr.height };
     }
     const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
     drag = {
@@ -233,6 +246,7 @@ function createSelectionArea(opts) {
       geom,
       hostX,
       hostY,
+      bounds,
       cells: [],
       keys: [],
       base: additive ? new Set(opts.current()) : /* @__PURE__ */ new Set(),
