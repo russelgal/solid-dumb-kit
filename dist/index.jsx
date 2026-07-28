@@ -768,20 +768,6 @@ var SLIDE2 = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS2 = 350;
 var MOVE_TOL2 = 10;
 var LIFT_SHADOW2 = "0 12px 28px -8px rgba(0,0,0,.35)";
-var RESET_STYLE_ID = "dumb-sortable-group-reset";
-var canPopover = () => typeof HTMLElement !== "undefined" && typeof HTMLElement.prototype.showPopover === "function";
-function injectReset() {
-  if (typeof document === "undefined" || document.getElementById(RESET_STYLE_ID)) return;
-  const style = document.createElement("style");
-  style.id = RESET_STYLE_ID;
-  style.textContent = `@layer dumb-sortable {
-  [data-dumb-dragging]:popover-open {
-    position: fixed; inset: auto; margin: 0; padding: 0; border: 0;
-    background: transparent; color: inherit; overflow: visible;
-  }
-}`;
-  document.head.appendChild(style);
-}
 function scrollParent2(el) {
   let n = el;
   while (n) {
@@ -866,18 +852,21 @@ function createSortableGroup(opts) {
       const origin = scroller ? viewOrigin(geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
       const ids = [];
       const cells = [];
+      const allCells = [];
       for (const id of z.opts.order()) {
-        if (id === dragId) continue;
         const el = z.els.get(id);
         const r = el && rects.get(el);
         if (!r) continue;
-        ids.push(id);
-        cells.push({
+        const cell = {
           left: r.left - origin.left + s0.sx,
           top: r.top - origin.top + s0.sy,
           width: r.width,
           height: r.height
-        });
+        };
+        allCells.push(cell);
+        if (id === dragId) continue;
+        ids.push(id);
+        cells.push(cell);
       }
       snaps.set(z.name, {
         name: z.name,
@@ -897,8 +886,8 @@ function createSortableGroup(opts) {
           const c = cells[i];
           return { id, cx: c.left + c.width / 2, cy: c.top + c.height / 2, top: c.top, bottom: c.top + c.height };
         }),
-        top: cells.length ? cells[0].top : s0.sy,
-        gap: gapOf(cells)
+        top: allCells.length ? allCells[0].top : s0.sy,
+        gap: gapOf(allCells)
       });
     }
     return snaps;
@@ -914,10 +903,36 @@ function createSortableGroup(opts) {
     }
     return d.active;
   }
+  function applyLayout(d) {
+    for (const zz of d.zones.values()) {
+      const hole = zz.name === d.active ? d.k : zz.name === d.fromList ? d.fromIndex : null;
+      const moves = stackLayout({
+        ids: zz.ids,
+        cells: zz.cells,
+        hole,
+        holeH: d.dragH,
+        gap: zz.gap,
+        top: zz.top
+      });
+      for (const m of moves) {
+        const el = zones.get(zz.name)?.els.get(m.id);
+        if (!el) continue;
+        el.style.transform = m.dy ? `translateY(${m.dy}px)` : "";
+      }
+    }
+  }
   function frame() {
     if (!drag) return;
     const d = drag;
-    d.dragEl.style.transform = `translate(${d.lastX - d.startX}px,${d.lastY - d.startY}px)`;
+    const home = d.zones.get(d.fromList);
+    let dx = d.lastX - d.startX;
+    let dy = d.lastY - d.startY;
+    if (home) {
+      const s = scrollOf2(home.scroller);
+      dx += s.sx - home.scrollX0;
+      dy += s.sy - home.scrollY0;
+    }
+    d.dragEl.style.transform = `translate(${dx}px,${dy}px)`;
     if (d.ready) {
       const active = zoneAt(d, d.lastX, d.lastY);
       d.active = active;
@@ -941,24 +956,7 @@ function createSortableGroup(opts) {
         const pX = d.lastX - origin.left + sx;
         const pY = d.lastY - origin.top + sy;
         d.k = hitIndex(z.others, pX, pY, false);
-        for (const zz of d.zones.values()) {
-          const hole = zz.name === active ? d.k : null;
-          const moves = stackLayout({
-            ids: zz.ids,
-            cells: zz.cells,
-            hole,
-            holeH: d.dragH,
-            gap: zz.gap,
-            top: zz.top
-          });
-          for (const m of moves) {
-            const el = zones.get(zz.name)?.els.get(m.id);
-            if (!el) continue;
-            const shift = zz.name === d.fromList && zz.ids.indexOf(m.id) >= d.fromIndex ? d.dragH + zz.gap : 0;
-            const dy = m.dy + shift;
-            el.style.transform = dy ? `translateY(${dy}px)` : "";
-          }
-        }
+        applyLayout(d);
       }
     }
     d.raf = requestAnimationFrame(frame);
@@ -973,14 +971,6 @@ function createSortableGroup(opts) {
     if (!drag) return;
     const d = drag;
     if (d.raf) cancelAnimationFrame(d.raf);
-    if (d.popover) {
-      try {
-        d.dragEl.hidePopover();
-      } catch {
-      }
-      d.dragEl.removeAttribute("popover");
-    }
-    d.dragEl.removeAttribute("data-dumb-dragging");
     d.dragEl.style.cssText = d.prevStyle;
     for (const z of d.zones.values()) {
       const zone = zones.get(z.name);
@@ -1022,7 +1012,6 @@ function createSortableGroup(opts) {
     if (!zone || !dragEl) return;
     const fromIndex = zone.opts.order().indexOf(id);
     if (fromIndex < 0) return;
-    injectReset();
     drag = {
       id,
       fromList: name,
@@ -1033,10 +1022,6 @@ function createSortableGroup(opts) {
       startY: y,
       lastX: x,
       lastY: y,
-      ghostTop: 0,
-      ghostLeft: 0,
-      ghostW: 0,
-      ghostH: 0,
       dragH: 0,
       zones: /* @__PURE__ */ new Map(),
       active: name,
@@ -1044,7 +1029,6 @@ function createSortableGroup(opts) {
       raf: 0,
       ready: false,
       moved: false,
-      popover: canPopover(),
       prevStyle: dragEl.style.cssText
     };
     draggingId = id;
@@ -1056,33 +1040,16 @@ function createSortableGroup(opts) {
       const r = rects.get(dragEl);
       d.zones = buildZoneSnaps(rects, id);
       if (r) {
-        d.ghostTop = r.top;
-        d.ghostLeft = r.left;
-        d.ghostW = r.width;
-        d.ghostH = r.height;
         d.dragH = r.height;
-        dragEl.setAttribute("data-dumb-dragging", "");
-        if (d.popover) {
-          dragEl.setAttribute("popover", "manual");
-          try {
-            dragEl.showPopover();
-          } catch {
-            d.popover = false;
-          }
-        }
-        dragEl.style.position = "fixed";
-        dragEl.style.margin = "0";
-        dragEl.style.top = `${r.top}px`;
-        dragEl.style.left = `${r.left}px`;
-        dragEl.style.boxSizing = "border-box";
-        dragEl.style.width = `${r.width}px`;
-        dragEl.style.height = `${r.height}px`;
-        dragEl.style.zIndex = "9999";
-        dragEl.style.pointerEvents = "none";
+        dragEl.style.position = "relative";
+        dragEl.style.zIndex = "2";
         dragEl.style.willChange = "transform";
         dragEl.style.boxShadow = LIFT_SHADOW2;
         dragEl.style.cursor = "grabbing";
+        dragEl.style.transition = "box-shadow .15s ease";
       }
+      d.ready = true;
+      applyLayout(d);
       for (const z of d.zones.values()) {
         const zz = zones.get(z.name);
         if (!zz) continue;
@@ -1094,7 +1061,6 @@ function createSortableGroup(opts) {
           }
         }
       }
-      d.ready = true;
     });
     try {
       handle.setPointerCapture(pid);

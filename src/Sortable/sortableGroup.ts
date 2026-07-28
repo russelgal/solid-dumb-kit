@@ -6,9 +6,12 @@
 //   • снимок один на все зоны (элементы + сами контейнеры одним IO);
 //   • у каждой зоны свой скроллер, геометрия кэшируется на старте, в кадре
 //     читаются только scrollTop/scrollLeft и window.scrollX/Y;
-//   • перетаскиваемый уходит в top layer через Popover API — иначе overflow
-//     колонки-источника обрежет его на выезде. Top layer заодно делает
-//     containing block вьюпортом, поэтому transform у предков ничего не ломает.
+//   • перетаскиваемый ОСТАЁТСЯ В ПОТОКЕ своей колонки и двигается только
+//     transform'ом. Поэтому колонка не схлопывается, высота контейнера не
+//     скачет, а соседям не нужны компенсации. Плата: если у колонки
+//     overflow скрывает содержимое, карточка обрежется на выезде за её край —
+//     чтобы этого не было, колонке нужен overflow: visible либо (позже)
+//     отрисовка карточки в top layer отдельным слоем.
 //
 // Порядок коммитим на pointerup → onEnd({list,index}, {list,index}).
 
@@ -87,26 +90,6 @@ const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
 const LONGPRESS = 350;
 const MOVE_TOL = 10;
 const LIFT_SHADOW = '0 12px 28px -8px rgba(0,0,0,.35)';
-const RESET_STYLE_ID = 'dumb-sortable-group-reset';
-
-const canPopover = () =>
-    typeof HTMLElement !== 'undefined' && typeof HTMLElement.prototype.showPopover === 'function';
-
-// UA-стили [popover] (рамка, паддинг, фон, inset:0 + margin:auto) утащили бы карточку
-// в центр экрана. Сбрасываем их В СЛОЕ: слой проигрывает любым авторским стилям,
-// поэтому собственное оформление карточки остаётся нетронутым.
-function injectReset() {
-    if (typeof document === 'undefined' || document.getElementById(RESET_STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = RESET_STYLE_ID;
-    style.textContent = `@layer dumb-sortable {
-  [data-dumb-dragging]:popover-open {
-    position: fixed; inset: auto; margin: 0; padding: 0; border: 0;
-    background: transparent; color: inherit; overflow: visible;
-  }
-}`;
-    document.head.appendChild(style);
-}
 
 function scrollParent(el: HTMLElement): HTMLElement | null {
     let n: HTMLElement | null = el;
@@ -162,8 +145,6 @@ type Drag = {
     pid: number;
     startX: number; startY: number;
     lastX: number; lastY: number;
-    /** прямоугольник перетаскиваемого во вьюпорте на старте */
-    ghostTop: number; ghostLeft: number; ghostW: number; ghostH: number;
     dragH: number;
     zones: Map<string, ZoneSnap>;
     active: string;
@@ -171,7 +152,6 @@ type Drag = {
     raf: number;
     ready: boolean;
     moved: boolean;
-    popover: boolean;
     prevStyle: string;
 };
 
@@ -215,19 +195,26 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
             const box = rects.get(z.el);
             const origin = scroller ? viewOrigin(geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
 
+            // Верх колонки и зазор считаем по ПОЛНОМУ набору ячеек — вместе с
+            // перетаскиваемой. Иначе, если тащат первую карточку, за верх колонки
+            // принимается позиция второй (вся колонка съезжает), а если тащат
+            // среднюю — зазор меряется через её место и оказывается завышен.
             const ids: string[] = [];
             const cells: Cell[] = [];
+            const allCells: Cell[] = [];
             for (const id of z.opts.order()) {
-                if (id === dragId) continue;             // перетаскиваемый в раскладке не участвует
                 const el = z.els.get(id);
                 const r = el && rects.get(el);
                 if (!r) continue;
-                ids.push(id);
-                cells.push({
+                const cell: Cell = {
                     left: r.left - origin.left + s0.sx,
                     top: r.top - origin.top + s0.sy,
                     width: r.width, height: r.height,
-                });
+                };
+                allCells.push(cell);
+                if (id === dragId) continue;             // в раскладке сам перетаскиваемый не участвует
+                ids.push(id);
+                cells.push(cell);
             }
 
             snaps.set(z.name, {
@@ -243,8 +230,8 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                     const c = cells[i];
                     return { id, cx: c.left + c.width / 2, cy: c.top + c.height / 2, top: c.top, bottom: c.top + c.height };
                 }),
-                top: cells.length ? cells[0].top : s0.sy,
-                gap: gapOf(cells),
+                top: allCells.length ? allCells[0].top : s0.sy,
+                gap: gapOf(allCells),
             });
         }
         return snaps;
@@ -263,12 +250,43 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         return d.active;
     }
 
+    /** разложить все зоны под текущую позицию вставки (d.active, d.k) */
+    function applyLayout(d: Drag) {
+        for (const zz of d.zones.values()) {
+            // Перетаскиваемый остаётся в потоке своей колонки, поэтому её место
+            // никуда не девается: в активной зоне дырка едет за указателем, в
+            // родной (когда указатель ушёл в другую) — держится там, где была.
+            // Никаких компенсаций схлопывания не нужно — ничего не схлопывается.
+            const hole = zz.name === d.active
+                ? d.k
+                : zz.name === d.fromList ? d.fromIndex : null;
+            const moves = stackLayout({
+                ids: zz.ids, cells: zz.cells,
+                hole, holeH: d.dragH, gap: zz.gap, top: zz.top,
+            });
+            for (const m of moves) {
+                const el = zones.get(zz.name)?.els.get(m.id);
+                if (!el) continue;
+                el.style.transform = m.dy ? `translateY(${m.dy}px)` : '';
+            }
+        }
+    }
+
     function frame() {
         if (!drag) return;
         const d = drag;
 
-        // перетаскиваемый в top layer следует за курсором в координатах вьюпорта
-        d.dragEl.style.transform = `translate(${d.lastX - d.startX}px,${d.lastY - d.startY}px)`;
+        // перетаскиваемый следует за курсором; он в потоке своей колонки, поэтому
+        // компенсируем её прокрутку — иначе при автоскролле уедет вместе с контентом
+        const home = d.zones.get(d.fromList);
+        let dx = d.lastX - d.startX;
+        let dy = d.lastY - d.startY;
+        if (home) {
+            const s = scrollOf(home.scroller);
+            dx += s.sx - home.scrollX0;
+            dy += s.sy - home.scrollY0;
+        }
+        d.dragEl.style.transform = `translate(${dx}px,${dy}px)`;
 
         if (d.ready) {
             const active = zoneAt(d, d.lastX, d.lastY);
@@ -295,27 +313,7 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                 const pX = d.lastX - origin.left + sx;
                 const pY = d.lastY - origin.top + sy;
                 d.k = hitIndex(z.others, pX, pY, false);
-
-                // активная зона раздвигается под вставку, остальные — смыкаются
-                for (const zz of d.zones.values()) {
-                    const hole = zz.name === active ? d.k : null;
-                    const moves = stackLayout({
-                        ids: zz.ids, cells: zz.cells,
-                        hole, holeH: d.dragH, gap: zz.gap, top: zz.top,
-                    });
-                    for (const m of moves) {
-                        const el = zones.get(zz.name)?.els.get(m.id);
-                        if (!el) continue;
-                        // в зоне-источнике перетаскиваемый ушёл из потока (position: fixed),
-                        // поэтому те, кто был ниже него, уже подтянулись на его высоту —
-                        // компенсируем, иначе получится двойной сдвиг
-                        const shift = zz.name === d.fromList && zz.ids.indexOf(m.id) >= d.fromIndex
-                            ? d.dragH + zz.gap
-                            : 0;
-                        const dy = m.dy + shift;
-                        el.style.transform = dy ? `translateY(${dy}px)` : '';
-                    }
-                }
+                applyLayout(d);
             }
         }
         d.raf = requestAnimationFrame(frame);
@@ -333,11 +331,6 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         const d = drag;
         if (d.raf) cancelAnimationFrame(d.raf);
 
-        if (d.popover) {
-            try { d.dragEl.hidePopover(); } catch { /* noop */ }
-            d.dragEl.removeAttribute('popover');
-        }
-        d.dragEl.removeAttribute('data-dumb-dragging');
         d.dragEl.style.cssText = d.prevStyle;
 
         for (const z of d.zones.values()) {
@@ -381,14 +374,13 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         const fromIndex = zone.opts.order().indexOf(id);
         if (fromIndex < 0) return;
 
-        injectReset();
         drag = {
             id, fromList: name, fromIndex, dragEl, pid,
             startX: x, startY: y, lastX: x, lastY: y,
-            ghostTop: 0, ghostLeft: 0, ghostW: 0, ghostH: 0, dragH: 0,
+            dragH: 0,
             zones: new Map(), active: name, k: fromIndex,
             raf: 0, ready: false, moved: false,
-            popover: canPopover(), prevStyle: dragEl.style.cssText,
+            prevStyle: dragEl.style.cssText,
         };
         draggingId = id;
         activeName = name;
@@ -401,30 +393,24 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
             d.zones = buildZoneSnaps(rects, id);
 
             if (r) {
-                d.ghostTop = r.top; d.ghostLeft = r.left; d.ghostW = r.width; d.ghostH = r.height;
                 d.dragH = r.height;
-                // в top layer: контейнер обрезать не может, containing block — вьюпорт
-                dragEl.setAttribute('data-dumb-dragging', '');
-                if (d.popover) {
-                    dragEl.setAttribute('popover', 'manual');
-                    try { dragEl.showPopover(); } catch { d.popover = false; }
-                }
-                dragEl.style.position = 'fixed';
-                dragEl.style.margin = '0';
-                dragEl.style.top = `${r.top}px`;
-                dragEl.style.left = `${r.left}px`;
-                // rect — это border-box, а width/height по умолчанию задают content-box:
-                // без box-sizing карточка раздувалась бы ровно на свои паддинги и рамку
-                dragEl.style.boxSizing = 'border-box';
-                dragEl.style.width = `${r.width}px`;
-                dragEl.style.height = `${r.height}px`;
-                dragEl.style.zIndex = '9999';
-                dragEl.style.pointerEvents = 'none';
+                // Из потока НЕ выводим: место карточки остаётся за ней, поэтому
+                // колонка не схлопывается, высота контейнера не пляшет и соседи
+                // не прыгают. Двигаем только transform — как в sortableCore.
+                dragEl.style.position = 'relative';
+                dragEl.style.zIndex = '2';
                 dragEl.style.willChange = 'transform';
                 dragEl.style.boxShadow = LIFT_SHADOW;
                 dragEl.style.cursor = 'grabbing';
+                dragEl.style.transition = 'box-shadow .15s ease';
             }
 
+            // Сначала компенсируем схлопывание БЕЗ анимации — иначе соседи прыгнут
+            // вверх (карточка ушла из потока) и потом плавно поедут обратно.
+            d.ready = true;
+            applyLayout(d);
+
+            // и только теперь включаем плавность — на будущие перестроения
             for (const z of d.zones.values()) {
                 const zz = zones.get(z.name);
                 if (!zz) continue;
@@ -433,7 +419,6 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                     if (el) { el.style.transition = SLIDE; el.style.willChange = 'transform'; }
                 }
             }
-            d.ready = true;
         });
 
         try { handle.setPointerCapture(pid); } catch { /* noop */ }
