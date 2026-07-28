@@ -319,10 +319,88 @@ import { For as For2 } from "solid-js";
 
 // src/Sortable/sortableCore.ts
 import { onCleanup as onCleanup2 } from "solid-js";
-var SLIDE = "transform .18s cubic-bezier(.2,.8,.2,1)";
+
+// src/Sortable/geometry.ts
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
+function viewOrigin(geom, winX, winY) {
+  return { top: geom.top - (winY - geom.winY), left: geom.left - (winX - geom.winX) };
+}
+function autoScrollSpeed(args) {
+  const { pointerY, viewTop, clientH, scrollY, scrollMax } = args;
+  const distTop = pointerY - viewTop;
+  const distBot = viewTop + clientH - pointerY;
+  if (distTop < EDGE && scrollY > 0) {
+    const over = (EDGE - distTop) / EDGE;
+    return -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+  }
+  if (distBot < EDGE && scrollY < scrollMax) {
+    const over = (EDGE - distBot) / EDGE;
+    return Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+  }
+  return 0;
+}
+function clampDragged(args) {
+  const { cell, scrollX, scrollY, clientW, clientH, grid } = args;
+  const top = Math.max(scrollY, Math.min(scrollY + clientH - cell.height, cell.top + args.ty));
+  const ty = top - cell.top;
+  if (!grid) return { tx: args.tx, ty };
+  const left = Math.max(scrollX, Math.min(scrollX + clientW - cell.width, cell.left + args.tx));
+  return { tx: left - cell.left, ty };
+}
+function hitIndex(others, pX, pY, grid) {
+  let k = 0;
+  for (const o of others) {
+    if (grid) {
+      if (pY > o.bottom) k++;
+      else if (pY >= o.top && pX > o.cx) k++;
+    } else {
+      if (pY > o.cy) k++;
+    }
+  }
+  return k;
+}
+function gridLayout(args) {
+  const { ids, dragId, fromIndex, k, cells } = args;
+  const out = [];
+  ids.forEach((id, i) => {
+    if (id === dragId) return;
+    const ri = i < fromIndex ? i : i - 1;
+    const newVis = ri < k ? ri : ri + 1;
+    const cell = cells[newVis], me = cells[i];
+    if (!cell || !me) return;
+    out.push({ id, dx: cell.left - me.left, dy: cell.top - me.top });
+  });
+  return out;
+}
+function listLayout(args) {
+  const { ids, dragId, fromIndex, k, cells } = args;
+  if (!cells.length) return [];
+  const dragH = cells[fromIndex].height;
+  const gap = cells.length > 1 ? Math.max(0, cells[1].top - cells[0].top - cells[0].height) : 0;
+  const out = [];
+  let cursor = cells[0].top;
+  let oi = 0;
+  for (let v2 = 0; v2 < ids.length; v2++) {
+    if (v2 === k) {
+      cursor += dragH + gap;
+      continue;
+    }
+    while (ids[oi] === dragId) oi++;
+    const cell = cells[oi];
+    const id = ids[oi];
+    oi++;
+    if (cell) {
+      out.push({ id, dy: cursor - cell.top });
+      cursor += cell.height + gap;
+    }
+  }
+  return out;
+}
+
+// src/Sortable/sortableCore.ts
+var SLIDE = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS = 350;
 var MOVE_TOL = 10;
 var LIFT_SHADOW = "0 10px 24px -6px rgba(0,0,0,.28)";
@@ -335,13 +413,35 @@ function scrollParent(el) {
   }
   return null;
 }
-function view(scroller) {
+function measure(scroller) {
   if (scroller) {
     const r = scroller.getBoundingClientRect();
-    return { top: r.top, left: r.left, sy: scroller.scrollTop, sx: scroller.scrollLeft, clientH: scroller.clientHeight, clientW: scroller.clientWidth, max: scroller.scrollHeight - scroller.clientHeight };
+    return {
+      top: r.top,
+      left: r.left,
+      clientH: scroller.clientHeight,
+      clientW: scroller.clientWidth,
+      max: scroller.scrollHeight - scroller.clientHeight,
+      winX: window.scrollX,
+      winY: window.scrollY
+    };
   }
   const se = document.scrollingElement || document.documentElement;
-  return { top: 0, left: 0, sy: window.scrollY, sx: window.scrollX, clientH: window.innerHeight, clientW: window.innerWidth, max: se.scrollHeight - window.innerHeight };
+  return {
+    top: 0,
+    left: 0,
+    clientH: window.innerHeight,
+    clientW: window.innerWidth,
+    max: se.scrollHeight - window.innerHeight,
+    winX: 0,
+    winY: 0
+  };
+}
+function scrollOf(scroller) {
+  return scroller ? { sx: scroller.scrollLeft, sy: scroller.scrollTop } : { sx: window.scrollX, sy: window.scrollY };
+}
+function originOf(d) {
+  return d.scroller ? viewOrigin(d.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
 }
 function doScroll(scroller, dy) {
   if (scroller) scroller.scrollTop += dy;
@@ -374,84 +474,49 @@ function createDumbSortable(opts) {
     }
     if (n === 0) cb(out);
   }
-  function hitIndex(d, pX, pY) {
-    let k = 0;
-    for (const o of d.others) {
-      if (grid) {
-        if (pY > o.bottom) k++;
-        else if (pY >= o.top && pX > o.cx) k++;
-      } else {
-        if (pY > o.cy) k++;
-      }
-    }
-    return k;
-  }
   function frame() {
     if (!drag) return;
     const d = drag;
-    const v2 = view(d.scroller);
-    let speed = 0;
-    if (d.moved) {
-      const distTop = d.lastY - v2.top;
-      const distBot = v2.top + v2.clientH - d.lastY;
-      if (distTop < EDGE && v2.sy > 0) {
-        const over = (EDGE - distTop) / EDGE;
-        speed = -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-      } else if (distBot < EDGE && v2.sy < d.scrollMax0) {
-        const over = (EDGE - distBot) / EDGE;
-        speed = Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-      }
+    let origin = originOf(d);
+    let { sx, sy } = scrollOf(d.scroller);
+    const speed = d.moved ? autoScrollSpeed({
+      pointerY: d.lastY,
+      viewTop: origin.top,
+      clientH: d.geom.clientH,
+      scrollY: sy,
+      scrollMax: d.geom.max
+    }) : 0;
+    if (speed) {
+      doScroll(d.scroller, speed);
+      ({ sx, sy } = scrollOf(d.scroller));
+      origin = originOf(d);
     }
-    if (speed) doScroll(d.scroller, speed);
-    const vv = speed ? view(d.scroller) : v2;
-    let tx = grid ? d.lastX - d.startX + (vv.sx - d.scrollX0) : 0;
-    let ty = d.lastY - d.startY + (vv.sy - d.scrollY0);
+    let tx = grid ? d.lastX - d.startX + (sx - d.scrollX0) : 0;
+    let ty = d.lastY - d.startY + (sy - d.scrollY0);
     if (d.ready && d.cells.length) {
-      const cell = d.cells[d.fromIndex];
-      const top = Math.max(vv.sy, Math.min(vv.sy + vv.clientH - cell.height, cell.top + ty));
-      ty = top - cell.top;
-      if (grid) {
-        const left = Math.max(vv.sx, Math.min(vv.sx + vv.clientW - cell.width, cell.left + tx));
-        tx = left - cell.left;
-      }
+      ({ tx, ty } = clampDragged({
+        cell: d.cells[d.fromIndex],
+        tx,
+        ty,
+        scrollX: sx,
+        scrollY: sy,
+        clientW: d.geom.clientW,
+        clientH: d.geom.clientH,
+        grid
+      }));
     }
     d.dragEl.style.transform = `translate(${tx}px,${ty}px)`;
     if (d.ready) {
-      const pX = d.lastX - vv.left + vv.sx;
-      const pY = d.lastY - vv.top + vv.sy;
-      const k = hitIndex(d, pX, pY);
+      const pX = d.lastX - origin.left + sx;
+      const pY = d.lastY - origin.top + sy;
+      const k = hitIndex(d.others, pX, pY, grid);
       d.toIndex = k;
-      if (grid) {
-        d.ids.forEach((id, i) => {
-          if (id === d.id) return;
-          const el = rowEls.get(id);
-          if (!el) return;
-          const ri = i < d.fromIndex ? i : i - 1;
-          const newVis = ri < k ? ri : ri + 1;
-          const cell = d.cells[newVis], me = d.cells[i];
-          const dx = cell.left - me.left, dy = cell.top - me.top;
-          el.style.transform = dx || dy ? `translate(${dx}px,${dy}px)` : "";
-        });
-      } else {
-        const dragH = d.cells[d.fromIndex].height;
-        const colTop = d.cells[0].top;
-        const gap = d.cells.length > 1 ? Math.max(0, d.cells[1].top - d.cells[0].top - d.cells[0].height) : 0;
-        let cursor = colTop, oi = 0;
-        for (let v3 = 0; v3 < d.ids.length; v3++) {
-          if (v3 === k) {
-            cursor += dragH + gap;
-            continue;
-          }
-          while (d.ids[oi] === d.id) oi++;
-          const oc = d.cells[oi];
-          const el = rowEls.get(d.ids[oi]);
-          oi++;
-          if (el) {
-            const dy = cursor - oc.top;
-            el.style.transform = dy ? `translateY(${dy}px)` : "";
-          }
-          cursor += oc.height + gap;
-        }
+      const moves = grid ? gridLayout({ ids: d.ids, dragId: d.id, fromIndex: d.fromIndex, k, cells: d.cells }) : listLayout({ ids: d.ids, dragId: d.id, fromIndex: d.fromIndex, k, cells: d.cells });
+      for (const m of moves) {
+        const el = rowEls.get(m.id);
+        if (!el) continue;
+        const dx = "dx" in m ? m.dx : 0;
+        el.style.transform = dx || m.dy ? `translate(${dx}px,${m.dy}px)` : "";
       }
     }
     d.raf = requestAnimationFrame(frame);
@@ -497,7 +562,8 @@ function createDumbSortable(opts) {
     const fromIndex = ids.indexOf(id);
     if (fromIndex < 0) return;
     const scroller = scrollParent(dragEl);
-    const v0 = view(scroller);
+    const geom = measure(scroller);
+    const s0 = scrollOf(scroller);
     drag = {
       id,
       pid,
@@ -512,9 +578,9 @@ function createDumbSortable(opts) {
       others: [],
       toIndex: fromIndex,
       scroller,
-      scrollX0: v0.sx,
-      scrollY0: v0.sy,
-      scrollMax0: v0.max,
+      geom,
+      scrollX0: s0.sx,
+      scrollY0: s0.sy,
       raf: 0,
       ready: false,
       moved: false
@@ -537,9 +603,10 @@ function createDumbSortable(opts) {
     }
     snapshot(ids, (rects) => {
       if (!drag || drag.id !== id) return;
-      const w = view(scroller);
-      const ox = (r) => r.left - w.left + w.sx;
-      const oy = (r) => r.top - w.top + w.sy;
+      const origin = originOf(drag);
+      const s = scrollOf(scroller);
+      const ox = (r) => r.left - origin.left + s.sx;
+      const oy = (r) => r.top - origin.top + s.sy;
       drag.cells = ids.map((i) => {
         const r = rects.get(i);
         return r ? { left: ox(r), top: oy(r), width: r.width, height: r.height } : { left: 0, top: 0, width: 0, height: 0 };

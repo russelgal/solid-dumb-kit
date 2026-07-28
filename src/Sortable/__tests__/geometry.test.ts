@@ -1,0 +1,214 @@
+import { describe, it, expect } from 'vitest'
+import {
+  autoScrollSpeed, clampDragged, gridLayout, hitIndex, listLayout, viewOrigin,
+  EDGE, MAX_SPEED, ACCEL, type Cell, type Item,
+} from '../geometry'
+
+// строка i: top = i*step, высота h
+const rows = (n: number, h = 10, gap = 0): Cell[] =>
+  Array.from({ length: n }, (_, i) => ({ left: 0, top: i * (h + gap), width: 100, height: h }))
+
+const itemsOf = (cells: Cell[], ids: string[], skip?: string): Item[] =>
+  ids.map((id, i) => ({ id, cell: cells[i] }))
+    .filter(x => x.id !== skip)
+    .map(({ id, cell }) => ({
+      id, cx: cell.left + cell.width / 2, cy: cell.top + cell.height / 2,
+      top: cell.top, bottom: cell.top + cell.height,
+    }))
+
+describe('hitIndex — список', () => {
+  const cells = rows(3)                       // центры: 5, 15, 25
+  const others = itemsOf(cells, ['a', 'b', 'c'], 'a')  // b, c
+
+  it('выше всех центров → в начало', () => {
+    expect(hitIndex(others, 0, 0, false)).toBe(0)
+  })
+  it('между центрами → между ними', () => {
+    expect(hitIndex(others, 0, 16, false)).toBe(1)
+  })
+  it('ниже всех центров → в конец', () => {
+    expect(hitIndex(others, 0, 99, false)).toBe(2)
+  })
+  it('ровно на центре не считается пройденным', () => {
+    expect(hitIndex(others, 0, 15, false)).toBe(0)
+  })
+})
+
+describe('hitIndex — сетка', () => {
+  // две ячейки в ряду: (0,0) и (100,0), высота 50
+  const cells: Cell[] = [
+    { left: 0, top: 0, width: 100, height: 50 },
+    { left: 100, top: 0, width: 100, height: 50 },
+    { left: 0, top: 50, width: 100, height: 50 },
+  ]
+  const others = itemsOf(cells, ['a', 'b', 'c'], 'a')   // b (правее), c (ниже)
+
+  it('левее центра соседа в том же ряду → перед ним', () => {
+    expect(hitIndex(others, 20, 25, true)).toBe(0)
+  })
+  it('правее центра соседа в том же ряду → после него', () => {
+    expect(hitIndex(others, 190, 25, true)).toBe(1)
+  })
+  it('внутри нижнего ряда левее центра → перед его ячейкой', () => {
+    expect(hitIndex(others, 10, 99, true)).toBe(1)
+  })
+  it('ниже всех рядов → в конец', () => {
+    expect(hitIndex(others, 10, 150, true)).toBe(2)
+  })
+})
+
+describe('listLayout — раскладка вертикального списка', () => {
+  const ids = ['a', 'b', 'c']
+
+  it('элемент на своём месте — никто не двигается', () => {
+    const moves = listLayout({ ids, dragId: 'a', fromIndex: 0, k: 0, cells: rows(3) })
+    expect(moves).toEqual([{ id: 'b', dy: 0 }, { id: 'c', dy: 0 }])
+  })
+
+  it('перенос в конец поднимает всех остальных на его высоту', () => {
+    const moves = listLayout({ ids, dragId: 'a', fromIndex: 0, k: 2, cells: rows(3) })
+    expect(moves).toEqual([{ id: 'b', dy: -10 }, { id: 'c', dy: -10 }])
+  })
+
+  it('перенос из конца в начало опускает остальных', () => {
+    const moves = listLayout({ ids, dragId: 'c', fromIndex: 2, k: 0, cells: rows(3) })
+    expect(moves).toEqual([{ id: 'a', dy: 10 }, { id: 'b', dy: 10 }])
+  })
+
+  it('считает по РЕАЛЬНЫМ высотам, а не по усреднённому шагу', () => {
+    // a: 10px, b: 40px, c: 10px
+    const cells: Cell[] = [
+      { left: 0, top: 0, width: 100, height: 10 },
+      { left: 0, top: 10, width: 100, height: 40 },
+      { left: 0, top: 50, width: 100, height: 10 },
+    ]
+    // тащим высокий b в начало: a должен опуститься ровно на 40, c остаться
+    const moves = listLayout({ ids, dragId: 'b', fromIndex: 1, k: 0, cells })
+    expect(moves).toEqual([{ id: 'a', dy: 40 }, { id: 'c', dy: 0 }])
+  })
+
+  it('учитывает зазор между строками', () => {
+    const cells = rows(3, 10, 6)              // top: 0, 16, 32
+    const moves = listLayout({ ids, dragId: 'a', fromIndex: 0, k: 2, cells })
+    expect(moves).toEqual([{ id: 'b', dy: -16 }, { id: 'c', dy: -16 }])
+  })
+
+  it('пустой снимок не роняет', () => {
+    expect(listLayout({ ids, dragId: 'a', fromIndex: 0, k: 0, cells: [] })).toEqual([])
+  })
+})
+
+describe('gridLayout — раскладка сетки', () => {
+  const cells: Cell[] = [
+    { left: 0, top: 0, width: 100, height: 50 },
+    { left: 100, top: 0, width: 100, height: 50 },
+    { left: 0, top: 50, width: 100, height: 50 },
+  ]
+  const ids = ['a', 'b', 'c']
+
+  it('сдвиг на одну позицию двигает только затронутых', () => {
+    const moves = gridLayout({ ids, dragId: 'a', fromIndex: 0, k: 1, cells })
+    // b встаёт на место a (влево), c остаётся
+    expect(moves).toEqual([
+      { id: 'b', dx: -100, dy: 0 },
+      { id: 'c', dx: 0, dy: 0 },
+    ])
+  })
+
+  it('перенос в конец: диагональный прыжок через границу ряда', () => {
+    const moves = gridLayout({ ids, dragId: 'a', fromIndex: 0, k: 2, cells })
+    expect(moves).toEqual([
+      { id: 'b', dx: -100, dy: 0 },     // из (100,0) в (0,0)
+      { id: 'c', dx: 100, dy: -50 },    // из (0,50) в (100,0)
+    ])
+  })
+
+  it('перетаскиваемый сам не двигается', () => {
+    const moves = gridLayout({ ids, dragId: 'a', fromIndex: 0, k: 2, cells })
+    expect(moves.some(m => m.id === 'a')).toBe(false)
+  })
+})
+
+describe('autoScrollSpeed', () => {
+  const base = { viewTop: 0, clientH: 500, scrollY: 100, scrollMax: 1000 }
+
+  it('в середине контейнера не скроллит', () => {
+    expect(autoScrollSpeed({ ...base, pointerY: 250 })).toBe(0)
+  })
+
+  it('у верхнего края скроллит вверх, ускоряясь к краю', () => {
+    const far = autoScrollSpeed({ ...base, pointerY: EDGE - 1 })
+    const near = autoScrollSpeed({ ...base, pointerY: 1 })
+    expect(far).toBeLessThan(0)
+    expect(near).toBeLessThan(far)               // ближе к краю — быстрее
+    expect(Math.abs(near)).toBeLessThanOrEqual(MAX_SPEED * ACCEL)
+  })
+
+  it('у нижнего края скроллит вниз', () => {
+    expect(autoScrollSpeed({ ...base, pointerY: 500 - 1 })).toBeGreaterThan(0)
+  })
+
+  it('за пределами контейнера ускоряется, но не выше потолка', () => {
+    const speed = autoScrollSpeed({ ...base, pointerY: -1000 })
+    expect(speed).toBe(-MAX_SPEED * ACCEL)
+  })
+
+  it('в самом верху списка вверх не скроллит', () => {
+    expect(autoScrollSpeed({ ...base, scrollY: 0, pointerY: 1 })).toBe(0)
+  })
+
+  it('в самом низу списка вниз не скроллит', () => {
+    expect(autoScrollSpeed({ ...base, scrollY: 1000, pointerY: 499 })).toBe(0)
+  })
+})
+
+describe('clampDragged', () => {
+  const cell: Cell = { left: 0, top: 0, width: 100, height: 10 }
+  const view = { scrollX: 0, scrollY: 0, clientW: 200, clientH: 100 }
+
+  it('внутри области ничего не меняет', () => {
+    expect(clampDragged({ cell, tx: 0, ty: 40, ...view, grid: false })).toEqual({ tx: 0, ty: 40 })
+  })
+
+  it('не пускает ниже нижней кромки', () => {
+    expect(clampDragged({ cell, tx: 0, ty: 999, ...view, grid: false }).ty).toBe(90)
+  })
+
+  it('не пускает выше верхней кромки', () => {
+    expect(clampDragged({ cell, tx: 0, ty: -999, ...view, grid: false }).ty).toBe(0)
+  })
+
+  it('в списке горизонталь не трогает', () => {
+    expect(clampDragged({ cell, tx: 500, ty: 0, ...view, grid: false }).tx).toBe(500)
+  })
+
+  it('в сетке зажимает и по горизонтали', () => {
+    expect(clampDragged({ cell, tx: 500, ty: 0, ...view, grid: true }).tx).toBe(100)
+  })
+
+  it('кромки считаются от текущего скролла', () => {
+    const scrolled = { ...view, scrollY: 300 }
+    expect(clampDragged({ cell, tx: 0, ty: 0, ...scrolled, grid: false }).ty).toBe(300)
+  })
+})
+
+describe('viewOrigin — сдвиг контейнера от прокрутки страницы', () => {
+  const geom = { top: 100, left: 20, clientH: 0, clientW: 0, max: 0, winX: 0, winY: 0 }
+
+  it('страница не двигалась — позиция как на старте', () => {
+    expect(viewOrigin(geom, 0, 0)).toEqual({ top: 100, left: 20 })
+  })
+
+  it('страница уехала вниз — контейнер поднялся ровно на столько же', () => {
+    expect(viewOrigin(geom, 0, 30)).toEqual({ top: 70, left: 20 })
+  })
+
+  it('горизонтальная прокрутка страницы тоже учитывается', () => {
+    expect(viewOrigin(geom, 5, 0)).toEqual({ top: 100, left: 15 })
+  })
+
+  it('старт при уже прокрученной странице — точка отсчёта от снимка', () => {
+    const g = { ...geom, winY: 500 }
+    expect(viewOrigin(g, 0, 520)).toEqual({ top: 80, left: 20 })
+  })
+})

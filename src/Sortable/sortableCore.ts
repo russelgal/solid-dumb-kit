@@ -7,15 +7,25 @@
 //  https://toruskit.com/blog/how-to-get-element-bounds-without-reflow),
 // а во время движения мы ТОЛЬКО пишем transform (GPU/compositor, без layout).
 //
+// Геометрия скроллера (top/left/clientW/clientH/max) тоже снимается один раз;
+// в кадре читаются лишь scrollTop/scrollLeft и window.scrollX/Y — они не форсят
+// layout. Сдвиг контейнера от прокрутки страницы компенсируется арифметикой
+// (viewOrigin), а не свежим getBoundingClientRect.
+//
 // Движок — FLIP «элемент → ячейка»: каждому элементу считаем новый визуальный
 // индекс и двигаем его в СНЯТУЮ позицию той ячейки (translate dx,dy). Отсюда даром:
 //   • переменная высота строк (берём реальные позиции, не усреднённый шаг);
 //   • сетка (дельта по X и Y, диагональный прыжок на переносе строки).
 // Вся математика — в координатах КОНТЕНТА контейнера (− top/left + scroll),
 // поэтому хиттест/сдвиги иммунны к скроллу и авто-скролл у краёв «просто работает».
+// Сами формулы живут в ./geometry.ts (чистые функции, покрыты тестами).
 // Порядок массива коммитим на pointerup → opts.onEnd(fromIndex, toIndex).
 
 import { onCleanup } from 'solid-js';
+import {
+    autoScrollSpeed, clampDragged, gridLayout, hitIndex, listLayout, viewOrigin,
+    type Cell, type Item, type ViewGeom,
+} from './geometry';
 
 export type DumbSortableHandle = {
     /** самодостаточный ref на элемент (ручка = дочка с [data-drag-handle]) */
@@ -25,9 +35,6 @@ export type DumbSortableHandle = {
     /** низкоуровневый ref на ручку-хендл */
     handle: (id: string) => (el: HTMLElement) => void;
 };
-
-type Cell = { left: number; top: number; width: number; height: number };
-type Item = { id: string; cx: number; cy: number; top: number; bottom: number };
 
 type Drag = {
     id: string;
@@ -41,17 +48,14 @@ type Drag = {
     others: Item[];         // чужие ячейки в порядке чтения (для хиттеста)
     toIndex: number;
     scroller: HTMLElement | null;
+    geom: ViewGeom;         // геометрия скроллера, снятая на старте
     scrollX0: number; scrollY0: number;
-    scrollMax0: number;     // предел прокрутки на старте (до трансформа dragged)
     raf: number;
     ready: boolean;
     moved: boolean;         // указатель реально сдвинулся (иначе не авто-скроллим — иначе дёрг при захвате у края)
 };
 
 const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
-const EDGE = 48;          // зона авто-скролла у края, px
-const MAX_SPEED = 18;     // скорость авто-скролла у самого края, px/кадр
-const ACCEL = 3.5;        // во сколько раз быстрее при сильном уходе за контейнер
 const LONGPRESS = 350;    // тач: удержание до старта драга, мс
 const MOVE_TOL = 10;      // тач: сдвиг за время удержания = скролл, отменяем, px
 const LIFT_SHADOW = '0 10px 24px -6px rgba(0,0,0,.28)';
@@ -66,14 +70,38 @@ function scrollParent(el: HTMLElement): HTMLElement | null {
     return null;
 }
 
-function view(scroller: HTMLElement | null) {
+/** Единственное синхронное чтение геометрии — один раз на старте драга. */
+function measure(scroller: HTMLElement | null): ViewGeom {
     if (scroller) {
         const r = scroller.getBoundingClientRect();
-        return { top: r.top, left: r.left, sy: scroller.scrollTop, sx: scroller.scrollLeft, clientH: scroller.clientHeight, clientW: scroller.clientWidth, max: scroller.scrollHeight - scroller.clientHeight };
+        return {
+            top: r.top, left: r.left,
+            clientH: scroller.clientHeight, clientW: scroller.clientWidth,
+            max: scroller.scrollHeight - scroller.clientHeight,
+            winX: window.scrollX, winY: window.scrollY,
+        };
     }
     const se = document.scrollingElement || document.documentElement;
-    return { top: 0, left: 0, sy: window.scrollY, sx: window.scrollX, clientH: window.innerHeight, clientW: window.innerWidth, max: se.scrollHeight - window.innerHeight };
+    return {
+        top: 0, left: 0,
+        clientH: window.innerHeight, clientW: window.innerWidth,
+        max: se.scrollHeight - window.innerHeight,
+        winX: 0, winY: 0,
+    };
 }
+
+/** Живой скролл — дешёвое чтение, layout не форсит. */
+function scrollOf(scroller: HTMLElement | null) {
+    return scroller
+        ? { sx: scroller.scrollLeft, sy: scroller.scrollTop }
+        : { sx: window.scrollX, sy: window.scrollY };
+}
+
+/** Позиция скроллера во вьюпорте сейчас: для окна это всегда начало координат. */
+function originOf(d: Drag) {
+    return d.scroller ? viewOrigin(d.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
+}
+
 function doScroll(scroller: HTMLElement | null, dy: number) {
     if (scroller) scroller.scrollTop += dy;
     else window.scrollBy(0, dy);
@@ -124,93 +152,55 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         if (n === 0) cb(out);
     }
 
-    // позиция вставки (reduced index) по указателю в координатах контента
-    function hitIndex(d: Drag, pX: number, pY: number): number {
-        let k = 0;
-        for (const o of d.others) {
-            if (grid) {
-                if (pY > o.bottom) k++;                          // указатель ниже всей строки
-                else if (pY >= o.top && pX > o.cx) k++;          // в той же строке, правее центра
-            } else {
-                if (pY > o.cy) k++;                              // вертикаль: ниже центра
-            }
-        }
-        return k;
-    }
-
     function frame() {
         if (!drag) return;
         const d = drag;
-        const v = view(d.scroller);
+        let origin = originOf(d);
+        let { sx, sy } = scrollOf(d.scroller);
 
-        // авто-скролл: чем дальше указатель за краем контейнера — тем быстрее (до ACCEL× потолка).
+        // авто-скролл: чем дальше указатель за краем контейнера — тем быстрее.
         // ВАЖНО: только после реального движения — иначе захват у нижнего края сразу скроллит,
         // dragged получает +ty, его трансформ растит scrollHeight → скроллбар/сдвиг/съезд сортировки.
-        let speed = 0;
-        if (d.moved) {
-            const distTop = d.lastY - v.top;
-            const distBot = v.top + v.clientH - d.lastY;
-            // предел снизу — снятый на старте (живой scrollHeight растёт от трансформа dragged → гонка)
-            if (distTop < EDGE && v.sy > 0) {
-                const over = (EDGE - distTop) / EDGE;          // 0 у границы зоны, 1 у края, >1 за пределами
-                speed = -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-            } else if (distBot < EDGE && v.sy < d.scrollMax0) {
-                const over = (EDGE - distBot) / EDGE;
-                speed = Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-            }
+        // Предел снизу — снятый на старте (живой scrollHeight растёт от трансформа dragged → гонка).
+        const speed = d.moved
+            ? autoScrollSpeed({
+                pointerY: d.lastY, viewTop: origin.top, clientH: d.geom.clientH,
+                scrollY: sy, scrollMax: d.geom.max,
+            })
+            : 0;
+        if (speed) {
+            doScroll(d.scroller, speed);
+            ({ sx, sy } = scrollOf(d.scroller));   // скролл изменился — перечитываем (это не reflow)
+            origin = originOf(d);
         }
-        if (speed) doScroll(d.scroller, speed);
 
-        const vv = speed ? view(d.scroller) : v;
         // перетаскиваемая следует за курсором (+ компенсация прокрутки контента)
-        let tx = grid ? (d.lastX - d.startX) + (vv.sx - d.scrollX0) : 0;
-        let ty = (d.lastY - d.startY) + (vv.sy - d.scrollY0);
+        let tx = grid ? (d.lastX - d.startX) + (sx - d.scrollX0) : 0;
+        let ty = (d.lastY - d.startY) + (sy - d.scrollY0);
         // кламп: перетаскиваемый не выходит за видимую область контейнера
         if (d.ready && d.cells.length) {
-            const cell = d.cells[d.fromIndex];
-            const top = Math.max(vv.sy, Math.min(vv.sy + vv.clientH - cell.height, cell.top + ty));
-            ty = top - cell.top;
-            if (grid) {
-                const left = Math.max(vv.sx, Math.min(vv.sx + vv.clientW - cell.width, cell.left + tx));
-                tx = left - cell.left;
-            }
+            ({ tx, ty } = clampDragged({
+                cell: d.cells[d.fromIndex], tx, ty,
+                scrollX: sx, scrollY: sy, clientW: d.geom.clientW, clientH: d.geom.clientH, grid,
+            }));
         }
         d.dragEl.style.transform = `translate(${tx}px,${ty}px)`;
 
         if (d.ready) {
-            const pX = d.lastX - vv.left + vv.sx;
-            const pY = d.lastY - vv.top + vv.sy;
-            const k = hitIndex(d, pX, pY);
+            const pX = d.lastX - origin.left + sx;
+            const pY = d.lastY - origin.top + sy;
+            const k = hitIndex(d.others, pX, pY, grid);
             d.toIndex = k;
-            if (grid) {
-                // грид: FLIP-маппинг «элемент → исходная ячейка нового индекса»
-                // (корректно для одинаковых ячеек; для грида это норм)
-                d.ids.forEach((id, i) => {
-                    if (id === d.id) return;
-                    const el = rowEls.get(id);
-                    if (!el) return;
-                    const ri = i < d.fromIndex ? i : i - 1;
-                    const newVis = ri < k ? ri : ri + 1;
-                    const cell = d.cells[newVis], me = d.cells[i];
-                    const dx = cell.left - me.left, dy = cell.top - me.top;
-                    el.style.transform = (dx || dy) ? `translate(${dx}px,${dy}px)` : '';
-                });
-            } else {
-                // вертикаль: накопительная раскладка по РЕАЛЬНЫМ высотам (разная высота строк).
-                // Кладём чужих по порядку, на позиции k резервируем дырку под перетаскиваемую.
-                const dragH = d.cells[d.fromIndex].height;
-                const colTop = d.cells[0].top;
-                const gap = d.cells.length > 1 ? Math.max(0, d.cells[1].top - d.cells[0].top - d.cells[0].height) : 0;
-                let cursor = colTop, oi = 0;
-                for (let v = 0; v < d.ids.length; v++) {
-                    if (v === k) { cursor += dragH + gap; continue; }   // дырка под dragged
-                    while (d.ids[oi] === d.id) oi++;                    // пропустить перетаскиваемую
-                    const oc = d.cells[oi];
-                    const el = rowEls.get(d.ids[oi]);
-                    oi++;
-                    if (el) { const dy = cursor - oc.top; el.style.transform = dy ? `translateY(${dy}px)` : ''; }
-                    cursor += oc.height + gap;
-                }
+
+            const moves = grid
+                ? gridLayout({ ids: d.ids, dragId: d.id, fromIndex: d.fromIndex, k, cells: d.cells })
+                : listLayout({ ids: d.ids, dragId: d.id, fromIndex: d.fromIndex, k, cells: d.cells });
+
+            for (const m of moves) {
+                const el = rowEls.get(m.id);
+                if (!el) continue;
+                const dx = 'dx' in m ? m.dx : 0;
+                el.style.transform = (dx || m.dy) ? `translate(${dx}px,${m.dy}px)` : '';
             }
         }
         d.raf = requestAnimationFrame(frame);
@@ -261,12 +251,13 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         if (fromIndex < 0) return;
 
         const scroller = scrollParent(dragEl);
-        const v0 = view(scroller);
+        const geom = measure(scroller);
+        const s0 = scrollOf(scroller);
         drag = {
             id, pid,
             startX: x, startY: y, lastX: x, lastY: y,
             dragEl, ids, fromIndex, cells: [], others: [], toIndex: fromIndex,
-            scroller, scrollX0: v0.sx, scrollY0: v0.sy, scrollMax0: v0.max, raf: 0, ready: false, moved: false,
+            scroller, geom, scrollX0: s0.sx, scrollY0: s0.sy, raf: 0, ready: false, moved: false,
         };
         dragEl.style.position = 'relative';
         dragEl.style.zIndex = '2';
@@ -286,9 +277,10 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         // bounds без reflow → ячейки (в координатах контента) + чужие центры для хиттеста
         snapshot(ids, rects => {
             if (!drag || drag.id !== id) return;
-            const w = view(scroller);
-            const ox = (r: DOMRectReadOnly) => r.left - w.left + w.sx;
-            const oy = (r: DOMRectReadOnly) => r.top - w.top + w.sy;
+            const origin = originOf(drag);
+            const s = scrollOf(scroller);
+            const ox = (r: DOMRectReadOnly) => r.left - origin.left + s.sx;
+            const oy = (r: DOMRectReadOnly) => r.top - origin.top + s.sy;
             drag.cells = ids.map(i => { const r = rects.get(i); return r ? { left: ox(r), top: oy(r), width: r.width, height: r.height } : { left: 0, top: 0, width: 0, height: 0 }; });
             drag.others = ids
                 .filter(oid => oid !== id)
