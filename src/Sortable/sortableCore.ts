@@ -57,6 +57,7 @@ type Drag = {
     raf: number;
     ready: boolean;
     moved: boolean;         // указатель реально сдвинулся (иначе не авто-скроллим — иначе дёрг при захвате у края)
+    touched: Set<HTMLElement>;  // кому довелось поехать — только их стили и трогаем
 };
 
 const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
@@ -170,7 +171,21 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
                 const el = rowEls.get(m.id);
                 if (!el) continue;
                 const dx = 'dx' in m ? m.dx : 0;
-                el.style.transform = (dx || m.dy) ? `translate(${dx}px,${m.dy}px)` : '';
+                if (!dx && !m.dy) {
+                    if (d.touched.has(el)) el.style.transform = '';
+                    continue;
+                }
+                // Стили трогаем ТОЛЬКО у тех, кто реально поехал, и только один раз.
+                // Вешать transition/will-change всем подряд на старте — это сотня
+                // лишних записей и сотня композиторных слоёв на ровном месте.
+                // Первый кадр отдаём под transition, со второго элемент едет плавно.
+                if (!d.touched.has(el)) {
+                    d.touched.add(el);
+                    el.style.transition = SLIDE;
+                    el.style.willChange = 'transform';
+                    continue;
+                }
+                el.style.transform = `translate(${dx}px,${m.dy}px)`;
             }
         }
         d.raf = requestAnimationFrame(frame);
@@ -187,9 +202,7 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         if (!drag) return;
         const d = drag;
         if (d.raf) cancelAnimationFrame(d.raf);
-        for (const id of d.ids) {
-            const el = rowEls.get(id);
-            if (!el) continue;
+        const reset = (el: HTMLElement) => {
             el.style.transition = '';
             el.style.transform = '';
             el.style.zIndex = '';
@@ -198,7 +211,9 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
             el.style.boxShadow = '';
             el.style.opacity = '';
             el.style.cursor = '';
-        }
+        };
+        reset(d.dragEl);
+        for (const el of d.touched) reset(el);   // остальных мы и не трогали
         document.body.style.userSelect = '';
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
@@ -228,6 +243,7 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
             startX: x, startY: y, lastX: x, lastY: y,
             dragEl, ids, fromIndex, cells: [], others: [], restCells: [], top: 0, gap: 0, toIndex: fromIndex,
             scroller, geom, scrollX0: s0.sx, scrollY0: s0.sy, raf: 0, ready: false, moved: false,
+            touched: new Set(),
         };
         dragEl.style.position = 'relative';
         dragEl.style.zIndex = '2';
@@ -238,11 +254,6 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         dragEl.style.cursor = 'grabbing';
         dragEl.style.transition = 'box-shadow .15s ease, opacity .15s ease';
         document.body.style.userSelect = 'none';
-        for (const oid of ids) {
-            if (oid === id) continue;
-            const el = rowEls.get(oid);
-            if (el) { el.style.transition = SLIDE; el.style.willChange = 'transform'; }
-        }
 
         // bounds без reflow → ячейки (в координатах контента) + чужие центры для хиттеста
         snapshot(ids, rects => {

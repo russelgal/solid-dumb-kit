@@ -167,6 +167,8 @@ type Drag = {
     ready: boolean;
     moved: boolean;
     prevStyle: string;
+    /** карточки, которым довелось поехать — только их стили и трогаем */
+    touched: Set<HTMLElement>;
     /** клон в top layer, летящий за курсором */
     ghost: HTMLElement | null;
 };
@@ -279,7 +281,20 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
             zz.ids.forEach((id, i) => {
                 const el = zones.get(zz.name)?.els.get(id);
                 if (!el) return;
-                el.style.transform = dy[i] ? `translateY(${dy[i]}px)` : '';
+                if (!dy[i]) {
+                    if (d.touched.has(el)) el.style.transform = '';
+                    return;
+                }
+                // Стили — ТОЛЬКО тем, кто реально поехал: вешать transition и
+                // will-change всем карточкам всех колонок на старте означало бы
+                // пачку лишних записей и композиторных слоёв на ровном месте.
+                if (!d.touched.has(el)) {
+                    d.touched.add(el);
+                    el.style.transition = SLIDE;
+                    el.style.willChange = 'transform';
+                    return;                       // поедет со следующего кадра, зато плавно
+                }
+                el.style.transform = `translateY(${dy[i]}px)`;
             });
         }
     }
@@ -350,16 +365,10 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         }
         d.dragEl.style.cssText = d.prevStyle;
 
-        for (const z of d.zones.values()) {
-            const zone = zones.get(z.name);
-            if (!zone) continue;
-            for (const id of z.ids) {
-                const el = zone.els.get(id);
-                if (!el) continue;
-                el.style.transition = '';
-                el.style.transform = '';
-                el.style.willChange = '';
-            }
+        for (const el of d.touched) {      // остальных мы и не трогали
+            el.style.transition = '';
+            el.style.transform = '';
+            el.style.willChange = '';
         }
         document.body.style.userSelect = '';
         window.removeEventListener('pointermove', onMove);
@@ -399,6 +408,7 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
             raf: 0, ready: false, moved: false,
             prevStyle: dragEl.style.cssText,
             ghost: null,
+            touched: new Set(),
         };
         draggingId = id;
         activeName = name;
@@ -420,20 +430,9 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                 dragEl.style.opacity = '0';
             }
 
-            // Сначала компенсируем схлопывание БЕЗ анимации — иначе соседи прыгнут
-            // вверх (карточка ушла из потока) и потом плавно поедут обратно.
+            // Раскладку не трогаем: карточка осталась в потоке, её место на месте,
+            // все сдвиги нулевые. Первый же кадр разложит, если указатель уехал.
             d.ready = true;
-            applyLayout(d);
-
-            // и только теперь включаем плавность — на будущие перестроения
-            for (const z of d.zones.values()) {
-                const zz = zones.get(z.name);
-                if (!zz) continue;
-                for (const oid of z.ids) {
-                    const el = zz.els.get(oid);
-                    if (el) { el.style.transition = SLIDE; el.style.willChange = 'transform'; }
-                }
-            }
         });
 
         try { handle.setPointerCapture(pid); } catch { /* noop */ }

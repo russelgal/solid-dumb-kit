@@ -808,7 +808,17 @@ function createDumbSortable(opts) {
         const el = rowEls.get(m.id);
         if (!el) continue;
         const dx = "dx" in m ? m.dx : 0;
-        el.style.transform = dx || m.dy ? `translate(${dx}px,${m.dy}px)` : "";
+        if (!dx && !m.dy) {
+          if (d.touched.has(el)) el.style.transform = "";
+          continue;
+        }
+        if (!d.touched.has(el)) {
+          d.touched.add(el);
+          el.style.transition = SLIDE;
+          el.style.willChange = "transform";
+          continue;
+        }
+        el.style.transform = `translate(${dx}px,${m.dy}px)`;
       }
     }
     d.raf = requestAnimationFrame(frame);
@@ -823,9 +833,7 @@ function createDumbSortable(opts) {
     if (!drag) return;
     const d = drag;
     if (d.raf) cancelAnimationFrame(d.raf);
-    for (const id of d.ids) {
-      const el = rowEls.get(id);
-      if (!el) continue;
+    const reset = (el) => {
       el.style.transition = "";
       el.style.transform = "";
       el.style.zIndex = "";
@@ -834,7 +842,9 @@ function createDumbSortable(opts) {
       el.style.boxShadow = "";
       el.style.opacity = "";
       el.style.cursor = "";
-    }
+    };
+    reset(d.dragEl);
+    for (const el of d.touched) reset(el);
     document.body.style.userSelect = "";
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
@@ -878,7 +888,8 @@ function createDumbSortable(opts) {
       scrollY0: s0.sy,
       raf: 0,
       ready: false,
-      moved: false
+      moved: false,
+      touched: /* @__PURE__ */ new Set()
     };
     dragEl.style.position = "relative";
     dragEl.style.zIndex = "2";
@@ -888,14 +899,6 @@ function createDumbSortable(opts) {
     dragEl.style.cursor = "grabbing";
     dragEl.style.transition = "box-shadow .15s ease, opacity .15s ease";
     document.body.style.userSelect = "none";
-    for (const oid of ids) {
-      if (oid === id) continue;
-      const el = rowEls.get(oid);
-      if (el) {
-        el.style.transition = SLIDE;
-        el.style.willChange = "transform";
-      }
-    }
     snapshot(ids, (rects) => {
       if (!drag || drag.id !== id) return;
       const origin = originOf(drag);
@@ -1196,7 +1199,17 @@ function createSortableGroup(opts) {
       zz.ids.forEach((id, i) => {
         const el = zones.get(zz.name)?.els.get(id);
         if (!el) return;
-        el.style.transform = dy[i] ? `translateY(${dy[i]}px)` : "";
+        if (!dy[i]) {
+          if (d.touched.has(el)) el.style.transform = "";
+          return;
+        }
+        if (!d.touched.has(el)) {
+          d.touched.add(el);
+          el.style.transition = SLIDE2;
+          el.style.willChange = "transform";
+          return;
+        }
+        el.style.transform = `translateY(${dy[i]}px)`;
       });
     }
   }
@@ -1261,16 +1274,10 @@ function createSortableGroup(opts) {
       d.ghost = null;
     }
     d.dragEl.style.cssText = d.prevStyle;
-    for (const z of d.zones.values()) {
-      const zone = zones.get(z.name);
-      if (!zone) continue;
-      for (const id of z.ids) {
-        const el = zone.els.get(id);
-        if (!el) continue;
-        el.style.transition = "";
-        el.style.transform = "";
-        el.style.willChange = "";
-      }
+    for (const el of d.touched) {
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.willChange = "";
     }
     document.body.style.userSelect = "";
     window.removeEventListener("pointermove", onMove);
@@ -1319,7 +1326,8 @@ function createSortableGroup(opts) {
       ready: false,
       moved: false,
       prevStyle: dragEl.style.cssText,
-      ghost: null
+      ghost: null,
+      touched: /* @__PURE__ */ new Set()
     };
     draggingId = id;
     activeName = name;
@@ -1336,18 +1344,6 @@ function createSortableGroup(opts) {
         dragEl.style.opacity = "0";
       }
       d.ready = true;
-      applyLayout(d);
-      for (const z of d.zones.values()) {
-        const zz = zones.get(z.name);
-        if (!zz) continue;
-        for (const oid of z.ids) {
-          const el = zz.els.get(oid);
-          if (el) {
-            el.style.transition = SLIDE2;
-            el.style.willChange = "transform";
-          }
-        }
-      }
     });
     try {
       handle.setPointerCapture(pid);
