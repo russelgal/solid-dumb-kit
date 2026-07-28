@@ -23,7 +23,7 @@
 
 import { onCleanup } from 'solid-js';
 import {
-    autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, nextInsertIndex, viewOrigin,
+    autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, holeTop, listLayout, nextInsertIndex, viewOrigin,
     type Cell, type Item, type ViewGeom,
 } from './geometry';
 import { doScroll, measure, scrollOf, scrollParent } from '../shared/viewport';
@@ -198,10 +198,14 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         drag.lastY = ev.clientY;
     }
 
-    function cleanup() {
-        if (!drag) return;
-        const d = drag;
-        if (d.raf) cancelAnimationFrame(d.raf);
+    function detach() {
+        document.body.style.userSelect = '';
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+    }
+
+    function resetStyles(d: Drag) {
         const reset = (el: HTMLElement) => {
             el.style.transition = '';
             el.style.transform = '';
@@ -214,18 +218,66 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         };
         reset(d.dragEl);
         for (const el of d.touched) reset(el);   // остальных мы и не трогали
-        document.body.style.userSelect = '';
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-        window.removeEventListener('pointercancel', onUp);
+    }
+
+    function cleanup() {
+        if (!drag) return;
+        const d = drag;
+        if (d.raf) cancelAnimationFrame(d.raf);
+        detach();
+        resetStyles(d);
         drag = null;
+    }
+
+    /**
+     * Приземление: вместо того чтобы снять transform и дать элементу телепортом
+     * оказаться на новом месте, доводим его до места анимацией. Целевая позиция
+     * известна из снимка — мерить ничего не нужно.
+     */
+    function land(d: Drag, done: () => void) {
+        const from = d.cells[d.fromIndex];
+        let tx = 0, ty = 0;
+        if (grid) {
+            const target = d.cells[d.toIndex];
+            if (!target) { done(); return; }
+            tx = target.left - from.left;
+            ty = target.top - from.top;
+        } else {
+            ty = holeTop({ cells: d.restCells, gap: d.gap, top: d.top, k: d.toIndex }) - from.top;
+        }
+
+        const el = d.dragEl;
+        el.style.transition = SLIDE;
+        el.style.transform = `translate(${tx}px,${ty}px)`;
+        let fired = false;
+        const finish = () => {
+            if (fired) return;
+            fired = true;
+            el.removeEventListener('transitionend', finish);
+            done();
+        };
+        el.addEventListener('transitionend', finish);
+        setTimeout(finish, 240);   // страховка, если transitionend не придёт
     }
 
     function onUp(ev: PointerEvent) {
         if (!drag || ev.pointerId !== drag.pid) return;
-        const { fromIndex, toIndex, ready } = drag;
-        cleanup();
-        if (ready && toIndex !== fromIndex) opts.onEnd(fromIndex, toIndex);
+        const d = drag;
+        const { fromIndex, toIndex, ready } = d;
+
+        if (!ready || toIndex === fromIndex) {
+            cleanup();
+            return;
+        }
+
+        // слушатели снимаем сразу, стили — после приземления
+        detach();
+        if (d.raf) cancelAnimationFrame(d.raf);
+        drag = null;
+        land(d, () => {
+            resetStyles(d);
+            opts.onEnd(fromIndex, toIndex);
+        });
     }
 
     function begin(id: string, handle: HTMLElement, pid: number, x: number, y: number) {

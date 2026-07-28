@@ -54,7 +54,8 @@ const columns: DumbColumn<Product>[] = [
 | `columns` | `Array<DumbColumn<T>>` | — (required) | Column definitions. |
 | `rowId` | `(row, index) => string` | index | Stable row id — needed for drag-reorder. |
 | `sort` / `order` | `string` / `'asc' \| 'desc'` | — | Active sort, **server mode** (pair with `onSort`). |
-| `onSort` | `(key, order) => void` | — | Present → the server sorts (`manualSorting`), row order is left alone. Absent → sorting happens client-side. |
+| `onSort` | `(key: string \| null, order: 'asc' \| 'desc' \| null) => void` | — | Present → the server sorts (`manualSorting`), row order is left alone. Absent → sorting happens client-side. A third click clears the sort and calls it with `(null, null)`. |
+| `noSortRemoval` | `boolean` | `false` | Drop the third click: sorting stays `asc ⇄ desc`. |
 | `sortDescFirst` | `boolean` | TanStack default | Direction of the *first* click. By default text columns start `asc` and numeric ones `desc`; see below. |
 | `onReorder` | `(from, to) => void` | — | Enables drag-reorder and the handle column. Indices are into the **displayed** order. |
 | `handle` | `JSX.Element` | `⠿` | Drag handle content. |
@@ -76,6 +77,8 @@ Pass `onSort` and the table stops reordering anything itself: it reports the cli
 ```
 
 Omit `onSort` and rows are sorted in the browser via TanStack's sorted row model.
+
+**Three states.** Clicking a header cycles `asc → desc → no sorting`, so you can always get back to the data's own order. In server mode the reset arrives as `onSort(null, null)`. Pass `noSortRemoval` to keep the old two-state toggle.
 
 **First-click direction.** TanStack starts text columns ascending and numeric columns descending (usually what you want: “priciest first”). Set `sortDescFirst={false}` to make every column start ascending, or `true` for the opposite.
 

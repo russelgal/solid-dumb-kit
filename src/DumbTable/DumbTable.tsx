@@ -51,8 +51,13 @@ export type DumbTableProps<T> = {
   /** активная колонка сортировки — задаёт СЕРВЕРНЫЙ режим (вместе с onSort) */
   sort?: string
   order?: 'asc' | 'desc'
-  /** есть onSort → сортирует сервер (manualSorting); нет → сортируем на клиенте */
-  onSort?: (key: string, order: 'asc' | 'desc') => void
+  /**
+   * Есть onSort → сортирует сервер (manualSorting); нет → сортируем на клиенте.
+   * Третий клик по колонке сбрасывает сортировку — тогда придёт (null, null).
+   */
+  onSort?: (key: string | null, order: 'asc' | 'desc' | null) => void
+  /** убрать третий клик-сброс: сортировка будет только asc ⇄ desc */
+  noSortRemoval?: boolean
   /**
    * Направление ПЕРВОГО клика по заголовку. По умолчанию — как у TanStack:
    * текстовые колонки начинают с asc, числовые с desc. `false` заставляет
@@ -119,12 +124,16 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
       get sorting() { return sorting() },
     },
     get manualSorting() { return serverMode() },
-    enableSortingRemoval: false,
+    // третий клик по заголовку снимает сортировку (asc → desc → без сортировки)
+    get enableSortingRemoval() { return !props.noSortRemoval },
     onSortingChange: (updater) => {
       const next = typeof updater === 'function' ? updater(sorting()) : updater
-      if (!next.length) return
-      if (serverMode()) props.onSort!(next[0].id, next[0].desc ? 'desc' : 'asc')
-      else setLocalSort(next)
+      if (serverMode()) {
+        if (next.length) props.onSort!(next[0].id, next[0].desc ? 'desc' : 'asc')
+        else props.onSort!(null, null)          // сброс к порядку по умолчанию
+      } else {
+        setLocalSort(next)
+      }
     },
     getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
     getCoreRowModel: getCoreRowModel(),

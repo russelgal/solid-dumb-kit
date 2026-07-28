@@ -297,8 +297,13 @@ type DumbTableProps<T> = {
     /** активная колонка сортировки — задаёт СЕРВЕРНЫЙ режим (вместе с onSort) */
     sort?: string;
     order?: 'asc' | 'desc';
-    /** есть onSort → сортирует сервер (manualSorting); нет → сортируем на клиенте */
-    onSort?: (key: string, order: 'asc' | 'desc') => void;
+    /**
+     * Есть onSort → сортирует сервер (manualSorting); нет → сортируем на клиенте.
+     * Третий клик по колонке сбрасывает сортировку — тогда придёт (null, null).
+     */
+    onSort?: (key: string | null, order: 'asc' | 'desc' | null) => void;
+    /** убрать третий клик-сброс: сортировка будет только asc ⇄ desc */
+    noSortRemoval?: boolean;
     /**
      * Направление ПЕРВОГО клика по заголовку. По умолчанию — как у TanStack:
      * текстовые колонки начинают с asc, числовые с desc. `false` заставляет

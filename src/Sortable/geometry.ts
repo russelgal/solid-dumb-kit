@@ -164,6 +164,24 @@ export function shiftLayout(args: {
   return out
 }
 
+/**
+ * Верх дырки на позиции k — то есть куда приземлится перетаскиваемая.
+ * Нужен, чтобы на дропе доанимировать её до места вместо телепорта:
+ * позиция известна арифметически, мерить ничего не надо.
+ */
+export function holeTop(args: {
+  /** ячейки БЕЗ перетаскиваемой, сверху вниз */
+  cells: Array<Cell>
+  gap: number
+  top: number
+  k: number
+}): number {
+  const { cells, gap, top, k } = args
+  let cursor = top
+  for (let i = 0; i < Math.min(k, cells.length); i++) cursor += cells[i].height + gap
+  return cursor
+}
+
 /** Вертикальный список в пределах одной колонки. */
 export function listLayout(args: {
   ids: Array<string>

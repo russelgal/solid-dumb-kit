@@ -715,6 +715,12 @@ function shiftLayout(args) {
   }
   return out;
 }
+function holeTop(args) {
+  const { cells, gap, top, k } = args;
+  let cursor = top;
+  for (let i = 0; i < Math.min(k, cells.length); i++) cursor += cells[i].height + gap;
+  return cursor;
+}
 function listLayout(args) {
   const { ids, dragId, fromIndex, k, cells } = args;
   if (!cells.length) return [];
@@ -829,10 +835,13 @@ function createDumbSortable(opts) {
     drag.lastX = ev.clientX;
     drag.lastY = ev.clientY;
   }
-  function cleanup() {
-    if (!drag) return;
-    const d = drag;
-    if (d.raf) cancelAnimationFrame(d.raf);
+  function detach() {
+    document.body.style.userSelect = "";
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+  }
+  function resetStyles(d) {
     const reset = (el) => {
       el.style.transition = "";
       el.style.transform = "";
@@ -845,17 +854,57 @@ function createDumbSortable(opts) {
     };
     reset(d.dragEl);
     for (const el of d.touched) reset(el);
-    document.body.style.userSelect = "";
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-    window.removeEventListener("pointercancel", onUp);
+  }
+  function cleanup() {
+    if (!drag) return;
+    const d = drag;
+    if (d.raf) cancelAnimationFrame(d.raf);
+    detach();
+    resetStyles(d);
     drag = null;
+  }
+  function land(d, done) {
+    const from = d.cells[d.fromIndex];
+    let tx = 0, ty = 0;
+    if (grid) {
+      const target = d.cells[d.toIndex];
+      if (!target) {
+        done();
+        return;
+      }
+      tx = target.left - from.left;
+      ty = target.top - from.top;
+    } else {
+      ty = holeTop({ cells: d.restCells, gap: d.gap, top: d.top, k: d.toIndex }) - from.top;
+    }
+    const el = d.dragEl;
+    el.style.transition = SLIDE;
+    el.style.transform = `translate(${tx}px,${ty}px)`;
+    let fired = false;
+    const finish = () => {
+      if (fired) return;
+      fired = true;
+      el.removeEventListener("transitionend", finish);
+      done();
+    };
+    el.addEventListener("transitionend", finish);
+    setTimeout(finish, 240);
   }
   function onUp(ev) {
     if (!drag || ev.pointerId !== drag.pid) return;
-    const { fromIndex, toIndex, ready } = drag;
-    cleanup();
-    if (ready && toIndex !== fromIndex) opts.onEnd(fromIndex, toIndex);
+    const d = drag;
+    const { fromIndex, toIndex, ready } = d;
+    if (!ready || toIndex === fromIndex) {
+      cleanup();
+      return;
+    }
+    detach();
+    if (d.raf) cancelAnimationFrame(d.raf);
+    drag = null;
+    land(d, () => {
+      resetStyles(d);
+      opts.onEnd(fromIndex, toIndex);
+    });
   }
   function begin(id, handle, pid, x, y) {
     const dragEl = rowEls.get(id);
@@ -1261,10 +1310,14 @@ function createSortableGroup(opts) {
     drag.lastX = ev.clientX;
     drag.lastY = ev.clientY;
   }
-  function cleanup() {
-    if (!drag) return;
-    const d = drag;
-    if (d.raf) cancelAnimationFrame(d.raf);
+  function detach() {
+    document.body.style.userSelect = "";
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+    window.removeEventListener("keydown", onKey);
+  }
+  function resetStyles(d) {
     if (d.ghost) {
       try {
         d.ghost.hidePopover();
@@ -1279,11 +1332,13 @@ function createSortableGroup(opts) {
       el.style.transform = "";
       el.style.willChange = "";
     }
-    document.body.style.userSelect = "";
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-    window.removeEventListener("pointercancel", onUp);
-    window.removeEventListener("keydown", onKey);
+  }
+  function cleanup() {
+    if (!drag) return;
+    const d = drag;
+    if (d.raf) cancelAnimationFrame(d.raf);
+    detach();
+    resetStyles(d);
     drag = null;
     activeName = null;
     draggingId = null;
@@ -1294,13 +1349,46 @@ function createSortableGroup(opts) {
       cleanup();
     }
   }
+  function land(d, done) {
+    const z = d.zones.get(d.active);
+    const ghost = d.ghost;
+    if (!z || !ghost) {
+      done();
+      return;
+    }
+    const origin = originOf2(z);
+    const s = scrollOf(z.scroller);
+    const targetY = origin.top + holeTop({ cells: z.cells, gap: z.gap, top: z.top, k: d.k }) - s.sy;
+    const targetX = z.cells.length ? origin.left + z.cells[0].left - s.sx : boxOf(z).left;
+    ghost.style.transition = SLIDE2;
+    ghost.style.transform = `translate(${targetX - d.ghostX0}px,${targetY - d.ghostY0}px)`;
+    let fired = false;
+    const finish = () => {
+      if (fired) return;
+      fired = true;
+      ghost.removeEventListener("transitionend", finish);
+      done();
+    };
+    ghost.addEventListener("transitionend", finish);
+    setTimeout(finish, 240);
+  }
   function onUp(ev) {
     if (!drag || ev.pointerId !== drag.pid) return;
-    const { fromList, fromIndex, active, k, ready } = drag;
-    cleanup();
-    if (!ready) return;
-    if (fromList === active && k === fromIndex) return;
-    opts.onEnd({ list: fromList, index: fromIndex }, { list: active, index: k });
+    const d = drag;
+    const { fromList, fromIndex, active, k, ready } = d;
+    if (!ready || fromList === active && k === fromIndex) {
+      cleanup();
+      return;
+    }
+    detach();
+    if (d.raf) cancelAnimationFrame(d.raf);
+    drag = null;
+    activeName = null;
+    draggingId = null;
+    land(d, () => {
+      resetStyles(d);
+      opts.onEnd({ list: fromList, index: fromIndex }, { list: active, index: k });
+    });
   }
   function begin(name, id, handle, pid, x, y) {
     const zone = zones.get(name);
@@ -1327,6 +1415,8 @@ function createSortableGroup(opts) {
       moved: false,
       prevStyle: dragEl.style.cssText,
       ghost: null,
+      ghostX0: 0,
+      ghostY0: 0,
       touched: /* @__PURE__ */ new Set()
     };
     draggingId = id;
@@ -1341,6 +1431,8 @@ function createSortableGroup(opts) {
         d.dragH = r.height;
         injectGhostReset();
         d.ghost = makeGhost(dragEl, r);
+        d.ghostX0 = r.left;
+        d.ghostY0 = r.top;
         dragEl.style.opacity = "0";
       }
       d.ready = true;
@@ -1669,12 +1761,18 @@ function DumbTable(props) {
     get manualSorting() {
       return serverMode();
     },
-    enableSortingRemoval: false,
+    // третий клик по заголовку снимает сортировку (asc → desc → без сортировки)
+    get enableSortingRemoval() {
+      return !props.noSortRemoval;
+    },
     onSortingChange: (updater) => {
       const next = typeof updater === "function" ? updater(sorting()) : updater;
-      if (!next.length) return;
-      if (serverMode()) props.onSort(next[0].id, next[0].desc ? "desc" : "asc");
-      else setLocalSort(next);
+      if (serverMode()) {
+        if (next.length) props.onSort(next[0].id, next[0].desc ? "desc" : "asc");
+        else props.onSort(null, null);
+      } else {
+        setLocalSort(next);
+      }
     },
     getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
     getCoreRowModel: getCoreRowModel(),

@@ -17,7 +17,7 @@
 
 import { onCleanup } from 'solid-js';
 import {
-    autoScrollSpeed, gapOf, nextInsertIndex, shiftLayout, viewOrigin,
+    autoScrollSpeed, gapOf, holeTop, nextInsertIndex, shiftLayout, viewOrigin,
     type Cell, type ViewGeom,
 } from './geometry';
 import { measure, scrollOf, scrollParent } from '../shared/viewport';
@@ -171,6 +171,8 @@ type Drag = {
     touched: Set<HTMLElement>;
     /** клон в top layer, летящий за курсором */
     ghost: HTMLElement | null;
+    /** где клон был закреплён (координаты вьюпорта) */
+    ghostX0: number; ghostY0: number;
 };
 
 export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHandle {
@@ -353,11 +355,15 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         drag.lastY = ev.clientY;
     }
 
-    function cleanup() {
-        if (!drag) return;
-        const d = drag;
-        if (d.raf) cancelAnimationFrame(d.raf);
+    function detach() {
+        document.body.style.userSelect = '';
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        window.removeEventListener('keydown', onKey);
+    }
 
+    function resetStyles(d: Drag) {
         if (d.ghost) {
             try { d.ghost.hidePopover(); } catch { /* noop */ }
             d.ghost.remove();
@@ -370,11 +376,14 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
             el.style.transform = '';
             el.style.willChange = '';
         }
-        document.body.style.userSelect = '';
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-        window.removeEventListener('pointercancel', onUp);
-        window.removeEventListener('keydown', onKey);
+    }
+
+    function cleanup() {
+        if (!drag) return;
+        const d = drag;
+        if (d.raf) cancelAnimationFrame(d.raf);
+        detach();
+        resetStyles(d);
         drag = null;
         activeName = null;
         draggingId = null;
@@ -384,13 +393,52 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         if (ev.key === 'Escape' && drag) { drag.ready = false; cleanup(); }
     }
 
+    /** довести клон до места вставки, чтобы карточка не телепортировалась на дропе */
+    function land(d: Drag, done: () => void) {
+        const z = d.zones.get(d.active);
+        const ghost = d.ghost;
+        if (!z || !ghost) { done(); return; }
+
+        const origin = originOf(z);
+        const s = scrollOf(z.scroller);
+        const targetY = origin.top + holeTop({ cells: z.cells, gap: z.gap, top: z.top, k: d.k }) - s.sy;
+        const targetX = z.cells.length
+            ? origin.left + z.cells[0].left - s.sx
+            : boxOf(z).left;
+
+        ghost.style.transition = SLIDE;
+        ghost.style.transform = `translate(${targetX - d.ghostX0}px,${targetY - d.ghostY0}px)`;
+        let fired = false;
+        const finish = () => {
+            if (fired) return;
+            fired = true;
+            ghost.removeEventListener('transitionend', finish);
+            done();
+        };
+        ghost.addEventListener('transitionend', finish);
+        setTimeout(finish, 240);   // страховка, если transitionend не придёт
+    }
+
     function onUp(ev: PointerEvent) {
         if (!drag || ev.pointerId !== drag.pid) return;
-        const { fromList, fromIndex, active, k, ready } = drag;
-        cleanup();
-        if (!ready) return;
-        if (fromList === active && k === fromIndex) return;
-        opts.onEnd({ list: fromList, index: fromIndex }, { list: active, index: k });
+        const d = drag;
+        const { fromList, fromIndex, active, k, ready } = d;
+
+        if (!ready || (fromList === active && k === fromIndex)) {
+            cleanup();
+            return;
+        }
+
+        // слушатели снимаем сразу, разбор стилей — после приземления
+        detach();
+        if (d.raf) cancelAnimationFrame(d.raf);
+        drag = null;
+        activeName = null;
+        draggingId = null;
+        land(d, () => {
+            resetStyles(d);
+            opts.onEnd({ list: fromList, index: fromIndex }, { list: active, index: k });
+        });
     }
 
     function begin(name: string, id: string, handle: HTMLElement, pid: number, x: number, y: number) {
@@ -408,6 +456,7 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
             raf: 0, ready: false, moved: false,
             prevStyle: dragEl.style.cssText,
             ghost: null,
+            ghostX0: 0, ghostY0: 0,
             touched: new Set(),
         };
         draggingId = id;
@@ -427,6 +476,7 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                 // За курсором летит клон в top layer: overflow колонки его не режет.
                 injectGhostReset();
                 d.ghost = makeGhost(dragEl, r);
+                d.ghostX0 = r.left; d.ghostY0 = r.top;
                 dragEl.style.opacity = '0';
             }
 

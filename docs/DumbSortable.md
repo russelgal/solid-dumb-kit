@@ -129,4 +129,5 @@ Use **either** `bind` alone, **or** `row` + `handle` together (when the handle i
 - **Grid** (`axis: 'grid'`) — items reflow by X/Y delta and jump diagonally when crossing a row boundary (assumes uniform cell size).
 - **Auto-scroll** — dragging near a container/viewport edge scrolls it; speed ramps up the further you push past the edge. Works against the nearest scrollable ancestor, else the window.
 - **Lift affordance** — the dragged element gets a subtle scale + shadow; on touch, a short haptic `vibrate(8)` fires when the long-press triggers.
+- **Landing** — on drop the row animates into its new slot instead of teleporting there; the target position comes from the start snapshot, so nothing is measured.
 - **Coordinates** are computed in container-content space (minus top/left, plus scroll), so hit-testing and shifts are immune to scrolling mid-drag.

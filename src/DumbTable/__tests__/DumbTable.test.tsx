@@ -85,6 +85,26 @@ describe('DumbTable — клиентская сортировка', () => {
     expect(bodyTexts(host)).toEqual(['Альфа', 'Гамма', 'Бета'])   // 10, 20, 30
   })
 
+  it('третий клик сбрасывает сортировку к исходному порядку', () => {
+    const host = mount(() => <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} />)
+    const nameTh = host.querySelectorAll('th')[0] as HTMLElement
+
+    nameTh.click()                                                 // asc
+    expect(bodyTexts(host)).toEqual(['Альфа', 'Бета', 'Гамма'])
+    nameTh.click()                                                 // desc
+    expect(bodyTexts(host)).toEqual(['Гамма', 'Бета', 'Альфа'])
+    nameTh.click()                                                 // сброс
+    expect(bodyTexts(host)).toEqual(['Бета', 'Альфа', 'Гамма'])     // исходный порядок данных
+    expect(host.querySelectorAll('th')[0].textContent).toContain('⇅')
+  })
+
+  it('noSortRemoval оставляет только asc ⇄ desc', () => {
+    const host = mount(() => <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} noSortRemoval />)
+    const nameTh = host.querySelectorAll('th')[0] as HTMLElement
+    nameTh.click(); nameTh.click(); nameTh.click()
+    expect(bodyTexts(host)).toEqual(['Альфа', 'Бета', 'Гамма'])     // снова asc, а не сброс
+  })
+
   it('несортируемая колонка не реагирует на клик', () => {
     const host = mount(() => <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} />)
     ;(host.querySelectorAll('th')[2] as HTMLElement).click()
@@ -104,6 +124,23 @@ describe('DumbTable — серверная сортировка', () => {
     expect(onSort).toHaveBeenCalledWith('name', 'desc')
     // сервер сам вернёт данные — таблица оставляет порядок как есть
     expect(bodyTexts(host)).toEqual(['Бета', 'Альфа', 'Гамма'])
+  })
+
+  it('третий клик отдаёт (null, null) — сервер возвращает порядок по умолчанию', () => {
+    const onSort = vi.fn()
+    const [sort, setSort] = createSignal<string | undefined>('name')
+    const [order, setOrder] = createSignal<'asc' | 'desc'>('asc')
+    const host = mount(() => (
+      <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id}
+                 sort={sort()} order={order()}
+                 onSort={(k, o) => { onSort(k, o); setSort(k ?? undefined); if (o) setOrder(o) }} />
+    ))
+    const nameTh = () => host.querySelectorAll('th')[0] as HTMLElement
+
+    nameTh().click()                       // asc → desc
+    expect(onSort).toHaveBeenLastCalledWith('name', 'desc')
+    nameTh().click()                       // desc → сброс
+    expect(onSort).toHaveBeenLastCalledWith(null, null)
   })
 
   it('клик по другой колонке переключает сортировку на неё', () => {

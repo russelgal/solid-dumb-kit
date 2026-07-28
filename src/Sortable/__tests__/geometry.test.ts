@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, nextInsertIndex, shiftLayout, viewOrigin,
+  autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, holeTop, listLayout, nextInsertIndex, shiftLayout, viewOrigin,
   EDGE, MAX_SPEED, ACCEL, type Cell, type Item,
 } from '../geometry'
 
@@ -185,6 +185,29 @@ describe('shiftLayout — перестановка как сдвиг блока'
 
   it('пустая колонка-приёмник', () => {
     expect(shiftLayout({ count: 0, from: null, to: 0, amount: A })).toEqual([])
+  })
+})
+
+describe('holeTop — куда приземлится перетаскиваемая', () => {
+  const cells = rows(3, 10, 6)          // высоты 10, зазор 6 → 0, 16, 32
+
+  it('вставка в начало — верх колонки', () => {
+    expect(holeTop({ cells, gap: 6, top: 0, k: 0 })).toBe(0)
+  })
+  it('вставка в середину — за первой карточкой с зазором', () => {
+    expect(holeTop({ cells, gap: 6, top: 0, k: 1 })).toBe(16)
+  })
+  it('вставка в конец — за всеми', () => {
+    expect(holeTop({ cells, gap: 6, top: 0, k: 3 })).toBe(48)
+  })
+  it('колонка начинается не с нуля', () => {
+    expect(holeTop({ cells, gap: 6, top: 100, k: 1 })).toBe(116)
+  })
+  it('пустая колонка — сразу верх', () => {
+    expect(holeTop({ cells: [], gap: 6, top: 12, k: 0 })).toBe(12)
+  })
+  it('k больше длины — не выходит за конец', () => {
+    expect(holeTop({ cells, gap: 6, top: 0, k: 99 })).toBe(48)
   })
 })
 
