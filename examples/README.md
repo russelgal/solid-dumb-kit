@@ -7,6 +7,7 @@ Self-contained, copy-pasteable examples — one per component. Each file default
 | [SelectionArea.example.tsx](SelectionArea.example.tsx) | `SelectionArea` — rubber-band select over a card grid |
 | [ResizableGrid.example.tsx](ResizableGrid.example.tsx) | `ResizableGrid` — 3 columns + a second row, persisted |
 | [DumbSortable.example.tsx](DumbSortable.example.tsx) | `DumbSortable` — reorder a list (by handle) and a grid |
+| [Kanban.example.tsx](Kanban.example.tsx) | `createSortableGroup` — dragging **between** scrollable columns (top layer via Popover API) |
 | [DumbTree.example.tsx](DumbTree.example.tsx) | `DumbTree` — tree + flat drag-reorderable list, search, sorting |
 | [DumbTable.example.tsx](DumbTable.example.tsx) | `DumbTable` — sortable columns, row drag-reorder, pagination |
 | [utils.example.tsx](utils.example.tsx) | `utils` — live playground for fmt / genSlug / imgproxyUrl / extractImagesFromZip |

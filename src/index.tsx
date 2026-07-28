@@ -14,6 +14,11 @@ export {
   createDumbSortable,
   type DumbSortableHandle,
   type DumbSortableOptions,
+  createSortableGroup,
+  type SortableGroupHandle,
+  type SortableGroupOptions,
+  type SortableListHandle,
+  type SortableListOptions,
 } from './Sortable'
 export {
   DumbTree,

@@ -7,6 +7,7 @@ import DumbSortableExample from '../DumbSortable.example'
 import ResizableGridExample from '../ResizableGrid.example'
 import DumbTreeExample from '../DumbTree.example'
 import DumbTableExample from '../DumbTable.example'
+import KanbanExample from '../Kanban.example'
 import UtilsExample from '../utils.example'
 
 const mounted: Array<() => void> = []
@@ -25,6 +26,7 @@ const EXAMPLES = [
   ['ResizableGrid', ResizableGridExample],
   ['DumbTree', DumbTreeExample],
   ['DumbTable', DumbTableExample],
+  ['Kanban', KanbanExample],
   ['utils', UtilsExample],
 ] as const
 

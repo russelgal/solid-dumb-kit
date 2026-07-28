@@ -101,4 +101,5 @@ pnpm test           # vitest run (утилиты + смоук-монтирова
 
 ## Прочее
 - Деплой/пуш на git — **только по явной просьбе**. По умолчанию правим локально.
+- `pnpm demo` (dev-сервер) **не запускать** — его поднимает пользователь сам. Для проверки правок хватает `pnpm test`, `pnpm build`, `pnpm demo:build`; живой драг всё равно проверяется руками в браузере.
 - Демо: `playground/` (Vite) → GitHub Pages через Actions (`.github/workflows/pages.yml`, pnpm + `--frozen-lockfile`).

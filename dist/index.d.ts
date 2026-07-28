@@ -126,6 +126,46 @@ type DumbSortableOptions = {
 };
 declare function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandle;
 
+type SortableGroupOptions = {
+    /** перенос завершён: откуда (зона+индекс) и куда */
+    onEnd: (from: {
+        list: string;
+        index: number;
+    }, to: {
+        list: string;
+        index: number;
+    }) => void;
+    /** запретить драг целиком */
+    disabled?: () => boolean;
+    /** тач: удержание до старта драга, мс. По умолчанию 350 */
+    pressDelay?: number;
+    /** мышь: long-press до старта, мс (0 = выкл) */
+    mousePressDelay?: number;
+    /** мышь: дистанция до старта драга, px (0 = сразу) */
+    mouseThreshold?: number;
+};
+type SortableListOptions = {
+    /** визуальный порядок id внутри этой зоны */
+    order: () => string[];
+    /** принимать ли элемент из зоны `from` (по умолчанию принимает всех) */
+    accepts?: (from: string) => boolean;
+};
+type SortableListHandle = {
+    /** ref на контейнер зоны */
+    container: (el: HTMLElement) => void;
+    /** ref на элемент зоны (ручка = дочка с [data-drag-handle]) */
+    bind: (id: string) => (el: HTMLElement) => void;
+};
+type SortableGroupHandle = {
+    /** зарегистрировать зону */
+    list: (name: string, opts: SortableListOptions) => SortableListHandle;
+    /** имя зоны под указателем во время драга (для подсветки), иначе null */
+    activeList: () => string | null;
+    /** id перетаскиваемого элемента, иначе null */
+    draggingId: () => string | null;
+};
+declare function createSortableGroup(opts: SortableGroupOptions): SortableGroupHandle;
+
 type DumbTreeNode = {
     id: number | string;
     parent: number | string;
@@ -363,4 +403,4 @@ declare function configureImgproxy(c: ImgproxyConfig): void;
  */
 declare function imgproxyUrl(src: string, opts?: ImgproxyOps): string;
 
-export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, buildPageNumbers, configureImgproxy, createDumbSortable, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };
+export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, buildPageNumbers, configureImgproxy, createDumbSortable, createSortableGroup, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };

@@ -123,10 +123,48 @@ export function gridLayout(args: {
   return out
 }
 
+/** зазор между строками, выведенный из снимка (первые две ячейки) */
+export function gapOf(cells: Array<Cell>): number {
+  return cells.length > 1 ? Math.max(0, cells[1].top - cells[0].top - cells[0].height) : 0
+}
+
 /**
- * Вертикальный список: накопительная раскладка по РЕАЛЬНЫМ высотам — поэтому
- * строки разной высоты сдвигаются каждая на своё, а не на усреднённый шаг.
- * На позиции k резервируется дырка под перетаскиваемого.
+ * Накопительная укладка колонки по РЕАЛЬНЫМ высотам — строки разной высоты
+ * сдвигаются каждая на своё, а не на усреднённый шаг.
+ *
+ * `hole` — позиция, на которой резервируется место высотой `holeH`
+ * (`null` — без дырки: так колонка-источник смыкается, когда элемент утащили
+ * в соседнюю). Работает и для своей колонки, и для чужой — разница лишь в том,
+ * чьи `ids`/`cells` пришли и чья высота у дырки.
+ */
+export function stackLayout(args: {
+  ids: Array<string>
+  cells: Array<Cell>
+  hole: number | null
+  holeH: number
+  gap: number
+  top: number
+}): Array<{ id: string; dy: number }> {
+  const { ids, cells, hole, holeH, gap, top } = args
+  const out: Array<{ id: string; dy: number }> = []
+  let cursor = top
+  let i = 0
+  for (let slot = 0; slot <= ids.length; slot++) {
+    if (slot === hole) { cursor += holeH + gap; continue }
+    if (i >= ids.length) break
+    const cell = cells[i]
+    const id = ids[i]
+    i++
+    if (!cell) continue
+    out.push({ id, dy: cursor - cell.top })
+    cursor += cell.height + gap
+  }
+  return out
+}
+
+/**
+ * Вертикальный список в пределах одной колонки: дырка под перетаскиваемого
+ * на позиции k, остальные — накопительно по своим высотам.
  */
 export function listLayout(args: {
   ids: Array<string>
@@ -138,22 +176,17 @@ export function listLayout(args: {
   const { ids, dragId, fromIndex, k, cells } = args
   if (!cells.length) return []
 
-  const dragH = cells[fromIndex].height
-  const gap = cells.length > 1 ? Math.max(0, cells[1].top - cells[0].top - cells[0].height) : 0
-  const out: Array<{ id: string; dy: number }> = []
+  const rest: Array<string> = []
+  const restCells: Array<Cell> = []
+  ids.forEach((id, i) => {
+    if (id === dragId) return
+    rest.push(id)
+    restCells.push(cells[i])
+  })
 
-  let cursor = cells[0].top
-  let oi = 0
-  for (let v = 0; v < ids.length; v++) {
-    if (v === k) { cursor += dragH + gap; continue }   // дырка под перетаскиваемого
-    while (ids[oi] === dragId) oi++                    // сам перетаскиваемый пропускается
-    const cell = cells[oi]
-    const id = ids[oi]
-    oi++
-    if (cell) {
-      out.push({ id, dy: cursor - cell.top })
-      cursor += cell.height + gap
-    }
-  }
-  return out
+  return stackLayout({
+    ids: rest, cells: restCells,
+    hole: k, holeH: cells[fromIndex].height,
+    gap: gapOf(cells), top: cells[0].top,
+  })
 }

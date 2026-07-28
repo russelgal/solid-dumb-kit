@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  autoScrollSpeed, clampDragged, gridLayout, hitIndex, listLayout, viewOrigin,
+  autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, stackLayout, viewOrigin,
   EDGE, MAX_SPEED, ACCEL, type Cell, type Item,
 } from '../geometry'
 
@@ -95,6 +95,70 @@ describe('listLayout — раскладка вертикального спис�
 
   it('пустой снимок не роняет', () => {
     expect(listLayout({ ids, dragId: 'a', fromIndex: 0, k: 0, cells: [] })).toEqual([])
+  })
+})
+
+describe('stackLayout — раскладка колонки (основа кросс-контейнерного драга)', () => {
+  const ids = ['a', 'b', 'c']
+
+  it('без дырки колонка смыкается сверху (источник, из которого утащили)', () => {
+    // карточки лежали на 0/10/20, «дырки» больше нет — все едут вверх плотно
+    const cells = rows(3)
+    const moves = stackLayout({ ids, cells, hole: null, holeH: 10, gap: 0, top: 0 })
+    expect(moves).toEqual([{ id: 'a', dy: 0 }, { id: 'b', dy: 0 }, { id: 'c', dy: 0 }])
+  })
+
+  it('дырка в начале сдвигает всю колонку вниз на высоту гостя', () => {
+    const moves = stackLayout({ ids, cells: rows(3), hole: 0, holeH: 24, gap: 0, top: 0 })
+    expect(moves).toEqual([{ id: 'a', dy: 24 }, { id: 'b', dy: 24 }, { id: 'c', dy: 24 }])
+  })
+
+  it('дырка в середине двигает только тех, кто ниже', () => {
+    const moves = stackLayout({ ids, cells: rows(3), hole: 1, holeH: 24, gap: 0, top: 0 })
+    expect(moves).toEqual([{ id: 'a', dy: 0 }, { id: 'b', dy: 24 }, { id: 'c', dy: 24 }])
+  })
+
+  it('дырка в конце никого не двигает', () => {
+    const moves = stackLayout({ ids, cells: rows(3), hole: 3, holeH: 24, gap: 0, top: 0 })
+    expect(moves).toEqual([{ id: 'a', dy: 0 }, { id: 'b', dy: 0 }, { id: 'c', dy: 0 }])
+  })
+
+  it('высота гостя может отличаться от местных карточек', () => {
+    const moves = stackLayout({ ids, cells: rows(3, 10, 4), hole: 1, holeH: 40, gap: 4, top: 0 })
+    // местные: 10+4 шаг; гость 40 + зазор 4 → нижние уезжают на 44
+    expect(moves).toEqual([{ id: 'a', dy: 0 }, { id: 'b', dy: 44 }, { id: 'c', dy: 44 }])
+  })
+
+  it('пустая колонка-приёмник: двигать нечего', () => {
+    expect(stackLayout({ ids: [], cells: [], hole: 0, holeH: 40, gap: 0, top: 0 })).toEqual([])
+  })
+
+  it('колонка начинается не с нуля (прокрученный контейнер)', () => {
+    const cells: Cell[] = [
+      { left: 0, top: 100, width: 100, height: 10 },
+      { left: 0, top: 110, width: 100, height: 10 },
+    ]
+    const moves = stackLayout({ ids: ['a', 'b'], cells, hole: 0, holeH: 10, gap: 0, top: 100 })
+    expect(moves).toEqual([{ id: 'a', dy: 10 }, { id: 'b', dy: 10 }])
+  })
+})
+
+describe('gapOf', () => {
+  it('выводит зазор из первых двух ячеек', () => {
+    expect(gapOf(rows(3, 10, 6))).toBe(6)
+  })
+  it('без зазора — ноль', () => {
+    expect(gapOf(rows(3, 10, 0))).toBe(0)
+  })
+  it('одна ячейка — зазор неизвестен, считаем нулём', () => {
+    expect(gapOf(rows(1))).toBe(0)
+  })
+  it('отрицательный зазор (перекрытие) не пропускается', () => {
+    const cells: Cell[] = [
+      { left: 0, top: 0, width: 10, height: 20 },
+      { left: 0, top: 10, width: 10, height: 20 },
+    ]
+    expect(gapOf(cells)).toBe(0)
   })
 })
 

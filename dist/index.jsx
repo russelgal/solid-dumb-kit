@@ -374,29 +374,47 @@ function gridLayout(args) {
   });
   return out;
 }
+function gapOf(cells) {
+  return cells.length > 1 ? Math.max(0, cells[1].top - cells[0].top - cells[0].height) : 0;
+}
+function stackLayout(args) {
+  const { ids, cells, hole, holeH, gap, top } = args;
+  const out = [];
+  let cursor = top;
+  let i = 0;
+  for (let slot = 0; slot <= ids.length; slot++) {
+    if (slot === hole) {
+      cursor += holeH + gap;
+      continue;
+    }
+    if (i >= ids.length) break;
+    const cell = cells[i];
+    const id = ids[i];
+    i++;
+    if (!cell) continue;
+    out.push({ id, dy: cursor - cell.top });
+    cursor += cell.height + gap;
+  }
+  return out;
+}
 function listLayout(args) {
   const { ids, dragId, fromIndex, k, cells } = args;
   if (!cells.length) return [];
-  const dragH = cells[fromIndex].height;
-  const gap = cells.length > 1 ? Math.max(0, cells[1].top - cells[0].top - cells[0].height) : 0;
-  const out = [];
-  let cursor = cells[0].top;
-  let oi = 0;
-  for (let v2 = 0; v2 < ids.length; v2++) {
-    if (v2 === k) {
-      cursor += dragH + gap;
-      continue;
-    }
-    while (ids[oi] === dragId) oi++;
-    const cell = cells[oi];
-    const id = ids[oi];
-    oi++;
-    if (cell) {
-      out.push({ id, dy: cursor - cell.top });
-      cursor += cell.height + gap;
-    }
-  }
-  return out;
+  const rest = [];
+  const restCells = [];
+  ids.forEach((id, i) => {
+    if (id === dragId) return;
+    rest.push(id);
+    restCells.push(cells[i]);
+  });
+  return stackLayout({
+    ids: rest,
+    cells: restCells,
+    hole: k,
+    holeH: cells[fromIndex].height,
+    gap: gapOf(cells),
+    top: cells[0].top
+  });
 }
 
 // src/Sortable/sortableCore.ts
@@ -742,6 +760,440 @@ function DumbSortable(props) {
     return el;
   }}
     </For2>;
+}
+
+// src/Sortable/sortableGroup.ts
+import { onCleanup as onCleanup3 } from "solid-js";
+var SLIDE2 = "transform .18s cubic-bezier(.2,.8,.2,1)";
+var LONGPRESS2 = 350;
+var MOVE_TOL2 = 10;
+var LIFT_SHADOW2 = "0 12px 28px -8px rgba(0,0,0,.35)";
+var RESET_STYLE_ID = "dumb-sortable-group-reset";
+var canPopover = () => typeof HTMLElement !== "undefined" && typeof HTMLElement.prototype.showPopover === "function";
+function injectReset() {
+  if (typeof document === "undefined" || document.getElementById(RESET_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = RESET_STYLE_ID;
+  style.textContent = `@layer dumb-sortable {
+  [data-dumb-dragging]:popover-open {
+    position: fixed; inset: auto; margin: 0; padding: 0; border: 0;
+    background: transparent; color: inherit; overflow: visible;
+  }
+}`;
+  document.head.appendChild(style);
+}
+function scrollParent2(el) {
+  let n = el;
+  while (n) {
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === "auto" || oy === "scroll" || oy === "overlay") && n.scrollHeight > n.clientHeight) return n;
+    n = n.parentElement;
+  }
+  return null;
+}
+function measure2(scroller) {
+  if (scroller) {
+    const r = scroller.getBoundingClientRect();
+    return {
+      top: r.top,
+      left: r.left,
+      clientH: scroller.clientHeight,
+      clientW: scroller.clientWidth,
+      max: scroller.scrollHeight - scroller.clientHeight,
+      winX: window.scrollX,
+      winY: window.scrollY
+    };
+  }
+  const se = document.scrollingElement || document.documentElement;
+  return {
+    top: 0,
+    left: 0,
+    clientH: window.innerHeight,
+    clientW: window.innerWidth,
+    max: se.scrollHeight - window.innerHeight,
+    winX: 0,
+    winY: 0
+  };
+}
+function scrollOf2(scroller) {
+  return scroller ? { sx: scroller.scrollLeft, sy: scroller.scrollTop } : { sx: window.scrollX, sy: window.scrollY };
+}
+function originOf2(z) {
+  return z.scroller ? viewOrigin(z.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
+}
+function boxOf(z) {
+  const dx = window.scrollX - z.boxWinX;
+  const dy = window.scrollY - z.boxWinY;
+  return { top: z.boxTop - dy, left: z.boxLeft - dx, right: z.boxLeft - dx + z.boxW, bottom: z.boxTop - dy + z.boxH };
+}
+function createSortableGroup(opts) {
+  const pressDelay = opts.pressDelay ?? LONGPRESS2;
+  const mousePress = opts.mousePressDelay ?? 0;
+  const mouseThresh = opts.mouseThreshold ?? 0;
+  const zones = /* @__PURE__ */ new Map();
+  let drag = null;
+  let activeName = null;
+  let draggingId = null;
+  function snapshot(cb) {
+    const out = /* @__PURE__ */ new Map();
+    const targets = [];
+    for (const z of zones.values()) {
+      if (z.el) targets.push(z.el);
+      for (const id of z.opts.order()) {
+        const el = z.els.get(id);
+        if (el) targets.push(el);
+      }
+    }
+    if (!targets.length) {
+      cb(out);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) out.set(e.target, e.boundingClientRect);
+      io.disconnect();
+      cb(out);
+    });
+    for (const t of targets) io.observe(t);
+  }
+  function buildZoneSnaps(rects, dragId) {
+    const snaps = /* @__PURE__ */ new Map();
+    for (const z of zones.values()) {
+      if (!z.el) continue;
+      const scroller = scrollParent2(z.el);
+      const geom = measure2(scroller);
+      const s0 = scrollOf2(scroller);
+      const box = rects.get(z.el);
+      const origin = scroller ? viewOrigin(geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
+      const ids = [];
+      const cells = [];
+      for (const id of z.opts.order()) {
+        if (id === dragId) continue;
+        const el = z.els.get(id);
+        const r = el && rects.get(el);
+        if (!r) continue;
+        ids.push(id);
+        cells.push({
+          left: r.left - origin.left + s0.sx,
+          top: r.top - origin.top + s0.sy,
+          width: r.width,
+          height: r.height
+        });
+      }
+      snaps.set(z.name, {
+        name: z.name,
+        scroller,
+        geom,
+        boxTop: box ? box.top : geom.top,
+        boxLeft: box ? box.left : geom.left,
+        boxW: box ? box.width : geom.clientW,
+        boxH: box ? box.height : geom.clientH,
+        boxWinX: window.scrollX,
+        boxWinY: window.scrollY,
+        scrollX0: s0.sx,
+        scrollY0: s0.sy,
+        ids,
+        cells,
+        others: ids.map((id, i) => {
+          const c = cells[i];
+          return { id, cx: c.left + c.width / 2, cy: c.top + c.height / 2, top: c.top, bottom: c.top + c.height };
+        }),
+        top: cells.length ? cells[0].top : s0.sy,
+        gap: gapOf(cells)
+      });
+    }
+    return snaps;
+  }
+  function zoneAt(d, x, y) {
+    for (const z of d.zones.values()) {
+      const b = boxOf(z);
+      if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom) {
+        const accepts = zones.get(z.name)?.opts.accepts;
+        if (accepts && !accepts(d.fromList)) continue;
+        return z.name;
+      }
+    }
+    return d.active;
+  }
+  function frame() {
+    if (!drag) return;
+    const d = drag;
+    d.dragEl.style.transform = `translate(${d.lastX - d.startX}px,${d.lastY - d.startY}px)`;
+    if (d.ready) {
+      const active = zoneAt(d, d.lastX, d.lastY);
+      d.active = active;
+      activeName = active;
+      const z = d.zones.get(active);
+      if (z) {
+        const origin = originOf2(z);
+        let { sx, sy } = scrollOf2(z.scroller);
+        const speed = d.moved ? autoScrollSpeed({
+          pointerY: d.lastY,
+          viewTop: origin.top,
+          clientH: z.geom.clientH,
+          scrollY: sy,
+          scrollMax: z.geom.max
+        }) : 0;
+        if (speed) {
+          if (z.scroller) z.scroller.scrollTop += speed;
+          else window.scrollBy(0, speed);
+          ({ sx, sy } = scrollOf2(z.scroller));
+        }
+        const pX = d.lastX - origin.left + sx;
+        const pY = d.lastY - origin.top + sy;
+        d.k = hitIndex(z.others, pX, pY, false);
+        for (const zz of d.zones.values()) {
+          const hole = zz.name === active ? d.k : null;
+          const moves = stackLayout({
+            ids: zz.ids,
+            cells: zz.cells,
+            hole,
+            holeH: d.dragH,
+            gap: zz.gap,
+            top: zz.top
+          });
+          for (const m of moves) {
+            const el = zones.get(zz.name)?.els.get(m.id);
+            if (!el) continue;
+            const shift = zz.name === d.fromList && zz.ids.indexOf(m.id) >= d.fromIndex ? d.dragH + zz.gap : 0;
+            const dy = m.dy + shift;
+            el.style.transform = dy ? `translateY(${dy}px)` : "";
+          }
+        }
+      }
+    }
+    d.raf = requestAnimationFrame(frame);
+  }
+  function onMove(ev) {
+    if (!drag || ev.pointerId !== drag.pid) return;
+    if (!drag.moved && (Math.abs(ev.clientX - drag.startX) > 2 || Math.abs(ev.clientY - drag.startY) > 2)) drag.moved = true;
+    drag.lastX = ev.clientX;
+    drag.lastY = ev.clientY;
+  }
+  function cleanup() {
+    if (!drag) return;
+    const d = drag;
+    if (d.raf) cancelAnimationFrame(d.raf);
+    if (d.popover) {
+      try {
+        d.dragEl.hidePopover();
+      } catch {
+      }
+      d.dragEl.removeAttribute("popover");
+    }
+    d.dragEl.removeAttribute("data-dumb-dragging");
+    d.dragEl.style.cssText = d.prevStyle;
+    for (const z of d.zones.values()) {
+      const zone = zones.get(z.name);
+      if (!zone) continue;
+      for (const id of z.ids) {
+        const el = zone.els.get(id);
+        if (!el) continue;
+        el.style.transition = "";
+        el.style.transform = "";
+        el.style.willChange = "";
+      }
+    }
+    document.body.style.userSelect = "";
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+    window.removeEventListener("keydown", onKey);
+    drag = null;
+    activeName = null;
+    draggingId = null;
+  }
+  function onKey(ev) {
+    if (ev.key === "Escape" && drag) {
+      drag.ready = false;
+      cleanup();
+    }
+  }
+  function onUp(ev) {
+    if (!drag || ev.pointerId !== drag.pid) return;
+    const { fromList, fromIndex, active, k, ready } = drag;
+    cleanup();
+    if (!ready) return;
+    if (fromList === active && k === fromIndex) return;
+    opts.onEnd({ list: fromList, index: fromIndex }, { list: active, index: k });
+  }
+  function begin(name, id, handle, pid, x, y) {
+    const zone = zones.get(name);
+    const dragEl = zone?.els.get(id);
+    if (!zone || !dragEl) return;
+    const fromIndex = zone.opts.order().indexOf(id);
+    if (fromIndex < 0) return;
+    injectReset();
+    drag = {
+      id,
+      fromList: name,
+      fromIndex,
+      dragEl,
+      pid,
+      startX: x,
+      startY: y,
+      lastX: x,
+      lastY: y,
+      ghostTop: 0,
+      ghostLeft: 0,
+      ghostW: 0,
+      ghostH: 0,
+      dragH: 0,
+      zones: /* @__PURE__ */ new Map(),
+      active: name,
+      k: fromIndex,
+      raf: 0,
+      ready: false,
+      moved: false,
+      popover: canPopover(),
+      prevStyle: dragEl.style.cssText
+    };
+    draggingId = id;
+    activeName = name;
+    document.body.style.userSelect = "none";
+    snapshot((rects) => {
+      if (!drag || drag.id !== id) return;
+      const d = drag;
+      const r = rects.get(dragEl);
+      d.zones = buildZoneSnaps(rects, id);
+      if (r) {
+        d.ghostTop = r.top;
+        d.ghostLeft = r.left;
+        d.ghostW = r.width;
+        d.ghostH = r.height;
+        d.dragH = r.height;
+        dragEl.setAttribute("data-dumb-dragging", "");
+        if (d.popover) {
+          dragEl.setAttribute("popover", "manual");
+          try {
+            dragEl.showPopover();
+          } catch {
+            d.popover = false;
+          }
+        }
+        dragEl.style.position = "fixed";
+        dragEl.style.margin = "0";
+        dragEl.style.top = `${r.top}px`;
+        dragEl.style.left = `${r.left}px`;
+        dragEl.style.width = `${r.width}px`;
+        dragEl.style.height = `${r.height}px`;
+        dragEl.style.zIndex = "9999";
+        dragEl.style.pointerEvents = "none";
+        dragEl.style.willChange = "transform";
+        dragEl.style.boxShadow = LIFT_SHADOW2;
+        dragEl.style.cursor = "grabbing";
+      }
+      for (const z of d.zones.values()) {
+        const zz = zones.get(z.name);
+        if (!zz) continue;
+        for (const oid of z.ids) {
+          const el = zz.els.get(oid);
+          if (el) {
+            el.style.transition = SLIDE2;
+            el.style.willChange = "transform";
+          }
+        }
+      }
+      d.ready = true;
+    });
+    try {
+      handle.setPointerCapture(pid);
+    } catch {
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("keydown", onKey);
+    drag.raf = requestAnimationFrame(frame);
+  }
+  let pending = null;
+  function addPend() {
+    window.addEventListener("pointermove", pendMove);
+    window.addEventListener("pointerup", pendCancel);
+    window.addEventListener("pointercancel", pendCancel);
+  }
+  function clearPending() {
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    window.removeEventListener("pointermove", pendMove);
+    window.removeEventListener("pointerup", pendCancel);
+    window.removeEventListener("pointercancel", pendCancel);
+    pending = null;
+  }
+  function pendMove(ev) {
+    if (!pending || ev.pointerId !== pending.pid) return;
+    const moved = Math.abs(ev.clientX - pending.x) > pending.thresh || Math.abs(ev.clientY - pending.y) > pending.thresh;
+    if (!moved) return;
+    if (pending.mode === "press") clearPending();
+    else {
+      const p = pending;
+      clearPending();
+      begin(p.name, p.id, p.handle, p.pid, ev.clientX, ev.clientY);
+    }
+  }
+  function pendCancel(ev) {
+    if (pending && ev.pointerId === pending.pid) clearPending();
+  }
+  function onDown(name, id, handle, ev) {
+    if (ev.button !== 0 || opts.disabled?.() || drag || pending) return;
+    const touch = ev.pointerType === "touch";
+    const delay = touch ? pressDelay : mousePress;
+    if (delay > 0) {
+      pending = { name, id, handle, pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "press", thresh: MOVE_TOL2 };
+      pending.timer = setTimeout(() => {
+        const p = pending;
+        clearPending();
+        if (p) {
+          if (touch) navigator.vibrate?.(8);
+          begin(p.name, p.id, p.handle, p.pid, p.x, p.y);
+        }
+      }, delay);
+      addPend();
+      return;
+    }
+    if (!touch && mouseThresh > 0) {
+      pending = { name, id, handle, pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "dist", thresh: mouseThresh };
+      addPend();
+      return;
+    }
+    ev.preventDefault();
+    begin(name, id, handle, ev.pointerId, ev.clientX, ev.clientY);
+  }
+  onCleanup3(() => {
+    clearPending();
+    cleanup();
+  });
+  return {
+    list(name, listOpts) {
+      const zone = zones.get(name) ?? { name, opts: listOpts, el: null, els: /* @__PURE__ */ new Map() };
+      zone.opts = listOpts;
+      zones.set(name, zone);
+      return {
+        container: (el) => {
+          zone.el = el;
+          onCleanup3(() => {
+            if (zone.el === el) zone.el = null;
+          });
+        },
+        bind: (id) => (el) => {
+          zone.els.set(id, el);
+          const h = el.querySelector("[data-drag-handle]");
+          if (h) h.style.touchAction = "none";
+          const down = (ev) => {
+            const handle = el.querySelector("[data-drag-handle]");
+            if (handle && !(ev.target instanceof Node && handle.contains(ev.target))) return;
+            onDown(name, id, handle || el, ev);
+          };
+          el.addEventListener("pointerdown", down);
+          onCleanup3(() => {
+            el.removeEventListener("pointerdown", down);
+            if (zone.els.get(id) === el) zone.els.delete(id);
+          });
+        }
+      };
+    },
+    activeList: () => activeName,
+    draggingId: () => draggingId
+  };
 }
 
 // src/DumbTree/DumbTree.tsx
@@ -1393,6 +1845,7 @@ export {
   buildPageNumbers,
   configureImgproxy,
   createDumbSortable,
+  createSortableGroup,
   extractImagesFromZip,
   fmtDate,
   fmtDateMonth,
