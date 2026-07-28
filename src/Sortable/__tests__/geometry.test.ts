@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, nextInsertIndex, stackLayout, viewOrigin,
+  autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, nextInsertIndex, shiftLayout, viewOrigin,
   EDGE, MAX_SPEED, ACCEL, type Cell, type Item,
 } from '../geometry'
 
@@ -152,48 +152,39 @@ describe('nextInsertIndex — позиция вставки по видимым 
   })
 })
 
-describe('stackLayout — раскладка колонки (основа кросс-контейнерного драга)', () => {
-  const ids = ['a', 'b', 'c']
+describe('shiftLayout — перестановка как сдвиг блока', () => {
+  const A = 46          // высота перетаскиваемой + зазор
 
-  it('без дырки колонка смыкается сверху (источник, из которого утащили)', () => {
-    // карточки лежали на 0/10/20, «дырки» больше нет — все едут вверх плотно
-    const cells = rows(3)
-    const moves = stackLayout({ ids, cells, hole: null, holeH: 10, gap: 0, top: 0 })
-    expect(moves).toEqual([{ id: 'a', dy: 0 }, { id: 'b', dy: 0 }, { id: 'c', dy: 0 }])
+  it('позиция вставки = исходная → НИКТО не двигается', () => {
+    expect(shiftLayout({ count: 5, from: 2, to: 2, amount: A })).toEqual([0, 0, 0, 0, 0])
   })
 
-  it('дырка в начале сдвигает всю колонку вниз на высоту гостя', () => {
-    const moves = stackLayout({ ids, cells: rows(3), hole: 0, holeH: 24, gap: 0, top: 0 })
-    expect(moves).toEqual([{ id: 'a', dy: 24 }, { id: 'b', dy: 24 }, { id: 'c', dy: 24 }])
+  it('едет вниз — поднимается только блок между старым и новым местом', () => {
+    expect(shiftLayout({ count: 5, from: 1, to: 3, amount: A })).toEqual([0, -A, -A, 0, 0])
   })
 
-  it('дырка в середине двигает только тех, кто ниже', () => {
-    const moves = stackLayout({ ids, cells: rows(3), hole: 1, holeH: 24, gap: 0, top: 0 })
-    expect(moves).toEqual([{ id: 'a', dy: 0 }, { id: 'b', dy: 24 }, { id: 'c', dy: 24 }])
+  it('едет вверх — блок опускается', () => {
+    expect(shiftLayout({ count: 5, from: 3, to: 1, amount: A })).toEqual([0, A, A, 0, 0])
   })
 
-  it('дырка в конце никого не двигает', () => {
-    const moves = stackLayout({ ids, cells: rows(3), hole: 3, holeH: 24, gap: 0, top: 0 })
-    expect(moves).toEqual([{ id: 'a', dy: 0 }, { id: 'b', dy: 0 }, { id: 'c', dy: 0 }])
+  it('в самое начало', () => {
+    expect(shiftLayout({ count: 3, from: 2, to: 0, amount: A })).toEqual([A, A, 0])
   })
 
-  it('высота гостя может отличаться от местных карточек', () => {
-    const moves = stackLayout({ ids, cells: rows(3, 10, 4), hole: 1, holeH: 40, gap: 4, top: 0 })
-    // местные: 10+4 шаг; гость 40 + зазор 4 → нижние уезжают на 44
-    expect(moves).toEqual([{ id: 'a', dy: 0 }, { id: 'b', dy: 44 }, { id: 'c', dy: 44 }])
+  it('в самый конец', () => {
+    expect(shiftLayout({ count: 3, from: 0, to: 3, amount: A })).toEqual([-A, -A, -A])
   })
 
-  it('пустая колонка-приёмник: двигать нечего', () => {
-    expect(stackLayout({ ids: [], cells: [], hole: 0, holeH: 40, gap: 0, top: 0 })).toEqual([])
+  it('гость из другой колонки раздвигает всё от точки вставки', () => {
+    expect(shiftLayout({ count: 4, from: null, to: 2, amount: A })).toEqual([0, 0, A, A])
   })
 
-  it('колонка начинается не с нуля (прокрученный контейнер)', () => {
-    const cells: Cell[] = [
-      { left: 0, top: 100, width: 100, height: 10 },
-      { left: 0, top: 110, width: 100, height: 10 },
-    ]
-    const moves = stackLayout({ ids: ['a', 'b'], cells, hole: 0, holeH: 10, gap: 0, top: 100 })
-    expect(moves).toEqual([{ id: 'a', dy: 10 }, { id: 'b', dy: 10 }])
+  it('перетаскиваемую увели к соседям — место держится, никто не двигается', () => {
+    expect(shiftLayout({ count: 4, from: 1, to: null, amount: A })).toEqual([0, 0, 0, 0])
+  })
+
+  it('пустая колонка-приёмник', () => {
+    expect(shiftLayout({ count: 0, from: null, to: 0, amount: A })).toEqual([])
   })
 })
 

@@ -700,44 +700,28 @@ function nextInsertIndex(args) {
 function gapOf(cells) {
   return cells.length > 1 ? Math.max(0, cells[1].top - cells[0].top - cells[0].height) : 0;
 }
-function stackLayout(args) {
-  const { ids, cells, hole, holeH, gap, top } = args;
-  const out = [];
-  let cursor = top;
-  let i = 0;
-  for (let slot = 0; slot <= ids.length; slot++) {
-    if (slot === hole) {
-      cursor += holeH + gap;
-      continue;
-    }
-    if (i >= ids.length) break;
-    const cell = cells[i];
-    const id = ids[i];
-    i++;
-    if (!cell) continue;
-    out.push({ id, dy: cursor - cell.top });
-    cursor += cell.height + gap;
+function shiftLayout(args) {
+  const { count, from, to, amount } = args;
+  const out = new Array(count).fill(0);
+  if (to === null) return out;
+  if (from === null) {
+    for (let i = to; i < count; i++) out[i] = amount;
+    return out;
+  }
+  if (to > from) {
+    for (let i = from; i < to; i++) out[i] = -amount;
+  } else if (to < from) {
+    for (let i = to; i < from; i++) out[i] = amount;
   }
   return out;
 }
 function listLayout(args) {
   const { ids, dragId, fromIndex, k, cells } = args;
   if (!cells.length) return [];
-  const rest = [];
-  const restCells = [];
-  ids.forEach((id, i) => {
-    if (id === dragId) return;
-    rest.push(id);
-    restCells.push(cells[i]);
-  });
-  return stackLayout({
-    ids: rest,
-    cells: restCells,
-    hole: k,
-    holeH: cells[fromIndex].height,
-    gap: gapOf(cells),
-    top: cells[0].top
-  });
+  const rest = ids.filter((id) => id !== dragId);
+  const amount = cells[fromIndex].height + gapOf(cells);
+  const dy = shiftLayout({ count: rest.length, from: fromIndex, to: k, amount });
+  return rest.map((id, i) => ({ id, dy: dy[i] }));
 }
 
 // src/Sortable/sortableCore.ts
@@ -1201,20 +1185,19 @@ function createSortableGroup(opts) {
   }
   function applyLayout(d) {
     for (const zz of d.zones.values()) {
-      const hole = zz.name === d.active ? d.k : zz.name === d.fromList ? d.fromIndex : null;
-      const moves = stackLayout({
-        ids: zz.ids,
-        cells: zz.cells,
-        hole,
-        holeH: d.dragH,
-        gap: zz.gap,
-        top: zz.top
+      const home = zz.name === d.fromList;
+      const to = zz.name === d.active ? d.k : home ? d.fromIndex : null;
+      const dy = shiftLayout({
+        count: zz.ids.length,
+        from: home ? d.fromIndex : null,
+        to,
+        amount: d.dragH + zz.gap
       });
-      for (const m of moves) {
-        const el = zones.get(zz.name)?.els.get(m.id);
-        if (!el) continue;
-        el.style.transform = m.dy ? `translateY(${m.dy}px)` : "";
-      }
+      zz.ids.forEach((id, i) => {
+        const el = zones.get(zz.name)?.els.get(id);
+        if (!el) return;
+        el.style.transform = dy[i] ? `translateY(${dy[i]}px)` : "";
+      });
     }
   }
   function frame() {

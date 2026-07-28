@@ -17,7 +17,7 @@
 
 import { onCleanup } from 'solid-js';
 import {
-    autoScrollSpeed, gapOf, nextInsertIndex, stackLayout, viewOrigin,
+    autoScrollSpeed, gapOf, nextInsertIndex, shiftLayout, viewOrigin,
     type Cell, type ViewGeom,
 } from './geometry';
 import { measure, scrollOf, scrollParent } from '../shared/viewport';
@@ -268,19 +268,19 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
             // Перетаскиваемый остаётся в потоке своей колонки, поэтому её место
             // никуда не девается: в активной зоне дырка едет за указателем, в
             // родной (когда указатель ушёл в другую) — держится там, где была.
-            // Никаких компенсаций схлопывания не нужно — ничего не схлопывается.
-            const hole = zz.name === d.active
-                ? d.k
-                : zz.name === d.fromList ? d.fromIndex : null;
-            const moves = stackLayout({
-                ids: zz.ids, cells: zz.cells,
-                hole, holeH: d.dragH, gap: zz.gap, top: zz.top,
+            const home = zz.name === d.fromList;
+            const to = zz.name === d.active ? d.k : home ? d.fromIndex : null;
+            const dy = shiftLayout({
+                count: zz.ids.length,
+                from: home ? d.fromIndex : null,
+                to,
+                amount: d.dragH + zz.gap,
             });
-            for (const m of moves) {
-                const el = zones.get(zz.name)?.els.get(m.id);
-                if (!el) continue;
-                el.style.transform = m.dy ? `translateY(${m.dy}px)` : '';
-            }
+            zz.ids.forEach((id, i) => {
+                const el = zones.get(zz.name)?.els.get(id);
+                if (!el) return;
+                el.style.transform = dy[i] ? `translateY(${dy[i]}px)` : '';
+            });
         }
     }
 

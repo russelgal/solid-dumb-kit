@@ -127,43 +127,44 @@ export function gapOf(cells: Array<Cell>): number {
 }
 
 /**
- * Накопительная укладка колонки по РЕАЛЬНЫМ высотам — строки разной высоты
- * сдвигаются каждая на своё, а не на усреднённый шаг.
+ * Раскладка = СДВИГ БЛОКА строк ровно на место перетаскиваемой.
  *
- * `hole` — позиция, на которой резервируется место высотой `holeH`
- * (`null` — без дырки: так колонка-источник смыкается, когда элемент утащили
- * в соседнюю). Работает и для своей колонки, и для чужой — разница лишь в том,
- * чьи `ids`/`cells` пришли и чья высота у дырки.
+ * Считаем не «уложим колонку заново», а «кто именно и на сколько уезжает
+ * относительно своей СНЯТОЙ позиции». Это принципиально: накопительная укладка
+ * (`cursor += высота + зазор`) опирается на один усреднённый зазор, и при
+ * субпиксельных высотах каждая следующая строка получает крошечное расхождение
+ * со своим настоящим местом — строки дёргаются на пару пикселей уже в момент
+ * захвата, когда переставлять ещё нечего. Здесь незатронутые строки получают
+ * ровно 0, всегда.
+ *
+ * Индексы — в списке БЕЗ перетаскиваемой.
+ * `from === null` — гость из другой колонки (своего места здесь нет).
+ * `to === null` — перетаскиваемую увели в другую колонку, место держим.
  */
-export function stackLayout(args: {
-  ids: Array<string>
-  cells: Array<Cell>
-  hole: number | null
-  holeH: number
-  gap: number
-  top: number
-}): Array<{ id: string; dy: number }> {
-  const { ids, cells, hole, holeH, gap, top } = args
-  const out: Array<{ id: string; dy: number }> = []
-  let cursor = top
-  let i = 0
-  for (let slot = 0; slot <= ids.length; slot++) {
-    if (slot === hole) { cursor += holeH + gap; continue }
-    if (i >= ids.length) break
-    const cell = cells[i]
-    const id = ids[i]
-    i++
-    if (!cell) continue
-    out.push({ id, dy: cursor - cell.top })
-    cursor += cell.height + gap
+export function shiftLayout(args: {
+  count: number
+  from: number | null
+  to: number | null
+  /** высота перетаскиваемой вместе с зазором */
+  amount: number
+}): Array<number> {
+  const { count, from, to, amount } = args
+  const out = new Array<number>(count).fill(0)
+  if (to === null) return out                       // ушла к соседям — здесь ничего не двигается
+
+  if (from === null) {                              // гость: раздвигаем всё от точки вставки
+    for (let i = to; i < count; i++) out[i] = amount
+    return out
+  }
+  if (to > from) {                                  // едет вниз: блок между старым и новым местом поднимается
+    for (let i = from; i < to; i++) out[i] = -amount
+  } else if (to < from) {                           // едет вверх: блок опускается
+    for (let i = to; i < from; i++) out[i] = amount
   }
   return out
 }
 
-/**
- * Вертикальный список в пределах одной колонки: дырка под перетаскиваемого
- * на позиции k, остальные — накопительно по своим высотам.
- */
+/** Вертикальный список в пределах одной колонки. */
 export function listLayout(args: {
   ids: Array<string>
   dragId: string
@@ -174,17 +175,8 @@ export function listLayout(args: {
   const { ids, dragId, fromIndex, k, cells } = args
   if (!cells.length) return []
 
-  const rest: Array<string> = []
-  const restCells: Array<Cell> = []
-  ids.forEach((id, i) => {
-    if (id === dragId) return
-    rest.push(id)
-    restCells.push(cells[i])
-  })
-
-  return stackLayout({
-    ids: rest, cells: restCells,
-    hole: k, holeH: cells[fromIndex].height,
-    gap: gapOf(cells), top: cells[0].top,
-  })
+  const rest = ids.filter(id => id !== dragId)
+  const amount = cells[fromIndex].height + gapOf(cells)
+  const dy = shiftLayout({ count: rest.length, from: fromIndex, to: k, amount })
+  return rest.map((id, i) => ({ id, dy: dy[i] }))
 }
