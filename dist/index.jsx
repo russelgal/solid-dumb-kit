@@ -768,6 +768,46 @@ var SLIDE2 = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS2 = 350;
 var MOVE_TOL2 = 10;
 var LIFT_SHADOW2 = "0 12px 28px -8px rgba(0,0,0,.35)";
+var RESET_STYLE_ID = "dumb-sortable-ghost";
+var canPopover = () => typeof HTMLElement !== "undefined" && typeof HTMLElement.prototype.showPopover === "function";
+function injectGhostReset() {
+  if (typeof document === "undefined" || document.getElementById(RESET_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = RESET_STYLE_ID;
+  style.textContent = `@layer dumb-sortable {
+  [data-dumb-ghost]:popover-open {
+    position: fixed; inset: auto; margin: 0; padding: 0; border: 0;
+    background: transparent; color: inherit; overflow: visible;
+  }
+}`;
+  document.head.appendChild(style);
+}
+function makeGhost(src, r) {
+  const ghost = src.cloneNode(true);
+  ghost.setAttribute("data-dumb-ghost", "");
+  ghost.removeAttribute("id");
+  src.insertAdjacentElement("afterend", ghost);
+  if (canPopover()) {
+    ghost.setAttribute("popover", "manual");
+    try {
+      ghost.showPopover();
+    } catch {
+    }
+  }
+  ghost.style.boxSizing = "border-box";
+  ghost.style.position = "fixed";
+  ghost.style.margin = "0";
+  ghost.style.top = `${r.top}px`;
+  ghost.style.left = `${r.left}px`;
+  ghost.style.width = `${r.width}px`;
+  ghost.style.height = `${r.height}px`;
+  ghost.style.zIndex = "9999";
+  ghost.style.pointerEvents = "none";
+  ghost.style.willChange = "transform";
+  ghost.style.boxShadow = LIFT_SHADOW2;
+  ghost.style.cursor = "grabbing";
+  return ghost;
+}
 function scrollParent2(el) {
   let n = el;
   while (n) {
@@ -924,15 +964,9 @@ function createSortableGroup(opts) {
   function frame() {
     if (!drag) return;
     const d = drag;
-    const home = d.zones.get(d.fromList);
-    let dx = d.lastX - d.startX;
-    let dy = d.lastY - d.startY;
-    if (home) {
-      const s = scrollOf2(home.scroller);
-      dx += s.sx - home.scrollX0;
-      dy += s.sy - home.scrollY0;
+    if (d.ghost) {
+      d.ghost.style.transform = `translate(${d.lastX - d.startX}px,${d.lastY - d.startY}px)`;
     }
-    d.dragEl.style.transform = `translate(${dx}px,${dy}px)`;
     if (d.ready) {
       const active = zoneAt(d, d.lastX, d.lastY);
       d.active = active;
@@ -971,6 +1005,14 @@ function createSortableGroup(opts) {
     if (!drag) return;
     const d = drag;
     if (d.raf) cancelAnimationFrame(d.raf);
+    if (d.ghost) {
+      try {
+        d.ghost.hidePopover();
+      } catch {
+      }
+      d.ghost.remove();
+      d.ghost = null;
+    }
     d.dragEl.style.cssText = d.prevStyle;
     for (const z of d.zones.values()) {
       const zone = zones.get(z.name);
@@ -1029,7 +1071,8 @@ function createSortableGroup(opts) {
       raf: 0,
       ready: false,
       moved: false,
-      prevStyle: dragEl.style.cssText
+      prevStyle: dragEl.style.cssText,
+      ghost: null
     };
     draggingId = id;
     activeName = name;
@@ -1041,12 +1084,9 @@ function createSortableGroup(opts) {
       d.zones = buildZoneSnaps(rects, id);
       if (r) {
         d.dragH = r.height;
-        dragEl.style.position = "relative";
-        dragEl.style.zIndex = "2";
-        dragEl.style.willChange = "transform";
-        dragEl.style.boxShadow = LIFT_SHADOW2;
-        dragEl.style.cursor = "grabbing";
-        dragEl.style.transition = "box-shadow .15s ease";
+        injectGhostReset();
+        d.ghost = makeGhost(dragEl, r);
+        dragEl.style.opacity = "0";
       }
       d.ready = true;
       applyLayout(d);

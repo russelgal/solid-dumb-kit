@@ -1,7 +1,7 @@
 // createSortableGroup — перетаскивание МЕЖДУ контейнерами (канбан).
-// Перетаскиваемая карточка остаётся в потоке своей колонки (двигается только
-// transform'ом), поэтому колонки не схлопываются и высота не скачет. Плата:
-// колонкам нужен overflow: visible — иначе карточку обрежет на выезде наружу.
+// Оригинал карточки остаётся в потоке своей колонки (просто прячется), поэтому
+// колонки не схлопываются и высота не скачет. За курсором летит клон в top layer
+// (Popover API) — его не режет overflow, так что колонки могут скроллиться.
 import { createSignal, For, Show } from 'solid-js'
 import { createSortableGroup } from 'solid-dumb-kit'
 
@@ -77,12 +77,12 @@ export default function KanbanExample() {
   return (
     <div style={{ padding: '16px', 'max-width': '1100px', margin: '0 auto', color: '#0f172a' }}>
       <p style={{ margin: '0 0 8px', 'font-size': '13px', color: '#64748b', 'max-width': '76ch' }}>
-        Тащи карточку за <b>⠿</b> в любую колонку. Карточка остаётся в потоке своей колонки
-        и двигается только <code>transform</code>, поэтому колонки не схлопываются и высота
-        не скачет — но и <code>overflow</code> у колонок должен быть <code>visible</code>,
-        иначе карточку обрежет на выезде. Место, откуда её взяли, держится до дропа, а
-        колонка-приёмник раздвигается под вставку. <b>Esc</b> отменяет перенос.
-        Из «Готово» в «Бэклог» перенести нельзя — это <code>accepts</code>.
+        Тащи карточку за <b>⠿</b> в любую колонку. Оригинал остаётся в потоке (прячется),
+        поэтому колонки не схлопываются и высота не скачет, а за курсором летит клон
+        в <b>top layer</b> — его не режет <code>overflow</code>, так что колонки спокойно
+        скроллятся. Место, откуда карточку взяли, держится до дропа, колонка-приёмник
+        раздвигается под вставку. <b>Esc</b> отменяет перенос. Из «Готово» в «Бэклог»
+        перенести нельзя — это <code>accepts</code>.
       </p>
 
       <div style={{ 'margin-bottom': '12px', 'font-size': '13px', 'min-height': '20px', color: '#0f172a' }}>
@@ -112,8 +112,8 @@ export default function KanbanExample() {
                   ref={lists[colId].container}
                   style={{
                     display: 'flex', 'flex-direction': 'column', gap: '8px',
-                    padding: '8px', 'min-height': '120px',
-                    // overflow: visible — иначе колонка обрежет карточку на выезде
+                    padding: '8px', 'min-height': '120px', 'max-height': '46vh',
+                    'overflow-y': 'auto', 'overflow-x': 'hidden',
                   }}
                 >
                   <For each={board()[colId]}>

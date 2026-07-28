@@ -6,12 +6,12 @@
 //   • снимок один на все зоны (элементы + сами контейнеры одним IO);
 //   • у каждой зоны свой скроллер, геометрия кэшируется на старте, в кадре
 //     читаются только scrollTop/scrollLeft и window.scrollX/Y;
-//   • перетаскиваемый ОСТАЁТСЯ В ПОТОКЕ своей колонки и двигается только
-//     transform'ом. Поэтому колонка не схлопывается, высота контейнера не
-//     скачет, а соседям не нужны компенсации. Плата: если у колонки
-//     overflow скрывает содержимое, карточка обрежется на выезде за её край —
-//     чтобы этого не было, колонке нужен overflow: visible либо (позже)
-//     отрисовка карточки в top layer отдельным слоем.
+//   • оригинал ОСТАЁТСЯ В ПОТОКЕ (просто прячется): его место держится само,
+//     колонка не схлопывается, высота контейнера не скачет, компенсации не нужны.
+//     За курсором летит КЛОН, поднятый в top layer через Popover API — top layer
+//     не обрезается overflow колонки и не зависит от transform-предков.
+//     Клон вставляется рядом с оригиналом, а не в body, поэтому наследует
+//     CSS-контекст (правила вида `.column .card`, переменные) и выглядит так же.
 //
 // Порядок коммитим на pointerup → onEnd({list,index}, {list,index}).
 
@@ -90,6 +90,55 @@ const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
 const LONGPRESS = 350;
 const MOVE_TOL = 10;
 const LIFT_SHADOW = '0 12px 28px -8px rgba(0,0,0,.35)';
+const RESET_STYLE_ID = 'dumb-sortable-ghost';
+
+const canPopover = () =>
+    typeof HTMLElement !== 'undefined' && typeof HTMLElement.prototype.showPopover === 'function';
+
+// UA-стили [popover] (рамка, паддинг, фон, inset:0 + margin:auto) утащили бы клон
+// в центр экрана. Сбрасываем их В СЛОЕ: слой проигрывает любым авторским стилям,
+// поэтому собственное оформление карточки остаётся нетронутым.
+function injectGhostReset() {
+    if (typeof document === 'undefined' || document.getElementById(RESET_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = RESET_STYLE_ID;
+    style.textContent = `@layer dumb-sortable {
+  [data-dumb-ghost]:popover-open {
+    position: fixed; inset: auto; margin: 0; padding: 0; border: 0;
+    background: transparent; color: inherit; overflow: visible;
+  }
+}`;
+    document.head.appendChild(style);
+}
+
+/** копия перетаскиваемого, поднятая в top layer и летящая за курсором */
+function makeGhost(src: HTMLElement, r: DOMRectReadOnly): HTMLElement {
+    const ghost = src.cloneNode(true) as HTMLElement;
+    ghost.setAttribute('data-dumb-ghost', '');
+    ghost.removeAttribute('id');
+    // рядом с оригиналом — чтобы сработали CSS-правила, зависящие от родителя
+    src.insertAdjacentElement('afterend', ghost);
+
+    if (canPopover()) {
+        ghost.setAttribute('popover', 'manual');
+        try { ghost.showPopover(); } catch { /* фолбэк: обычный fixed */ }
+    }
+    // rect — border-box, а width/height задают content-box: без box-sizing
+    // клон раздулся бы ровно на свои паддинги и рамку
+    ghost.style.boxSizing = 'border-box';
+    ghost.style.position = 'fixed';
+    ghost.style.margin = '0';
+    ghost.style.top = `${r.top}px`;
+    ghost.style.left = `${r.left}px`;
+    ghost.style.width = `${r.width}px`;
+    ghost.style.height = `${r.height}px`;
+    ghost.style.zIndex = '9999';
+    ghost.style.pointerEvents = 'none';
+    ghost.style.willChange = 'transform';
+    ghost.style.boxShadow = LIFT_SHADOW;
+    ghost.style.cursor = 'grabbing';
+    return ghost;
+}
 
 function scrollParent(el: HTMLElement): HTMLElement | null {
     let n: HTMLElement | null = el;
@@ -153,6 +202,8 @@ type Drag = {
     ready: boolean;
     moved: boolean;
     prevStyle: string;
+    /** клон в top layer, летящий за курсором */
+    ghost: HTMLElement | null;
 };
 
 export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHandle {
@@ -276,17 +327,11 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         if (!drag) return;
         const d = drag;
 
-        // перетаскиваемый следует за курсором; он в потоке своей колонки, поэтому
-        // компенсируем её прокрутку — иначе при автоскролле уедет вместе с контентом
-        const home = d.zones.get(d.fromList);
-        let dx = d.lastX - d.startX;
-        let dy = d.lastY - d.startY;
-        if (home) {
-            const s = scrollOf(home.scroller);
-            dx += s.sx - home.scrollX0;
-            dy += s.sy - home.scrollY0;
+        // клон висит в top layer (координаты вьюпорта) — просто следует за курсором,
+        // прокрутку компенсировать не нужно: он не внутри колонки
+        if (d.ghost) {
+            d.ghost.style.transform = `translate(${d.lastX - d.startX}px,${d.lastY - d.startY}px)`;
         }
-        d.dragEl.style.transform = `translate(${dx}px,${dy}px)`;
 
         if (d.ready) {
             const active = zoneAt(d, d.lastX, d.lastY);
@@ -331,6 +376,11 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         const d = drag;
         if (d.raf) cancelAnimationFrame(d.raf);
 
+        if (d.ghost) {
+            try { d.ghost.hidePopover(); } catch { /* noop */ }
+            d.ghost.remove();
+            d.ghost = null;
+        }
         d.dragEl.style.cssText = d.prevStyle;
 
         for (const z of d.zones.values()) {
@@ -381,6 +431,7 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
             zones: new Map(), active: name, k: fromIndex,
             raf: 0, ready: false, moved: false,
             prevStyle: dragEl.style.cssText,
+            ghost: null,
         };
         draggingId = id;
         activeName = name;
@@ -394,15 +445,12 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
 
             if (r) {
                 d.dragH = r.height;
-                // Из потока НЕ выводим: место карточки остаётся за ней, поэтому
-                // колонка не схлопывается, высота контейнера не пляшет и соседи
-                // не прыгают. Двигаем только transform — как в sortableCore.
-                dragEl.style.position = 'relative';
-                dragEl.style.zIndex = '2';
-                dragEl.style.willChange = 'transform';
-                dragEl.style.boxShadow = LIFT_SHADOW;
-                dragEl.style.cursor = 'grabbing';
-                dragEl.style.transition = 'box-shadow .15s ease';
+                // Оригинал остаётся в потоке и просто прячется — его место держится
+                // само, поэтому колонка не схлопывается и высота не пляшет.
+                // За курсором летит клон в top layer: overflow колонки его не режет.
+                injectGhostReset();
+                d.ghost = makeGhost(dragEl, r);
+                dragEl.style.opacity = '0';
             }
 
             // Сначала компенсируем схлопывание БЕЗ анимации — иначе соседи прыгнут
