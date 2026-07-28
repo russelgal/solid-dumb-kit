@@ -413,6 +413,9 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                 dragEl.style.margin = '0';
                 dragEl.style.top = `${r.top}px`;
                 dragEl.style.left = `${r.left}px`;
+                // rect — это border-box, а width/height по умолчанию задают content-box:
+                // без box-sizing карточка раздувалась бы ровно на свои паддинги и рамку
+                dragEl.style.boxSizing = 'border-box';
                 dragEl.style.width = `${r.width}px`;
                 dragEl.style.height = `${r.height}px`;
                 dragEl.style.zIndex = '9999';

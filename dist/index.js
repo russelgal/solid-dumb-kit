@@ -1110,6 +1110,7 @@ function createSortableGroup(opts) {
         dragEl.style.margin = "0";
         dragEl.style.top = `${r.top}px`;
         dragEl.style.left = `${r.left}px`;
+        dragEl.style.boxSizing = "border-box";
         dragEl.style.width = `${r.width}px`;
         dragEl.style.height = `${r.height}px`;
         dragEl.style.zIndex = "9999";
