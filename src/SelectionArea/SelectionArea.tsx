@@ -67,10 +67,27 @@ export type SelectionAreaProps = {
 export function SelectionArea(props: SelectionAreaProps) {
   let containerRef!: HTMLDivElement
 
+  /**
+   * viselect растит рамку при прокрутке только если BOUNDARY и есть скроллер:
+   * он смотрит на scrollHeight !== clientHeight и лишь тогда перехватывает wheel,
+   * подправляя верх области. Если же скроллится кто-то внутри, рамка остаётся на
+   * месте, элементы уезжают из-под неё и снимаются — выделение схлопывается до
+   * видимой части. Поэтому: контейнер не скроллится, а потомок скроллится —
+   * берём в boundary его. Единственное чтение layout, и то на монтировании.
+   */
+  const autoBoundary = (): HTMLElement => {
+    const scrolls = (el: HTMLElement) =>
+      el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth
+    if (scrolls(containerRef)) return containerRef
+    const kid = Array.from(containerRef.children)
+      .find((c): c is HTMLElement => c instanceof HTMLElement && scrolls(c))
+    return kid ?? containerRef
+  }
+
   onMount(() => {
     const selection = new VanillaSelectionArea({
       selectables: [props.selectables],
-      boundaries: props.boundaries ?? [containerRef],
+      boundaries: props.boundaries ?? [autoBoundary()],
       container: containerRef,
       selectionAreaClass: props.selectionAreaClass ?? 'viselect-area',
       behaviour: {

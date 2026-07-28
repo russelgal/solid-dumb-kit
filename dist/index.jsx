@@ -3,10 +3,16 @@ import { onMount, onCleanup } from "solid-js";
 import VanillaSelectionArea from "@viselect/vanilla";
 function SelectionArea(props) {
   let containerRef;
+  const autoBoundary = () => {
+    const scrolls = (el) => el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
+    if (scrolls(containerRef)) return containerRef;
+    const kid = Array.from(containerRef.children).find((c) => c instanceof HTMLElement && scrolls(c));
+    return kid ?? containerRef;
+  };
   onMount(() => {
     const selection = new VanillaSelectionArea({
       selectables: [props.selectables],
-      boundaries: props.boundaries ?? [containerRef],
+      boundaries: props.boundaries ?? [autoBoundary()],
       container: containerRef,
       selectionAreaClass: props.selectionAreaClass ?? "viselect-area",
       behaviour: {
