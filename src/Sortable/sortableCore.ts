@@ -23,7 +23,7 @@
 
 import { onCleanup } from 'solid-js';
 import {
-    autoScrollSpeed, clampDragged, gridLayout, hitIndex, listLayout, viewOrigin,
+    autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, nextInsertIndex, viewOrigin,
     type Cell, type Item, type ViewGeom,
 } from './geometry';
 
@@ -45,7 +45,10 @@ type Drag = {
     ids: string[];
     fromIndex: number;
     cells: Cell[];          // позиции ячеек по визуальному индексу (порядок ids)
-    others: Item[];         // чужие ячейки в порядке чтения (для хиттеста)
+    others: Item[];         // чужие ячейки в порядке чтения (хиттест сетки)
+    restCells: Cell[];      // то же без перетаскиваемой (хиттест списка)
+    top: number;            // верх колонки в координатах контента
+    gap: number;
     toIndex: number;
     scroller: HTMLElement | null;
     geom: ViewGeom;         // геометрия скроллера, снятая на старте
@@ -189,7 +192,15 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         if (d.ready) {
             const pX = d.lastX - origin.left + sx;
             const pY = d.lastY - origin.top + sy;
-            const k = hitIndex(d.others, pX, pY, grid);
+            // список: считаем по ВИДИМЫМ позициям от текущей дырки (иначе она
+            // перескакивает раньше, чем курсор дошёл до середины соседа);
+            // сетка: по снятым центрам — там дырки как таковой нет
+            const k = grid
+                ? hitIndex(d.others, pX, pY, true)
+                : nextInsertIndex({
+                    cells: d.restCells, gap: d.gap, top: d.top,
+                    holeH: d.cells[d.fromIndex].height, k: d.toIndex, pointerY: pY,
+                });
             d.toIndex = k;
 
             const moves = grid
@@ -256,7 +267,7 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         drag = {
             id, pid,
             startX: x, startY: y, lastX: x, lastY: y,
-            dragEl, ids, fromIndex, cells: [], others: [], toIndex: fromIndex,
+            dragEl, ids, fromIndex, cells: [], others: [], restCells: [], top: 0, gap: 0, toIndex: fromIndex,
             scroller, geom, scrollX0: s0.sx, scrollY0: s0.sy, raf: 0, ready: false, moved: false,
         };
         dragEl.style.position = 'relative';
@@ -289,6 +300,9 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
                     const l = ox(r), t = oy(r);
                     return { id: oid, cx: l + r.width / 2, cy: t + r.height / 2, top: t, bottom: t + r.height };
                 });
+            drag.restCells = drag.cells.filter((_, i) => ids[i] !== id);
+            drag.top = drag.cells.length ? drag.cells[0].top : 0;
+            drag.gap = gapOf(drag.cells);
             drag.ready = true;
         });
 

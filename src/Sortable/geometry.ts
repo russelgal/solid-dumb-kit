@@ -123,6 +123,52 @@ export function gridLayout(args: {
   return out
 }
 
+/**
+ * Куда встанет карточка — по ВИДИМЫМ сейчас позициям, а не по снятым.
+ *
+ * Раскладка уже раздвинула колонку: карточки ниже дырки стоят на holeH+gap ниже
+ * своих снятых мест. Если сравнивать курсор со снятыми центрами, дырка
+ * перескакивает раньше, чем курсор дошёл до середины видимой карточки (и
+ * позже — при движении вверх). Поэтому считаем от текущего k инкрементально:
+ *   • вниз  — когда курсор прошёл центр карточки, стоящей сразу ПОД дыркой;
+ *   • вверх — когда поднялся выше центра карточки, стоящей сразу НАД ней.
+ * Пороги вниз и вверх разнесены ровно на высоту дырки, поэтому на границе
+ * ничего не дребезжит — гистерезис получается сам собой.
+ */
+export function nextInsertIndex(args: {
+  /** плотные позиции карточек зоны БЕЗ перетаскиваемой, сверху вниз */
+  cells: Array<Cell>
+  gap: number
+  top: number
+  /** высота места, которое занимает перетаскиваемая */
+  holeH: number
+  /** текущая позиция дырки */
+  k: number
+  pointerY: number
+}): number {
+  const { cells, gap, top, holeH, pointerY } = args
+  const n = cells.length
+  if (!n) return 0
+
+  // позиции в плотной укладке (как если бы дырки не было)
+  const pos: number[] = []
+  let cursor = top
+  for (let i = 0; i < n; i++) { pos.push(cursor); cursor += cells[i].height + gap }
+
+  const shift = holeH + gap
+  let k = Math.max(0, Math.min(n, args.k))
+  // центр карточки i при дырке на позиции k
+  const center = (i: number, at: number) => pos[i] + (i >= at ? shift : 0) + cells[i].height / 2
+
+  // за кадр указатель может пройти несколько карточек — двигаем, пока движется
+  for (let guard = 0; guard <= n; guard++) {
+    if (k < n && pointerY > center(k, k)) { k++; continue }
+    if (k > 0 && pointerY < center(k - 1, k)) { k--; continue }
+    break
+  }
+  return k
+}
+
 /** зазор между строками, выведенный из снимка (первые две ячейки) */
 export function gapOf(cells: Array<Cell>): number {
   return cells.length > 1 ? Math.max(0, cells[1].top - cells[0].top - cells[0].height) : 0

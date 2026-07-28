@@ -17,8 +17,8 @@
 
 import { onCleanup } from 'solid-js';
 import {
-    autoScrollSpeed, gapOf, hitIndex, stackLayout, viewOrigin,
-    type Cell, type Item, type ViewGeom,
+    autoScrollSpeed, gapOf, nextInsertIndex, stackLayout, viewOrigin,
+    type Cell, type ViewGeom,
 } from './geometry';
 
 export type SortableGroupOptions = {
@@ -81,7 +81,6 @@ type ZoneSnap = {
     scrollY0: number;
     ids: string[];           // элементы зоны (без перетаскиваемого)
     cells: Cell[];           // их позиции в координатах контента зоны
-    others: Item[];          // то же, для хиттеста
     top: number;             // верх колонки (координаты контента)
     gap: number;
 };
@@ -277,10 +276,6 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                 boxWinX: window.scrollX, boxWinY: window.scrollY,
                 scrollX0: s0.sx, scrollY0: s0.sy,
                 ids, cells,
-                others: ids.map((id, i) => {
-                    const c = cells[i];
-                    return { id, cx: c.left + c.width / 2, cy: c.top + c.height / 2, top: c.top, bottom: c.top + c.height };
-                }),
                 top: allCells.length ? allCells[0].top : s0.sy,
                 gap: gapOf(allCells),
             });
@@ -334,6 +329,7 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         }
 
         if (d.ready) {
+            const prevActive = d.active;
             const active = zoneAt(d, d.lastX, d.lastY);
             d.active = active;
             activeName = active;
@@ -355,9 +351,14 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                     ({ sx, sy } = scrollOf(z.scroller));
                 }
 
-                const pX = d.lastX - origin.left + sx;
                 const pY = d.lastY - origin.top + sy;
-                d.k = hitIndex(z.others, pX, pY, false);
+                // считаем от ТЕКУЩЕЙ дырки по видимым позициям; при заходе в новую
+                // колонку прошлое k к ней не относится — начинаем с нуля
+                const from = active === prevActive ? d.k : 0;
+                d.k = nextInsertIndex({
+                    cells: z.cells, gap: z.gap, top: z.top,
+                    holeH: d.dragH, k: from, pointerY: pY,
+                });
                 applyLayout(d);
             }
         }

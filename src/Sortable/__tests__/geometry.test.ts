@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, stackLayout, viewOrigin,
+  autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, listLayout, nextInsertIndex, stackLayout, viewOrigin,
   EDGE, MAX_SPEED, ACCEL, type Cell, type Item,
 } from '../geometry'
 
@@ -95,6 +95,60 @@ describe('listLayout — раскладка вертикального спис�
 
   it('пустой снимок не роняет', () => {
     expect(listLayout({ ids, dragId: 'a', fromIndex: 0, k: 0, cells: [] })).toEqual([])
+  })
+})
+
+describe('nextInsertIndex — позиция вставки по видимым позициям', () => {
+  // колонка: три карточки по 10px без зазора; тащим карточку высотой 10
+  const cells = rows(3)
+  const base = { cells, gap: 0, top: 0, holeH: 10 }
+
+  it('дырка не двигается, пока курсор внутри неё', () => {
+    // k=1 → видимо: A(0-10), дырка(10-20), B(20-30), C(30-40)
+    expect(nextInsertIndex({ ...base, k: 1, pointerY: 12 })).toBe(1)
+    expect(nextInsertIndex({ ...base, k: 1, pointerY: 19 })).toBe(1)
+  })
+
+  it('вниз переключается по центру ВИДИМОЙ карточки под дыркой, а не снятой', () => {
+    // видимый центр B при k=1 — это 25, а снятый был бы 15
+    expect(nextInsertIndex({ ...base, k: 1, pointerY: 24 })).toBe(1)   // ещё рано
+    expect(nextInsertIndex({ ...base, k: 1, pointerY: 26 })).toBe(2)   // прошли центр
+  })
+
+  it('вверх переключается по центру карточки над дыркой', () => {
+    // k=2 → видимо: A(0-10), B(10-20), дырка(20-30), C(30-40); центр B = 15
+    expect(nextInsertIndex({ ...base, k: 2, pointerY: 16 })).toBe(2)
+    expect(nextInsertIndex({ ...base, k: 2, pointerY: 14 })).toBe(1)
+  })
+
+  it('на границе не дребезжит: пороги вниз и вверх разнесены', () => {
+    // из k=1 вниз порог 25, из k=2 вверх порог 15 — между ними состояние стабильно
+    expect(nextInsertIndex({ ...base, k: 1, pointerY: 20 })).toBe(1)
+    expect(nextInsertIndex({ ...base, k: 2, pointerY: 20 })).toBe(2)
+  })
+
+  it('быстрый рывок проскакивает несколько карточек за кадр', () => {
+    expect(nextInsertIndex({ ...base, k: 0, pointerY: 999 })).toBe(3)
+    expect(nextInsertIndex({ ...base, k: 3, pointerY: -999 })).toBe(0)
+  })
+
+  it('не вылезает за границы списка', () => {
+    expect(nextInsertIndex({ ...base, k: 3, pointerY: 999 })).toBe(3)
+    expect(nextInsertIndex({ ...base, k: 0, pointerY: -999 })).toBe(0)
+  })
+
+  it('пустая колонка — всегда нулевая позиция', () => {
+    expect(nextInsertIndex({ cells: [], gap: 0, top: 0, holeH: 40, k: 0, pointerY: 500 })).toBe(0)
+  })
+
+  it('учитывает разную высоту карточек и зазор', () => {
+    const mixed: Cell[] = [
+      { left: 0, top: 0, width: 10, height: 20 },
+      { left: 0, top: 26, width: 10, height: 60 },
+    ]
+    // k=0: дырка(0-40 c зазором), первая карточка видимо на 46-66, центр 56
+    expect(nextInsertIndex({ cells: mixed, gap: 6, top: 0, holeH: 40, k: 0, pointerY: 50 })).toBe(0)
+    expect(nextInsertIndex({ cells: mixed, gap: 6, top: 0, holeH: 40, k: 0, pointerY: 60 })).toBe(1)
   })
 })
 

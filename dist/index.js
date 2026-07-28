@@ -388,11 +388,9 @@ function clampDragged(args) {
 function hitIndex(others, pX, pY, grid) {
   let k = 0;
   for (const o of others) {
-    if (grid) {
+    {
       if (pY > o.bottom) k++;
       else if (pY >= o.top && pX > o.cx) k++;
-    } else {
-      if (pY > o.cy) k++;
     }
   }
   return k;
@@ -409,6 +407,32 @@ function gridLayout(args) {
     out.push({ id, dx: cell.left - me.left, dy: cell.top - me.top });
   });
   return out;
+}
+function nextInsertIndex(args) {
+  const { cells, gap, top, holeH, pointerY } = args;
+  const n = cells.length;
+  if (!n) return 0;
+  const pos = [];
+  let cursor = top;
+  for (let i = 0; i < n; i++) {
+    pos.push(cursor);
+    cursor += cells[i].height + gap;
+  }
+  const shift = holeH + gap;
+  let k = Math.max(0, Math.min(n, args.k));
+  const center = (i, at) => pos[i] + (i >= at ? shift : 0) + cells[i].height / 2;
+  for (let guard = 0; guard <= n; guard++) {
+    if (k < n && pointerY > center(k, k)) {
+      k++;
+      continue;
+    }
+    if (k > 0 && pointerY < center(k - 1, k)) {
+      k--;
+      continue;
+    }
+    break;
+  }
+  return k;
 }
 function gapOf(cells) {
   return cells.length > 1 ? Math.max(0, cells[1].top - cells[0].top - cells[0].height) : 0;
@@ -563,7 +587,14 @@ function createDumbSortable(opts) {
     if (d.ready) {
       const pX = d.lastX - origin.left + sx;
       const pY = d.lastY - origin.top + sy;
-      const k = hitIndex(d.others, pX, pY, grid);
+      const k = grid ? hitIndex(d.others, pX, pY) : nextInsertIndex({
+        cells: d.restCells,
+        gap: d.gap,
+        top: d.top,
+        holeH: d.cells[d.fromIndex].height,
+        k: d.toIndex,
+        pointerY: pY
+      });
       d.toIndex = k;
       const moves = grid ? gridLayout({ ids: d.ids, dragId: d.id, fromIndex: d.fromIndex, k, cells: d.cells }) : listLayout({ ids: d.ids, dragId: d.id, fromIndex: d.fromIndex, k, cells: d.cells });
       for (const m of moves) {
@@ -630,6 +661,9 @@ function createDumbSortable(opts) {
       fromIndex,
       cells: [],
       others: [],
+      restCells: [],
+      top: 0,
+      gap: 0,
       toIndex: fromIndex,
       scroller,
       geom,
@@ -670,6 +704,9 @@ function createDumbSortable(opts) {
         const l = ox(r), t = oy(r);
         return { id: oid, cx: l + r.width / 2, cy: t + r.height / 2, top: t, bottom: t + r.height };
       });
+      drag.restCells = drag.cells.filter((_, i) => ids[i] !== id);
+      drag.top = drag.cells.length ? drag.cells[0].top : 0;
+      drag.gap = gapOf(drag.cells);
       drag.ready = true;
     });
     try {
@@ -958,10 +995,6 @@ function createSortableGroup(opts) {
         scrollY0: s0.sy,
         ids,
         cells,
-        others: ids.map((id, i) => {
-          const c = cells[i];
-          return { id, cx: c.left + c.width / 2, cy: c.top + c.height / 2, top: c.top, bottom: c.top + c.height };
-        }),
         top: allCells.length ? allCells[0].top : s0.sy,
         gap: gapOf(allCells)
       });
@@ -1004,6 +1037,7 @@ function createSortableGroup(opts) {
       d.ghost.style.transform = `translate(${d.lastX - d.startX}px,${d.lastY - d.startY}px)`;
     }
     if (d.ready) {
+      const prevActive = d.active;
       const active = zoneAt(d, d.lastX, d.lastY);
       d.active = active;
       activeName = active;
@@ -1023,9 +1057,16 @@ function createSortableGroup(opts) {
           else window.scrollBy(0, speed);
           ({ sx, sy } = scrollOf2(z.scroller));
         }
-        const pX = d.lastX - origin.left + sx;
         const pY = d.lastY - origin.top + sy;
-        d.k = hitIndex(z.others, pX, pY, false);
+        const from = active === prevActive ? d.k : 0;
+        d.k = nextInsertIndex({
+          cells: z.cells,
+          gap: z.gap,
+          top: z.top,
+          holeH: d.dragH,
+          k: from,
+          pointerY: pY
+        });
         applyLayout(d);
       }
     }
