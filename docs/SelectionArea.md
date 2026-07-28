@@ -106,6 +106,16 @@ Or point `boundaries` at whatever actually scrolls:
 <SelectionArea selectables=".card" boundaries={['.my-scroll-area']}>
 ```
 
+**Known limitation.** Even wired correctly, the selection is always “whatever the box currently covers” — that's how `@viselect/vanilla` works (`_updateElementSelection` recomputes from live rects, so anything leaving the box is deselected). Scroll far enough during a drag and earlier items can drop out. The same happens in viselect's own demos; we're not working around it.
+
+If you ever need selection to stick, accumulate it yourself instead of mirroring the store:
+
+```tsx
+onSelect={({ store }) =>
+  setSelected(prev => new Set([...prev, ...store.changed.added.map(el => el.dataset.key!)]))
+}
+```
+
 ## `windowScroll` notes
 
 When the selectable area isn't inside its own scroll container (the whole page scrolls), set `windowScroll` so dragging near the viewport edge scrolls the window. It works by briefly enabling a native text selection to trigger the browser's built-in autoscroll; the bundled CSS hides that selection, and it's cleared shortly after the drag stops.
