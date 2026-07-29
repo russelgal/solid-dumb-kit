@@ -56,6 +56,8 @@ const columns: DumbColumn<Product>[] = [
 | `sort` / `order` | `string` / `'asc' \| 'desc'` | — | Active sort, **server mode** (pair with `onSort`). |
 | `onSort` | `(key: string \| null, order: 'asc' \| 'desc' \| null) => void` | — | Present → the server sorts (`manualSorting`), row order is left alone. Absent → sorting happens client-side. A third click clears the sort and calls it with `(null, null)`. |
 | `noSortRemoval` | `boolean` | `false` | Drop the third click: sorting stays `asc ⇄ desc`. |
+| `viewTransition` | `boolean` | `false` | Animate client-side sorting via View Transitions (needs a per-row `view-transition-name`). |
+| `animate` | `boolean` | on, minus `prefers-reduced-motion` | Animate row dragging. |
 | `sortDescFirst` | `boolean` | TanStack default | Direction of the *first* click. By default text columns start `asc` and numeric ones `desc`; see below. |
 | `onReorder` | `(from, to) => void` | — | Enables drag-reorder and the handle column. Indices are into the **displayed** order. |
 | `handle` | `JSX.Element` | `⠿` | Drag handle content. |

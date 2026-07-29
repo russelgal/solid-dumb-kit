@@ -57,6 +57,7 @@ The component renders a `<For>` over `items`, takes the **real DOM node** your `
 | `children` | `(item: T, index: () => number) => JSX.Element` | — (required) | **Must return one root DOM element** — drag binds to it. |
 | `axis` | `'y' \| 'grid'` | `'y'` | `y` = vertical list, `grid` = 2D grid (delta on X and Y, diagonal jump across rows). |
 | `disabled` | `() => boolean` | — | Disable dragging (e.g. while a column sort is active). |
+| `animate` | `boolean` | see below | Animate neighbours parting and the landing. |
 | `pressDelay` | `number` | `350` | Touch: long-press hold (ms) before drag starts; moving earlier = scroll. `0` = start immediately. |
 | `mousePressDelay` | `number` | `0` | Mouse: long-press (ms) before start. Takes priority over `mouseThreshold`. |
 | `mouseThreshold` | `number` | `0` | Mouse: distance (px) to move before drag starts. `0` = start immediately. |
@@ -122,6 +123,14 @@ const s = createDumbSortable({
 | `handle(id)` | `(el: HTMLElement) => void` | Low-level: attach drag-start to a separate handle element. Pair with `row`. |
 
 Use **either** `bind` alone, **or** `row` + `handle` together (when the handle isn't a DOM child of the cell).
+
+## Turning animation off
+
+`animate={false}` drops both the neighbours' transition and the landing — items snap into place instead.
+
+Left unset, animation is **on, but the kit respects `prefers-reduced-motion: reduce`** and switches itself off for users who asked the OS for less movement. An explicit `animate={true}` overrides even that, for the rare case you know better.
+
+The same prop exists on `createDumbSortable`, `createSortableGroup`, `DumbTree` and `DumbTable`.
 
 ## Behaviour details
 

@@ -22,6 +22,7 @@ import {
     type Cell, type ViewGeom,
 } from './geometry';
 import { measure, scrollOf, scrollParent } from '../shared/viewport';
+import { shouldAnimate } from '../shared/motion';
 
 export type SortableGroupOptions = {
     /** перенос завершён: откуда (зона+индекс) и куда */
@@ -37,6 +38,11 @@ export type SortableGroupOptions = {
     mousePressDelay?: number;
     /** мышь: дистанция до старта драга, px (0 = сразу) */
     mouseThreshold?: number;
+    /**
+     * Анимировать расступание карточек и приземление клона.
+     * По умолчанию да, но при системном `prefers-reduced-motion: reduce` — нет.
+     */
+    animate?: boolean;
 };
 
 export type SortableListOptions = {
@@ -298,8 +304,12 @@ export function createSortableGroupEngine(opts: SortableGroupOptions): SortableG
                 // пачку лишних записей и композиторных слоёв на ровном месте.
                 if (!d.touched.has(el)) {
                     d.touched.add(el);
-                    el.style.transition = SLIDE;
                     el.style.willChange = 'transform';
+                    if (!shouldAnimate(opts.animate)) {       // без анимации — двигаем сразу
+                        el.style.transform = `translateY(${dy[i]}px)`;
+                        return;
+                    }
+                    el.style.transition = SLIDE;
                     return;                       // поедет со следующего кадра, зато плавно
                 }
                 el.style.transform = `translateY(${dy[i]}px)`;
@@ -401,6 +411,7 @@ export function createSortableGroupEngine(opts: SortableGroupOptions): SortableG
 
     /** довести клон до места вставки, чтобы карточка не телепортировалась на дропе */
     function land(d: Drag, done: () => void) {
+        if (!shouldAnimate(opts.animate)) { done(); return; }
         const z = d.zones.get(d.active);
         const ghost = d.ghost;
         if (!z || !ghost) { done(); return; }

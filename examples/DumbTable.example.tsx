@@ -134,6 +134,8 @@ export default function DumbTableExample() {
           rows={pageRows()}
           columns={columns}
           rowId={(p) => p.id}
+          // смену сортировки таблица анимирует сама — снаружи её не обернуть
+          viewTransition
           onRowClick={(p) => setPicked(p)}
           headClass="head"
           rowClass={(p) =>

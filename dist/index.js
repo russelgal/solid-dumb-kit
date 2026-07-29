@@ -772,6 +772,15 @@ function listLayout(args) {
   return rest.map((id, i) => ({ id, dy: dy[i] }));
 }
 
+// src/shared/motion.ts
+function prefersReducedMotion() {
+  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+function shouldAnimate(explicit) {
+  if (explicit !== void 0) return explicit;
+  return !prefersReducedMotion();
+}
+
 // src/Sortable/sortableCore.ts
 var SLIDE = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS = 350;
@@ -862,8 +871,12 @@ function createSortableEngine(opts) {
         }
         if (!d.touched.has(el)) {
           d.touched.add(el);
-          el.style.transition = SLIDE;
           el.style.willChange = "transform";
+          if (!shouldAnimate(opts.animate)) {
+            el.style.transform = `translate(${dx}px,${m.dy}px)`;
+            continue;
+          }
+          el.style.transition = SLIDE;
           continue;
         }
         el.style.transform = `translate(${dx}px,${m.dy}px)`;
@@ -906,6 +919,10 @@ function createSortableEngine(opts) {
     drag = null;
   }
   function land(d, done) {
+    if (!shouldAnimate(opts.animate)) {
+      done();
+      return;
+    }
     const from = d.cells[d.fromIndex];
     let tx = 0, ty = 0;
     if (grid) {
@@ -1272,8 +1289,12 @@ function createSortableGroupEngine(opts) {
         }
         if (!d.touched.has(el)) {
           d.touched.add(el);
-          el.style.transition = SLIDE2;
           el.style.willChange = "transform";
+          if (!shouldAnimate(opts.animate)) {
+            el.style.transform = `translateY(${dy[i]}px)`;
+            return;
+          }
+          el.style.transition = SLIDE2;
           return;
         }
         el.style.transform = `translateY(${dy[i]}px)`;
@@ -1368,6 +1389,10 @@ function createSortableGroupEngine(opts) {
     }
   }
   function land(d, done) {
+    if (!shouldAnimate(opts.animate)) {
+      done();
+      return;
+    }
     const z = d.zones.get(d.active);
     const ghost = d.ghost;
     if (!z || !ghost) {
@@ -1591,6 +1616,7 @@ function DumbSortable(props) {
     pressDelay: props.pressDelay,
     mousePressDelay: props.mousePressDelay,
     mouseThreshold: props.mouseThreshold,
+    animate: props.animate,
     onEnd: (from, to) => {
       const next = props.items.slice();
       next.splice(to, 0, next.splice(from, 1)[0]);
@@ -1705,6 +1731,9 @@ function DumbTree(props) {
   const fs = createDumbSortable({
     order: () => flatList().map((n) => String(n.id)),
     disabled: () => !!q().trim(),
+    get animate() {
+      return props.animate;
+    },
     onEnd: (from, to) => props.sortable?.(from, to)
   });
   const toggle = (id) => setExpanded((s) => {
@@ -1931,6 +1960,11 @@ var _tmpl$63 = /* @__PURE__ */ template(`<tr>`);
 var _tmpl$72 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
 var _tmpl$82 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
 var _tmpl$92 = /* @__PURE__ */ template(`<td style="padding:6px 8px">`);
+var withViewTransition = (on, fn) => {
+  const doc = document;
+  if (on && shouldAnimate() && typeof doc.startViewTransition === "function") doc.startViewTransition(fn);
+  else fn();
+};
 function SortMark(props) {
   return (() => {
     var _el$ = _tmpl$13();
@@ -1990,7 +2024,7 @@ function DumbTable(props) {
         if (next.length) props.onSort(next[0].id, next[0].desc ? "desc" : "asc");
         else props.onSort(null, null);
       } else {
-        setLocalSort(next);
+        withViewTransition(props.viewTransition, () => setLocalSort(next));
       }
     },
     getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
@@ -2002,6 +2036,9 @@ function DumbTable(props) {
   const sortable = createDumbSortable({
     order: () => visibleRows().map((r) => r.id),
     disabled: dragDisabled,
+    get animate() {
+      return props.animate;
+    },
     onEnd: (from, to) => props.onReorder?.(from, to)
   });
   const colOf = (columnDef) => columnDef.meta.col;

@@ -8,6 +8,7 @@ import {
   type SortingState,
 } from '@tanstack/solid-table'
 import { createDumbSortable } from '../Sortable/solid'
+import { shouldAnimate } from '../shared/motion'
 
 // Таблица «принеси свои колонки»: описание колонки — простой объект, а не сырой
 // ColumnDef. Сортировка на @tanstack/solid-table (клиентская ИЛИ серверная),
@@ -59,6 +60,16 @@ export type DumbTableProps<T> = {
   /** убрать третий клик-сброс: сортировка будет только asc ⇄ desc */
   noSortRemoval?: boolean
   /**
+   * Анимировать смену сортировки через View Transitions.
+   * Смысл только в клиентском режиме: там состояние меняется внутри таблицы и
+   * снаружи его не обернуть. В серверном режиме оборачивай сам — данные всё
+   * равно приходят от тебя. Строкам нужен уникальный `view-transition-name`
+   * (см. `rowStyle`), иначе браузер сделает кроссфейд всей таблицы.
+   */
+  viewTransition?: boolean
+  /** анимировать перетаскивание строк; по умолчанию да, но не при prefers-reduced-motion */
+  animate?: boolean
+  /**
    * Направление ПЕРВОГО клика по заголовку. По умолчанию — как у TanStack:
    * текстовые колонки начинают с asc, числовые с desc. `false` заставляет
    * все колонки начинать с asc, `true` — с desc.
@@ -84,6 +95,13 @@ export type DumbTableProps<T> = {
   rowStyle?: (row: T, index: number) => JSX.CSSProperties | undefined
   /** содержимое `<tfoot>` */
   footer?: JSX.Element
+}
+
+const withViewTransition = (on: boolean | undefined, fn: () => void) => {
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown }
+  // системная настройка сильнее: просили меньше движения — не анимируем
+  if (on && shouldAnimate() && typeof doc.startViewTransition === 'function') doc.startViewTransition(fn)
+  else fn()
 }
 
 // Стрелка сортировки: у сортируемой колонки видна всегда, неактивная — бледная.
@@ -134,7 +152,7 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
         if (next.length) props.onSort!(next[0].id, next[0].desc ? 'desc' : 'asc')
         else props.onSort!(null, null)          // сброс к порядку по умолчанию
       } else {
-        setLocalSort(next)
+        withViewTransition(props.viewTransition, () => setLocalSort(next))
       }
     },
     getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
@@ -150,6 +168,7 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
   const sortable = createDumbSortable({
     order: () => visibleRows().map(r => r.id),
     disabled: dragDisabled,
+    get animate() { return props.animate },
     onEnd: (from, to) => props.onReorder?.(from, to),
   })
 

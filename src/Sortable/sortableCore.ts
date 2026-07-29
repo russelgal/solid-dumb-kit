@@ -29,6 +29,7 @@ import {
     type Cell, type Item, type ViewGeom,
 } from './geometry';
 import { doScroll, measure, scrollOf, scrollParent } from '../shared/viewport';
+import { shouldAnimate } from '../shared/motion';
 
 /**
  * Движок сортировки. Ничего не знает про фреймворк: принимает элементы и
@@ -92,6 +93,12 @@ export type DumbSortableOptions = {
     mousePressDelay?: number;
     /** мышь: дистанция до старта драга, px (0 = сразу, как было). По умолчанию 0 */
     mouseThreshold?: number;
+    /**
+     * Анимировать расступание соседей и приземление на дропе.
+     * По умолчанию да, но при системном `prefers-reduced-motion: reduce` —
+     * нет. Явное `true` перебивает и системную настройку.
+     */
+    animate?: boolean;
     /** на дропе: переставить из fromIndex в toIndex (индексы в order()) */
     onEnd: (fromIndex: number, toIndex: number) => void;
 };
@@ -190,8 +197,12 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
                 // Первый кадр отдаём под transition, со второго элемент едет плавно.
                 if (!d.touched.has(el)) {
                     d.touched.add(el);
-                    el.style.transition = SLIDE;
                     el.style.willChange = 'transform';
+                    if (!shouldAnimate(opts.animate)) {       // без анимации — двигаем сразу
+                        el.style.transform = `translate(${dx}px,${m.dy}px)`;
+                        continue;
+                    }
+                    el.style.transition = SLIDE;
                     continue;
                 }
                 el.style.transform = `translate(${dx}px,${m.dy}px)`;
@@ -244,6 +255,7 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
      * известна из снимка — мерить ничего не нужно.
      */
     function land(d: Drag, done: () => void) {
+        if (!shouldAnimate(opts.animate)) { done(); return; }
         const from = d.cells[d.fromIndex];
         let tx = 0, ty = 0;
         if (grid) {

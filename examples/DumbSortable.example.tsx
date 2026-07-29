@@ -55,6 +55,9 @@ function Promo() {
 export default function DumbSortableExample() {
   const [list, setList] = createSignal<Row[]>(rows(100))
   const [tiles, setTiles] = createSignal<Row[]>(rows(100))
+  // анимации отключаются пропом; по умолчанию кит ещё и сам уважает
+  // системное prefers-reduced-motion
+  const [animate, setAnimate] = createSignal(true)
 
   return (
     <div class="ds-example">
@@ -64,11 +67,15 @@ export default function DumbSortableExample() {
           <header class="section-head">
             <h3>List — drag by the handle</h3>
             <button class="btn" onClick={() => setList(shuffle(list()))}>перемешать</button>
+            <label class="toggle">
+              <input type="checkbox" checked={animate()} onChange={(e) => setAnimate(e.currentTarget.checked)} />
+              анимации
+            </label>
           </header>
           <p class="note">100 rows, fixed-height scroll area — drag near an edge and it auto-scrolls.</p>
 
           <div class="scroller list">
-            <DumbSortable items={list()} setItems={setList} id={(x) => x.id}>
+            <DumbSortable items={list()} setItems={setList} id={(x) => x.id} animate={animate()}>
               {(item, i) => (
                 <div class="row">
                   <button class="handle" data-drag-handle title="drag">⠿</button>
@@ -90,7 +97,7 @@ export default function DumbSortableExample() {
           <p class="note">100 tiles, <code>axis="grid"</code> — items reflow in 2D and jump across rows.</p>
 
           <div class="scroller tiles">
-            <DumbSortable items={tiles()} setItems={setTiles} id={(x) => x.id} axis="grid">
+            <DumbSortable items={tiles()} setItems={setTiles} id={(x) => x.id} axis="grid" animate={animate()}>
               {(item, i) => (
                 <div class="tile" style={{ background: HUE(Number(item.id.slice(1))) }}>
                   {i() + 1}
@@ -112,6 +119,8 @@ export default function DumbSortableExample() {
         .section-head h3 { margin: 0 0 4px }
         .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
 
+        .toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #64748b }
+        .toggle input { margin: 0 }
         .btn { padding: 3px 10px; border-radius: 6px; border: 1px solid #cbd5e1;
                background: #fff; color: inherit; font: inherit; font-size: 12px; cursor: pointer }
 

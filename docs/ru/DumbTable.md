@@ -56,6 +56,8 @@ const columns: DumbColumn<Product>[] = [
 | `sort` / `order` | `string` / `'asc' \| 'desc'` | — | Активная сортировка, **серверный режим** (в паре с `onSort`). |
 | `onSort` | `(key: string \| null, order: 'asc' \| 'desc' \| null) => void` | — | Задан → сортирует сервер (`manualSorting`), порядок строк не трогается. Не задан → сортировка на клиенте. Третий клик снимает сортировку и зовёт с `(null, null)`. |
 | `noSortRemoval` | `boolean` | `false` | Убрать третий клик: сортировка только `asc ⇄ desc`. |
+| `viewTransition` | `boolean` | `false` | Анимировать клиентскую сортировку через View Transitions (нужен `view-transition-name` на строке). |
+| `animate` | `boolean` | вкл, минус `prefers-reduced-motion` | Анимировать перетаскивание строк. |
 | `sortDescFirst` | `boolean` | как в TanStack | Направление *первого* клика. По умолчанию текстовые колонки начинают с `asc`, числовые — с `desc`; см. ниже. |
 | `onReorder` | `(from, to) => void` | — | Включает перетаскивание и колонку с ручкой. Индексы — в **отображаемом** порядке. |
 | `handle` | `JSX.Element` | `⠿` | Содержимое ручки перетаскивания. |

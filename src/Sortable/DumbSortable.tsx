@@ -12,6 +12,8 @@ export type DumbSortableProps<T> = {
   pressDelay?: number
   mousePressDelay?: number
   mouseThreshold?: number
+  /** анимировать перестановку; по умолчанию да, но не при prefers-reduced-motion */
+  animate?: boolean
   /** ВЕРНИ один корневой элемент — компонент привяжется прямо к нему */
   children: (item: T, index: () => number) => JSX.Element
 }
@@ -39,6 +41,7 @@ export function DumbSortable<T>(props: DumbSortableProps<T>) {
     pressDelay: props.pressDelay,
     mousePressDelay: props.mousePressDelay,
     mouseThreshold: props.mouseThreshold,
+    animate: props.animate,
     onEnd: (from, to) => {
       const next = props.items.slice()
       next.splice(to, 0, next.splice(from, 1)[0])

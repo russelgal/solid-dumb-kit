@@ -91,6 +91,8 @@ export type DumbTreeProps<T extends DumbTreeNode> = {
 
   /** drag-reorder flat-списка: переставить from→to в порядке отображения */
   sortable?: (from: number, to: number) => void
+  /** анимировать перестановку; по умолчанию да, но не при prefers-reduced-motion */
+  animate?: boolean
 
   /** доп. контент справа в строке (бейджи/иконки статуса) */
   rowExtra?: (node: T) => JSX.Element
@@ -189,6 +191,7 @@ export function DumbTree<T extends DumbTreeNode>(props: DumbTreeProps<T>) {
   const fs = createDumbSortable({
     order: () => flatList().map(n => String(n.id)),
     disabled: () => !!q().trim(),
+    get animate() { return props.animate },
     onEnd: (from, to) => props.sortable?.(from, to),
   })
 

@@ -126,6 +126,8 @@ type DumbSortableProps<T> = {
     pressDelay?: number;
     mousePressDelay?: number;
     mouseThreshold?: number;
+    /** анимировать перестановку; по умолчанию да, но не при prefers-reduced-motion */
+    animate?: boolean;
     /** ВЕРНИ один корневой элемент — компонент привяжется прямо к нему */
     children: (item: T, index: () => number) => JSX.Element;
 };
@@ -144,6 +146,12 @@ type DumbSortableOptions = {
     mousePressDelay?: number;
     /** мышь: дистанция до старта драга, px (0 = сразу, как было). По умолчанию 0 */
     mouseThreshold?: number;
+    /**
+     * Анимировать расступание соседей и приземление на дропе.
+     * По умолчанию да, но при системном `prefers-reduced-motion: reduce` —
+     * нет. Явное `true` перебивает и системную настройку.
+     */
+    animate?: boolean;
     /** на дропе: переставить из fromIndex в toIndex (индексы в order()) */
     onEnd: (fromIndex: number, toIndex: number) => void;
 };
@@ -165,6 +173,11 @@ type SortableGroupOptions = {
     mousePressDelay?: number;
     /** мышь: дистанция до старта драга, px (0 = сразу) */
     mouseThreshold?: number;
+    /**
+     * Анимировать расступание карточек и приземление клона.
+     * По умолчанию да, но при системном `prefers-reduced-motion: reduce` — нет.
+     */
+    animate?: boolean;
 };
 type SortableListOptions = {
     /** визуальный порядок id внутри этой зоны */
@@ -253,6 +266,8 @@ type DumbTreeProps<T extends DumbTreeNode> = {
     storageKey?: string;
     /** drag-reorder flat-списка: переставить from→to в порядке отображения */
     sortable?: (from: number, to: number) => void;
+    /** анимировать перестановку; по умолчанию да, но не при prefers-reduced-motion */
+    animate?: boolean;
     /** доп. контент справа в строке (бейджи/иконки статуса) */
     rowExtra?: (node: T) => JSX.Element;
     /** доп. класс на строку-ссылку (напр. opacity-50 для скрытых) */
@@ -306,6 +321,16 @@ type DumbTableProps<T> = {
     onSort?: (key: string | null, order: 'asc' | 'desc' | null) => void;
     /** убрать третий клик-сброс: сортировка будет только asc ⇄ desc */
     noSortRemoval?: boolean;
+    /**
+     * Анимировать смену сортировки через View Transitions.
+     * Смысл только в клиентском режиме: там состояние меняется внутри таблицы и
+     * снаружи его не обернуть. В серверном режиме оборачивай сам — данные всё
+     * равно приходят от тебя. Строкам нужен уникальный `view-transition-name`
+     * (см. `rowStyle`), иначе браузер сделает кроссфейд всей таблицы.
+     */
+    viewTransition?: boolean;
+    /** анимировать перетаскивание строк; по умолчанию да, но не при prefers-reduced-motion */
+    animate?: boolean;
     /**
      * Направление ПЕРВОГО клика по заголовку. По умолчанию — как у TanStack:
      * текстовые колонки начинают с asc, числовые с desc. `false` заставляет
