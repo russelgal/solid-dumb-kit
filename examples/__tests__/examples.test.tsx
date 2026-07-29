@@ -98,16 +98,19 @@ describe('DumbTable.example — сортировка идёт по всему н
   })
 })
 
-describe('DumbTable.example — режим «все строки»', () => {
+describe('DumbTable.example — виртуальное окно', () => {
   const switchTo = (host: HTMLElement, label: string) =>
     Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.includes(label))!.click()
 
-  it('рисует весь набор, а не окно', () => {
+  it('держит в DOM окно, а не все 5000 строк', () => {
     const host = mount(DumbTableExample)
-    expect(host.querySelectorAll('tbody tr').length).toBe(20)   // страница
+    const rows = () => host.querySelectorAll('tbody tr:not([aria-hidden])').length
+    expect(rows()).toBe(20)                     // страница
 
     switchTo(host, 'все')
-    expect(host.querySelectorAll('tbody tr').length).toBe(5000) // всё сразу
+    expect(rows()).toBeLessThan(200)            // окно, а не весь набор
+    expect(rows()).toBeGreaterThan(0)
+    expect(host.querySelectorAll('tbody tr[aria-hidden]').length).toBeGreaterThan(0)  // распорки
   })
 
   it('сортировка идёт по всему набору', () => {
@@ -119,7 +122,7 @@ describe('DumbTable.example — режим «все строки»', () => {
     expect(first()).not.toBe(before)
   })
 
-  it('в режиме «все строки» перетаскивание выключено', () => {
+  it('в окне перетаскивание выключено', () => {
     const host = mount(DumbTableExample)
     expect(host.querySelectorAll('[data-drag-handle]').length).toBeGreaterThan(0)
     switchTo(host, 'все')

@@ -1,7 +1,7 @@
 // DumbTable — bring-your-own-columns table on @tanstack/solid-table:
 // click a header to sort, drag rows by the ⠿ handle, paginate.
-import { createSignal, createMemo, Show } from 'solid-js'
-import { DumbTable, DumbPagination, SelectionArea, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
+import { createSignal, createMemo, Show, createEffect } from 'solid-js'
+import { DumbTable, DumbPagination, SelectionArea, createVirtual, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
 
 type Product = {
   id: string
@@ -80,11 +80,22 @@ export default function DumbTableExample() {
     return sorted().slice(from, from + pageSize())
   })
 
-  // Второй режим — БЕЗ арифметики: рисуем все строки и просим браузер не
-  // тратиться на те, что за экраном (content-visibility). Высоты строк при этом
-  // могут быть любыми: contain-intrinsic-size: auto запоминает фактический
-  // размер уже показанной строки, поэтому и полоса прокрутки честная.
-  const shown = () => (mode() === 'pages' ? pageRows() : sorted())
+  // Второй режим — окно. Для <table> без него никак: таблица считает ширины
+  // колонок по ВСЕМ строкам, а content-visibility на table-row не действует,
+  // поэтому пять тысяч строк браузер честно раскладывает целиком.
+  const virt = createVirtual({
+    keys: () => sorted().map((p) => p.id),
+    estimate: 37,
+    overscan: 8,
+  })
+  const virtualRows = createMemo(() => sorted().slice(virt.window().first, virt.window().last))
+
+  // окно перерисовалось — снимаем фактические высоты (батчем, без reflow)
+  createEffect(() => { virtualRows(); virt.measure() })
+  // данные/сортировка сменились — пересчитать
+  createEffect(() => { sorted(); virt.refresh() })
+
+  const shown = () => (mode() === 'pages' ? pageRows() : virtualRows())
 
   // удалить выделенное: чистим и выделение, и заказ, и не оставляем пустую страницу
   const removeSelected = () => {
@@ -193,7 +204,7 @@ export default function DumbTableExample() {
       </div>
 
       <SelectionArea class="surface" selectables="tbody tr" selected={selected} onChange={setSelected}>
-        <div class="viewport" classList={{ scrolling: mode() === 'virtual', lazy: mode() === 'virtual' }}>
+        <div class="viewport" classList={{ scrolling: mode() === 'virtual' }} ref={virt.scroller}>
         <DumbTable
           rows={shown()}
           columns={columns}
@@ -213,8 +224,10 @@ export default function DumbTableExample() {
           // кроссфейд всей таблицы
           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })}
           empty={<div class="empty">Ничего не найдено</div>}
-          // при пяти тысячах строк перетаскивание выключаем: снимок позиций
-          // снимается разом по всему списку
+          spacerTop={mode() === 'virtual' ? virt.window().padTop : 0}
+          spacerBottom={mode() === 'virtual' ? virt.window().padBottom : 0}
+          // в окне перетаскивание выключено: строк вне окна в DOM нет,
+          // а снимок позиций делается один раз на старте жеста
           onReorder={mode() === 'virtual' ? undefined : (from, to) => {
             // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные.
             // Сортировка при этом заведомо снята: ручка гаснет, пока она активна.
@@ -229,12 +242,13 @@ export default function DumbTableExample() {
 
       <Show when={mode() === 'virtual'}>
         <p class="note">
-          Здесь в DOM все {sorted().length} строк, а работу за экраном браузер
-          пропускает сам — <code>content-visibility: auto</code> плюс{' '}
-          <code>contain-intrinsic-size: auto 37px</code>. Ни окна, ни распорок, ни
-          пересчёта прокрутки: высоты строк могут быть любыми, фактический размер
-          показанной строки браузер запоминает сам. Сортировка, как и в режиме
-          страниц, идёт по всему набору.
+          В DOM только {shown().length} строк из {sorted().length} — остальное держат
+          распорки. Высоты строк могут быть любыми: показанные измеряются батчем через
+          <code> IntersectionObserver</code> (без reflow) и запоминаются, для ещё не
+          показанных берётся оценка. Прокрутку при уточнении высот мы намеренно
+          <b> не</b> подправляем — именно это заставляет такие списки ползти под курсором;
+          окно просто пересчитывается от текущего <code>scrollTop</code>.
+          Сортировка, как и на страницах, идёт по всему набору.
         </p>
       </Show>
 
@@ -268,9 +282,8 @@ export default function DumbTableExample() {
 
         .surface { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden }
         .viewport.scrolling { max-height: 60vh; overflow-y: auto }
-        /* Браузерная «виртуализация»: строки за экраном не раскладываются и не
-           красятся, но остаются в DOM — поиск по странице и скринридеры живы. */
-        .viewport.lazy .row { content-visibility: auto; contain-intrinsic-size: auto 37px }
+        /* ширины колонок заданы → браузеру не нужно мерить все ячейки */
+        .surface table { table-layout: fixed }
         .modes { display: flex; gap: 4px }
         .btn.on { border-color: #3b82f6; background: #3b82f6; color: #fff }
         .note { margin: 10px 0 0; font-size: 12px; color: #64748b }

@@ -148,17 +148,29 @@ The per-row `view-transition-name` is what makes each row travel to its new plac
 
 ## Long lists
 
-The table doesn't virtualise, and on purpose: hand-rolled windowing means estimating row heights, correcting `scrollTop` when the guess was wrong, and a scrollbar that lies until everything has been measured. With rows of differing heights that gets fragile fast.
+`<table>` is one layout context: with `table-layout: auto` the browser measures every cell to work out column widths, and `content-visibility` can't help — containment doesn't apply to `table-row`. So five thousand rows get laid out in full, and it shows.
 
-Let the browser skip the work instead — it already knows how:
+Hence `createVirtual` — a window over the data, plus `spacerTop` / `spacerBottom` so the scrollbar stays honest:
 
-```css
-.row { content-visibility: auto; contain-intrinsic-size: auto 40px }
+```tsx
+const virt = createVirtual({ keys: () => rows().map(r => r.id), estimate: 40 })
+const windowRows = createMemo(() => rows().slice(virt.window().first, virt.window().last))
+
+createEffect(() => { windowRows(); virt.measure() })   // measure what got rendered
+createEffect(() => { rows(); virt.refresh() })         // data changed
+
+<div ref={virt.scroller} style={{ 'max-height': '60vh', 'overflow-y': 'auto' }}>
+  <DumbTable rows={windowRows()} columns={columns} rowId={(r) => r.id}
+             spacerTop={virt.window().padTop}
+             spacerBottom={virt.window().padBottom} />
+</div>
 ```
 
-Off-screen rows stay in the DOM (find-in-page and screen readers keep working) but skip layout and paint. `contain-intrinsic-size: auto` makes the browser remember each row's real size once it has been rendered, so **rows of different heights are fine** and there's nothing to compute.
+**Rows may differ in height.** Rendered rows are measured in one `IntersectionObserver` batch (no reflow, no per-row `getBoundingClientRect`) and remembered; unseen rows use `estimate`. Scroll position is deliberately **not** corrected when a measurement lands — that correction is what makes such lists crawl under the cursor. The window is simply recomputed from the current `scrollTop`.
 
-If you still need a window — say you're streaming from a server — `spacerTop` / `spacerBottom` render empty rows of a given height, so you can place your slice inside the full scroll height yourself. Sort outside in that case, exactly as with pagination, and turn dragging off: positions are snapshotted once, and rows outside the window aren't in the DOM.
+Two consequences, same as with pagination: **sort outside**, and **turn dragging off** — rows beyond the window aren't in the DOM, so they can't be in the position snapshot. Rubber-band selection has the same limit.
+
+Also worth setting `table-layout: fixed` with explicit column widths: it frees the browser from measuring cells to size columns.
 
 ## `DumbPagination`
 

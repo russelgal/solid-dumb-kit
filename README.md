@@ -57,6 +57,7 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 | `fmtDate` / `fmtDateTime` / `fmtDateTimeShort` / `fmtTime` / `fmtDateMonth` / `timeAgo` / `fmtSize` | formatting | [docs/utils.md#dates](docs/utils.md#dates) |
 | `genSlug` | util | [docs/utils.md#genslug--url-slugs](docs/utils.md#genslug--url-slugs) |
 | `extractImagesFromZip` | util | [docs/utils.md#extractimagesfromzip--images-out-of-a-zip](docs/utils.md#extractimagesfromzip--images-out-of-a-zip) |
+| `createVirtual` / `createVirtualEngine` / `VirtualWindow` | primitive | [docs/DumbTable.md#long-lists](docs/DumbTable.md#long-lists) |
 | `imgproxyUrl` / `configureImgproxy` / `ImgproxyOps` / `ImgproxyConfig` | util | [docs/utils.md#imgproxyurl--imgproxy-url-builder](docs/utils.md#imgproxyurl--imgproxy-url-builder) |
 
 ## CSS

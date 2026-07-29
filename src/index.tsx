@@ -37,4 +37,11 @@ export {
   buildPageNumbers,
   type DumbPaginationProps,
 } from './DumbTable'
+export {
+  createVirtual,
+  createVirtualEngine,
+  type VirtualEngine,
+  type VirtualOptions,
+  type VirtualWindow,
+} from './Virtual'
 export * from './utils'
