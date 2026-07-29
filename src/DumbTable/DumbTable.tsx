@@ -208,6 +208,7 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
               {(row) => (
                 <tr
                   ref={props.onReorder ? sortable.bind(row.id) : undefined}
+                  data-key={row.id}
                   class={props.rowClass?.(row.original, row.index)}
                   style={{ cursor: props.onRowClick ? 'pointer' : undefined }}
                   onClick={() => props.onRowClick?.(row.original, row.index)}

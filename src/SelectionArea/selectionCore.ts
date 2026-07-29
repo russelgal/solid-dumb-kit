@@ -75,7 +75,8 @@ type Drag = {
   ready: boolean
 }
 
-const IGNORE = 'button, a, input, select, textarea, [data-no-select]'
+// [data-drag-handle] — иначе протяжка строки за ручку заодно рисовала бы рамку
+const IGNORE = 'button, a, input, select, textarea, [data-no-select], [data-drag-handle]'
 
 export function createSelectionEngine(opts: SelectionCoreOptions): SelectionEngine {
   const threshold = opts.threshold ?? 10

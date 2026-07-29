@@ -52,7 +52,7 @@ const columns: DumbColumn<Product>[] = [
 | --- | --- | --- | --- |
 | `rows` | `Array<T>` | — (required) | Rows to render, in data order. |
 | `columns` | `Array<DumbColumn<T>>` | — (required) | Column definitions. |
-| `rowId` | `(row, index) => string` | index | Stable row id — needed for drag-reorder. |
+| `rowId` | `(row, index) => string` | index | Stable row id — used for drag-reorder and emitted as `data-key` on each `<tr>`. |
 | `sort` / `order` | `string` / `'asc' \| 'desc'` | — | Active sort, **server mode** (pair with `onSort`). |
 | `onSort` | `(key: string \| null, order: 'asc' \| 'desc' \| null) => void` | — | Present → the server sorts (`manualSorting`), row order is left alone. Absent → sorting happens client-side. A third click clears the sort and calls it with `(null, null)`. |
 | `noSortRemoval` | `boolean` | `false` | Drop the third click: sorting stays `asc ⇄ desc`. |
@@ -100,6 +100,19 @@ onReorder={(from, to) => {
   setRows(next)
 }}
 ```
+
+## Selecting rows
+
+Each `<tr>` carries `data-key`, so [SelectionArea](SelectionArea.md) recognises rows with no extra wiring — wrap the table and you get rubber-band selection:
+
+```tsx
+<SelectionArea selectables="tbody tr" selected={selected} onChange={setSelected}>
+  <DumbTable rows={pageRows()} columns={columns} rowId={(p) => p.id}
+             rowClass={(p) => (selected().has(p.id) ? 'row-selected' : '')} />
+</SelectionArea>
+```
+
+Dragging by the `⠿` handle still reorders rather than selects: the selection gesture ignores anything starting on `[data-drag-handle]`.
 
 ## `DumbPagination`
 

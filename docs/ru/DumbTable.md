@@ -52,7 +52,7 @@ const columns: DumbColumn<Product>[] = [
 | --- | --- | --- | --- |
 | `rows` | `Array<T>` | — (обязательный) | Строки в порядке данных. |
 | `columns` | `Array<DumbColumn<T>>` | — (обязательный) | Описание колонок. |
-| `rowId` | `(row, index) => string` | индекс | Стабильный id строки — нужен перетаскиванию. |
+| `rowId` | `(row, index) => string` | индекс | Стабильный id строки — нужен перетаскиванию и проставляется на `<tr>` как `data-key`. |
 | `sort` / `order` | `string` / `'asc' \| 'desc'` | — | Активная сортировка, **серверный режим** (в паре с `onSort`). |
 | `onSort` | `(key: string \| null, order: 'asc' \| 'desc' \| null) => void` | — | Задан → сортирует сервер (`manualSorting`), порядок строк не трогается. Не задан → сортировка на клиенте. Третий клик снимает сортировку и зовёт с `(null, null)`. |
 | `noSortRemoval` | `boolean` | `false` | Убрать третий клик: сортировка только `asc ⇄ desc`. |
@@ -100,6 +100,19 @@ onReorder={(from, to) => {
   setRows(next)
 }}
 ```
+
+## Выделение строк
+
+Каждый `<tr>` несёт `data-key`, поэтому [SelectionArea](SelectionArea.md) опознаёт строки без дополнительной возни — оберни таблицу и получишь выделение рамкой:
+
+```tsx
+<SelectionArea selectables="tbody tr" selected={selected} onChange={setSelected}>
+  <DumbTable rows={pageRows()} columns={columns} rowId={(p) => p.id}
+             rowClass={(p) => (selected().has(p.id) ? 'row-selected' : '')} />
+</SelectionArea>
+```
+
+Протяжка за ручку `⠿` по-прежнему переставляет строку, а не выделяет: жест выделения не стартует с `[data-drag-handle]`.
 
 ## `DumbPagination`
 

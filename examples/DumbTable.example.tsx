@@ -1,7 +1,7 @@
 // DumbTable — bring-your-own-columns table on @tanstack/solid-table:
 // click a header to sort, drag rows by the ⠿ handle, paginate.
 import { createSignal, createMemo } from 'solid-js'
-import { DumbTable, DumbPagination, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
+import { DumbTable, DumbPagination, SelectionArea, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
 
 type Product = {
   id: string
@@ -30,6 +30,9 @@ export default function DumbTableExample() {
   const [pageSize, setPageSize] = createSignal(20)
   const [picked, setPicked] = createSignal<Product | null>(null)
   const [cart, setCart] = createSignal<Set<string>>(new Set())
+  // выделение строк рамкой: таблица проставляет строкам data-key, так что
+  // SelectionArea опознаёт их сама
+  const [selected, setSelected] = createSignal<Set<string>>(new Set())
 
   // пагинация снаружи таблицы: режем строки сами, таблица рисует что дали
   const pageRows = createMemo(() => {
@@ -77,24 +80,50 @@ export default function DumbTableExample() {
   return (
     <div style={{ padding: '16px', 'max-width': '1040px', margin: '0 auto', color: '#0f172a' }}>
       <p style={{ margin: '0 0 12px', 'font-size': '13px', color: '#64748b', 'max-width': '72ch' }}>
-        137 rows, columns described as plain objects. Click a header to sort (that's TanStack under
-        the hood), drag the ⠿ handle to reorder — the handle greys out while a sort is active,
-        because the displayed order no longer matches the data order. The “заказать” column sets
-        <code> stopClick</code>, so its button doesn't fire the row click.
+        137 строк, колонки описаны обычными объектами. Клик по заголовку сортирует (под капотом
+        TanStack), третий клик сбрасывает сортировку. Протяжка за <b>⠿</b> переставляет строку —
+        ручка гаснет, пока активна сортировка, потому что показанный порядок уже не совпадает
+        с порядком данных. Протяжка по самим строкам рисует рамку выделения: это{' '}
+        <code>SelectionArea</code> поверх таблицы, строки она опознаёт по <code>data-key</code>,
+        который таблица проставляет сама. Колонка «заказать» помечена <code>stopClick</code>,
+        поэтому её кнопка не срабатывает как клик по строке.
       </p>
 
-      <div style={{ 'margin-bottom': '10px', 'font-size': '13px', 'min-height': '20px' }}>
-        {picked() ? <>row click → <b>{picked()!.name}</b> · {picked()!.vendor_code}</> : 'click a row →'}
+      <div style={{ display: 'flex', 'align-items': 'center', gap: '12px', 'margin-bottom': '10px',
+                    'font-size': '13px', 'min-height': '20px', 'flex-wrap': 'wrap' }}>
+        <span>{picked() ? <>row click → <b>{picked()!.name}</b> · {picked()!.vendor_code}</> : 'click a row →'}</span>
+        <span style={{ 'margin-left': 'auto' }}>
+          выделено рамкой: <b>{selected().size}</b>
+        </span>
+        <button
+          onClick={() => setSelected(new Set())}
+          disabled={!selected().size}
+          style={{ padding: '3px 9px', 'border-radius': '6px', border: '1px solid #cbd5e1',
+                   background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}
+        >
+          сбросить
+        </button>
       </div>
 
-      <div style={{ border: '1px solid #e2e8f0', 'border-radius': '12px', overflow: 'hidden' }}>
+      <SelectionArea
+        selectables="tbody tr"
+        selected={selected}
+        onChange={setSelected}
+        style={{ border: '1px solid #e2e8f0', 'border-radius': '12px', overflow: 'hidden' }}
+      >
         <DumbTable
           rows={pageRows()}
           columns={columns}
           rowId={(p) => p.id}
           onRowClick={(p) => setPicked(p)}
           headClass="dt-head"
-          rowClass={(p) => (cart().has(p.id) ? 'dt-row dt-row-picked' : 'dt-row')}
+          rowClass={(p) =>
+            [
+              'dt-row',
+              cart().has(p.id) ? 'dt-row-picked' : '',
+              selected().has(p.id) ? 'dt-row-selected' : '',
+            ].filter(Boolean).join(' ')
+          }
           empty={<div style={{ padding: '24px', 'text-align': 'center', color: '#94a3b8' }}>Ничего не найдено</div>}
           onReorder={(from, to) => {
             // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные
@@ -104,7 +133,7 @@ export default function DumbTableExample() {
             setRows(next)
           }}
         />
-      </div>
+      </SelectionArea>
 
       <div style={{ 'margin-top': '12px' }}>
         <DumbPagination
@@ -124,6 +153,7 @@ export default function DumbTableExample() {
         .dt-row{border-bottom:1px solid #f1f5f9}
         .dt-row:hover{background:#f8fafc}
         .dt-row-picked{background:#f0fdf4}
+        .dt-row-selected{background:#eff6ff;box-shadow:inset 2px 0 0 #3b82f6}
       `}</style>
     </div>
   )

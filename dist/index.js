@@ -134,7 +134,7 @@ function diffSelection(prev, next) {
 }
 
 // src/SelectionArea/selectionCore.ts
-var IGNORE = "button, a, input, select, textarea, [data-no-select]";
+var IGNORE = "button, a, input, select, textarea, [data-no-select], [data-drag-handle]";
 function createSelectionEngine(opts) {
   const threshold = opts.threshold ?? 10;
   let drag = null;
@@ -2120,11 +2120,11 @@ function DumbTable(props) {
                   addEventListener(_el$11, "click", c().stopClick ? (e) => e.stopPropagation() : void 0, true);
                   insert(_el$11, () => flexRender(cell.column.columnDef.cell, cell.getContext()));
                   effect((_p$) => {
-                    var _v$10 = c().class, _v$11 = {
+                    var _v$11 = c().class, _v$12 = {
                       ...cellStyle(c())
                     };
-                    _v$10 !== _p$.e && className(_el$11, _p$.e = _v$10);
-                    _p$.t = style(_el$11, _v$11, _p$.t);
+                    _v$11 !== _p$.e && className(_el$11, _p$.e = _v$11);
+                    _p$.t = style(_el$11, _v$12, _p$.t);
                     return _p$;
                   }, {
                     e: void 0,
@@ -2135,13 +2135,15 @@ function DumbTable(props) {
               }
             }), null);
             effect((_p$) => {
-              var _v$0 = props.rowClass?.(row.original, row.index), _v$1 = props.onRowClick ? "pointer" : void 0;
-              _v$0 !== _p$.e && className(_el$0, _p$.e = _v$0);
-              _v$1 !== _p$.t && setStyleProperty(_el$0, "cursor", _p$.t = _v$1);
+              var _v$0 = row.id, _v$1 = props.rowClass?.(row.original, row.index), _v$10 = props.onRowClick ? "pointer" : void 0;
+              _v$0 !== _p$.e && setAttribute(_el$0, "data-key", _p$.e = _v$0);
+              _v$1 !== _p$.t && className(_el$0, _p$.t = _v$1);
+              _v$10 !== _p$.a && setStyleProperty(_el$0, "cursor", _p$.a = _v$10);
               return _p$;
             }, {
               e: void 0,
-              t: void 0
+              t: void 0,
+              a: void 0
             });
             return _el$0;
           })()

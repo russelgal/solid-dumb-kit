@@ -54,6 +54,12 @@ describe('DumbTable — колонки', () => {
     expect(priceCell.style.textAlign).toBe('right')
   })
 
+  it('строки получают data-key — по нему их находит SelectionArea', () => {
+    const host = mount(() => <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} />)
+    expect(Array.from(host.querySelectorAll('tbody tr')).map((tr) => tr.getAttribute('data-key')))
+      .toEqual(['b', 'a', 'c'])
+  })
+
   it('показывает empty, когда строк нет', () => {
     const host = mount(() => <DumbTable rows={[]} columns={COLS} empty={<p>пусто</p>} />)
     expect(host.textContent).toContain('пусто')

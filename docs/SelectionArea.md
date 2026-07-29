@@ -64,7 +64,7 @@ Selection state lives in **your** signal — the component never owns it. Each i
 
 - **Modifiers** — holding `Shift`/`Cmd`/`Ctrl` while dragging only ever **adds** to the existing selection; sweeping over already-selected items never clears them. A plain drag replaces the selection.
 - **Clicks** — a click on an item selects just it; with a modifier it toggles. A click on empty space clears the selection (with a modifier, nothing happens).
-- **Ignored targets** — a gesture starting on `button, a, input, select, textarea, [data-no-select]` is skipped, so controls keep working. Add `data-no-select` to opt an element out.
+- **Ignored targets** — a gesture starting on `button, a, input, select, textarea, [data-drag-handle], [data-no-select]` is skipped, so controls and drag handles keep working. Add `data-no-select` to opt an element out.
 - **Auto-scroll** — dragging near the container edge scrolls it, speeding up the further you push.
 - **The band stays inside** — it's clamped to the container's bounds. Not just cosmetic: the band is an absolutely positioned child, so escaping the container would stretch its `scrollWidth`/`scrollHeight` and spawn scrollbars mid-gesture.
 - **Scrolling keeps the selection** — the band lives in *content* coordinates, so it grows with the scroll and items you already swept don't fall out. (The viselect-based version dropped them; that's fixed by construction now.)

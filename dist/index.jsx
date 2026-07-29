@@ -132,7 +132,7 @@ function diffSelection(prev, next) {
 }
 
 // src/SelectionArea/selectionCore.ts
-var IGNORE = "button, a, input, select, textarea, [data-no-select]";
+var IGNORE = "button, a, input, select, textarea, [data-no-select], [data-drag-handle]";
 function createSelectionEngine(opts) {
   const threshold = opts.threshold ?? 10;
   let drag = null;
@@ -1871,6 +1871,7 @@ function DumbTable(props) {
             <For4 each={visibleRows()}>
               {(row) => <tr
     ref={props.onReorder ? sortable.bind(row.id) : void 0}
+    data-key={row.id}
     class={props.rowClass?.(row.original, row.index)}
     style={{ cursor: props.onRowClick ? "pointer" : void 0 }}
     onClick={() => props.onRowClick?.(row.original, row.index)}
