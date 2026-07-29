@@ -80,6 +80,8 @@ export type DumbTableProps<T> = {
   tableClass?: string
   headClass?: string
   rowClass?: (row: T, index: number) => string | undefined
+  /** стиль на строку — например уникальный `view-transition-name` */
+  rowStyle?: (row: T, index: number) => JSX.CSSProperties | undefined
   /** содержимое `<tfoot>` */
   footer?: JSX.Element
 }
@@ -210,7 +212,10 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                   ref={props.onReorder ? sortable.bind(row.id) : undefined}
                   data-key={row.id}
                   class={props.rowClass?.(row.original, row.index)}
-                  style={{ cursor: props.onRowClick ? 'pointer' : undefined }}
+                  style={{
+                    cursor: props.onRowClick ? 'pointer' : undefined,
+                    ...props.rowStyle?.(row.original, row.index),
+                  }}
                   onClick={() => props.onRowClick?.(row.original, row.index)}
                 >
                   <Show when={props.onReorder}>

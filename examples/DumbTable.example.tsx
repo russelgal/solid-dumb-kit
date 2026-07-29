@@ -23,6 +23,15 @@ function shuffle<T>(list: Array<T>): Array<T> {
   return out
 }
 
+// Перемешивание — дискретное изменение, то есть случай для View Transitions:
+// браузер снимет «до», применит новое состояние и сам анимирует переезд строк.
+// Драг так делать нельзя (снимок всей страницы на каждый кадр), а это — можно.
+const withViewTransition = (fn: () => void) => {
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown }
+  if (typeof doc.startViewTransition === 'function') doc.startViewTransition(fn)
+  else fn()
+}
+
 const BRANDS = ['Attache', 'Erich Krause', 'Berlingo', 'Comix', 'Deli']
 const NAMES = ['Ручка шариковая', 'Карандаш', 'Тетрадь 48л', 'Папка-регистратор', 'Степлер', 'Клей-карандаш']
 
@@ -120,7 +129,7 @@ export default function DumbTableExample() {
           выделено рамкой: <b>{selected().size}</b>
         </span>
         <button
-          onClick={() => { setRows(shuffle(rows())); setPage(1) }}
+          onClick={() => withViewTransition(() => { setRows(shuffle(rows())); setPage(1) })}
           style={{ padding: '3px 9px', 'border-radius': '6px', border: '1px solid #cbd5e1',
                    background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}
         >
@@ -166,6 +175,9 @@ export default function DumbTableExample() {
               selected().has(p.id) ? 'dt-row-selected' : '',
             ].filter(Boolean).join(' ')
           }
+          // имя на строку — чтобы браузер вёл КАЖДУЮ отдельно, а не делал
+          // кроссфейд всей таблицы
+          rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })}
           empty={<div style={{ padding: '24px', 'text-align': 'center', color: '#94a3b8' }}>Ничего не найдено</div>}
           onReorder={(from, to) => {
             // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные

@@ -2136,10 +2136,13 @@ function DumbTable(props) {
               }
             }), null);
             effect((_p$) => {
-              var _v$0 = row.id, _v$1 = props.rowClass?.(row.original, row.index), _v$10 = props.onRowClick ? "pointer" : void 0;
+              var _v$0 = row.id, _v$1 = props.rowClass?.(row.original, row.index), _v$10 = {
+                cursor: props.onRowClick ? "pointer" : void 0,
+                ...props.rowStyle?.(row.original, row.index)
+              };
               _v$0 !== _p$.e && setAttribute(_el$0, "data-key", _p$.e = _v$0);
               _v$1 !== _p$.t && className(_el$0, _p$.t = _v$1);
-              _v$10 !== _p$.a && setStyleProperty(_el$0, "cursor", _p$.a = _v$10);
+              _p$.a = style(_el$0, _v$10, _p$.a);
               return _p$;
             }, {
               e: void 0,

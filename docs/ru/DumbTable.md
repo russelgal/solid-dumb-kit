@@ -64,6 +64,7 @@ const columns: DumbColumn<Product>[] = [
 | `empty` | `JSX.Element` | — | Показывается вместо таблицы, когда строк нет. |
 | `class` / `tableClass` / `headClass` | `string` | — | Классы на обёртку, `<table>` и `<thead>`. |
 | `rowClass` | `(row, index) => string \| undefined` | — | Класс на строку. |
+| `rowStyle` | `(row, index) => JSX.CSSProperties \| undefined` | — | Инлайн-стиль на строку — например уникальный `view-transition-name`. |
 | `footer` | `JSX.Element` | — | Содержимое `<tfoot>`. |
 
 ## Клиентская сортировка против серверной
@@ -113,6 +114,22 @@ onReorder={(from, to) => {
 ```
 
 Протяжка за ручку `⠿` по-прежнему переставляет строку, а не выделяет: жест выделения не стартует с `[data-drag-handle]`.
+
+## Анимация перестановок
+
+Изменения данных таблица сама не анимирует — сортировка, перемешивание или фильтр просто перерисовываются. Для них отдай изменение браузеру:
+
+```tsx
+const withViewTransition = (fn: () => void) =>
+  document.startViewTransition ? document.startViewTransition(fn) : fn()
+
+<DumbTable rows={rows()} columns={columns} rowId={(p) => p.id}
+           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })} />
+
+<button onClick={() => withViewTransition(() => setRows(shuffle(rows())))}>перемешать</button>
+```
+
+Именно `view-transition-name` на строке заставляет каждую ехать на своё новое место; без него браузер сделает кроссфейд всей таблицы. Это только про дискретные изменения — перетаскивание кит анимирует сам, покадрово.
 
 ## `DumbPagination`
 

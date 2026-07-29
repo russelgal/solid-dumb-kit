@@ -60,6 +60,15 @@ describe('DumbTable — колонки', () => {
       .toEqual(['b', 'a', 'c'])
   })
 
+  it('rowStyle кладёт стиль на строку (например view-transition-name)', () => {
+    const host = mount(() => (
+      <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id}
+                 rowStyle={(r) => ({ 'view-transition-name': `row-${r.id}` })} />
+    ))
+    const first = host.querySelector('tbody tr') as HTMLElement
+    expect(first.style.getPropertyValue('view-transition-name')).toBe('row-b')
+  })
+
   it('показывает empty, когда строк нет', () => {
     const host = mount(() => <DumbTable rows={[]} columns={COLS} empty={<p>пусто</p>} />)
     expect(host.textContent).toContain('пусто')

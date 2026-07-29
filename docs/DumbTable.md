@@ -64,6 +64,7 @@ const columns: DumbColumn<Product>[] = [
 | `empty` | `JSX.Element` | — | Rendered instead of the table when there are no rows. |
 | `class` / `tableClass` / `headClass` | `string` | — | Classes on the wrapper, `<table>` and `<thead>`. |
 | `rowClass` | `(row, index) => string \| undefined` | — | Class per row. |
+| `rowStyle` | `(row, index) => JSX.CSSProperties \| undefined` | — | Inline style per row — handy for a unique `view-transition-name`. |
 | `footer` | `JSX.Element` | — | `<tfoot>` content. |
 
 ## Client vs server sorting
@@ -113,6 +114,22 @@ Each `<tr>` carries `data-key`, so [SelectionArea](SelectionArea.md) recognises 
 ```
 
 Dragging by the `⠿` handle still reorders rather than selects: the selection gesture ignores anything starting on `[data-drag-handle]`.
+
+## Animating reorders
+
+The table never animates data changes itself — sorting, shuffling or filtering just re-render. For those, hand the change to the browser:
+
+```tsx
+const withViewTransition = (fn: () => void) =>
+  document.startViewTransition ? document.startViewTransition(fn) : fn()
+
+<DumbTable rows={rows()} columns={columns} rowId={(p) => p.id}
+           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })} />
+
+<button onClick={() => withViewTransition(() => setRows(shuffle(rows())))}>shuffle</button>
+```
+
+The per-row `view-transition-name` is what makes each row travel to its new place; without it the browser cross-fades the whole table. This only applies to discrete changes — dragging is animated by the kit itself, frame by frame.
 
 ## `DumbPagination`
 

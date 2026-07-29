@@ -1874,7 +1874,10 @@ function DumbTable(props) {
     ref={props.onReorder ? sortable.bind(row.id) : void 0}
     data-key={row.id}
     class={props.rowClass?.(row.original, row.index)}
-    style={{ cursor: props.onRowClick ? "pointer" : void 0 }}
+    style={{
+      cursor: props.onRowClick ? "pointer" : void 0,
+      ...props.rowStyle?.(row.original, row.index)
+    }}
     onClick={() => props.onRowClick?.(row.original, row.index)}
   >
                   <Show3 when={props.onReorder}>

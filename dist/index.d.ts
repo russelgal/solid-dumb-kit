@@ -325,6 +325,8 @@ type DumbTableProps<T> = {
     tableClass?: string;
     headClass?: string;
     rowClass?: (row: T, index: number) => string | undefined;
+    /** стиль на строку — например уникальный `view-transition-name` */
+    rowStyle?: (row: T, index: number) => JSX.CSSProperties | undefined;
     /** содержимое `<tfoot>` */
     footer?: JSX.Element;
 };
