@@ -148,29 +148,13 @@ The per-row `view-transition-name` is what makes each row travel to its new plac
 
 ## Long lists
 
-`<table>` is one layout context: with `table-layout: auto` the browser measures every cell to work out column widths, and `content-visibility` can't help — containment doesn't apply to `table-row`. So five thousand rows get laid out in full, and it shows.
+There's no virtualisation here, and that's a deliberate gap rather than an oversight.
 
-Hence `createVirtual` — a window over the data, plus `spacerTop` / `spacerBottom` so the scrollbar stays honest:
+`<table>` is a single layout context: with `table-layout: auto` the browser measures every cell to size the columns, and `content-visibility` can't rescue it either — containment doesn't apply to `table-row`. So a few thousand rows really do get laid out in full, and windowing them properly means estimating heights, measuring what rendered, and deciding what to do when the estimate was wrong. That's a component of its own, not a prop.
 
-```tsx
-const virt = createVirtual({ keys: () => rows().map(r => r.id), estimate: 40 })
-const windowRows = createMemo(() => rows().slice(virt.window().first, virt.window().last))
+For now: **paginate** (`DumbPagination`), which is what the example does and what most admin screens want anyway.
 
-createEffect(() => { windowRows(); virt.measure() })   // measure what got rendered
-createEffect(() => { rows(); virt.refresh() })         // data changed
-
-<div ref={virt.scroller} style={{ 'max-height': '60vh', 'overflow-y': 'auto' }}>
-  <DumbTable rows={windowRows()} columns={columns} rowId={(r) => r.id}
-             spacerTop={virt.window().padTop}
-             spacerBottom={virt.window().padBottom} />
-</div>
-```
-
-**Rows may differ in height.** Rendered rows are measured in one `IntersectionObserver` batch (no reflow, no per-row `getBoundingClientRect`) and remembered; unseen rows use `estimate`. Scroll position is deliberately **not** corrected when a measurement lands — that correction is what makes such lists crawl under the cursor. The window is simply recomputed from the current `scrollTop`.
-
-Two consequences, same as with pagination: **sort outside**, and **turn dragging off** — rows beyond the window aren't in the DOM, so they can't be in the position snapshot. Rubber-band selection has the same limit.
-
-Also worth setting `table-layout: fixed` with explicit column widths: it frees the browser from measuring cells to size columns.
+If you do need a window, cut it yourself and use `spacerTop` / `spacerBottom` — empty rows of a given height, so your slice sits inside the full scroll height. Then sort outside (as with pagination) and turn dragging off: rows beyond the window aren't in the DOM, so they can't be in the position snapshot.
 
 ## `DumbPagination`
 

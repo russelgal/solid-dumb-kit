@@ -392,51 +392,6 @@ type DumbPaginationProps = {
 declare function buildPageNumbers(current: number, total: number): Array<number | '…'>;
 declare function DumbPagination(props: DumbPaginationProps): solid_js.JSX.Element;
 
-type VirtualWindow = {
-    /** видимое окно: [first, last) */
-    first: number;
-    last: number;
-    /** высота строк выше и ниже окна — распорки */
-    padTop: number;
-    padBottom: number;
-    /** полная высота контента */
-    total: number;
-};
-
-type VirtualOptions = {
-    /** ключи ВСЕХ строк набора, в текущем порядке */
-    keys: () => Array<string>;
-    /** высота строки, пока её не измерили */
-    estimate?: number;
-    /** сколько строк рисовать про запас */
-    overscan?: number;
-    /** атрибут, по которому строки находятся в DOM */
-    keyAttr?: string;
-    /** окно пересчитано — перерисуй */
-    onChange: (win: VirtualWindow) => void;
-};
-type VirtualEngine = {
-    attach: (scroller: HTMLElement) => () => void;
-    /** пересчитать (после смены данных или сортировки) */
-    refresh: () => void;
-    /** снять высоты отрисованных строк — звать после перерисовки окна */
-    measure: () => void;
-    window: () => VirtualWindow;
-    destroy: () => void;
-};
-declare function createVirtualEngine(opts: VirtualOptions): VirtualEngine;
-
-declare function createVirtual(opts: Omit<VirtualOptions, 'onChange'>): {
-    /** ref на прокручиваемый контейнер */
-    scroller: (el: HTMLElement) => () => void;
-    /** индексы окна и распорки */
-    window: solid_js.Accessor<VirtualWindow>;
-    /** пересчитать после смены данных */
-    refresh: () => void;
-    /** снять высоты отрисованных строк */
-    measure: () => void;
-};
-
 type Numeric = number | string | null | undefined;
 /** 1 234,56 ₽ */
 declare function RubR2(v: Numeric): string;
@@ -526,4 +481,4 @@ declare function configureImgproxy(c: ImgproxyConfig): void;
  */
 declare function imgproxyUrl(src: string, opts?: ImgproxyOps): string;
 
-export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, type VirtualEngine, type VirtualOptions, type VirtualWindow, buildPageNumbers, configureImgproxy, createDumbSortable, createSelectionArea, createSortableGroup, createVirtual, createVirtualEngine, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };
+export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, buildPageNumbers, configureImgproxy, createDumbSortable, createSelectionArea, createSortableGroup, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };

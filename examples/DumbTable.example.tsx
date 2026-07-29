@@ -1,7 +1,7 @@
 // DumbTable — bring-your-own-columns table on @tanstack/solid-table:
 // click a header to sort, drag rows by the ⠿ handle, paginate.
-import { createSignal, createMemo, Show, createEffect } from 'solid-js'
-import { DumbTable, DumbPagination, SelectionArea, createVirtual, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
+import { createSignal, createMemo } from 'solid-js'
+import { DumbTable, DumbPagination, SelectionArea, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
 
 type Product = {
   id: string
@@ -36,8 +36,7 @@ const withViewTransition = (fn: () => void) => {
 const BRANDS = ['Attache', 'Erich Krause', 'Berlingo', 'Comix', 'Deli']
 const NAMES = ['Ручка шариковая', 'Карандаш', 'Тетрадь 48л', 'Папка-регистратор', 'Степлер', 'Клей-карандаш']
 
-// 5000 строк: на такой длине сразу видно, тормозит режим или нет
-const DATA: Product[] = Array.from({ length: 5000 }, (_, i) => ({
+const DATA: Product[] = Array.from({ length: 137 }, (_, i) => ({
   id: `p${i}`,
   vendor_code: `ART-${String(1000 + i * 7).padStart(5, '0')}`,
   name: `${NAMES[i % NAMES.length]} №${i + 1}`,
@@ -50,9 +49,6 @@ export default function DumbTableExample() {
   const [rows, setRows] = createSignal<Product[]>(DATA)
   const [page, setPage] = createSignal(1)
   const [pageSize, setPageSize] = createSignal(20)
-  // два режима: страницами или всё сразу, с ленивой отрисовкой за экраном.
-  // Для таблицы разницы нет — она рисует те строки, что дали.
-  const [mode, setMode] = createSignal<'pages' | 'virtual'>('pages')
   const [picked, setPicked] = createSignal<Product | null>(null)
   const [cart, setCart] = createSignal<Set<string>>(new Set())
   // выделение строк рамкой: таблица проставляет строкам data-key, так что
@@ -79,23 +75,6 @@ export default function DumbTableExample() {
     const from = (page() - 1) * pageSize()
     return sorted().slice(from, from + pageSize())
   })
-
-  // Второй режим — окно. Для <table> без него никак: таблица считает ширины
-  // колонок по ВСЕМ строкам, а content-visibility на table-row не действует,
-  // поэтому пять тысяч строк браузер честно раскладывает целиком.
-  const virt = createVirtual({
-    keys: () => sorted().map((p) => p.id),
-    estimate: 37,
-    overscan: 8,
-  })
-  const virtualRows = createMemo(() => sorted().slice(virt.window().first, virt.window().last))
-
-  // окно перерисовалось — снимаем фактические высоты (батчем, без reflow)
-  createEffect(() => { virtualRows(); virt.measure() })
-  // данные/сортировка сменились — пересчитать
-  createEffect(() => { sorted(); virt.refresh() })
-
-  const shown = () => (mode() === 'pages' ? pageRows() : virtualRows())
 
   // удалить выделенное: чистим и выделение, и заказ, и не оставляем пустую страницу
   const removeSelected = () => {
@@ -174,14 +153,6 @@ export default function DumbTableExample() {
       </p>
 
       <div class="toolbar">
-        <div class="modes">
-          <button class="btn" classList={{ on: mode() === 'pages' }} onClick={() => setMode('pages')}>
-            пагинация
-          </button>
-          <button class="btn" classList={{ on: mode() === 'virtual' }} onClick={() => setMode('virtual')}>
-            все {sorted().length} строк
-          </button>
-        </div>
         <span>{picked() ? <>row click → <b>{picked()!.name}</b> · {picked()!.vendor_code}</> : 'click a row →'}</span>
         <span class="count">выделено рамкой: <b>{selected().size}</b></span>
         <button
@@ -204,9 +175,8 @@ export default function DumbTableExample() {
       </div>
 
       <SelectionArea class="surface" selectables="tbody tr" selected={selected} onChange={setSelected}>
-        <div class="viewport" classList={{ scrolling: mode() === 'virtual' }} ref={virt.scroller}>
         <DumbTable
-          rows={shown()}
+          rows={pageRows()}
           columns={columns}
           rowId={(p) => p.id}
           sort={sort() ?? undefined}
@@ -224,11 +194,7 @@ export default function DumbTableExample() {
           // кроссфейд всей таблицы
           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })}
           empty={<div class="empty">Ничего не найдено</div>}
-          spacerTop={mode() === 'virtual' ? virt.window().padTop : 0}
-          spacerBottom={mode() === 'virtual' ? virt.window().padBottom : 0}
-          // в окне перетаскивание выключено: строк вне окна в DOM нет,
-          // а снимок позиций делается один раз на старте жеста
-          onReorder={mode() === 'virtual' ? undefined : (from, to) => {
+          onReorder={(from, to) => {
             // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные.
             // Сортировка при этом заведомо снята: ручка гаснет, пока она активна.
             const offset = (page() - 1) * pageSize()
@@ -237,22 +203,8 @@ export default function DumbTableExample() {
             setRows(next)
           }}
         />
-        </div>
       </SelectionArea>
 
-      <Show when={mode() === 'virtual'}>
-        <p class="note">
-          В DOM только {shown().length} строк из {sorted().length} — остальное держат
-          распорки. Высоты строк могут быть любыми: показанные измеряются батчем через
-          <code> IntersectionObserver</code> (без reflow) и запоминаются, для ещё не
-          показанных берётся оценка. Прокрутку при уточнении высот мы намеренно
-          <b> не</b> подправляем — именно это заставляет такие списки ползти под курсором;
-          окно просто пересчитывается от текущего <code>scrollTop</code>.
-          Сортировка, как и на страницах, идёт по всему набору.
-        </p>
-      </Show>
-
-      <Show when={mode() === 'pages'}>
       <div class="pager">
         <DumbPagination
           page={page()}
@@ -264,7 +216,6 @@ export default function DumbTableExample() {
           summary={({ page, pages, total }) => `${total} товаров · страница ${page} из ${pages}`}
         />
       </div>
-      </Show>
 
       <style>{`
         .dt-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a }
@@ -281,12 +232,7 @@ export default function DumbTableExample() {
         .btn-buy.on { border-color: #16a34a; background: #16a34a; color: #fff }
 
         .surface { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden }
-        .viewport.scrolling { max-height: 60vh; overflow-y: auto }
-        /* ширины колонок заданы → браузеру не нужно мерить все ячейки */
-        .surface table { table-layout: fixed }
-        .modes { display: flex; gap: 4px }
         .btn.on { border-color: #3b82f6; background: #3b82f6; color: #fff }
-        .note { margin: 10px 0 0; font-size: 12px; color: #64748b }
 
         .pager { margin-top: 12px }
         .empty { padding: 24px; text-align: center; color: #94a3b8 }

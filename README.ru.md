@@ -57,7 +57,6 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 | `fmtDate` / `fmtDateTime` / `fmtDateTimeShort` / `fmtTime` / `fmtDateMonth` / `timeAgo` / `fmtSize` | форматирование | [docs/ru/utils.md#даты](docs/ru/utils.md#даты) |
 | `genSlug` | утилита | [docs/ru/utils.md#genslug--слаги-для-url](docs/ru/utils.md#genslug--слаги-для-url) |
 | `extractImagesFromZip` | утилита | [docs/ru/utils.md#extractimagesfromzip--картинки-из-zip](docs/ru/utils.md#extractimagesfromzip--картинки-из-zip) |
-| `createVirtual` / `createVirtualEngine` / `VirtualWindow` | примитив | [docs/ru/DumbTable.md#длинные-списки](docs/ru/DumbTable.md#длинные-списки) |
 | `imgproxyUrl` / `configureImgproxy` / `ImgproxyOps` / `ImgproxyConfig` | утилита | [docs/ru/utils.md#imgproxyurl--сборка-url-для-imgproxy](docs/ru/utils.md#imgproxyurl--сборка-url-для-imgproxy) |
 
 ## CSS

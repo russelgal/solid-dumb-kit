@@ -98,38 +98,6 @@ describe('DumbTable.example — сортировка идёт по всему н
   })
 })
 
-describe('DumbTable.example — виртуальное окно', () => {
-  const switchTo = (host: HTMLElement, label: string) =>
-    Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.includes(label))!.click()
-
-  it('держит в DOM окно, а не все 5000 строк', () => {
-    const host = mount(DumbTableExample)
-    const rows = () => host.querySelectorAll('tbody tr:not([aria-hidden])').length
-    expect(rows()).toBe(20)                     // страница
-
-    switchTo(host, 'все')
-    expect(rows()).toBeLessThan(200)            // окно, а не весь набор
-    expect(rows()).toBeGreaterThan(0)
-    expect(host.querySelectorAll('tbody tr[aria-hidden]').length).toBeGreaterThan(0)  // распорки
-  })
-
-  it('сортировка идёт по всему набору', () => {
-    const host = mount(DumbTableExample)
-    const first = () => host.querySelector('tbody tr td:nth-child(2)')?.textContent
-
-    const before = first()
-    Array.from(host.querySelectorAll('th')).find((th) => th.textContent?.includes('Цена'))!.click()
-    expect(first()).not.toBe(before)
-  })
-
-  it('в окне перетаскивание выключено', () => {
-    const host = mount(DumbTableExample)
-    expect(host.querySelectorAll('[data-drag-handle]').length).toBeGreaterThan(0)
-    switchTo(host, 'все')
-    expect(host.querySelectorAll('[data-drag-handle]').length).toBe(0)
-  })
-})
-
 describe('Kanban.example — перемешивание', () => {
   it('кнопка есть и раскидывает карточки, сохраняя размеры колонок', () => {
     const host = mount(KanbanExample)
