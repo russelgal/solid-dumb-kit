@@ -24,6 +24,14 @@ function Board(props: {
   scroll?: boolean
 }) {
   const [selected, setSelected] = createSignal<Set<string>>(new Set())
+  const [items, setItems] = createSignal(props.items)
+
+  const removeSelected = () => {
+    const kill = selected()
+    if (!kill.size) return
+    setItems((prev) => prev.filter((f) => !kill.has(f.id)))
+    setSelected(new Set())
+  }
 
   return (
     <section style={{ 'margin-bottom': '28px' }}>
@@ -31,7 +39,7 @@ function Board(props: {
         <h3 style={{ margin: '0', 'font-size': '15px' }}>{props.title}</h3>
         <span style={{ 'font-size': '13px', color: '#64748b' }}>{props.hint}</span>
         <span style={{ 'margin-left': 'auto', 'font-size': '14px' }}>
-          выделено <b>{selected().size}</b> / {props.items.length}
+          выделено <b>{selected().size}</b> / {items().length}
         </span>
         <button
           onClick={() => setSelected(new Set())}
@@ -39,6 +47,16 @@ function Board(props: {
           style={{ padding: '4px 10px', 'border-radius': '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
         >
           сбросить
+        </button>
+        <button
+          onClick={removeSelected}
+          disabled={!selected().size}
+          style={{ padding: '4px 10px', 'border-radius': '6px', cursor: 'pointer',
+                   border: '1px solid ' + (selected().size ? '#dc2626' : '#cbd5e1'),
+                   background: selected().size ? '#dc2626' : '#fff',
+                   color: selected().size ? '#fff' : '#94a3b8' }}
+        >
+          удалить выделенное
         </button>
       </div>
 
@@ -63,7 +81,7 @@ function Board(props: {
             gap: '10px',
           }}
         >
-          <For each={props.items}>
+          <For each={items()}>
             {(f) => {
               const on = () => selected().has(f.id)
               return (

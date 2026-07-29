@@ -40,6 +40,19 @@ export default function DumbTableExample() {
     return rows().slice(from, from + pageSize())
   })
 
+  // удалить выделенное: чистим и выделение, и заказ, и не оставляем пустую страницу
+  const removeSelected = () => {
+    const kill = selected()
+    if (!kill.size) return
+    const next = rows().filter((r) => !kill.has(r.id))
+    setRows(next)
+    setSelected(new Set())
+    setCart((prev) => new Set([...prev].filter((id) => !kill.has(id))))
+    if (picked() && kill.has(picked()!.id)) setPicked(null)
+    const pages = Math.max(1, Math.ceil(next.length / pageSize()))
+    if (page() > pages) setPage(pages)
+  }
+
   const toggleCart = (p: Product) =>
     setCart((prev) => {
       const next = new Set(prev)
@@ -102,6 +115,17 @@ export default function DumbTableExample() {
                    background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}
         >
           сбросить
+        </button>
+        <button
+          onClick={removeSelected}
+          disabled={!selected().size}
+          style={{ padding: '3px 9px', 'border-radius': '6px', cursor: 'pointer', font: 'inherit',
+                   'font-size': '12px',
+                   border: '1px solid ' + (selected().size ? '#dc2626' : '#cbd5e1'),
+                   background: selected().size ? '#dc2626' : '#fff',
+                   color: selected().size ? '#fff' : '#94a3b8' }}
+        >
+          удалить выделенное
         </button>
       </div>
 

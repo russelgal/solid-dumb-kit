@@ -48,6 +48,15 @@ describe('SelectionArea.example — обе доски на месте', () => {
     expect(host.querySelectorAll('.sa-card').length).toBe(340)   // 100 + 240
   })
 
+  it('кнопка удаления выключена, пока ничего не выделено', () => {
+    const host = mount(SelectionAreaExample)
+    const kill = Array.from(host.querySelectorAll('button')).filter(
+      (b) => b.textContent?.includes('удалить выделенное'),
+    )
+    expect(kill.length).toBe(2)                    // по одной на доску
+    expect(kill.every((b) => b.disabled)).toBe(true)
+  })
+
   it('у прокручиваемой доски overflow на самом контейнере', () => {
     const host = mount(SelectionAreaExample)
     const boards = host.querySelectorAll('section > div:last-child')
