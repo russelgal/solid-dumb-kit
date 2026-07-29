@@ -1143,6 +1143,7 @@ function makeGhost(src, r) {
     } catch {
     }
   }
+  ghost.style.viewTransitionName = "none";
   ghost.style.boxSizing = "border-box";
   ghost.style.position = "fixed";
   ghost.style.margin = "0";

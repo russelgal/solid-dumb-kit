@@ -129,6 +129,8 @@ function makeGhost(src: HTMLElement, r: DOMRectReadOnly): HTMLElement {
     }
     // rect — border-box, а width/height задают content-box: без box-sizing
     // клон раздулся бы ровно на свои паддинги и рамку
+    // имя view-transition уникально на документ: у клона его быть не должно
+    ghost.style.viewTransitionName = 'none';
     ghost.style.boxSizing = 'border-box';
     ghost.style.position = 'fixed';
     ghost.style.margin = '0';

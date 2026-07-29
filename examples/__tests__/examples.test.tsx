@@ -65,6 +65,29 @@ describe('SelectionArea.example — обе доски на месте', () => {
   })
 })
 
+describe('Kanban.example — перемешивание', () => {
+  it('кнопка есть и раскидывает карточки, сохраняя размеры колонок', () => {
+    const host = mount(KanbanExample)
+    const counts = () =>
+      Array.from(host.querySelectorAll('section')).map((s) => s.querySelectorAll('article').length)
+
+    const before = counts()
+    const btn = Array.from(host.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'перемешать')!
+    expect(btn).toBeTruthy()
+
+    btn.click()
+    expect(counts()).toEqual(before)                       // колонки той же длины
+    expect(host.querySelectorAll('article').length).toBe(10)  // ни одна не потерялась
+  })
+
+  it('карточкам проставлено имя для View Transitions', () => {
+    const host = mount(KanbanExample)
+    const first = host.querySelector('article') as HTMLElement
+    expect(first.style.getPropertyValue('view-transition-name')).toMatch(/^kanban-/)
+  })
+})
+
 describe('DumbTree.example — дерево реально построилось', () => {
   it('рисует корневые категории и вложенных детей', () => {
     const host = mount(DumbTreeExample)

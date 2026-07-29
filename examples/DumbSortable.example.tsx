@@ -7,6 +7,17 @@ type Row = { id: string; label: string }
 const rows = (n: number): Row[] =>
   Array.from({ length: n }, (_, i) => ({ id: `r${i}`, label: `Track ${String(i + 1).padStart(3, '0')}` }))
 
+
+// перемешивание Фишера–Йетса: копия, не мутируем исходный массив
+function shuffle<T>(list: Array<T>): Array<T> {
+  const out = list.slice()
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
 const HUE = (i: number) => `oklch(0.75 0.13 ${(i * 37) % 360})`
 
 const PILLS = [
@@ -69,7 +80,12 @@ export default function DumbSortableExample() {
       <div style={{ flex: '1', 'min-width': '320px', display: 'grid', gap: '28px' }}>
         {/* Vertical list: drag by the ⠿ handle; container scrolls while dragging */}
         <section>
-          <h3 style={{ margin: '0 0 4px' }}>List — drag by the handle</h3>
+          <div style={{ display: 'flex', 'align-items': 'center', gap: '10px' }}>
+            <h3 style={{ margin: '0 0 4px' }}>List — drag by the handle</h3>
+            <button onClick={() => setList(shuffle(list()))}
+                    style={{ padding: '3px 10px', 'border-radius': '6px', border: '1px solid #cbd5e1',
+                   background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}>перемешать</button>
+          </div>
           <p style={{ margin: '0 0 10px', 'font-size': '13px', color: '#64748b' }}>
             100 rows, fixed-height scroll area — drag near an edge and it auto-scrolls.
           </p>
@@ -96,7 +112,12 @@ export default function DumbSortableExample() {
 
         {/* Grid: axis="grid", drag the whole tile (no handle) */}
         <section>
-          <h3 style={{ margin: '0 0 4px' }}>Grid — drag the tile</h3>
+          <div style={{ display: 'flex', 'align-items': 'center', gap: '10px' }}>
+            <h3 style={{ margin: '0 0 4px' }}>Grid — drag the tile</h3>
+            <button onClick={() => setTiles(shuffle(tiles()))}
+                    style={{ padding: '3px 10px', 'border-radius': '6px', border: '1px solid #cbd5e1',
+                   background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}>перемешать</button>
+          </div>
           <p style={{ margin: '0 0 10px', 'font-size': '13px', color: '#64748b' }}>
             100 tiles, <code>axis="grid"</code> — items reflow in 2D and jump across rows.
           </p>

@@ -14,6 +14,26 @@ const TITLES: Record<ColumnId, string> = {
   todo: 'Бэклог', doing: 'В работе', review: 'На ревью', done: 'Готово',
 }
 
+// перемешивание Фишера–Йетса: копия, не мутируем исходный массив
+function shuffle<T>(list: Array<T>): Array<T> {
+  const out = list.slice()
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
+// Перемешивание — дискретное изменение, а значит подходящий случай для
+// View Transitions: браузер сам снимет «до», применит новое состояние и
+// анимирует переезд карточек. Драг так делать нельзя (снимок всей страницы
+// на каждый кадр), а вот такие переходы — ровно его ниша.
+const withViewTransition = (fn: () => void) => {
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown }
+  if (typeof doc.startViewTransition === 'function') doc.startViewTransition(fn)
+  else fn()
+}
+
 const card = (id: string, title: string, tag: string, hue: number): Card => ({ id, title, tag, hue })
 
 const INITIAL: Record<ColumnId, Card[]> = {
@@ -40,6 +60,22 @@ const INITIAL: Record<ColumnId, Card[]> = {
 export default function KanbanExample() {
   const [board, setBoard] = createSignal<Record<ColumnId, Card[]>>(INITIAL)
   const [log, setLog] = createSignal('перетащи карточку между колонками →')
+
+  // раскидываем все карточки заново, сохраняя размеры колонок
+  const shuffleBoard = () => {
+    const all = shuffle(COLUMNS.flatMap((c) => board()[c]))
+    withViewTransition(() => {
+      const next = {} as Record<ColumnId, Card[]>
+      let i = 0
+      for (const c of COLUMNS) {
+        const n = board()[c].length
+        next[c] = all.slice(i, i + n)
+        i += n
+      }
+      setBoard(next)
+      setLog('перемешали — переезд анимирует браузер через View Transitions')
+    })
+  }
 
   const group = createSortableGroup({
     onEnd: (from, to) => {
@@ -85,8 +121,17 @@ export default function KanbanExample() {
         перенести нельзя — это <code>accepts</code>.
       </p>
 
-      <div style={{ 'margin-bottom': '12px', 'font-size': '13px', 'min-height': '20px', color: '#0f172a' }}>
-        {log()}
+      <div style={{ display: 'flex', 'align-items': 'center', gap: '12px', 'margin-bottom': '12px',
+                    'font-size': '13px', 'min-height': '20px', color: '#0f172a' }}>
+        <span>{log()}</span>
+        <button
+          onClick={shuffleBoard}
+          style={{ 'margin-left': 'auto', padding: '3px 10px', 'border-radius': '6px',
+                   border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer',
+                   font: 'inherit', 'font-size': '12px' }}
+        >
+          перемешать
+        </button>
       </div>
 
       <div style={{ display: 'grid', 'grid-template-columns': 'repeat(4, 1fr)', gap: '12px', 'align-items': 'start' }}>
@@ -124,6 +169,9 @@ export default function KanbanExample() {
                           display: 'flex', 'align-items': 'flex-start', gap: '8px',
                           padding: '10px', 'border-radius': '10px', background: '#fff',
                           'box-shadow': 'inset 0 0 0 1px #e2e8f0', 'font-size': '13px',
+                          // имя нужно, чтобы браузер анимировал КАЖДУЮ карточку отдельно,
+                          // а не делал кроссфейд всей доски
+                          'view-transition-name': `kanban-${c.id}`,
                         }}
                       >
                         <button

@@ -12,6 +12,17 @@ type Product = {
   stock: number
 }
 
+
+// перемешивание Фишера–Йетса: копия, не мутируем исходный массив
+function shuffle<T>(list: Array<T>): Array<T> {
+  const out = list.slice()
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
 const BRANDS = ['Attache', 'Erich Krause', 'Berlingo', 'Comix', 'Deli']
 const NAMES = ['Ручка шариковая', 'Карандаш', 'Тетрадь 48л', 'Папка-регистратор', 'Степлер', 'Клей-карандаш']
 
@@ -108,6 +119,13 @@ export default function DumbTableExample() {
         <span style={{ 'margin-left': 'auto' }}>
           выделено рамкой: <b>{selected().size}</b>
         </span>
+        <button
+          onClick={() => { setRows(shuffle(rows())); setPage(1) }}
+          style={{ padding: '3px 9px', 'border-radius': '6px', border: '1px solid #cbd5e1',
+                   background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}
+        >
+          перемешать
+        </button>
         <button
           onClick={() => setSelected(new Set())}
           disabled={!selected().size}
