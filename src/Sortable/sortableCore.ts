@@ -75,6 +75,21 @@ type Drag = {
 // Внутри [data-drag-handle] запрет не действует — там ручка и есть цель.
 const NO_DRAG = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
 
+/**
+ * Начинать ли драг с этой точки, когда ручки нет и тянется весь элемент.
+ *
+ * Две проверки, потому что они про разные моменты:
+ *  • по цели — pointerdown приходит ДО того, как браузер переставит фокус,
+ *    поэтому первый клик по полю ловится только так;
+ *  • по document.activeElement — строка уже «в режиме редактирования»: фокус
+ *    внутри неё, значит тянуть её не надо, даже если взялись за пустое место.
+ */
+function isInteractive(ev: PointerEvent, el: HTMLElement): boolean {
+    if (ev.target instanceof Element && ev.target.closest(NO_DRAG)) return true;
+    const active = document.activeElement;
+    return !!active && active !== document.body && el.contains(active);
+}
+
 const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
 const LONGPRESS = 350;    // тач: удержание до старта драга, мс
 const MOVE_TOL = 10;      // тач: сдвиг за время удержания = скролл, отменяем, px
@@ -424,8 +439,8 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
                 const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null;
                 if (handle) {
                     if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-                } else if (ev.target instanceof Element && ev.target.closest(NO_DRAG)) {
-                    return;                       // это поле/кнопка — пусть работает как обычно
+                } else if (isInteractive(ev, el)) {
+                    return;
                 }
                 onDown(id, handle || el, ev);
             };

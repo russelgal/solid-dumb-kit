@@ -783,6 +783,11 @@ function shouldAnimate(explicit) {
 
 // src/Sortable/sortableCore.ts
 var NO_DRAG = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
+function isInteractive(ev, el) {
+  if (ev.target instanceof Element && ev.target.closest(NO_DRAG)) return true;
+  const active = document.activeElement;
+  return !!active && active !== document.body && el.contains(active);
+}
 var SLIDE = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS = 350;
 var MOVE_TOL = 10;
@@ -1103,7 +1108,7 @@ function createSortableEngine(opts) {
         const handle = el.querySelector("[data-drag-handle]");
         if (handle) {
           if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-        } else if (ev.target instanceof Element && ev.target.closest(NO_DRAG)) {
+        } else if (isInteractive(ev, el)) {
           return;
         }
         onDown(id, handle || el, ev);
@@ -1136,6 +1141,11 @@ function createSortableEngine(opts) {
 
 // src/Sortable/sortableGroup.ts
 var NO_DRAG2 = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
+function isInteractive2(ev, el) {
+  if (ev.target instanceof Element && ev.target.closest(NO_DRAG2)) return true;
+  const active = document.activeElement;
+  return !!active && active !== document.body && el.contains(active);
+}
 var SLIDE2 = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS2 = 350;
 var MOVE_TOL2 = 10;
@@ -1569,7 +1579,7 @@ function createSortableGroupEngine(opts) {
             const handle = el.querySelector("[data-drag-handle]");
             if (handle) {
               if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-            } else if (ev.target instanceof Element && ev.target.closest(NO_DRAG2)) {
+            } else if (isInteractive2(ev, el)) {
               return;
             }
             onDown(name, id, handle || el, ev);

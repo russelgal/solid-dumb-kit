@@ -66,7 +66,9 @@ The component renders a `<For>` over `items`, takes the **real DOM node** your `
 
 Put `data-drag-handle` on a child to drag only by that handle. Omit it and the **whole element** is draggable — except for what the user is meant to interact with: a drag never starts on `input`, `textarea`, `select`, `button`, `a`, `label` or `[contenteditable]`, so editable cells and controls keep working. Add `data-no-drag` to exempt anything else.
 
-(Inside `[data-drag-handle]` that exemption doesn't apply — a `<button>` handle is still a handle.)
+A row is also left alone while it holds focus: if `document.activeElement` is inside it, no drag starts even from an empty spot — the row is being edited, not moved.
+
+(Inside `[data-drag-handle]` neither exemption applies — a `<button>` handle is still a handle.)
 
 ```tsx
 {(item) => (

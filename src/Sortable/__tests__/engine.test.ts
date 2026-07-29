@@ -74,6 +74,27 @@ describe('createSortableEngine — вне Solid', () => {
     engine.destroy()
   })
 
+  it('пока фокус внутри строки, драг не начинается даже с пустого места', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    const input = document.createElement('input')
+    const text = document.createElement('span')
+    el.append(input, text)
+    engine.attach(el, 'a')
+
+    input.focus()                                  // строка «в режиме редактирования»
+    const spy = vi.spyOn(window, 'addEventListener')
+    text.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 9 }))
+    expect(spy).not.toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    input.blur()                                   // фокус ушёл — драг снова возможен
+    text.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 10 }))
+    expect(spy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    spy.mockRestore()
+    engine.destroy()
+  })
+
   it('низкоуровневые attachRow/attachHandle тоже отдают отписку', () => {
     const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
     const cell = row('a')
