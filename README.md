@@ -15,6 +15,8 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 
 Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
+**📓 Changelog:** [CHANGELOG.md](CHANGELOG.md)
+
 ## Install
 
 ```bash

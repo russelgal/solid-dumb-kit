@@ -82,6 +82,8 @@ Pass `onSort` and the table stops reordering anything itself: it reports the cli
 
 Omit `onSort` and rows are sorted in the browser via TanStack's sorted row model.
 
+**Careful when you paginate.** The table sorts exactly the rows you hand it — so if you slice a page yourself and pass that, client-side sorting only reorders the visible page. With external pagination, sort externally too: keep `sort`/`order` in your own state, sort the full array, *then* slice. The example does it this way.
+
 **Three states.** Clicking a header cycles `asc → desc → no sorting`, so you can always get back to the data's own order. In server mode the reset arrives as `onSort(null, null)`. Pass `noSortRemoval` to keep the old two-state toggle.
 
 **First-click direction.** TanStack starts text columns ascending and numeric columns descending (usually what you want: “priciest first”). Set `sortDescFirst={false}` to make every column start ascending, or `true` for the opposite.

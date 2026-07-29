@@ -15,6 +15,8 @@
 
 Ветка `0.x` рассчитана на **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
+**📓 История изменений:** [CHANGELOG.md](CHANGELOG.md)
+
 ## Установка
 
 ```bash

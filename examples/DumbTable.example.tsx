@@ -55,10 +55,25 @@ export default function DumbTableExample() {
   // SelectionArea опознаёт их сама
   const [selected, setSelected] = createSignal<Set<string>>(new Set())
 
-  // пагинация снаружи таблицы: режем строки сами, таблица рисует что дали
+  // Пагинация снаружи → и сортировка снаружи. Иначе таблица отсортировала бы
+  // только те строки, что мы ей дали, то есть одну видимую страницу.
+  const [sort, setSort] = createSignal<string | null>(null)
+  const [order, setOrder] = createSignal<'asc' | 'desc' | null>(null)
+
+  const sorted = createMemo(() => {
+    const key = sort()
+    const dir = order() === 'desc' ? -1 : 1
+    if (!key || !order()) return rows()
+    return [...rows()].sort((a, b) => {
+      const x = a[key as keyof Product], y = b[key as keyof Product]
+      if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir
+      return String(x ?? '').localeCompare(String(y ?? ''), 'ru') * dir
+    })
+  })
+
   const pageRows = createMemo(() => {
     const from = (page() - 1) * pageSize()
-    return rows().slice(from, from + pageSize())
+    return sorted().slice(from, from + pageSize())
   })
 
   // удалить выделенное: чистим и выделение, и заказ, и не оставляем пустую страницу
@@ -140,7 +155,15 @@ export default function DumbTableExample() {
       <div class="toolbar">
         <span>{picked() ? <>row click → <b>{picked()!.name}</b> · {picked()!.vendor_code}</> : 'click a row →'}</span>
         <span class="count">выделено рамкой: <b>{selected().size}</b></span>
-        <button class="btn" onClick={() => withViewTransition(() => { setRows(shuffle(rows())); setPage(1) })}>
+        <button
+          class="btn"
+          onClick={() => withViewTransition(() => {
+            // при активной сортировке перемешивание было бы не видно — снимаем её
+            setSort(null); setOrder(null)
+            setRows(shuffle(rows()))
+            setPage(1)
+          })}
+        >
           перемешать
         </button>
         <button class="btn" onClick={() => setSelected(new Set())} disabled={!selected().size}>
@@ -156,8 +179,11 @@ export default function DumbTableExample() {
           rows={pageRows()}
           columns={columns}
           rowId={(p) => p.id}
-          // смену сортировки таблица анимирует сама — снаружи её не обернуть
-          viewTransition
+          sort={sort() ?? undefined}
+          order={order() ?? undefined}
+          onSort={(key, dir) => withViewTransition(() => {
+            setSort(key); setOrder(dir); setPage(1)
+          })}
           onRowClick={(p) => setPicked(p)}
           headClass="head"
           rowClass={(p) =>
@@ -169,7 +195,8 @@ export default function DumbTableExample() {
           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })}
           empty={<div class="empty">Ничего не найдено</div>}
           onReorder={(from, to) => {
-            // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные
+            // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные.
+            // Сортировка при этом заведомо снята: ручка гаснет, пока она активна.
             const offset = (page() - 1) * pageSize()
             const next = rows().slice()
             next.splice(offset + to, 0, next.splice(offset + from, 1)[0])

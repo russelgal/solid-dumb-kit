@@ -66,6 +66,38 @@ describe('SelectionArea.example — обе доски на месте', () => {
   })
 })
 
+describe('DumbTable.example — сортировка идёт по всему набору, а не по странице', () => {
+  const skus = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll('tbody tr td:nth-child(2)')).map((td) => td.textContent)
+
+  it('после сортировки на первой странице оказываются другие строки', () => {
+    const host = mount(DumbTableExample)
+    const before = skus(host)
+
+    // «Цена» — третий заголовок (первый — колонка ручки)
+    const priceTh = Array.from(host.querySelectorAll('th'))
+      .find((th) => th.textContent?.includes('Цена'))!
+    priceTh.click()
+
+    const after = skus(host)
+    expect(after).not.toEqual(before)     // сортировали бы страницу — состав бы совпал
+    expect(after.length).toBe(before.length)
+  })
+
+  it('перемешивание снимает сортировку, иначе его не было бы видно', () => {
+    const host = mount(DumbTableExample)
+    const priceTh = Array.from(host.querySelectorAll('th'))
+      .find((th) => th.textContent?.includes('Цена'))!
+    priceTh.click()
+    expect(priceTh.textContent).toMatch(/[▲▼]/)
+
+    const shuffleBtn = Array.from(host.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'перемешать')!
+    shuffleBtn.click()
+    expect(priceTh.textContent).toContain('⇅')   // стрелка снова нейтральная
+  })
+})
+
 describe('Kanban.example — перемешивание', () => {
   it('кнопка есть и раскидывает карточки, сохраняя размеры колонок', () => {
     const host = mount(KanbanExample)
