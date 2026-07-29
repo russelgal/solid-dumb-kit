@@ -19,16 +19,18 @@
 
 ## Установка
 
+**В npm пока не публиковали** — ставится прямо с GitHub. В репозитории лежат и `src/`, и собранный `dist/`, поэтому собирать у себя ничего не нужно:
+
 ```bash
-pnpm add solid-dumb-kit
+pnpm add github:russelgal/solid-dumb-kit
 # peer-зависимость:
 pnpm add solid-js
 ```
 
-Установка прямо с GitHub тоже работает (в репозитории лежат и `src/`, и собранный `dist/`):
+Нужна воспроизводимая установка — прибей к коммиту (тегов в репозитории пока нет):
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit
+pnpm add github:russelgal/solid-dumb-kit#<commit-sha>
 ```
 
 ## Быстрый старт

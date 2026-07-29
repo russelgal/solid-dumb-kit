@@ -19,16 +19,18 @@ Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 ## Install
 
+**Not on npm yet** — install straight from GitHub. The repo ships both `src/` and a prebuilt `dist/`, so nothing needs building on your side:
+
 ```bash
-npm i solid-dumb-kit
+pnpm add github:russelgal/solid-dumb-kit
 # peer dep:
-npm i solid-js
+pnpm add solid-js
 ```
 
-Installing straight from GitHub also works (the repo ships both `src/` and a prebuilt `dist/`):
+Pin a commit for reproducible installs (the repo has no tags yet):
 
 ```bash
-npm i github:russelgal/solid-dumb-kit
+pnpm add github:russelgal/solid-dumb-kit#<commit-sha>
 ```
 
 ## Quick start

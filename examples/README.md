@@ -23,7 +23,7 @@ These import from the published package name (`solid-dumb-kit`), so they run as-
 ```bash
 npm create vite@latest playground -- --template solid-ts
 cd playground
-npm i solid-dumb-kit
+pnpm add github:russelgal/solid-dumb-kit   # в npm пока нет
 # copy an example into src/ and render it from src/index.tsx, e.g.:
 #   import Example from './SelectionArea.example'
 #   render(() => <Example />, document.getElementById('root')!)

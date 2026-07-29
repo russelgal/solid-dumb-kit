@@ -47,7 +47,7 @@ function Promo() {
       <div class="pills">
         <For each={PILLS}>{(t) => <span class="pill">{t}</span>}</For>
       </div>
-      <code class="promo-install">npm i solid-dumb-kit</code>
+      <code class="promo-install">pnpm add github:russelgal/solid-dumb-kit</code>
     </aside>
   )
 }
@@ -147,7 +147,7 @@ export default function DumbSortableExample() {
         .promo-text { font-size: 13px; opacity: .92; margin: 0 0 12px; line-height: 1.5 }
         .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px }
         .pill { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.18) }
-        .promo-install { display: block; font-size: 13px; background: rgba(0,0,0,.25);
+        .promo-install { display: block; font-size: 11px; overflow-wrap: anywhere; background: rgba(0,0,0,.25);
                          padding: 8px 10px; border-radius: 8px; text-align: center }
       `}</style>
     </div>
