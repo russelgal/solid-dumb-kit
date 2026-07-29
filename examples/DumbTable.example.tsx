@@ -1,6 +1,6 @@
 // DumbTable — bring-your-own-columns table on @tanstack/solid-table:
 // click a header to sort, drag rows by the ⠿ handle, paginate.
-import { createSignal, createMemo } from 'solid-js'
+import { createSignal, createMemo, Show, onMount } from 'solid-js'
 import { DumbTable, DumbPagination, SelectionArea, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
 
 type Product = {
@@ -49,6 +49,9 @@ export default function DumbTableExample() {
   const [rows, setRows] = createSignal<Product[]>(DATA)
   const [page, setPage] = createSignal(1)
   const [pageSize, setPageSize] = createSignal(20)
+  // окно можно резать двумя способами: страницами или виртуальным скроллом.
+  // Для таблицы разницы нет — она рисует те строки, что дали.
+  const [mode, setMode] = createSignal<'pages' | 'virtual'>('pages')
   const [picked, setPicked] = createSignal<Product | null>(null)
   const [cart, setCart] = createSignal<Set<string>>(new Set())
   // выделение строк рамкой: таблица проставляет строкам data-key, так что
@@ -75,6 +78,24 @@ export default function DumbTableExample() {
     const from = (page() - 1) * pageSize()
     return sorted().slice(from, from + pageSize())
   })
+
+  // ── виртуальное окно: строки одной высоты, поэтому хватает арифметики ──
+  const ROW_H = 37
+  const OVERSCAN = 6
+  let scroller!: HTMLDivElement
+  const [scrollTop, setScrollTop] = createSignal(0)
+  const [viewH, setViewH] = createSignal(420)
+  onMount(() => setViewH(scroller?.clientHeight || 420))
+
+  const win = createMemo(() => {
+    const total = sorted().length
+    const first = Math.max(0, Math.floor(scrollTop() / ROW_H) - OVERSCAN)
+    const visible = Math.ceil(viewH() / ROW_H) + OVERSCAN * 2
+    return { first, last: Math.min(total, first + visible), total }
+  })
+  const virtualRows = createMemo(() => sorted().slice(win().first, win().last))
+
+  const shown = () => (mode() === 'pages' ? pageRows() : virtualRows())
 
   // удалить выделенное: чистим и выделение, и заказ, и не оставляем пустую страницу
   const removeSelected = () => {
@@ -153,6 +174,14 @@ export default function DumbTableExample() {
       </p>
 
       <div class="toolbar">
+        <div class="modes">
+          <button class="btn" classList={{ on: mode() === 'pages' }} onClick={() => setMode('pages')}>
+            пагинация
+          </button>
+          <button class="btn" classList={{ on: mode() === 'virtual' }} onClick={() => setMode('virtual')}>
+            виртуальный скролл
+          </button>
+        </div>
         <span>{picked() ? <>row click → <b>{picked()!.name}</b> · {picked()!.vendor_code}</> : 'click a row →'}</span>
         <span class="count">выделено рамкой: <b>{selected().size}</b></span>
         <button
@@ -175,8 +204,14 @@ export default function DumbTableExample() {
       </div>
 
       <SelectionArea class="surface" selectables="tbody tr" selected={selected} onChange={setSelected}>
+        <div
+          ref={scroller}
+          class="viewport"
+          classList={{ scrolling: mode() === 'virtual' }}
+          onScroll={(e) => mode() === 'virtual' && setScrollTop(e.currentTarget.scrollTop)}
+        >
         <DumbTable
-          rows={pageRows()}
+          rows={shown()}
           columns={columns}
           rowId={(p) => p.id}
           sort={sort() ?? undefined}
@@ -194,7 +229,11 @@ export default function DumbTableExample() {
           // кроссфейд всей таблицы
           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })}
           empty={<div class="empty">Ничего не найдено</div>}
-          onReorder={(from, to) => {
+          spacerTop={mode() === 'virtual' ? win().first * ROW_H : 0}
+          spacerBottom={mode() === 'virtual' ? (win().total - win().last) * ROW_H : 0}
+          // в виртуальном режиме перетаскивание выключено: снимок позиций
+          // делается один раз, а строк вне окна в DOM просто нет
+          onReorder={mode() === 'virtual' ? undefined : (from, to) => {
             // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные.
             // Сортировка при этом заведомо снята: ручка гаснет, пока она активна.
             const offset = (page() - 1) * pageSize()
@@ -203,8 +242,20 @@ export default function DumbTableExample() {
             setRows(next)
           }}
         />
+        </div>
       </SelectionArea>
 
+      <Show when={mode() === 'virtual'}>
+        <p class="note">
+          Окно режется снаружи, как и страница, — таблица получает
+          {' '}{shown().length} строк из {win().total} плюс распорки{' '}
+          (<code>spacerTop</code>/<code>spacerBottom</code>). Сортировка при этом
+          по-прежнему идёт по всему набору: щёлкни заголовок и прокрути наверх.
+          Перетаскивание тут выключено — строк вне окна в DOM нет.
+        </p>
+      </Show>
+
+      <Show when={mode() === 'pages'}>
       <div class="pager">
         <DumbPagination
           page={page()}
@@ -216,6 +267,7 @@ export default function DumbTableExample() {
           summary={({ page, pages, total }) => `${total} товаров · страница ${page} из ${pages}`}
         />
       </div>
+      </Show>
 
       <style>{`
         .dt-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a }
@@ -232,6 +284,12 @@ export default function DumbTableExample() {
         .btn-buy.on { border-color: #16a34a; background: #16a34a; color: #fff }
 
         .surface { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden }
+        .viewport.scrolling { max-height: 60vh; overflow-y: auto }
+        .modes { display: flex; gap: 4px }
+        .btn.on { border-color: #3b82f6; background: #3b82f6; color: #fff }
+        .note { margin: 10px 0 0; font-size: 12px; color: #64748b }
+        /* фиксированная высота строки — на ней и держится арифметика окна */
+        .row, .row td { height: 37px; box-sizing: border-box }
         .pager { margin-top: 12px }
         .empty { padding: 24px; text-align: center; color: #94a3b8 }
 

@@ -69,6 +69,7 @@ const columns: DumbColumn<Product>[] = [
 | `rowClass` | `(row, index) => string \| undefined` | — | Class per row. |
 | `rowStyle` | `(row, index) => JSX.CSSProperties \| undefined` | — | Inline style per row — handy for a unique `view-transition-name`. |
 | `footer` | `JSX.Element` | — | `<tfoot>` content. |
+| `spacerTop` / `spacerBottom` | `number` | — | Pixel spacers above/below the window, for virtual scrolling. |
 
 ## Client vs server sorting
 
@@ -144,6 +145,28 @@ const withViewTransition = (fn: () => void) =>
 ```
 
 The per-row `view-transition-name` is what makes each row travel to its new place; without it the browser cross-fades the whole table. This only applies to discrete changes — dragging is animated by the kit itself, frame by frame.
+
+## Virtual scrolling
+
+The table doesn't virtualise for you — same deal as pagination: you cut the window, it renders what it's given. All it adds is `spacerTop` / `spacerBottom`, the pixels eaten by rows above and below the window, so the scrollbar keeps its real size:
+
+```tsx
+const win = createMemo(() => {
+  const first = Math.max(0, Math.floor(scrollTop() / ROW_H) - OVERSCAN)
+  return { first, last: Math.min(total(), first + visible()) }
+})
+
+<DumbTable rows={sorted().slice(win().first, win().last)} columns={columns}
+           spacerTop={win().first * ROW_H}
+           spacerBottom={(total() - win().last) * ROW_H} />
+```
+
+Two things follow from rows outside the window not existing in the DOM:
+
+- **sort outside**, exactly as with pagination — otherwise you'd sort one screenful;
+- **turn dragging off** (`onReorder` undefined). Positions are snapshotted once at gesture start, and rows that aren't rendered can't be in that snapshot. Rubber-band selection has the same limit: it only picks up what was on screen when the gesture began.
+
+The example has a pagination/virtual switch so you can compare both.
 
 ## `DumbPagination`
 

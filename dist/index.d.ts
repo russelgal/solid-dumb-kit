@@ -360,6 +360,14 @@ type DumbTableProps<T> = {
     rowStyle?: (row: T, index: number) => JSX.CSSProperties | undefined;
     /** содержимое `<tfoot>` */
     footer?: JSX.Element;
+    /**
+     * Распорки для виртуализации: сколько пикселей «съедено» строками выше и ниже
+     * окна. Само окно режешь снаружи — как и страницу, таблица рисует что дали.
+     * Перетаскивание при этом лучше выключать: снимок позиций делается один раз,
+     * а строки за пределами окна в DOM просто отсутствуют.
+     */
+    spacerTop?: number;
+    spacerBottom?: number;
 };
 declare function DumbTable<T>(props: DumbTableProps<T>): JSX.Element;
 

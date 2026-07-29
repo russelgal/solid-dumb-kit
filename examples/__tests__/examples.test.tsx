@@ -98,6 +98,43 @@ describe('DumbTable.example — сортировка идёт по всему н
   })
 })
 
+describe('DumbTable.example — виртуальный скролл', () => {
+  const rowCount = (host: HTMLElement) =>
+    host.querySelectorAll('tbody tr:not([aria-hidden])').length
+
+  const switchTo = (host: HTMLElement, label: string) =>
+    Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.trim() === label)!.click()
+
+  it('рисует окно строк и распорки вместо всех 137', () => {
+    const host = mount(DumbTableExample)
+    switchTo(host, 'виртуальный скролл')
+
+    const spacers = host.querySelectorAll('tbody tr[aria-hidden]')
+    expect(spacers.length).toBeGreaterThan(0)
+    expect(rowCount(host)).toBeLessThan(137)
+  })
+
+  it('сортировка и здесь идёт по всему набору, а не по видимому окну', () => {
+    const host = mount(DumbTableExample)
+    switchTo(host, 'виртуальный скролл')
+    const before = Array.from(host.querySelectorAll('tbody tr:not([aria-hidden]) td:nth-child(2)'))
+      .map((td) => td.textContent)
+
+    Array.from(host.querySelectorAll('th')).find((th) => th.textContent?.includes('Цена'))!.click()
+
+    const after = Array.from(host.querySelectorAll('tbody tr:not([aria-hidden]) td:nth-child(2)'))
+      .map((td) => td.textContent)
+    expect(after).not.toEqual(before)
+  })
+
+  it('в виртуальном режиме перетаскивание выключено', () => {
+    const host = mount(DumbTableExample)
+    expect(host.querySelectorAll('[data-drag-handle]').length).toBeGreaterThan(0)
+    switchTo(host, 'виртуальный скролл')
+    expect(host.querySelectorAll('[data-drag-handle]').length).toBe(0)
+  })
+})
+
 describe('Kanban.example — перемешивание', () => {
   it('кнопка есть и раскидывает карточки, сохраняя размеры колонок', () => {
     const host = mount(KanbanExample)

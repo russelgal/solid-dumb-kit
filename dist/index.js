@@ -1996,14 +1996,15 @@ function DumbTree(props) {
 }
 delegateEvents(["click", "input"]);
 var _tmpl$13 = /* @__PURE__ */ template(`<span aria-hidden=true style=margin-left:4px>`);
-var _tmpl$24 = /* @__PURE__ */ template(`<tfoot>`);
-var _tmpl$33 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
-var _tmpl$43 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
-var _tmpl$53 = /* @__PURE__ */ template(`<th style=width:1%>`);
-var _tmpl$63 = /* @__PURE__ */ template(`<tr>`);
-var _tmpl$72 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
-var _tmpl$82 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
-var _tmpl$92 = /* @__PURE__ */ template(`<td style="padding:6px 8px">`);
+var _tmpl$24 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
+var _tmpl$33 = /* @__PURE__ */ template(`<tfoot>`);
+var _tmpl$43 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
+var _tmpl$53 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
+var _tmpl$63 = /* @__PURE__ */ template(`<th style=width:1%>`);
+var _tmpl$72 = /* @__PURE__ */ template(`<tr>`);
+var _tmpl$82 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
+var _tmpl$92 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
+var _tmpl$02 = /* @__PURE__ */ template(`<td style="padding:6px 8px">`);
 var withViewTransition = (on, fn) => {
   const doc = document;
   if (on && shouldAnimate() && typeof doc.startViewTransition === "function") doc.startViewTransition(fn);
@@ -2095,7 +2096,7 @@ function DumbTable(props) {
     } : {}
   });
   return (() => {
-    var _el$2 = _tmpl$43();
+    var _el$2 = _tmpl$53();
     insert(_el$2, createComponent(Show, {
       get when() {
         return visibleRows().length;
@@ -2104,22 +2105,22 @@ function DumbTable(props) {
         return props.empty;
       },
       get children() {
-        var _el$3 = _tmpl$33(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
+        var _el$3 = _tmpl$43(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
         insert(_el$4, createComponent(For, {
           get each() {
             return table.getHeaderGroups();
           },
           children: (hg) => (() => {
-            var _el$7 = _tmpl$63();
-            insert(_el$7, createComponent(Show, {
+            var _el$9 = _tmpl$72();
+            insert(_el$9, createComponent(Show, {
               get when() {
                 return memo(() => !!props.onReorder)() && withHandle();
               },
               get children() {
-                return _tmpl$53();
+                return _tmpl$63();
               }
             }), null);
-            insert(_el$7, createComponent(For, {
+            insert(_el$9, createComponent(For, {
               get each() {
                 return hg.headers;
               },
@@ -2127,10 +2128,10 @@ function DumbTable(props) {
                 const c = () => colOf(header.column.columnDef);
                 const canSort = () => header.column.getCanSort();
                 return (() => {
-                  var _el$9 = _tmpl$72();
-                  addEventListener(_el$9, "click", header.column.getToggleSortingHandler(), true);
-                  insert(_el$9, () => flexRender(header.column.columnDef.header, header.getContext()), null);
-                  insert(_el$9, createComponent(Show, {
+                  var _el$1 = _tmpl$82();
+                  addEventListener(_el$1, "click", header.column.getToggleSortingHandler(), true);
+                  insert(_el$1, () => flexRender(header.column.columnDef.header, header.getContext()), null);
+                  insert(_el$1, createComponent(Show, {
                     get when() {
                       return canSort();
                     },
@@ -2148,73 +2149,83 @@ function DumbTable(props) {
                       cursor: canSort() ? "pointer" : void 0,
                       "user-select": canSort() ? "none" : void 0
                     };
-                    _v$5 !== _p$.e && className(_el$9, _p$.e = _v$5);
-                    _p$.t = style(_el$9, _v$6, _p$.t);
+                    _v$5 !== _p$.e && className(_el$1, _p$.e = _v$5);
+                    _p$.t = style(_el$1, _v$6, _p$.t);
                     return _p$;
                   }, {
                     e: void 0,
                     t: void 0
                   });
-                  return _el$9;
+                  return _el$1;
                 })();
               }
             }), null);
-            return _el$7;
+            return _el$9;
           })()
         }));
+        insert(_el$5, createComponent(Show, {
+          get when() {
+            return props.spacerTop;
+          },
+          get children() {
+            var _el$6 = _tmpl$24();
+            effect((_$p) => setStyleProperty(_el$6, "height", `${props.spacerTop}px`));
+            return _el$6;
+          }
+        }), null);
         insert(_el$5, createComponent(For, {
           get each() {
             return visibleRows();
           },
           children: (row) => (() => {
-            var _el$0 = _tmpl$63();
-            _el$0.$$click = () => props.onRowClick?.(row.original, row.index);
+            var _el$10 = _tmpl$72();
+            _el$10.$$click = () => props.onRowClick?.(row.original, row.index);
             var _ref$ = props.onReorder ? sortable.bind(row.id) : void 0;
-            typeof _ref$ === "function" && use(_ref$, _el$0);
-            insert(_el$0, createComponent(Show, {
+            typeof _ref$ === "function" && use(_ref$, _el$10);
+            insert(_el$10, createComponent(Show, {
               get when() {
                 return memo(() => !!props.onReorder)() && withHandle();
               },
               get children() {
-                var _el$1 = _tmpl$82(), _el$10 = _el$1.firstChild;
-                _el$1.$$click = (e) => e.stopPropagation();
-                insert(_el$10, () => props.handle ?? "\u283F");
+                var _el$11 = _tmpl$92(), _el$12 = _el$11.firstChild;
+                _el$11.$$click = (e) => e.stopPropagation();
+                insert(_el$12, () => props.handle ?? "\u283F");
                 effect((_p$) => {
                   var _v$7 = dragDisabled() ? "not-allowed" : "grab", _v$8 = dragDisabled() ? ".3" : "1", _v$9 = dragDisabled() ? "reset sorting to reorder" : "drag";
-                  _v$7 !== _p$.e && setStyleProperty(_el$10, "cursor", _p$.e = _v$7);
-                  _v$8 !== _p$.t && setStyleProperty(_el$10, "opacity", _p$.t = _v$8);
-                  _v$9 !== _p$.a && setAttribute(_el$10, "title", _p$.a = _v$9);
+                  _v$7 !== _p$.e && setStyleProperty(_el$12, "cursor", _p$.e = _v$7);
+                  _v$8 !== _p$.t && setStyleProperty(_el$12, "opacity", _p$.t = _v$8);
+                  _v$9 !== _p$.a && setAttribute(_el$12, "title", _p$.a = _v$9);
                   return _p$;
                 }, {
                   e: void 0,
                   t: void 0,
                   a: void 0
                 });
-                return _el$1;
+                return _el$11;
               }
             }), null);
-            insert(_el$0, createComponent(For, {
+            insert(_el$10, createComponent(For, {
               get each() {
                 return row.getVisibleCells();
               },
               children: (cell) => {
                 const c = () => colOf(cell.column.columnDef);
                 return (() => {
-                  var _el$11 = _tmpl$92();
-                  addEventListener(_el$11, "click", c().stopClick ? (e) => e.stopPropagation() : void 0, true);
-                  insert(_el$11, () => flexRender(cell.column.columnDef.cell, cell.getContext()));
+                  var _el$13 = _tmpl$02();
+                  addEventListener(_el$13, "click", c().stopClick ? (e) => e.stopPropagation() : void 0, true);
+                  insert(_el$13, () => flexRender(cell.column.columnDef.cell, cell.getContext()));
                   effect((_p$) => {
                     var _v$11 = c().class, _v$12 = {
                       ...cellStyle(c())
                     };
-                    _v$11 !== _p$.e && className(_el$11, _p$.e = _v$11);
-                    _p$.t = style(_el$11, _v$12, _p$.t);
+                    _v$11 !== _p$.e && className(_el$13, _p$.e = _v$11);
+                    _p$.t = style(_el$13, _v$12, _p$.t);
                     return _p$;
                   }, {
                     e: void 0,
                     t: void 0
                   });
-                  return _el$11;
+                  return _el$13;
                 })();
               }
             }), null);
@@ -2223,26 +2234,36 @@ function DumbTable(props) {
                 cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
                 ...props.rowStyle?.(row.original, row.index)
               };
-              _v$0 !== _p$.e && setAttribute(_el$0, "data-key", _p$.e = _v$0);
-              _v$1 !== _p$.t && className(_el$0, _p$.t = _v$1);
-              _p$.a = style(_el$0, _v$10, _p$.a);
+              _v$0 !== _p$.e && setAttribute(_el$10, "data-key", _p$.e = _v$0);
+              _v$1 !== _p$.t && className(_el$10, _p$.t = _v$1);
+              _p$.a = style(_el$10, _v$10, _p$.a);
               return _p$;
             }, {
               e: void 0,
               t: void 0,
               a: void 0
             });
-            return _el$0;
+            return _el$10;
           })()
-        }));
+        }), null);
+        insert(_el$5, createComponent(Show, {
+          get when() {
+            return props.spacerBottom;
+          },
+          get children() {
+            var _el$7 = _tmpl$24();
+            effect((_$p) => setStyleProperty(_el$7, "height", `${props.spacerBottom}px`));
+            return _el$7;
+          }
+        }), null);
         insert(_el$3, createComponent(Show, {
           get when() {
             return props.footer;
           },
           get children() {
-            var _el$6 = _tmpl$24();
-            insert(_el$6, () => props.footer);
-            return _el$6;
+            var _el$8 = _tmpl$33();
+            insert(_el$8, () => props.footer);
+            return _el$8;
           }
         }), null);
         effect((_p$) => {

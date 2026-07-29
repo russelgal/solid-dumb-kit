@@ -1952,6 +1952,9 @@ function DumbTable(props) {
           </thead>
 
           <tbody>
+            <Show3 when={props.spacerTop}>
+              <tr aria-hidden="true" style={{ height: `${props.spacerTop}px` }} />
+            </Show3>
             <For4 each={visibleRows()}>
               {(row) => <tr
     ref={props.onReorder ? sortable.bind(row.id) : void 0}
@@ -1993,6 +1996,9 @@ function DumbTable(props) {
                   </For4>
                 </tr>}
             </For4>
+            <Show3 when={props.spacerBottom}>
+              <tr aria-hidden="true" style={{ height: `${props.spacerBottom}px` }} />
+            </Show3>
           </tbody>
 
           <Show3 when={props.footer}>
