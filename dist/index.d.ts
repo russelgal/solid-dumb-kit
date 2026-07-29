@@ -81,8 +81,9 @@ type SelectionCoreOptions = {
     /** класс на прямоугольник рамки */
     areaClass?: string;
 };
+
 declare function createSelectionArea(opts: SelectionCoreOptions): {
-    /** повесить на контейнер */
+    /** повесить жест на контейнер */
     attach(el: HTMLElement): void;
 };
 
@@ -130,14 +131,6 @@ type DumbSortableProps<T> = {
 };
 declare function DumbSortable<T>(props: DumbSortableProps<T>): JSX.Element;
 
-type DumbSortableHandle = {
-    /** самодостаточный ref на элемент (ручка = дочка с [data-drag-handle]) */
-    bind: (id: string) => (el: HTMLElement) => void;
-    /** низкоуровневый ref на элемент-ячейку */
-    row: (id: string) => (el: HTMLElement) => void;
-    /** низкоуровневый ref на ручку-хендл */
-    handle: (id: string) => (el: HTMLElement) => void;
-};
 type DumbSortableOptions = {
     /** текущий визуальный порядок id (совпадает с порядком data) */
     order: () => string[];
@@ -154,7 +147,6 @@ type DumbSortableOptions = {
     /** на дропе: переставить из fromIndex в toIndex (индексы в order()) */
     onEnd: (fromIndex: number, toIndex: number) => void;
 };
-declare function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandle;
 
 type SortableGroupOptions = {
     /** перенос завершён: откуда (зона+индекс) и куда */
@@ -180,6 +172,16 @@ type SortableListOptions = {
     /** принимать ли элемент из зоны `from` (по умолчанию принимает всех) */
     accepts?: (from: string) => boolean;
 };
+
+type DumbSortableHandle = {
+    /** самодостаточный ref на элемент (ручка = дочка с [data-drag-handle]) */
+    bind: (id: string) => (el: HTMLElement) => void;
+    /** низкоуровневый ref на элемент-ячейку */
+    row: (id: string) => (el: HTMLElement) => void;
+    /** низкоуровневый ref на ручку-хендл */
+    handle: (id: string) => (el: HTMLElement) => void;
+};
+declare function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandle;
 type SortableListHandle = {
     /** ref на контейнер зоны */
     container: (el: HTMLElement) => void;

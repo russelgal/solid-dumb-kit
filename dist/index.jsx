@@ -1,7 +1,7 @@
 // src/SelectionArea/SelectionArea.tsx
 import { onMount } from "solid-js";
 
-// src/SelectionArea/selectionCore.ts
+// src/SelectionArea/solid.ts
 import { onCleanup } from "solid-js";
 
 // src/shared/viewport.ts
@@ -133,7 +133,7 @@ function diffSelection(prev, next) {
 
 // src/SelectionArea/selectionCore.ts
 var IGNORE = "button, a, input, select, textarea, [data-no-select]";
-function createSelectionArea(opts) {
+function createSelectionEngine(opts) {
   const threshold = opts.threshold ?? 10;
   let drag = null;
   let pending = null;
@@ -335,15 +335,26 @@ function createSelectionArea(opts) {
     window.addEventListener("pointerup", pendUp);
     window.addEventListener("pointercancel", pendUp);
   }
-  onCleanup(() => {
-    clearPending();
-    cleanup();
-  });
   return {
-    /** повесить на контейнер */
     attach(el) {
       el.addEventListener("pointerdown", onDown);
-      onCleanup(() => el.removeEventListener("pointerdown", onDown));
+      return () => el.removeEventListener("pointerdown", onDown);
+    },
+    destroy() {
+      clearPending();
+      cleanup();
+    }
+  };
+}
+
+// src/SelectionArea/solid.ts
+function createSelectionArea(opts) {
+  const engine = createSelectionEngine(opts);
+  onCleanup(engine.destroy);
+  return {
+    /** повесить жест на контейнер */
+    attach(el) {
+      onCleanup(engine.attach(el));
     }
   };
 }
@@ -634,7 +645,7 @@ if (typeof document !== "undefined" && !stylesInjected) {
 // src/Sortable/DumbSortable.tsx
 import { For as For2 } from "solid-js";
 
-// src/Sortable/sortableCore.ts
+// src/Sortable/solid.ts
 import { onCleanup as onCleanup2 } from "solid-js";
 
 // src/Sortable/geometry.ts
@@ -738,7 +749,7 @@ var LIFT_SHADOW = "0 10px 24px -6px rgba(0,0,0,.28)";
 function originOf(d) {
   return d.scroller ? viewOrigin(d.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
 }
-function createDumbSortable(opts) {
+function createSortableEngine(opts) {
   const grid = opts.axis === "grid";
   const pressDelay = opts.pressDelay ?? LONGPRESS;
   const mousePress = opts.mousePressDelay ?? 0;
@@ -1031,14 +1042,10 @@ function createDumbSortable(opts) {
     ev.preventDefault();
     begin(id, handle, ev.pointerId, ev.clientX, ev.clientY);
   }
-  onCleanup2(() => {
-    clearPending();
-    cleanup();
-  });
   return {
-    // самодостаточный ref: регистрирует элемент И навешивает старт драга.
+    // самодостаточно: регистрирует элемент И навешивает старт драга.
     // ручка = дочка с [data-drag-handle] (делегирование); нет её → тянем за весь элемент.
-    bind: (id) => (el) => {
+    attach(el, id) {
       el.dataset.flipId = id;
       rowEls.set(id, el);
       const h = el.querySelector("[data-drag-handle]");
@@ -1049,53 +1056,32 @@ function createDumbSortable(opts) {
         onDown(id, handle || el, ev);
       };
       el.addEventListener("pointerdown", down);
-      onCleanup2(() => {
+      return () => {
         el.removeEventListener("pointerdown", down);
         if (rowEls.get(id) === el) rowEls.delete(id);
-      });
+      };
     },
-    // низкоуровневые рефы (для ручной разводки; используются текущими DataTable/ColorsEditor)
-    row: (id) => (el) => {
+    // низкоуровневое: ячейка и ручка порознь (когда ручка не потомок ячейки)
+    attachRow(el, id) {
       el.dataset.flipId = id;
       rowEls.set(id, el);
-      onCleanup2(() => {
+      return () => {
         if (rowEls.get(id) === el) rowEls.delete(id);
-      });
+      };
     },
-    handle: (id) => (el) => {
+    attachHandle(el, id) {
       const down = (ev) => onDown(id, el, ev);
       el.addEventListener("pointerdown", down);
-      onCleanup2(() => el.removeEventListener("pointerdown", down));
+      return () => el.removeEventListener("pointerdown", down);
+    },
+    destroy() {
+      clearPending();
+      cleanup();
     }
   };
 }
 
-// src/Sortable/DumbSortable.tsx
-function DumbSortable(props) {
-  const s = createDumbSortable({
-    order: () => props.items.map(props.id),
-    axis: props.axis,
-    disabled: props.disabled,
-    pressDelay: props.pressDelay,
-    mousePressDelay: props.mousePressDelay,
-    mouseThreshold: props.mouseThreshold,
-    onEnd: (from, to) => {
-      const next = props.items.slice();
-      next.splice(to, 0, next.splice(from, 1)[0]);
-      props.setItems(next);
-    }
-  });
-  return <For2 each={props.items}>
-      {(item, i) => {
-    const el = props.children(item, i);
-    if (el instanceof HTMLElement) s.bind(props.id(item))(el);
-    return el;
-  }}
-    </For2>;
-}
-
 // src/Sortable/sortableGroup.ts
-import { onCleanup as onCleanup3 } from "solid-js";
 var SLIDE2 = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS2 = 350;
 var MOVE_TOL2 = 10;
@@ -1148,7 +1134,7 @@ function boxOf(z) {
   const dy = window.scrollY - z.boxWinY;
   return { top: z.boxTop - dy, left: z.boxLeft - dx, right: z.boxLeft - dx + z.boxW, bottom: z.boxTop - dy + z.boxH };
 }
-function createSortableGroup(opts) {
+function createSortableGroupEngine(opts) {
   const pressDelay = opts.pressDelay ?? LONGPRESS2;
   const mousePress = opts.mousePressDelay ?? 0;
   const mouseThresh = opts.mouseThreshold ?? 0;
@@ -1500,23 +1486,19 @@ function createSortableGroup(opts) {
     ev.preventDefault();
     begin(name, id, handle, ev.pointerId, ev.clientX, ev.clientY);
   }
-  onCleanup3(() => {
-    clearPending();
-    cleanup();
-  });
   return {
     list(name, listOpts) {
       const zone = zones.get(name) ?? { name, opts: listOpts, el: null, els: /* @__PURE__ */ new Map() };
       zone.opts = listOpts;
       zones.set(name, zone);
       return {
-        container: (el) => {
+        attachContainer(el) {
           zone.el = el;
-          onCleanup3(() => {
+          return () => {
             if (zone.el === el) zone.el = null;
-          });
+          };
         },
-        bind: (id) => (el) => {
+        attach(el, id) {
           zone.els.set(id, el);
           const h = el.querySelector("[data-drag-handle]");
           if (h) h.style.touchAction = "none";
@@ -1526,16 +1508,70 @@ function createSortableGroup(opts) {
             onDown(name, id, handle || el, ev);
           };
           el.addEventListener("pointerdown", down);
-          onCleanup3(() => {
+          return () => {
             el.removeEventListener("pointerdown", down);
             if (zone.els.get(id) === el) zone.els.delete(id);
-          });
+          };
         }
       };
     },
     activeList: () => activeName,
-    draggingId: () => draggingId
+    draggingId: () => draggingId,
+    destroy() {
+      clearPending();
+      cleanup();
+    }
   };
+}
+
+// src/Sortable/solid.ts
+function createDumbSortable(opts) {
+  const engine = createSortableEngine(opts);
+  onCleanup2(engine.destroy);
+  return {
+    bind: (id) => (el) => onCleanup2(engine.attach(el, id)),
+    row: (id) => (el) => onCleanup2(engine.attachRow(el, id)),
+    handle: (id) => (el) => onCleanup2(engine.attachHandle(el, id))
+  };
+}
+function createSortableGroup(opts) {
+  const engine = createSortableGroupEngine(opts);
+  onCleanup2(engine.destroy);
+  return {
+    list(name, listOpts) {
+      const zone = engine.list(name, listOpts);
+      return {
+        container: (el) => onCleanup2(zone.attachContainer(el)),
+        bind: (id) => (el) => onCleanup2(zone.attach(el, id))
+      };
+    },
+    activeList: engine.activeList,
+    draggingId: engine.draggingId
+  };
+}
+
+// src/Sortable/DumbSortable.tsx
+function DumbSortable(props) {
+  const s = createDumbSortable({
+    order: () => props.items.map(props.id),
+    axis: props.axis,
+    disabled: props.disabled,
+    pressDelay: props.pressDelay,
+    mousePressDelay: props.mousePressDelay,
+    mouseThreshold: props.mouseThreshold,
+    onEnd: (from, to) => {
+      const next = props.items.slice();
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      props.setItems(next);
+    }
+  });
+  return <For2 each={props.items}>
+      {(item, i) => {
+    const el = props.children(item, i);
+    if (el instanceof HTMLElement) s.bind(props.id(item))(el);
+    return el;
+  }}
+    </For2>;
 }
 
 // src/DumbTree/DumbTree.tsx

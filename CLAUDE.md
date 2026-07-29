@@ -30,9 +30,9 @@ src/
   index.tsx            # публичный API либы (единственный entry для tsup)
   env.d.ts
   shared/              viewport.ts — общая работа со скроллером/вьюпортом
-  SelectionArea/       index.ts, SelectionArea.tsx, selectionCore.ts, selectionMath.ts, __tests__/
+  SelectionArea/       index.ts, SelectionArea.tsx, solid.ts, selectionCore.ts, selectionMath.ts, __tests__/
   ResizableGrid/       index.ts, ResizableGrid.tsx
-  Sortable/            index.ts, sortableCore.ts, sortableGroup.ts, geometry.ts, DumbSortable.tsx, __tests__/
+  Sortable/            index.ts, solid.ts, sortableCore.ts, sortableGroup.ts, geometry.ts, DumbSortable.tsx, __tests__/
   DumbTree/            index.ts, DumbTree.tsx
   DumbTable/           index.ts, DumbTable.tsx, DumbPagination.tsx, __tests__/
   utils/               index.ts, fmt.ts, slug.ts, zip.ts, imgproxy.ts, __tests__/
@@ -41,6 +41,16 @@ src/
 - Имена папок — PascalCase, как экспортируемые компоненты (у Kobalte kebab, потому что там папка = публичный подпуть `@kobalte/core/accordion`; у нас подпутей нет).
 - CSS-файлов в ките больше нет: структурные стили инлайном или инжектом, `dist/index.css` не собирается.
 - Кросс-фичевые импорты — через файл, не через барр (`../Sortable/sortableCore`), чтобы не ловить циклы барр↔барр.
+
+## Слои: движок без фреймворка + тонкие обёртки на Solid
+Логика жестов (драг, выделение) **не зависит от Solid**. Слои снизу вверх:
+
+1. `geometry.ts` / `selectionMath.ts` / `shared/viewport.ts` — чистые функции, ни DOM, ни фреймворка (кроме viewport, который читает DOM-API).
+2. `sortableCore.ts`, `sortableGroup.ts`, `selectionCore.ts` — **движки**: принимают элементы, возвращают функции отписки, имеют `destroy()`. Импорт `solid-js` здесь **запрещён** — это проверяется тестами `__tests__/engine.test.ts`, которые создают движок вне реактивного контекста.
+3. `solid.ts` в каждой папке — обёртки (`createDumbSortable`, `createSortableGroup`, `createSelectionArea`): всё, что они делают, — вешают отписки движка на `onCleanup`.
+4. `*.tsx` — компоненты.
+
+Зачем: под Solid 2 (или под другой фреймворк) переписывается только слой 3, а самое ценное — ноль forced layout за жест — от фреймворка не зависит вовсе. Подпуть-экспорт (`solid-dumb-kit/core`) пока не делаем — добавим, когда понадобится из не-Solid проекта.
 
 ## Пакетный менеджер: ТОЛЬКО pnpm
 `npm`/`yarn` в этой репе **запрещены** — лок-файл один: `pnpm-lock.yaml` (закоммичен). `package-lock.json`/`yarn.lock` в .gitignore.

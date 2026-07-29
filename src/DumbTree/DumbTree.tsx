@@ -1,6 +1,6 @@
 import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
 import { makePersisted } from '@solid-primitives/storage'
-import { createDumbSortable } from '../Sortable/sortableCore'
+import { createDumbSortable } from '../Sortable/solid'
 
 // Раскрывающееся дерево (иерархия по parent) ИЛИ плоский список (flat) с нечётким
 // поиском, сортировкой (индекс/название) и опциональным drag-reorder (наш sortableCore).

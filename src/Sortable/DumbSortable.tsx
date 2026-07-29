@@ -1,5 +1,5 @@
 import { For, JSX } from 'solid-js'
-import { createDumbSortable } from './sortableCore'
+import { createDumbSortable } from './solid'
 
 export type DumbSortableProps<T> = {
   items: Array<T>

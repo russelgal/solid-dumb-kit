@@ -14,8 +14,9 @@
 //     CSS-контекст (правила вида `.column .card`, переменные) и выглядит так же.
 //
 // Порядок коммитим на pointerup → onEnd({list,index}, {list,index}).
+//
+// Файл НЕ зависит от Solid — обёртки в ./solid.ts.
 
-import { onCleanup } from 'solid-js';
 import {
     autoScrollSpeed, gapOf, holeTop, nextInsertIndex, shiftLayout, viewOrigin,
     type Cell, type ViewGeom,
@@ -45,20 +46,23 @@ export type SortableListOptions = {
     accepts?: (from: string) => boolean;
 };
 
-export type SortableListHandle = {
-    /** ref на контейнер зоны */
-    container: (el: HTMLElement) => void;
-    /** ref на элемент зоны (ручка = дочка с [data-drag-handle]) */
-    bind: (id: string) => (el: HTMLElement) => void;
+/** зона в движке: элементы принимаются напрямую, обратно идут функции отписки */
+export type SortableListEngine = {
+    attachContainer: (el: HTMLElement) => () => void;
+    attach: (el: HTMLElement, id: string) => () => void;
 };
 
-export type SortableGroupHandle = {
-    /** зарегистрировать зону */
-    list: (name: string, opts: SortableListOptions) => SortableListHandle;
+/**
+ * Движок кросс-контейнерного драга. Без привязки к фреймворку —
+ * Solid-обёртка (createSortableGroup) живёт в ./solid.ts.
+ */
+export type SortableGroupEngine = {
+    list: (name: string, opts: SortableListOptions) => SortableListEngine;
     /** имя зоны под указателем во время драга (для подсветки), иначе null */
     activeList: () => string | null;
     /** id перетаскиваемого элемента, иначе null */
     draggingId: () => string | null;
+    destroy: () => void;
 };
 
 type Zone = {
@@ -175,7 +179,7 @@ type Drag = {
     ghostX0: number; ghostY0: number;
 };
 
-export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHandle {
+export function createSortableGroupEngine(opts: SortableGroupOptions): SortableGroupEngine {
     const pressDelay = opts.pressDelay ?? LONGPRESS;
     const mousePress = opts.mousePressDelay ?? 0;
     const mouseThresh = opts.mouseThreshold ?? 0;
@@ -541,19 +545,17 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
         begin(name, id, handle, ev.pointerId, ev.clientX, ev.clientY);
     }
 
-    onCleanup(() => { clearPending(); cleanup(); });
-
     return {
         list(name, listOpts) {
             const zone: Zone = zones.get(name) ?? { name, opts: listOpts, el: null, els: new Map() };
             zone.opts = listOpts;
             zones.set(name, zone);
             return {
-                container: (el: HTMLElement) => {
+                attachContainer(el: HTMLElement) {
                     zone.el = el;
-                    onCleanup(() => { if (zone.el === el) zone.el = null; });
+                    return () => { if (zone.el === el) zone.el = null; };
                 },
-                bind: (id: string) => (el: HTMLElement) => {
+                attach(el: HTMLElement, id: string) {
                     zone.els.set(id, el);
                     const h = el.querySelector('[data-drag-handle]') as HTMLElement | null;
                     if (h) h.style.touchAction = 'none';
@@ -563,14 +565,18 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
                         onDown(name, id, handle || el, ev);
                     };
                     el.addEventListener('pointerdown', down);
-                    onCleanup(() => {
+                    return () => {
                         el.removeEventListener('pointerdown', down);
                         if (zone.els.get(id) === el) zone.els.delete(id);
-                    });
+                    };
                 },
             };
         },
         activeList: () => activeName,
         draggingId: () => draggingId,
+        destroy() {
+            clearPending();
+            cleanup();
+        },
     };
 }

@@ -135,7 +135,7 @@ function diffSelection(prev, next) {
 
 // src/SelectionArea/selectionCore.ts
 var IGNORE = "button, a, input, select, textarea, [data-no-select]";
-function createSelectionArea(opts) {
+function createSelectionEngine(opts) {
   const threshold = opts.threshold ?? 10;
   let drag = null;
   let pending = null;
@@ -337,15 +337,26 @@ function createSelectionArea(opts) {
     window.addEventListener("pointerup", pendUp);
     window.addEventListener("pointercancel", pendUp);
   }
-  onCleanup(() => {
-    clearPending();
-    cleanup();
-  });
   return {
-    /** повесить на контейнер */
     attach(el) {
       el.addEventListener("pointerdown", onDown);
-      onCleanup(() => el.removeEventListener("pointerdown", onDown));
+      return () => el.removeEventListener("pointerdown", onDown);
+    },
+    destroy() {
+      clearPending();
+      cleanup();
+    }
+  };
+}
+
+// src/SelectionArea/solid.ts
+function createSelectionArea(opts) {
+  const engine = createSelectionEngine(opts);
+  onCleanup(engine.destroy);
+  return {
+    /** повесить жест на контейнер */
+    attach(el) {
+      onCleanup(engine.attach(el));
     }
   };
 }
@@ -769,7 +780,7 @@ var LIFT_SHADOW = "0 10px 24px -6px rgba(0,0,0,.28)";
 function originOf(d) {
   return d.scroller ? viewOrigin(d.geom, window.scrollX, window.scrollY) : { top: 0, left: 0 };
 }
-function createDumbSortable(opts) {
+function createSortableEngine(opts) {
   const grid = opts.axis === "grid";
   const pressDelay = opts.pressDelay ?? LONGPRESS;
   const mousePress = opts.mousePressDelay ?? 0;
@@ -1062,14 +1073,10 @@ function createDumbSortable(opts) {
     ev.preventDefault();
     begin(id, handle, ev.pointerId, ev.clientX, ev.clientY);
   }
-  onCleanup(() => {
-    clearPending();
-    cleanup();
-  });
   return {
-    // самодостаточный ref: регистрирует элемент И навешивает старт драга.
+    // самодостаточно: регистрирует элемент И навешивает старт драга.
     // ручка = дочка с [data-drag-handle] (делегирование); нет её → тянем за весь элемент.
-    bind: (id) => (el) => {
+    attach(el, id) {
       el.dataset.flipId = id;
       rowEls.set(id, el);
       const h = el.querySelector("[data-drag-handle]");
@@ -1080,53 +1087,32 @@ function createDumbSortable(opts) {
         onDown(id, handle || el, ev);
       };
       el.addEventListener("pointerdown", down);
-      onCleanup(() => {
+      return () => {
         el.removeEventListener("pointerdown", down);
         if (rowEls.get(id) === el) rowEls.delete(id);
-      });
+      };
     },
-    // низкоуровневые рефы (для ручной разводки; используются текущими DataTable/ColorsEditor)
-    row: (id) => (el) => {
+    // низкоуровневое: ячейка и ручка порознь (когда ручка не потомок ячейки)
+    attachRow(el, id) {
       el.dataset.flipId = id;
       rowEls.set(id, el);
-      onCleanup(() => {
+      return () => {
         if (rowEls.get(id) === el) rowEls.delete(id);
-      });
+      };
     },
-    handle: (id) => (el) => {
+    attachHandle(el, id) {
       const down = (ev) => onDown(id, el, ev);
       el.addEventListener("pointerdown", down);
-      onCleanup(() => el.removeEventListener("pointerdown", down));
+      return () => el.removeEventListener("pointerdown", down);
+    },
+    destroy() {
+      clearPending();
+      cleanup();
     }
   };
 }
 
-// src/Sortable/DumbSortable.tsx
-function DumbSortable(props) {
-  const s = createDumbSortable({
-    order: () => props.items.map(props.id),
-    axis: props.axis,
-    disabled: props.disabled,
-    pressDelay: props.pressDelay,
-    mousePressDelay: props.mousePressDelay,
-    mouseThreshold: props.mouseThreshold,
-    onEnd: (from, to) => {
-      const next = props.items.slice();
-      next.splice(to, 0, next.splice(from, 1)[0]);
-      props.setItems(next);
-    }
-  });
-  return createComponent(For, {
-    get each() {
-      return props.items;
-    },
-    children: (item, i) => {
-      const el = props.children(item, i);
-      if (el instanceof HTMLElement) s.bind(props.id(item))(el);
-      return el;
-    }
-  });
-}
+// src/Sortable/sortableGroup.ts
 var SLIDE2 = "transform .18s cubic-bezier(.2,.8,.2,1)";
 var LONGPRESS2 = 350;
 var MOVE_TOL2 = 10;
@@ -1179,7 +1165,7 @@ function boxOf(z) {
   const dy = window.scrollY - z.boxWinY;
   return { top: z.boxTop - dy, left: z.boxLeft - dx, right: z.boxLeft - dx + z.boxW, bottom: z.boxTop - dy + z.boxH };
 }
-function createSortableGroup(opts) {
+function createSortableGroupEngine(opts) {
   const pressDelay = opts.pressDelay ?? LONGPRESS2;
   const mousePress = opts.mousePressDelay ?? 0;
   const mouseThresh = opts.mouseThreshold ?? 0;
@@ -1531,23 +1517,19 @@ function createSortableGroup(opts) {
     ev.preventDefault();
     begin(name, id, handle, ev.pointerId, ev.clientX, ev.clientY);
   }
-  onCleanup(() => {
-    clearPending();
-    cleanup();
-  });
   return {
     list(name, listOpts) {
       const zone = zones.get(name) ?? { name, opts: listOpts, el: null, els: /* @__PURE__ */ new Map() };
       zone.opts = listOpts;
       zones.set(name, zone);
       return {
-        container: (el) => {
+        attachContainer(el) {
           zone.el = el;
-          onCleanup(() => {
+          return () => {
             if (zone.el === el) zone.el = null;
-          });
+          };
         },
-        bind: (id) => (el) => {
+        attach(el, id) {
           zone.els.set(id, el);
           const h = el.querySelector("[data-drag-handle]");
           if (h) h.style.touchAction = "none";
@@ -1557,16 +1539,73 @@ function createSortableGroup(opts) {
             onDown(name, id, handle || el, ev);
           };
           el.addEventListener("pointerdown", down);
-          onCleanup(() => {
+          return () => {
             el.removeEventListener("pointerdown", down);
             if (zone.els.get(id) === el) zone.els.delete(id);
-          });
+          };
         }
       };
     },
     activeList: () => activeName,
-    draggingId: () => draggingId
+    draggingId: () => draggingId,
+    destroy() {
+      clearPending();
+      cleanup();
+    }
   };
+}
+
+// src/Sortable/solid.ts
+function createDumbSortable(opts) {
+  const engine = createSortableEngine(opts);
+  onCleanup(engine.destroy);
+  return {
+    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
+    row: (id) => (el) => onCleanup(engine.attachRow(el, id)),
+    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id))
+  };
+}
+function createSortableGroup(opts) {
+  const engine = createSortableGroupEngine(opts);
+  onCleanup(engine.destroy);
+  return {
+    list(name, listOpts) {
+      const zone = engine.list(name, listOpts);
+      return {
+        container: (el) => onCleanup(zone.attachContainer(el)),
+        bind: (id) => (el) => onCleanup(zone.attach(el, id))
+      };
+    },
+    activeList: engine.activeList,
+    draggingId: engine.draggingId
+  };
+}
+
+// src/Sortable/DumbSortable.tsx
+function DumbSortable(props) {
+  const s = createDumbSortable({
+    order: () => props.items.map(props.id),
+    axis: props.axis,
+    disabled: props.disabled,
+    pressDelay: props.pressDelay,
+    mousePressDelay: props.mousePressDelay,
+    mouseThreshold: props.mouseThreshold,
+    onEnd: (from, to) => {
+      const next = props.items.slice();
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      props.setItems(next);
+    }
+  });
+  return createComponent(For, {
+    get each() {
+      return props.items;
+    },
+    children: (item, i) => {
+      const el = props.children(item, i);
+      if (el instanceof HTMLElement) s.bind(props.id(item))(el);
+      return el;
+    }
+  });
 }
 var _tmpl$6 = /* @__PURE__ */ template(`<span class="ml-auto shrink-0 flex items-center gap-1">`);
 var _tmpl$23 = /* @__PURE__ */ template(`<a><span></span><span>`);

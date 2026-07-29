@@ -2,10 +2,17 @@ export {
   SelectionArea,
   type SelectionAreaProps,
 } from './SelectionArea'
+
+// Solid-обёртка (публичный API)
+export { createSelectionArea } from './solid'
+
+// Движок без привязки к фреймворку
 export {
-  createSelectionArea,
+  createSelectionEngine,
+  type SelectionEngine,
   type SelectionCoreOptions,
 } from './selectionCore'
+
 export {
   areaFrom,
   clampPoint,
@@ -15,5 +22,6 @@ export {
   tapSelection,
   diffSelection,
   type Box,
+  type Bounds,
   type IntersectMode,
 } from './selectionMath'

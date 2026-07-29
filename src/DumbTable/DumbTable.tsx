@@ -7,7 +7,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/solid-table'
-import { createDumbSortable } from '../Sortable/sortableCore'
+import { createDumbSortable } from '../Sortable/solid'
 
 // Таблица «принеси свои колонки»: описание колонки — простой объект, а не сырой
 // ColumnDef. Сортировка на @tanstack/solid-table (клиентская ИЛИ серверная),

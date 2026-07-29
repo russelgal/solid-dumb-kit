@@ -1,5 +1,5 @@
 import { onMount, type JSX } from 'solid-js'
-import { createSelectionArea } from './selectionCore'
+import { createSelectionArea } from './solid'
 import type { IntersectMode } from './selectionMath'
 
 export type { IntersectMode }

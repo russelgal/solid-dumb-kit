@@ -20,21 +20,30 @@
 // поэтому хиттест/сдвиги иммунны к скроллу и авто-скролл у краёв «просто работает».
 // Сами формулы живут в ./geometry.ts (чистые функции, покрыты тестами).
 // Порядок массива коммитим на pointerup → opts.onEnd(fromIndex, toIndex).
+//
+// Файл НЕ зависит от Solid: движок принимает элементы и отдаёт функции отписки.
+// Solid-обёртки (createDumbSortable и т.д.) живут в ./solid.ts.
 
-import { onCleanup } from 'solid-js';
 import {
     autoScrollSpeed, clampDragged, gapOf, gridLayout, hitIndex, holeTop, listLayout, nextInsertIndex, viewOrigin,
     type Cell, type Item, type ViewGeom,
 } from './geometry';
 import { doScroll, measure, scrollOf, scrollParent } from '../shared/viewport';
 
-export type DumbSortableHandle = {
-    /** самодостаточный ref на элемент (ручка = дочка с [data-drag-handle]) */
-    bind: (id: string) => (el: HTMLElement) => void;
-    /** низкоуровневый ref на элемент-ячейку */
-    row: (id: string) => (el: HTMLElement) => void;
-    /** низкоуровневый ref на ручку-хендл */
-    handle: (id: string) => (el: HTMLElement) => void;
+/**
+ * Движок сортировки. Ничего не знает про фреймворк: принимает элементы и
+ * возвращает функции отписки — привязку к жизненному циклу делает обёртка
+ * (для Solid — ./solid.ts, там onCleanup).
+ */
+export type SortableEngine = {
+    /** зарегистрировать элемент И повесить старт драга (ручка = дочка с [data-drag-handle]) */
+    attach: (el: HTMLElement, id: string) => () => void;
+    /** только зарегистрировать элемент-ячейку */
+    attachRow: (el: HTMLElement, id: string) => () => void;
+    /** только повесить старт драга на отдельную ручку */
+    attachHandle: (el: HTMLElement, id: string) => () => void;
+    /** снять слушатели и прибрать стили */
+    destroy: () => void;
 };
 
 type Drag = {
@@ -87,7 +96,7 @@ export type DumbSortableOptions = {
     onEnd: (fromIndex: number, toIndex: number) => void;
 };
 
-export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandle {
+export function createSortableEngine(opts: DumbSortableOptions): SortableEngine {
     const grid = opts.axis === 'grid';
     const pressDelay = opts.pressDelay ?? LONGPRESS;
     const mousePress = opts.mousePressDelay ?? 0;
@@ -386,12 +395,10 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
         begin(id, handle, ev.pointerId, ev.clientX, ev.clientY);
     }
 
-    onCleanup(() => { clearPending(); cleanup(); });
-
     return {
-        // самодостаточный ref: регистрирует элемент И навешивает старт драга.
+        // самодостаточно: регистрирует элемент И навешивает старт драга.
         // ручка = дочка с [data-drag-handle] (делегирование); нет её → тянем за весь элемент.
-        bind: (id: string) => (el: HTMLElement) => {
+        attach(el: HTMLElement, id: string) {
             el.dataset.flipId = id;
             rowEls.set(id, el);
             const h = el.querySelector('[data-drag-handle]') as HTMLElement | null;
@@ -402,21 +409,25 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
                 onDown(id, handle || el, ev);
             };
             el.addEventListener('pointerdown', down);
-            onCleanup(() => {
+            return () => {
                 el.removeEventListener('pointerdown', down);
                 if (rowEls.get(id) === el) rowEls.delete(id);
-            });
+            };
         },
-        // низкоуровневые рефы (для ручной разводки; используются текущими DataTable/ColorsEditor)
-        row: (id: string) => (el: HTMLElement) => {
+        // низкоуровневое: ячейка и ручка порознь (когда ручка не потомок ячейки)
+        attachRow(el: HTMLElement, id: string) {
             el.dataset.flipId = id;
             rowEls.set(id, el);
-            onCleanup(() => { if (rowEls.get(id) === el) rowEls.delete(id); });
+            return () => { if (rowEls.get(id) === el) rowEls.delete(id); };
         },
-        handle: (id: string) => (el: HTMLElement) => {
+        attachHandle(el: HTMLElement, id: string) {
             const down = (ev: PointerEvent) => onDown(id, el, ev);
             el.addEventListener('pointerdown', down);
-            onCleanup(() => el.removeEventListener('pointerdown', down));
+            return () => el.removeEventListener('pointerdown', down);
+        },
+        destroy() {
+            clearPending();
+            cleanup();
         },
     };
 }

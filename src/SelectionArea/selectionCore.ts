@@ -5,11 +5,12 @@
 // позиции снимаются ОДИН раз через IntersectionObserver (bounds считаются
 // off-main-thread), а в кадре — только арифметика пересечений.
 //
+// Файл НЕ зависит от Solid — обёртка в ./solid.ts.
+//
 // Побочно уходит и болячка viselect со скроллом: рамка живёт в координатах
 // КОНТЕНТА, поэтому при прокрутке она растёт вместе с ним, и уже задетые
 // элементы не выпадают из выделения.
 
-import { onCleanup } from 'solid-js'
 import {
   autoScrollSpeed, doScroll, measure, scrollOf, scrollParent, viewOrigin,
   type ViewGeom,
@@ -18,6 +19,17 @@ import {
   areaFrom, clampPoint, diffSelection, pickHits, resolveSelection, tapSelection,
   type Bounds, type Box, type IntersectMode,
 } from './selectionMath'
+
+/**
+ * Движок выделения рамкой. Без привязки к фреймворку: принимает контейнер и
+ * возвращает функцию отписки; Solid-обёртка (createSelectionArea) — в ./solid.ts.
+ */
+export type SelectionEngine = {
+  /** повесить жест на контейнер; вернёт отписку */
+  attach: (el: HTMLElement) => () => void
+  /** снять всё */
+  destroy: () => void
+}
 
 export type SelectionCoreOptions = {
   /** контейнер: и область жеста, и (обычно) скроллер */
@@ -65,7 +77,7 @@ type Drag = {
 
 const IGNORE = 'button, a, input, select, textarea, [data-no-select]'
 
-export function createSelectionArea(opts: SelectionCoreOptions) {
+export function createSelectionEngine(opts: SelectionCoreOptions): SelectionEngine {
   const threshold = opts.threshold ?? 10
   let drag: Drag | null = null
   let pending: { pid: number; x: number; y: number; ev: PointerEvent } | null = null
@@ -288,13 +300,14 @@ export function createSelectionArea(opts: SelectionCoreOptions) {
     window.addEventListener('pointercancel', pendUp)
   }
 
-  onCleanup(() => { clearPending(); cleanup() })
-
   return {
-    /** повесить на контейнер */
     attach(el: HTMLElement) {
       el.addEventListener('pointerdown', onDown)
-      onCleanup(() => el.removeEventListener('pointerdown', onDown))
+      return () => el.removeEventListener('pointerdown', onDown)
+    },
+    destroy() {
+      clearPending()
+      cleanup()
     },
   }
 }
