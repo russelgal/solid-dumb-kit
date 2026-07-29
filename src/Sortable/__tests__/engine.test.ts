@@ -43,6 +43,37 @@ describe('createSortableEngine — вне Solid', () => {
     engine.destroy()
   })
 
+  it('без ручки драг не стартует с поля ввода', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    const input = document.createElement('input')
+    el.appendChild(input)
+    engine.attach(el, 'a')
+
+    const spy = vi.spyOn(window, 'addEventListener')
+    input.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 7 }))
+    // драг вешает свои pointermove/pointerup на window — их быть не должно
+    expect(spy).not.toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    spy.mockRestore()
+    engine.destroy()
+  })
+
+  it('без ручки драг стартует с обычного места строки', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    const text = document.createElement('span')
+    el.appendChild(text)
+    engine.attach(el, 'a')
+
+    const spy = vi.spyOn(window, 'addEventListener')
+    text.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 8 }))
+    expect(spy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    spy.mockRestore()
+    engine.destroy()
+  })
+
   it('низкоуровневые attachRow/attachHandle тоже отдают отписку', () => {
     const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
     const cell = row('a')

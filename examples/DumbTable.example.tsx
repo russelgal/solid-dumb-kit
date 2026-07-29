@@ -10,6 +10,7 @@ type Product = {
   brand: string
   price: number
   stock: number
+  note?: string
 }
 
 
@@ -73,6 +74,10 @@ export default function DumbTableExample() {
     if (page() > pages) setPage(pages)
   }
 
+  // правка ячейки: обновляем строку в общем массиве
+  const patch = (id: string, fields: Partial<Product>) =>
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...fields } : r)))
+
   const toggleCart = (p: Product) =>
     setCart((prev) => {
       const next = new Set(prev)
@@ -88,11 +93,27 @@ export default function DumbTableExample() {
     { key: 'brand', label: 'Бренд', sortable: true, width: '140px' },
     { key: 'price', label: 'Цена', sortable: true, align: 'right', width: '120px',
       render: (p) => fmtPrice(p.price) },
-    { key: 'stock', label: 'Остаток', sortable: true, align: 'right', width: '100px',
+    // редактируемая ячейка: драг за строку с неё не начнётся — движок
+    // не перехватывает поля, кнопки и ссылки
+    { key: 'stock', label: 'Остаток', sortable: true, align: 'right', width: '110px', stopClick: true,
       render: (p) => (
-        <span classList={{ stock: true, out: p.stock === 0, low: p.stock > 0 && p.stock < 30 }}>
-          {fmtNum(p.stock)}
-        </span>
+        <input
+          class="cell-input num"
+          classList={{ out: p.stock === 0, low: p.stock > 0 && p.stock < 30 }}
+          type="number"
+          min="0"
+          value={p.stock}
+          onInput={(e) => patch(p.id, { stock: Math.max(0, Number(e.currentTarget.value) || 0) })}
+        />
+      ) },
+    { key: 'note', label: 'Заметка', width: '180px', stopClick: true,
+      render: (p) => (
+        <input
+          class="cell-input"
+          placeholder="—"
+          value={p.note ?? ''}
+          onInput={(e) => patch(p.id, { note: e.currentTarget.value })}
+        />
       ) },
     // stopClick: клик по кнопке не должен всплывать в onRowClick
     { key: 'buy', label: '', align: 'right', width: '110px', stopClick: true,
@@ -112,7 +133,8 @@ export default function DumbTableExample() {
         с порядком данных. Протяжка по самим строкам рисует рамку выделения: это{' '}
         <code>SelectionArea</code> поверх таблицы, строки она опознаёт по <code>data-key</code>,
         который таблица проставляет сама. Колонка «заказать» помечена <code>stopClick</code>,
-        поэтому её кнопка не срабатывает как клик по строке.
+        поэтому её кнопка не срабатывает как клик по строке. «Остаток» и «Заметка» —
+        обычные <code>input</code>: печатать в них можно спокойно, драг с полей не стартует.
       </p>
 
       <div class="toolbar">
@@ -195,9 +217,14 @@ export default function DumbTableExample() {
 
         .sku { font-size: 12px }
         .name { font-weight: 500 }
-        .stock { color: #16a34a }
-        .stock.low { color: #d97706 }
-        .stock.out { color: #dc2626 }
+        .cell-input { width: 100%; padding: 3px 6px; border-radius: 6px; box-sizing: border-box;
+                      border: 1px solid transparent; background: transparent;
+                      font: inherit; font-size: 13px; color: inherit }
+        .cell-input:hover { border-color: #e2e8f0 }
+        .cell-input:focus { border-color: #3b82f6; background: #fff; outline: none }
+        .cell-input.num { text-align: right; font-variant-numeric: tabular-nums; color: #16a34a }
+        .cell-input.low { color: #d97706 }
+        .cell-input.out { color: #dc2626 }
       `}</style>
     </div>
   )

@@ -70,6 +70,11 @@ type Drag = {
     touched: Set<HTMLElement>;  // кому довелось поехать — только их стили и трогаем
 };
 
+// Когда ручки нет и тянется весь элемент, драг не должен начинаться с того,
+// с чем пользователь взаимодействует: полей, кнопок, ссылок, выделяемого текста.
+// Внутри [data-drag-handle] запрет не действует — там ручка и есть цель.
+const NO_DRAG = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
+
 const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
 const LONGPRESS = 350;    // тач: удержание до старта драга, мс
 const MOVE_TOL = 10;      // тач: сдвиг за время удержания = скролл, отменяем, px
@@ -417,7 +422,11 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
             if (h) h.style.touchAction = 'none';
             const down = (ev: PointerEvent) => {
                 const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null;
-                if (handle && !(ev.target instanceof Node && handle.contains(ev.target))) return;
+                if (handle) {
+                    if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+                } else if (ev.target instanceof Element && ev.target.closest(NO_DRAG)) {
+                    return;                       // это поле/кнопка — пусть работает как обычно
+                }
                 onDown(id, handle || el, ev);
             };
             el.addEventListener('pointerdown', down);
