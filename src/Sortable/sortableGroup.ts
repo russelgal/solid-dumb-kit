@@ -99,11 +99,14 @@ type ZoneSnap = {
 // см. sortableCore: без ручки драг не должен перехватывать поля и кнопки
 const NO_DRAG = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
 
-/** см. sortableCore: цель + активный элемент внутри карточки */
-function isInteractive(ev: PointerEvent, el: HTMLElement): boolean {
-    if (ev.target instanceof Element && ev.target.closest(NO_DRAG)) return true;
+/** см. sortableCore: цель проверяется на pointerdown, фокус — на старте драга */
+function targetIsInteractive(ev: PointerEvent): boolean {
+    return ev.target instanceof Element && !!ev.target.closest(NO_DRAG);
+}
+
+function focusInside(el: HTMLElement): boolean {
     const active = document.activeElement;
-    return !!active && active !== document.body && el.contains(active);
+    return !!active && active !== document.body && active !== el && el.contains(active);
 }
 
 const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
@@ -472,6 +475,8 @@ export function createSortableGroupEngine(opts: SortableGroupOptions): SortableG
         const zone = zones.get(name);
         const dragEl = zone?.els.get(id);
         if (!zone || !dragEl) return;
+        // фокус уже переставлен — карточку сейчас редактируют, а не двигают
+        if (handle === dragEl && focusInside(dragEl)) return;
         const fromIndex = zone.opts.order().indexOf(id);
         if (fromIndex < 0) return;
 
@@ -586,7 +591,7 @@ export function createSortableGroupEngine(opts: SortableGroupOptions): SortableG
                         const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null;
                         if (handle) {
                             if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-                        } else if (isInteractive(ev, el)) {
+                        } else if (targetIsInteractive(ev)) {
                             return;
                         }
                         onDown(name, id, handle || el, ev);

@@ -95,6 +95,23 @@ describe('createSortableEngine — вне Solid', () => {
     engine.destroy()
   })
 
+  it('фокус на самой строке драгу не мешает (она может быть focusable)', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    el.tabIndex = 0
+    const text = document.createElement('span')
+    el.appendChild(text)
+    engine.attach(el, 'a')
+
+    el.focus()
+    const spy = vi.spyOn(window, 'addEventListener')
+    text.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 11 }))
+    expect(spy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    spy.mockRestore()
+    engine.destroy()
+  })
+
   it('низкоуровневые attachRow/attachHandle тоже отдают отписку', () => {
     const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
     const cell = row('a')

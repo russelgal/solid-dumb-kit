@@ -76,18 +76,22 @@ type Drag = {
 const NO_DRAG = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
 
 /**
- * Начинать ли драг с этой точки, когда ручки нет и тянется весь элемент.
+ * Начинать ли драг. Проверок две, потому что момента тоже два:
  *
- * Две проверки, потому что они про разные моменты:
- *  • по цели — pointerdown приходит ДО того, как браузер переставит фокус,
- *    поэтому первый клик по полю ловится только так;
- *  • по document.activeElement — строка уже «в режиме редактирования»: фокус
- *    внутри неё, значит тянуть её не надо, даже если взялись за пустое место.
+ *  • на pointerdown — по цели: событие приходит ДО того, как браузер переставит
+ *    фокус, поэтому клик по полю ловится только так;
+ *  • на фактическом старте (аналог нативного dragstart) — по
+ *    document.activeElement: к этому моменту фокус уже там, где нужно, и любой
+ *    фокусируемый элемент внутри строки отменяет драг без перечисления
+ *    селекторов. Сам элемент не в счёт: строка может быть focusable сама.
  */
-function isInteractive(ev: PointerEvent, el: HTMLElement): boolean {
-    if (ev.target instanceof Element && ev.target.closest(NO_DRAG)) return true;
+function targetIsInteractive(ev: PointerEvent): boolean {
+    return ev.target instanceof Element && !!ev.target.closest(NO_DRAG);
+}
+
+function focusInside(el: HTMLElement): boolean {
     const active = document.activeElement;
-    return !!active && active !== document.body && el.contains(active);
+    return !!active && active !== document.body && active !== el && el.contains(active);
 }
 
 const SLIDE = 'transform .18s cubic-bezier(.2,.8,.2,1)';
@@ -324,6 +328,9 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
     function begin(id: string, handle: HTMLElement, pid: number, x: number, y: number) {
         const dragEl = rowEls.get(id);
         if (!dragEl) return;
+        // здесь фокус уже переставлен браузером — самое честное место решить,
+        // что строку сейчас редактируют, а не двигают
+        if (handle === dragEl && focusInside(dragEl)) return;
         const ids = opts.order();
         const fromIndex = ids.indexOf(id);
         if (fromIndex < 0) return;
@@ -439,8 +446,8 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
                 const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null;
                 if (handle) {
                     if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-                } else if (isInteractive(ev, el)) {
-                    return;
+                } else if (targetIsInteractive(ev)) {
+                    return;                       // это поле/кнопка — пусть работает как обычно
                 }
                 onDown(id, handle || el, ev);
             };
