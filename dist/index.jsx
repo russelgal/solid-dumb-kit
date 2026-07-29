@@ -1851,9 +1851,11 @@ function DumbTable(props) {
   });
   const visibleRows = () => table.getRowModel().rows;
   const dragDisabled = () => !props.onReorder || sorting().length > 0;
+  const withHandle = () => props.handle !== false;
   const sortable = createDumbSortable({
     order: () => visibleRows().map((r) => r.id),
     disabled: dragDisabled,
+    mouseThreshold: props.dragThreshold,
     get animate() {
       return props.animate;
     },
@@ -1876,7 +1878,7 @@ function DumbTable(props) {
           <thead class={props.headClass}>
             <For4 each={table.getHeaderGroups()}>
               {(hg) => <tr>
-                  <Show3 when={props.onReorder}>
+                  <Show3 when={props.onReorder && withHandle()}>
                     <th style={{ width: "1%" }} />
                   </Show3>
                   <For4 each={hg.headers}>
@@ -1912,12 +1914,12 @@ function DumbTable(props) {
     data-key={row.id}
     class={props.rowClass?.(row.original, row.index)}
     style={{
-      cursor: props.onRowClick ? "pointer" : void 0,
+      cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
       ...props.rowStyle?.(row.original, row.index)
     }}
     onClick={() => props.onRowClick?.(row.original, row.index)}
   >
-                  <Show3 when={props.onReorder}>
+                  <Show3 when={props.onReorder && withHandle()}>
                     <td style={{ padding: "6px 4px", width: "1%" }} onClick={(e) => e.stopPropagation()}>
                       <span
     data-drag-handle

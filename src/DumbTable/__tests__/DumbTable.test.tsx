@@ -189,6 +189,23 @@ describe('DumbTable — перетаскивание строк', () => {
     expect(host.querySelectorAll('[data-drag-handle]').length).toBe(3)
   })
 
+  it('handle={false} — колонки с ручкой нет, тянется вся строка', () => {
+    const host = mount(() => (
+      <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} onReorder={() => {}} handle={false} />
+    ))
+    expect(host.querySelectorAll('[data-drag-handle]').length).toBe(0)
+    // и лишней колонки в шапке тоже нет
+    expect(host.querySelectorAll('thead th').length).toBe(COLS.length)
+    expect((host.querySelector('tbody tr') as HTMLElement).style.cursor).toBe('grab')
+  })
+
+  it('с ручкой в шапке появляется дополнительная колонка', () => {
+    const host = mount(() => (
+      <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} onReorder={() => {}} />
+    ))
+    expect(host.querySelectorAll('thead th').length).toBe(COLS.length + 1)
+  })
+
   it('пока активна сортировка, ручка выключена', () => {
     const [sort, setSort] = createSignal<string | undefined>(undefined)
     const host = mount(() => (

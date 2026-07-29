@@ -78,8 +78,14 @@ export type DumbTableProps<T> = {
 
   /** включает перетаскивание строк за ручку; индексы — в текущем показанном порядке */
   onReorder?: (from: number, to: number) => void
-  /** содержимое ручки перетаскивания */
-  handle?: JSX.Element
+  /**
+   * Содержимое ручки перетаскивания. `false` — ручки нет вовсе, строка тянется
+   * целиком; тогда стоит задать `dragThreshold`, иначе клик по строке и начало
+   * драга неотличимы (а поверх таблицы ещё может быть выделение рамкой).
+   */
+  handle?: JSX.Element | false
+  /** сколько px пройти мышью до старта драга (по умолчанию 0 — сразу) */
+  dragThreshold?: number
 
   onRowClick?: (row: T, index: number) => void
   /** приглушить таблицу на время загрузки */
@@ -165,9 +171,11 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
   // Перетаскивание отключается, пока активна сортировка: показанный порядок
   // больше не совпадает с порядком данных, и пара from→to соврала бы.
   const dragDisabled = () => !props.onReorder || sorting().length > 0
+  const withHandle = () => props.handle !== false
   const sortable = createDumbSortable({
     order: () => visibleRows().map(r => r.id),
     disabled: dragDisabled,
+    mouseThreshold: props.dragThreshold,
     get animate() { return props.animate },
     onEnd: (from, to) => props.onReorder?.(from, to),
   })
@@ -192,7 +200,7 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
             <For each={table.getHeaderGroups()}>
               {(hg) => (
                 <tr>
-                  <Show when={props.onReorder}>
+                  <Show when={props.onReorder && withHandle()}>
                     <th style={{ width: '1%' }} />
                   </Show>
                   <For each={hg.headers}>
@@ -232,12 +240,14 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                   data-key={row.id}
                   class={props.rowClass?.(row.original, row.index)}
                   style={{
-                    cursor: props.onRowClick ? 'pointer' : undefined,
+                    cursor: props.onReorder && !withHandle() && !dragDisabled()
+                      ? 'grab'
+                      : props.onRowClick ? 'pointer' : undefined,
                     ...props.rowStyle?.(row.original, row.index),
                   }}
                   onClick={() => props.onRowClick?.(row.original, row.index)}
                 >
-                  <Show when={props.onReorder}>
+                  <Show when={props.onReorder && withHandle()}>
                     <td style={{ padding: '6px 4px', width: '1%' }} onClick={(e) => e.stopPropagation()}>
                       <span
                         data-drag-handle

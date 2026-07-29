@@ -60,7 +60,8 @@ const columns: DumbColumn<Product>[] = [
 | `animate` | `boolean` | on, minus `prefers-reduced-motion` | Animate row dragging. |
 | `sortDescFirst` | `boolean` | TanStack default | Direction of the *first* click. By default text columns start `asc` and numeric ones `desc`; see below. |
 | `onReorder` | `(from, to) => void` | — | Enables drag-reorder and the handle column. Indices are into the **displayed** order. |
-| `handle` | `JSX.Element` | `⠿` | Drag handle content. |
+| `handle` | `JSX.Element \| false` | `⠿` | Drag handle content. `false` drops the handle column and drags the whole row. |
+| `dragThreshold` | `number` | `0` | Pixels to move before a drag starts — worth setting when dragging the whole row. |
 | `onRowClick` | `(row, index) => void` | — | Row click. |
 | `loading` | `boolean` | `false` | Dims the table while data is in flight. |
 | `empty` | `JSX.Element` | — | Rendered instead of the table when there are no rows. |
@@ -92,6 +93,15 @@ Omit `onSort` and rows are sorted in the browser via TanStack's sorted row model
 `onReorder` adds a handle column and wires rows to `createDumbSortable` — see [DumbSortable](DumbSortable.md#why-it-doesnt-jank) for why it doesn't jank.
 
 The handle **greys out while a sort is active**, in either mode. That's deliberate: `from → to` indices describe the displayed order, and once a sort is applied that no longer maps back to the data order. Reset sorting to reorder again.
+
+Prefer dragging the whole row? Pass `handle={false}` — the handle column disappears and the row itself becomes the grab target:
+
+```tsx
+<DumbTable rows={rows()} columns={columns} onReorder={reorder}
+           handle={false} dragThreshold={6} />
+```
+
+Set `dragThreshold` with it: without a handle, a click on a row and the start of a drag look identical, and rubber-band selection over the table would fight the drag for the same gesture.
 
 If you paginate, remember indices are page-local — add the page offset before splicing:
 

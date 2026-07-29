@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, effect, className, style, createComponent, setStyleProperty, setAttribute, addEventListener, memo, template } from 'solid-js/web';
+import { delegateEvents, use, insert, effect, className, style, createComponent, setStyleProperty, setAttribute, memo, addEventListener, template } from 'solid-js/web';
 import { onCleanup, onMount, createSignal, For, Show, createMemo } from 'solid-js';
 import { makePersisted } from '@solid-primitives/storage';
 import * as v from 'valibot';
@@ -2033,9 +2033,11 @@ function DumbTable(props) {
   });
   const visibleRows = () => table.getRowModel().rows;
   const dragDisabled = () => !props.onReorder || sorting().length > 0;
+  const withHandle = () => props.handle !== false;
   const sortable = createDumbSortable({
     order: () => visibleRows().map((r) => r.id),
     disabled: dragDisabled,
+    mouseThreshold: props.dragThreshold,
     get animate() {
       return props.animate;
     },
@@ -2067,7 +2069,7 @@ function DumbTable(props) {
             var _el$7 = _tmpl$63();
             insert(_el$7, createComponent(Show, {
               get when() {
-                return props.onReorder;
+                return memo(() => !!props.onReorder)() && withHandle();
               },
               get children() {
                 return _tmpl$53();
@@ -2127,7 +2129,7 @@ function DumbTable(props) {
             typeof _ref$ === "function" && use(_ref$, _el$0);
             insert(_el$0, createComponent(Show, {
               get when() {
-                return props.onReorder;
+                return memo(() => !!props.onReorder)() && withHandle();
               },
               get children() {
                 var _el$1 = _tmpl$82(), _el$10 = _el$1.firstChild;
@@ -2174,7 +2176,7 @@ function DumbTable(props) {
             }), null);
             effect((_p$) => {
               var _v$0 = row.id, _v$1 = props.rowClass?.(row.original, row.index), _v$10 = {
-                cursor: props.onRowClick ? "pointer" : void 0,
+                cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
                 ...props.rowStyle?.(row.original, row.index)
               };
               _v$0 !== _p$.e && setAttribute(_el$0, "data-key", _p$.e = _v$0);
