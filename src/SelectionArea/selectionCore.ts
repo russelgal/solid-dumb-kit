@@ -19,6 +19,7 @@ import {
   areaFrom, clampPoint, diffSelection, pickHits, resolveSelection, tapSelection,
   type Bounds, type Box, type IntersectMode,
 } from './selectionMath'
+import { restoreTextSelection, suppressTextSelection } from '../shared/textSelection'
 
 /**
  * Движок выделения рамкой. Без привязки к фреймворку: принимает контейнер и
@@ -223,7 +224,7 @@ export function createSelectionEngine(opts: SelectionCoreOptions): SelectionEngi
       drag.ready = true
     })
 
-    document.body.style.userSelect = 'none'
+    suppressTextSelection()
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onUp)
@@ -241,7 +242,7 @@ export function createSelectionEngine(opts: SelectionCoreOptions): SelectionEngi
     if (!drag) return
     if (drag.raf) cancelAnimationFrame(drag.raf)
     drag.box.remove()
-    document.body.style.userSelect = ''
+    restoreTextSelection()
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', onUp)
     window.removeEventListener('pointercancel', onUp)
@@ -283,6 +284,7 @@ export function createSelectionEngine(opts: SelectionCoreOptions): SelectionEngi
     opts.onStop?.(next)
   }
   function clearPending() {
+    if (!drag) restoreTextSelection()   // жест так и не начался — вернуть как было
     pending = null
     window.removeEventListener('pointermove', pendMove)
     window.removeEventListener('pointerup', pendUp)
@@ -295,6 +297,9 @@ export function createSelectionEngine(opts: SelectionCoreOptions): SelectionEngi
     if (target?.closest(IGNORE)) return
     if (opts.onBeforeStart?.(ev) === false) return
 
+    // Гасим выделение текста сразу: жест ещё не начался (ждём порога), но
+    // браузер уже тянет выделение от точки нажатия — в Safari это особенно заметно.
+    suppressTextSelection()
     pending = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, ev }
     window.addEventListener('pointermove', pendMove)
     window.addEventListener('pointerup', pendUp)

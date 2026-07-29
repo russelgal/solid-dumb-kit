@@ -23,6 +23,7 @@ import {
 } from './geometry';
 import { measure, scrollOf, scrollParent } from '../shared/viewport';
 import { shouldAnimate } from '../shared/motion';
+import { restoreTextSelection, suppressTextSelection } from '../shared/textSelection';
 
 export type SortableGroupOptions = {
     /** перенос завершён: откуда (зона+индекс) и куда */
@@ -385,7 +386,7 @@ export function createSortableGroupEngine(opts: SortableGroupOptions): SortableG
     }
 
     function detach() {
-        document.body.style.userSelect = '';
+        restoreTextSelection();
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
         window.removeEventListener('pointercancel', onUp);
@@ -493,7 +494,7 @@ export function createSortableGroupEngine(opts: SortableGroupOptions): SortableG
         };
         draggingId = id;
         activeName = name;
-        document.body.style.userSelect = 'none';
+        suppressTextSelection();
 
         snapshot(rects => {
             if (!drag || drag.id !== id) return;

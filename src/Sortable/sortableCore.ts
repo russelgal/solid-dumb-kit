@@ -30,6 +30,7 @@ import {
 } from './geometry';
 import { doScroll, measure, scrollOf, scrollParent } from '../shared/viewport';
 import { shouldAnimate } from '../shared/motion';
+import { restoreTextSelection, suppressTextSelection } from '../shared/textSelection';
 
 /**
  * Движок сортировки. Ничего не знает про фреймворк: принимает элементы и
@@ -243,7 +244,7 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
     }
 
     function detach() {
-        document.body.style.userSelect = '';
+        restoreTextSelection();
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
         window.removeEventListener('pointercancel', onUp);
@@ -353,7 +354,7 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
         dragEl.style.opacity = '0.97';
         dragEl.style.cursor = 'grabbing';
         dragEl.style.transition = 'box-shadow .15s ease, opacity .15s ease';
-        document.body.style.userSelect = 'none';
+        suppressTextSelection();
 
         // bounds без reflow → ячейки (в координатах контента) + чужие центры для хиттеста
         snapshot(ids, rects => {

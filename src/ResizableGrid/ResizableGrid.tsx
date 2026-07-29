@@ -1,6 +1,7 @@
 import { createSignal, type JSX, For, Show } from 'solid-js'
 import { makePersisted } from '@solid-primitives/storage'
 import * as v from 'valibot'
+import { restoreTextSelection, suppressTextSelection } from '../shared/textSelection'
 
 /* ────────── Типы ────────── */
 
@@ -138,11 +139,11 @@ export function ResizableGrid(props: ResizableGridProps) {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
       document.body.style.cursor = ''
-      document.body.style.userSelect = ''
+      restoreTextSelection()
     }
 
     document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
+    suppressTextSelection()
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
   }
@@ -180,11 +181,11 @@ export function ResizableGrid(props: ResizableGridProps) {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
       document.body.style.cursor = ''
-      document.body.style.userSelect = ''
+      restoreTextSelection()
     }
 
     document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
+    suppressTextSelection()
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
   }
@@ -221,11 +222,11 @@ export function ResizableGrid(props: ResizableGridProps) {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
       document.body.style.cursor = ''
-      document.body.style.userSelect = ''
+      restoreTextSelection()
     }
 
     document.body.style.cursor = 'row-resize'
-    document.body.style.userSelect = 'none'
+    suppressTextSelection()
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
   }

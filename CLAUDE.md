@@ -29,7 +29,8 @@
 src/
   index.tsx            # публичный API либы (единственный entry для tsup)
   env.d.ts
-  shared/              viewport.ts (скроллер/вьюпорт), motion.ts (анимировать или нет)
+  shared/              viewport.ts (скроллер/вьюпорт), motion.ts (анимировать или нет),
+                       textSelection.ts (подавление выделения текста на время жеста)
   SelectionArea/       index.ts, SelectionArea.tsx, solid.ts, selectionCore.ts, selectionMath.ts, __tests__/
   ResizableGrid/       index.ts, ResizableGrid.tsx
   Sortable/            index.ts, solid.ts, sortableCore.ts, sortableGroup.ts, geometry.ts, DumbSortable.tsx, __tests__/
@@ -108,6 +109,14 @@ pnpm test           # vitest run (утилиты + смоук-монтирова
 - `animate={true}` → анимируем даже вопреки системной настройке (осознанный выбор потребителя).
 
 Новую анимацию добавляешь — прогоняй через `shouldAnimate()`, а не включай безусловно.
+
+## Выделение текста во время жестов
+Любой жест (драг, рамка, ресайз) гасит выделение текста через `shared/textSelection.ts`, а не `document.body.style.userSelect` напрямую. Две причины, обе из-за Safari:
+
+- он смотрит на `-webkit-user-select`, поэтому ставим оба свойства;
+- жест начинается не сразу (порог/долгое нажатие), и к этому моменту браузер уже что-то выделил — мало запретить дальнейшее, надо снять `window.getSelection()`.
+
+В `SelectionArea` подавление ставится ещё на `pointerdown` (до порога) и снимается, если жест так и не начался.
 
 ## Версии: линия 0.x — под Solid 1
 `0.1.0` и вся ветка `0.x` — для **SolidJS 1.x**. `peerDependencies.solid-js` = `^1.8.0` (именно каретка, не `>=1.8.0` — чтобы Solid 2 не подхватился молча и не сломался в рантайме у потребителя).

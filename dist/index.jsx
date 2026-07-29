@@ -131,6 +131,22 @@ function diffSelection(prev, next) {
   return { added, removed };
 }
 
+// src/shared/textSelection.ts
+function suppressTextSelection() {
+  if (typeof document === "undefined") return;
+  const s = document.body.style;
+  s.userSelect = "none";
+  s.webkitUserSelect = "none";
+  const sel = window.getSelection?.();
+  if (sel && !sel.isCollapsed) sel.removeAllRanges();
+}
+function restoreTextSelection() {
+  if (typeof document === "undefined") return;
+  const s = document.body.style;
+  s.userSelect = "";
+  s.webkitUserSelect = "";
+}
+
 // src/SelectionArea/selectionCore.ts
 var IGNORE = "button, a, input, select, textarea, [data-no-select], [data-drag-handle]";
 function createSelectionEngine(opts) {
@@ -265,7 +281,7 @@ function createSelectionEngine(opts) {
       drag.keys = keys;
       drag.ready = true;
     });
-    document.body.style.userSelect = "none";
+    suppressTextSelection();
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
@@ -281,7 +297,7 @@ function createSelectionEngine(opts) {
     if (!drag) return;
     if (drag.raf) cancelAnimationFrame(drag.raf);
     drag.box.remove();
-    document.body.style.userSelect = "";
+    restoreTextSelection();
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     window.removeEventListener("pointercancel", onUp);
@@ -320,6 +336,7 @@ function createSelectionEngine(opts) {
     opts.onStop?.(next);
   }
   function clearPending() {
+    if (!drag) restoreTextSelection();
     pending = null;
     window.removeEventListener("pointermove", pendMove);
     window.removeEventListener("pointerup", pendUp);
@@ -330,6 +347,7 @@ function createSelectionEngine(opts) {
     const target = ev.target;
     if (target?.closest(IGNORE)) return;
     if (opts.onBeforeStart?.(ev) === false) return;
+    suppressTextSelection();
     pending = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, ev };
     window.addEventListener("pointermove", pendMove);
     window.addEventListener("pointerup", pendUp);
@@ -463,10 +481,10 @@ function ResizableGrid(props) {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      restoreTextSelection();
     }
     document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
+    suppressTextSelection();
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }
@@ -497,10 +515,10 @@ function ResizableGrid(props) {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      restoreTextSelection();
     }
     document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
+    suppressTextSelection();
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }
@@ -530,10 +548,10 @@ function ResizableGrid(props) {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      restoreTextSelection();
     }
     document.body.style.cursor = "row-resize";
-    document.body.style.userSelect = "none";
+    suppressTextSelection();
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }
@@ -868,7 +886,7 @@ function createSortableEngine(opts) {
     drag.lastY = ev.clientY;
   }
   function detach() {
-    document.body.style.userSelect = "";
+    restoreTextSelection();
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     window.removeEventListener("pointercancel", onUp);
@@ -984,7 +1002,7 @@ function createSortableEngine(opts) {
     dragEl.style.opacity = "0.97";
     dragEl.style.cursor = "grabbing";
     dragEl.style.transition = "box-shadow .15s ease, opacity .15s ease";
-    document.body.style.userSelect = "none";
+    suppressTextSelection();
     snapshot(ids, (rects) => {
       if (!drag || drag.id !== id) return;
       const origin = originOf(drag);
@@ -1340,7 +1358,7 @@ function createSortableGroupEngine(opts) {
     drag.lastY = ev.clientY;
   }
   function detach() {
-    document.body.style.userSelect = "";
+    restoreTextSelection();
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     window.removeEventListener("pointercancel", onUp);
@@ -1455,7 +1473,7 @@ function createSortableGroupEngine(opts) {
     };
     draggingId = id;
     activeName = name;
-    document.body.style.userSelect = "none";
+    suppressTextSelection();
     snapshot((rects) => {
       if (!drag || drag.id !== id) return;
       const d = drag;
