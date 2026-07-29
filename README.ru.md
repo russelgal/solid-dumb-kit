@@ -27,10 +27,10 @@ pnpm add github:russelgal/solid-dumb-kit
 pnpm add solid-js
 ```
 
-Нужна воспроизводимая установка — прибей к коммиту (тегов в репозитории пока нет):
+Нужна воспроизводимая установка — прибей к тегу:
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit#<commit-sha>
+pnpm add github:russelgal/solid-dumb-kit#v0.3.0
 ```
 
 ## Быстрый старт

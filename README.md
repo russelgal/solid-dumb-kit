@@ -27,10 +27,10 @@ pnpm add github:russelgal/solid-dumb-kit
 pnpm add solid-js
 ```
 
-Pin a commit for reproducible installs (the repo has no tags yet):
+Pin a tag for reproducible installs:
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit#<commit-sha>
+pnpm add github:russelgal/solid-dumb-kit#v0.3.0
 ```
 
 ## Quick start
