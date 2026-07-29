@@ -45,7 +45,7 @@ describe('SelectionArea.example — обе доски на месте', () => {
     const text = host.textContent ?? ''
     expect(text).toContain('Прокручиваемый контейнер')
     expect(text).toContain('Длинный грид без overflow')
-    expect(host.querySelectorAll('.sa-card').length).toBe(340)   // 100 + 240
+    expect(host.querySelectorAll('.card').length).toBe(340)   // 100 + 240
   })
 
   it('кнопка удаления выключена, пока ничего не выделено', () => {
@@ -57,11 +57,12 @@ describe('SelectionArea.example — обе доски на месте', () => {
     expect(kill.every((b) => b.disabled)).toBe(true)
   })
 
-  it('у прокручиваемой доски overflow на самом контейнере', () => {
+  it('прокрутка висит на самом контейнере выделения, и только у первой доски', () => {
     const host = mount(SelectionAreaExample)
-    const boards = host.querySelectorAll('section > div:last-child')
-    expect((boards[0] as HTMLElement).style.overflowY).toBe('auto')
-    expect((boards[1] as HTMLElement).style.overflowY).toBe('')
+    const surfaces = host.querySelectorAll('.surface')
+    expect(surfaces.length).toBe(2)
+    expect(surfaces[0].classList.contains('surface-scroll')).toBe(true)
+    expect(surfaces[1].classList.contains('surface-scroll')).toBe(false)
   })
 })
 

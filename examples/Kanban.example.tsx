@@ -111,8 +111,8 @@ export default function KanbanExample() {
   ) as Record<ColumnId, ReturnType<typeof group.list>>
 
   return (
-    <div style={{ padding: '16px', 'max-width': '1100px', margin: '0 auto', color: '#0f172a' }}>
-      <p style={{ margin: '0 0 8px', 'font-size': '13px', color: '#64748b', 'max-width': '76ch' }}>
+    <div class="kb-example">
+      <p class="intro">
         Тащи карточку за <b>⠿</b> в любую колонку. Оригинал остаётся в потоке (прячется),
         поэтому колонки не схлопываются и высота не скачет, а за курсором летит клон
         в <b>top layer</b> — его не режет <code>overflow</code>, так что колонки спокойно
@@ -121,76 +121,42 @@ export default function KanbanExample() {
         перенести нельзя — это <code>accepts</code>.
       </p>
 
-      <div style={{ display: 'flex', 'align-items': 'center', gap: '12px', 'margin-bottom': '12px',
-                    'font-size': '13px', 'min-height': '20px', color: '#0f172a' }}>
+      <div class="toolbar">
         <span>{log()}</span>
-        <button
-          onClick={shuffleBoard}
-          style={{ 'margin-left': 'auto', padding: '3px 10px', 'border-radius': '6px',
-                   border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer',
-                   font: 'inherit', 'font-size': '12px' }}
-        >
-          перемешать
-        </button>
+        <button class="btn" onClick={shuffleBoard}>перемешать</button>
       </div>
 
-      <div style={{ display: 'grid', 'grid-template-columns': 'repeat(4, 1fr)', gap: '12px', 'align-items': 'start' }}>
+      <div class="columns">
         <For each={COLUMNS}>
           {(colId) => {
             const isActive = () => group.activeList() === colId && !!group.draggingId()
             return (
-              <section
-                style={{
-                  display: 'flex', 'flex-direction': 'column', 'min-width': '0',
-                  border: '1px solid ' + (isActive() ? '#6366f1' : '#e2e8f0'),
-                  'border-radius': '12px', background: isActive() ? '#eef2ff' : '#f8fafc',
-                  transition: 'background .15s, border-color .15s',
-                }}
-              >
-                <header style={{ padding: '10px 12px 6px', display: 'flex', 'align-items': 'center', gap: '6px' }}>
-                  <strong style={{ 'font-size': '13px' }}>{TITLES[colId]}</strong>
-                  <span style={{ 'font-size': '12px', color: '#94a3b8' }}>{board()[colId].length}</span>
+              <section class="column" classList={{ active: isActive() }}>
+                <header>
+                  <strong>{TITLES[colId]}</strong>
+                  <span class="count">{board()[colId].length}</span>
                 </header>
 
                 {/* сам скроллящийся контейнер зоны */}
-                <div
-                  ref={lists[colId].container}
-                  style={{
-                    display: 'flex', 'flex-direction': 'column', gap: '8px',
-                    padding: '8px', 'min-height': '120px', 'max-height': '46vh',
-                    'overflow-y': 'auto', 'overflow-x': 'hidden',
-                  }}
-                >
+                <div class="cards" ref={lists[colId].container}>
                   <For each={board()[colId]}>
                     {(c) => (
                       <article
+                        class="card"
                         ref={lists[colId].bind(c.id)}
-                        style={{
-                          display: 'flex', 'align-items': 'flex-start', gap: '8px',
-                          padding: '10px', 'border-radius': '10px', background: '#fff',
-                          'box-shadow': 'inset 0 0 0 1px #e2e8f0', 'font-size': '13px',
-                          // имя нужно, чтобы браузер анимировал КАЖДУЮ карточку отдельно,
-                          // а не делал кроссфейд всей доски
-                          'view-transition-name': `kanban-${c.id}`,
-                        }}
+                        // имя нужно, чтобы браузер анимировал КАЖДУЮ карточку отдельно,
+                        // а не делал кроссфейд всей доски
+                        style={{ 'view-transition-name': `kanban-${c.id}` }}
                       >
-                        <button
-                          data-drag-handle
-                          style={{
-                            cursor: 'grab', border: 'none', background: 'none', padding: '0',
-                            color: '#94a3b8', 'font-size': '16px', 'line-height': '1', 'touch-action': 'none',
-                          }}
-                          title="перетащить"
-                        >
-                          ⠿
-                        </button>
-                        <div style={{ 'min-width': '0' }}>
-                          <div style={{ 'font-weight': '500' }}>{c.title}</div>
+                        <button class="handle" data-drag-handle type="button" title="перетащить">⠿</button>
+                        <div class="body">
+                          <div class="title">{c.title}</div>
+                          {/* цвет из данных — единственное, что остаётся инлайном */}
                           <span
+                            class="tag"
                             style={{
-                              display: 'inline-block', 'margin-top': '4px', padding: '1px 7px',
-                              'border-radius': '999px', 'font-size': '11px',
-                              background: `oklch(0.93 0.05 ${c.hue})`, color: `oklch(0.42 0.13 ${c.hue})`,
+                              background: `oklch(0.93 0.05 ${c.hue})`,
+                              color: `oklch(0.42 0.13 ${c.hue})`,
                             }}
                           >
                             {c.tag}
@@ -201,9 +167,7 @@ export default function KanbanExample() {
                   </For>
 
                   <Show when={!board()[colId].length}>
-                    <div style={{ padding: '18px 8px', 'text-align': 'center', color: '#cbd5e1', 'font-size': '12px' }}>
-                      перетащи сюда
-                    </div>
+                    <div class="empty">перетащи сюда</div>
                   </Show>
                 </div>
               </section>
@@ -211,6 +175,39 @@ export default function KanbanExample() {
           }}
         </For>
       </div>
+
+      <style>{`
+        .kb-example { padding: 16px; max-width: 1100px; margin: 0 auto; color: #0f172a }
+        .kb-example .intro { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 76ch }
+
+        .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+                   font-size: 13px; min-height: 20px }
+        .btn { margin-left: auto; padding: 3px 10px; border-radius: 6px; border: 1px solid #cbd5e1;
+               background: #fff; color: inherit; font: inherit; font-size: 12px; cursor: pointer }
+
+        .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: start }
+        .column { display: flex; flex-direction: column; min-width: 0; border-radius: 12px;
+                  border: 1px solid #e2e8f0; background: #f8fafc;
+                  transition: background .15s, border-color .15s }
+        .column.active { border-color: #6366f1; background: #eef2ff }
+        .column header { padding: 10px 12px 6px; display: flex; align-items: center; gap: 6px;
+                         font-size: 13px }
+        .column .count { font-size: 12px; color: #94a3b8 }
+
+        .cards { display: flex; flex-direction: column; gap: 8px; padding: 8px;
+                 min-height: 120px; max-height: 46vh; overflow-y: auto; overflow-x: hidden }
+        .empty { padding: 18px 8px; text-align: center; color: #cbd5e1; font-size: 12px }
+
+        .card { display: flex; align-items: flex-start; gap: 8px; padding: 10px;
+                border-radius: 10px; background: #fff; font-size: 13px;
+                box-shadow: inset 0 0 0 1px #e2e8f0 }
+        .card .handle { cursor: grab; border: none; background: none; padding: 0;
+                        color: #94a3b8; font-size: 16px; line-height: 1; touch-action: none }
+        .card .body { min-width: 0 }
+        .card .title { font-weight: 500 }
+        .card .tag { display: inline-block; margin-top: 4px; padding: 1px 7px;
+                     border-radius: 999px; font-size: 11px }
+      `}</style>
     </div>
   )
 }

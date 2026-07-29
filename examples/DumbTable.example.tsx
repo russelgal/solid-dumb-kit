@@ -82,37 +82,30 @@ export default function DumbTableExample() {
 
   const columns: DumbColumn<Product>[] = [
     { key: 'vendor_code', label: 'Артикул', sortable: true, width: '130px',
-      render: (p) => <code style={{ 'font-size': '12px' }}>{p.vendor_code}</code> },
+      render: (p) => <code class="sku">{p.vendor_code}</code> },
     { key: 'name', label: 'Название', sortable: true,
-      render: (p) => <span style={{ 'font-weight': '500' }}>{p.name}</span> },
+      render: (p) => <span class="name">{p.name}</span> },
     { key: 'brand', label: 'Бренд', sortable: true, width: '140px' },
     { key: 'price', label: 'Цена', sortable: true, align: 'right', width: '120px',
       render: (p) => fmtPrice(p.price) },
     { key: 'stock', label: 'Остаток', sortable: true, align: 'right', width: '100px',
       render: (p) => (
-        <span style={{ color: p.stock === 0 ? '#dc2626' : p.stock < 30 ? '#d97706' : '#16a34a' }}>
+        <span classList={{ stock: true, out: p.stock === 0, low: p.stock > 0 && p.stock < 30 }}>
           {fmtNum(p.stock)}
         </span>
       ) },
     // stopClick: клик по кнопке не должен всплывать в onRowClick
     { key: 'buy', label: '', align: 'right', width: '110px', stopClick: true,
       render: (p) => (
-        <button
-          onClick={() => toggleCart(p)}
-          style={{ padding: '3px 10px', 'border-radius': '6px', cursor: 'pointer', font: 'inherit',
-                   'font-size': '12px',
-                   border: '1px solid ' + (cart().has(p.id) ? '#16a34a' : '#cbd5e1'),
-                   background: cart().has(p.id) ? '#16a34a' : '#fff',
-                   color: cart().has(p.id) ? '#fff' : '#0f172a' }}
-        >
+        <button class="btn btn-buy" classList={{ on: cart().has(p.id) }} onClick={() => toggleCart(p)}>
           {cart().has(p.id) ? '✓ в заказе' : 'заказать'}
         </button>
       ) },
   ]
 
   return (
-    <div style={{ padding: '16px', 'max-width': '1040px', margin: '0 auto', color: '#0f172a' }}>
-      <p style={{ margin: '0 0 12px', 'font-size': '13px', color: '#64748b', 'max-width': '72ch' }}>
+    <div class="dt-example">
+      <p class="intro">
         137 строк, колонки описаны обычными объектами. Клик по заголовку сортирует (под капотом
         TanStack), третий клик сбрасывает сортировку. Протяжка за <b>⠿</b> переставляет строку —
         ручка гаснет, пока активна сортировка, потому что показанный порядок уже не совпадает
@@ -122,63 +115,35 @@ export default function DumbTableExample() {
         поэтому её кнопка не срабатывает как клик по строке.
       </p>
 
-      <div style={{ display: 'flex', 'align-items': 'center', gap: '12px', 'margin-bottom': '10px',
-                    'font-size': '13px', 'min-height': '20px', 'flex-wrap': 'wrap' }}>
+      <div class="toolbar">
         <span>{picked() ? <>row click → <b>{picked()!.name}</b> · {picked()!.vendor_code}</> : 'click a row →'}</span>
-        <span style={{ 'margin-left': 'auto' }}>
-          выделено рамкой: <b>{selected().size}</b>
-        </span>
-        <button
-          onClick={() => withViewTransition(() => { setRows(shuffle(rows())); setPage(1) })}
-          style={{ padding: '3px 9px', 'border-radius': '6px', border: '1px solid #cbd5e1',
-                   background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}
-        >
+        <span class="count">выделено рамкой: <b>{selected().size}</b></span>
+        <button class="btn" onClick={() => withViewTransition(() => { setRows(shuffle(rows())); setPage(1) })}>
           перемешать
         </button>
-        <button
-          onClick={() => setSelected(new Set())}
-          disabled={!selected().size}
-          style={{ padding: '3px 9px', 'border-radius': '6px', border: '1px solid #cbd5e1',
-                   background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}
-        >
+        <button class="btn" onClick={() => setSelected(new Set())} disabled={!selected().size}>
           сбросить
         </button>
-        <button
-          onClick={removeSelected}
-          disabled={!selected().size}
-          style={{ padding: '3px 9px', 'border-radius': '6px', cursor: 'pointer', font: 'inherit',
-                   'font-size': '12px',
-                   border: '1px solid ' + (selected().size ? '#dc2626' : '#cbd5e1'),
-                   background: selected().size ? '#dc2626' : '#fff',
-                   color: selected().size ? '#fff' : '#94a3b8' }}
-        >
+        <button class="btn btn-danger" onClick={removeSelected} disabled={!selected().size}>
           удалить выделенное
         </button>
       </div>
 
-      <SelectionArea
-        selectables="tbody tr"
-        selected={selected}
-        onChange={setSelected}
-        style={{ border: '1px solid #e2e8f0', 'border-radius': '12px', overflow: 'hidden' }}
-      >
+      <SelectionArea class="surface" selectables="tbody tr" selected={selected} onChange={setSelected}>
         <DumbTable
           rows={pageRows()}
           columns={columns}
           rowId={(p) => p.id}
           onRowClick={(p) => setPicked(p)}
-          headClass="dt-head"
+          headClass="head"
           rowClass={(p) =>
-            [
-              'dt-row',
-              cart().has(p.id) ? 'dt-row-picked' : '',
-              selected().has(p.id) ? 'dt-row-selected' : '',
-            ].filter(Boolean).join(' ')
+            ['row', cart().has(p.id) ? 'in-cart' : '', selected().has(p.id) ? 'selected' : '']
+              .filter(Boolean).join(' ')
           }
           // имя на строку — чтобы браузер вёл КАЖДУЮ отдельно, а не делал
           // кроссфейд всей таблицы
           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })}
-          empty={<div style={{ padding: '24px', 'text-align': 'center', color: '#94a3b8' }}>Ничего не найдено</div>}
+          empty={<div class="empty">Ничего не найдено</div>}
           onReorder={(from, to) => {
             // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные
             const offset = (page() - 1) * pageSize()
@@ -189,7 +154,7 @@ export default function DumbTableExample() {
         />
       </SelectionArea>
 
-      <div style={{ 'margin-top': '12px' }}>
+      <div class="pager">
         <DumbPagination
           page={page()}
           total={rows().length}
@@ -202,12 +167,35 @@ export default function DumbTableExample() {
       </div>
 
       <style>{`
-        .dt-head th{background:#f8fafc;color:#475569;font-size:12px;text-transform:uppercase;letter-spacing:.03em;
-                    border-bottom:1px solid #e2e8f0}
-        .dt-row{border-bottom:1px solid #f1f5f9}
-        .dt-row:hover{background:#f8fafc}
-        .dt-row-picked{background:#f0fdf4}
-        .dt-row-selected{background:#eff6ff;box-shadow:inset 2px 0 0 #3b82f6}
+        .dt-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a }
+        .dt-example .intro { margin: 0 0 12px; font-size: 13px; color: #64748b; max-width: 72ch }
+
+        .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+                   font-size: 13px; min-height: 20px; flex-wrap: wrap }
+        .toolbar .count { margin-left: auto }
+
+        .btn { padding: 3px 9px; border-radius: 6px; border: 1px solid #cbd5e1;
+               background: #fff; color: inherit; font: inherit; font-size: 12px; cursor: pointer }
+        .btn:disabled { color: #94a3b8; cursor: default }
+        .btn-danger:not(:disabled) { border-color: #dc2626; background: #dc2626; color: #fff }
+        .btn-buy.on { border-color: #16a34a; background: #16a34a; color: #fff }
+
+        .surface { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden }
+        .pager { margin-top: 12px }
+        .empty { padding: 24px; text-align: center; color: #94a3b8 }
+
+        .head th { background: #f8fafc; color: #475569; font-size: 12px; text-transform: uppercase;
+                   letter-spacing: .03em; border-bottom: 1px solid #e2e8f0 }
+        .row { border-bottom: 1px solid #f1f5f9 }
+        .row:hover { background: #f8fafc }
+        .row.in-cart { background: #f0fdf4 }
+        .row.selected { background: #eff6ff; box-shadow: inset 2px 0 0 #3b82f6 }
+
+        .sku { font-size: 12px }
+        .name { font-weight: 500 }
+        .stock { color: #16a34a }
+        .stock.low { color: #d97706 }
+        .stock.out { color: #dc2626 }
       `}</style>
     </div>
   )

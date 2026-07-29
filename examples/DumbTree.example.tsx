@@ -93,25 +93,25 @@ export default function DumbTreeExample() {
   const [log, setLog] = createSignal('click a row →')
 
   const badge = (n: Cat) => (
-    <span style={{ 'font-size': '11px', color: '#94a3b8', 'font-variant-numeric': 'tabular-nums' }}>
+    <span class="badge">
       {n.count || ''}
     </span>
   )
 
   return (
-    <div class="dt-demo" style={{ padding: '16px', 'max-width': '1040px', margin: '0 auto', color: '#0f172a' }}>
+    <div class="dt-demo tree-example">
       <style>{SHIM}</style>
 
-      <p style={{ margin: '0 0 16px', 'font-size': '13px', color: '#64748b', 'max-width': '68ch' }}>
+      <p class="intro">
         Type in the search box (fuzzy — <code>gst hs</code> finds “Guest houses”), toggle the sort
         mode, collapse folders and reload the page: expanded folders and sort mode are persisted
         per <code>storageKey</code>. Hidden items are dimmed via <code>rowClass</code>, counts come
         from <code>rowExtra</code> — the kit itself knows nothing about those fields.
       </p>
 
-      <div style={{ display: 'flex', gap: '24px', 'align-items': 'flex-start', 'flex-wrap': 'wrap' }}>
+      <div class="cols">
         <section>
-          <h3 style={{ margin: '0 0 8px', 'font-size': '14px' }}>Tree — hierarchy by <code>parent</code></h3>
+          <h3>Tree — hierarchy by <code>parent</code></h3>
           <DumbTree
             nodes={CATS}
             title="CATALOGUE"
@@ -128,7 +128,7 @@ export default function DumbTreeExample() {
         </section>
 
         <section>
-          <h3 style={{ margin: '0 0 8px', 'font-size': '14px' }}>Flat + <code>sortable</code> — drag by ⠿</h3>
+          <h3>Flat + <code>sortable</code> — drag by ⠿</h3>
           <DumbTree
             nodes={flat()}
             flat
@@ -148,24 +148,33 @@ export default function DumbTreeExample() {
           />
         </section>
 
-        <section style={{ flex: '1', 'min-width': '240px' }}>
-          <h3 style={{ margin: '0 0 8px', 'font-size': '14px' }}>Callbacks</h3>
-          <code style={{ display: 'block', padding: '10px 12px', 'border-radius': '10px',
-                         background: '#0f172a', color: '#e2e8f0', 'font-size': '13px' }}>
-            {log()}
-          </code>
-          <p style={{ 'font-size': '13px', color: '#64748b', 'line-height': '1.6' }}>
+        <section class="side">
+          <h3>Callbacks</h3>
+          <code class="log">{log()}</code>
+          <p class="order">
             Current order:<br />
             <For each={flat()}>{(n, i) => <span>{i() > 0 ? ' · ' : ''}{n.title}</span>}</For>
           </p>
-          <p style={{ 'font-size': '12px', color: '#94a3b8' }}>
+          <p class="muted">
             Drag-reorder is flat-only, and switches off while a filter is typed — the displayed
             order no longer maps to the source one.
           </p>
         </section>
       </div>
 
-      <style>{`.dt-demo .dt-dim{opacity:.45}`}</style>
+      <style>{`
+        .tree-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a }
+        .tree-example .intro { margin: 0 0 16px; font-size: 13px; color: #64748b; max-width: 68ch }
+        .tree-example .cols { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap }
+        .tree-example h3 { margin: 0 0 8px; font-size: 14px }
+        .tree-example .side { flex: 1; min-width: 240px }
+        .tree-example .log { display: block; padding: 10px 12px; border-radius: 10px;
+                             background: #0f172a; color: #e2e8f0; font-size: 13px }
+        .tree-example .order { font-size: 13px; color: #64748b; line-height: 1.6 }
+        .tree-example .muted { font-size: 12px; color: #94a3b8 }
+        .tree-example .badge { font-size: 11px; color: #94a3b8; font-variant-numeric: tabular-nums }
+        .dt-demo .dt-dim { opacity: .45 }
+      `}</style>
     </div>
   )
 }

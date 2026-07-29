@@ -1,12 +1,12 @@
 // DumbSortable — drag-reorder at scale: a 100-row list (drag by handle, auto-scrolls)
-// and a 100-tile grid (drag the whole tile). No CSS needed.
+// and a 100-tile grid (drag the whole tile). The kit needs no CSS — everything
+// in the <style> block below is just this example's looks.
 import { createSignal, For } from 'solid-js'
 import { DumbSortable } from 'solid-dumb-kit'
 
 type Row = { id: string; label: string }
 const rows = (n: number): Row[] =>
   Array.from({ length: n }, (_, i) => ({ id: `r${i}`, label: `Track ${String(i + 1).padStart(3, '0')}` }))
-
 
 // перемешивание Фишера–Йетса: копия, не мутируем исходный массив
 function shuffle<T>(list: Array<T>): Array<T> {
@@ -18,6 +18,7 @@ function shuffle<T>(list: Array<T>): Array<T> {
   return out
 }
 
+// цвет — единственное, что остаётся инлайном: он вычисляется из данных
 const HUE = (i: number) => `oklch(0.75 0.13 ${(i * 37) % 360})`
 
 const PILLS = [
@@ -33,38 +34,20 @@ const PILLS = [
   '🧲 edge auto-scroll',
 ]
 
-// рекламный сайдбар (справа) — фичи + перф-понты
 function Promo() {
   return (
-    <aside
-      style={{
-        width: '260px', 'flex-shrink': '0', position: 'sticky', top: '64px',
-        padding: '18px', 'border-radius': '14px', color: '#fff',
-        background: 'linear-gradient(160deg, #4f46e5, #7c3aed 55%, #db2777)',
-        'box-shadow': '0 12px 28px -10px rgba(79,70,229,.55)',
-      }}
-    >
-      <div style={{ 'font-size': '18px', 'font-weight': '700', 'margin-bottom': '6px' }}>
-        DumbSortable ✨
-      </div>
-      <div style={{ 'font-size': '13px', opacity: '.92', 'margin-bottom': '12px', 'line-height': '1.5' }}>
+    <aside class="promo">
+      <div class="promo-title">DumbSortable ✨</div>
+      <p class="promo-text">
         Blazing-fast, zero-dep FLIP reorder for SolidJS. Cell bounds read <b>once</b> via
         <b> IntersectionObserver</b> (off the main thread, <b>zero reflow</b>), then only GPU
         <code> transform</code>s — stays at 60fps with hundreds of rows. No per-frame
         <code> getBoundingClientRect</code> like dnd-kit.
+      </p>
+      <div class="pills">
+        <For each={PILLS}>{(t) => <span class="pill">{t}</span>}</For>
       </div>
-      <div style={{ display: 'flex', 'flex-wrap': 'wrap', gap: '6px', 'margin-bottom': '14px' }}>
-        <For each={PILLS}>
-          {(t) => (
-            <span style={{ 'font-size': '12px', padding: '4px 9px', 'border-radius': '999px',
-                           background: 'rgba(255,255,255,.18)' }}>{t}</span>
-          )}
-        </For>
-      </div>
-      <code style={{ display: 'block', 'font-size': '13px', background: 'rgba(0,0,0,.25)',
-                     padding: '8px 10px', 'border-radius': '8px', 'text-align': 'center' }}>
-        npm i solid-dumb-kit
-      </code>
+      <code class="promo-install">npm i solid-dumb-kit</code>
     </aside>
   )
 }
@@ -74,35 +57,23 @@ export default function DumbSortableExample() {
   const [tiles, setTiles] = createSignal<Row[]>(rows(100))
 
   return (
-    <div style={{ padding: '16px', 'max-width': '1040px', margin: '0 auto', color: '#0f172a',
-                  display: 'flex', gap: '20px', 'align-items': 'flex-start', 'flex-wrap': 'wrap' }}>
-      {/* ── демки (основная колонка) ── */}
-      <div style={{ flex: '1', 'min-width': '320px', display: 'grid', gap: '28px' }}>
+    <div class="ds-example">
+      <div class="demos">
         {/* Vertical list: drag by the ⠿ handle; container scrolls while dragging */}
         <section>
-          <div style={{ display: 'flex', 'align-items': 'center', gap: '10px' }}>
-            <h3 style={{ margin: '0 0 4px' }}>List — drag by the handle</h3>
-            <button onClick={() => setList(shuffle(list()))}
-                    style={{ padding: '3px 10px', 'border-radius': '6px', border: '1px solid #cbd5e1',
-                   background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}>перемешать</button>
-          </div>
-          <p style={{ margin: '0 0 10px', 'font-size': '13px', color: '#64748b' }}>
-            100 rows, fixed-height scroll area — drag near an edge and it auto-scrolls.
-          </p>
-          <div style={{ display: 'grid', gap: '6px', 'max-height': '52vh', 'overflow-y': 'auto', 'overflow-x': 'hidden',
-                        padding: '10px', border: '1px solid #e2e8f0', 'border-radius': '12px', background: '#f8fafc' }}>
+          <header class="section-head">
+            <h3>List — drag by the handle</h3>
+            <button class="btn" onClick={() => setList(shuffle(list()))}>перемешать</button>
+          </header>
+          <p class="note">100 rows, fixed-height scroll area — drag near an edge and it auto-scrolls.</p>
+
+          <div class="scroller list">
             <DumbSortable items={list()} setItems={setList} id={(x) => x.id}>
               {(item, i) => (
-                <div style={{ display: 'flex', 'align-items': 'center', gap: '10px',
-                              padding: '10px 12px', 'border-radius': '10px', background: '#fff',
-                              'box-shadow': 'inset 0 0 0 1px #e2e8f0' }}>
-                  <button data-drag-handle
-                    style={{ cursor: 'grab', border: 'none', background: 'none', 'font-size': '18px', color: '#94a3b8', padding: '0 2px', 'touch-action': 'none' }}
-                    title="drag">⠿</button>
-                  <span style={{ width: '34px', 'font-variant-numeric': 'tabular-nums', color: '#94a3b8', 'font-size': '13px' }}>
-                    {i() + 1}
-                  </span>
-                  <span style={{ width: '14px', height: '14px', 'border-radius': '4px', background: HUE(Number(item.id.slice(1))) }} />
+                <div class="row">
+                  <button class="handle" data-drag-handle title="drag">⠿</button>
+                  <span class="num">{i() + 1}</span>
+                  <span class="swatch" style={{ background: HUE(Number(item.id.slice(1))) }} />
                   <span>{item.label}</span>
                 </div>
               )}
@@ -112,24 +83,16 @@ export default function DumbSortableExample() {
 
         {/* Grid: axis="grid", drag the whole tile (no handle) */}
         <section>
-          <div style={{ display: 'flex', 'align-items': 'center', gap: '10px' }}>
-            <h3 style={{ margin: '0 0 4px' }}>Grid — drag the tile</h3>
-            <button onClick={() => setTiles(shuffle(tiles()))}
-                    style={{ padding: '3px 10px', 'border-radius': '6px', border: '1px solid #cbd5e1',
-                   background: '#fff', cursor: 'pointer', font: 'inherit', 'font-size': '12px' }}>перемешать</button>
-          </div>
-          <p style={{ margin: '0 0 10px', 'font-size': '13px', color: '#64748b' }}>
-            100 tiles, <code>axis="grid"</code> — items reflow in 2D and jump across rows.
-          </p>
-          <div style={{ display: 'grid', 'grid-template-columns': 'repeat(auto-fill, minmax(64px, 1fr))', gap: '8px',
-                        'max-height': '52vh', 'overflow-y': 'auto', 'overflow-x': 'hidden', padding: '10px',
-                        border: '1px solid #e2e8f0', 'border-radius': '12px', background: '#f8fafc' }}>
+          <header class="section-head">
+            <h3>Grid — drag the tile</h3>
+            <button class="btn" onClick={() => setTiles(shuffle(tiles()))}>перемешать</button>
+          </header>
+          <p class="note">100 tiles, <code>axis="grid"</code> — items reflow in 2D and jump across rows.</p>
+
+          <div class="scroller tiles">
             <DumbSortable items={tiles()} setItems={setTiles} id={(x) => x.id} axis="grid">
               {(item, i) => (
-                <div style={{ 'aspect-ratio': '1', display: 'grid', 'place-items': 'center',
-                              'border-radius': '10px', cursor: 'grab', 'user-select': 'none',
-                              'font-weight': '600', color: '#1e293b',
-                              background: HUE(Number(item.id.slice(1))) }}>
+                <div class="tile" style={{ background: HUE(Number(item.id.slice(1))) }}>
                   {i() + 1}
                 </div>
               )}
@@ -138,8 +101,46 @@ export default function DumbSortableExample() {
         </section>
       </div>
 
-      {/* ── реклама (сайдбар справа) ── */}
       <Promo />
+
+      <style>{`
+        .ds-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a;
+                      display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap }
+        .ds-example .demos { flex: 1; min-width: 320px; display: grid; gap: 28px }
+
+        .section-head { display: flex; align-items: center; gap: 10px }
+        .section-head h3 { margin: 0 0 4px }
+        .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
+
+        .btn { padding: 3px 10px; border-radius: 6px; border: 1px solid #cbd5e1;
+               background: #fff; color: inherit; font: inherit; font-size: 12px; cursor: pointer }
+
+        .scroller { max-height: 52vh; overflow-y: auto; overflow-x: hidden; padding: 10px;
+                    border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc }
+        .list { display: grid; gap: 6px }
+        .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px }
+
+        .row { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+               border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px #e2e8f0 }
+        .handle { cursor: grab; border: none; background: none; padding: 0 2px;
+                  font-size: 18px; color: #94a3b8; touch-action: none }
+        .num { width: 34px; font-size: 13px; color: #94a3b8; font-variant-numeric: tabular-nums }
+        .swatch { width: 14px; height: 14px; border-radius: 4px }
+
+        .tile { aspect-ratio: 1; display: grid; place-items: center; border-radius: 10px;
+                cursor: grab; user-select: none; font-weight: 600; color: #1e293b }
+
+        .promo { width: 260px; flex-shrink: 0; position: sticky; top: 64px; padding: 18px;
+                 border-radius: 14px; color: #fff;
+                 background: linear-gradient(160deg, #4f46e5, #7c3aed 55%, #db2777);
+                 box-shadow: 0 12px 28px -10px rgba(79,70,229,.55) }
+        .promo-title { font-size: 18px; font-weight: 700; margin-bottom: 6px }
+        .promo-text { font-size: 13px; opacity: .92; margin: 0 0 12px; line-height: 1.5 }
+        .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px }
+        .pill { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.18) }
+        .promo-install { display: block; font-size: 13px; background: rgba(0,0,0,.25);
+                         padding: 8px 10px; border-radius: 8px; text-align: center }
+      `}</style>
     </div>
   )
 }

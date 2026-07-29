@@ -36,4 +36,6 @@ Working **inside this repo** instead? Change the import to the source:
 import { SelectionArea } from '../src'
 ```
 
-Inline styles are used to keep the examples dependency-free — swap them for your own classes/Tailwind.
+Each example keeps its looks in a single `<style>` block at the bottom and uses plain class names, so the markup shows the kit's API rather than a wall of inline objects. Nothing but the browser is required — swap the block for your own CSS/Tailwind.
+
+Inline styles are left only where a value genuinely comes from data (a colour derived from an item, a per-row `view-transition-name`).
