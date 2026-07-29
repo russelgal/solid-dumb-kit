@@ -1,6 +1,6 @@
 // DumbTable — bring-your-own-columns table on @tanstack/solid-table:
 // click a header to sort, drag rows by the ⠿ handle, paginate.
-import { createSignal, createMemo, Show, onMount } from 'solid-js'
+import { createSignal, createMemo, Show } from 'solid-js'
 import { DumbTable, DumbPagination, SelectionArea, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
 
 type Product = {
@@ -36,7 +36,8 @@ const withViewTransition = (fn: () => void) => {
 const BRANDS = ['Attache', 'Erich Krause', 'Berlingo', 'Comix', 'Deli']
 const NAMES = ['Ручка шариковая', 'Карандаш', 'Тетрадь 48л', 'Папка-регистратор', 'Степлер', 'Клей-карандаш']
 
-const DATA: Product[] = Array.from({ length: 137 }, (_, i) => ({
+// 5000 строк: на такой длине сразу видно, тормозит режим или нет
+const DATA: Product[] = Array.from({ length: 5000 }, (_, i) => ({
   id: `p${i}`,
   vendor_code: `ART-${String(1000 + i * 7).padStart(5, '0')}`,
   name: `${NAMES[i % NAMES.length]} №${i + 1}`,
@@ -49,7 +50,7 @@ export default function DumbTableExample() {
   const [rows, setRows] = createSignal<Product[]>(DATA)
   const [page, setPage] = createSignal(1)
   const [pageSize, setPageSize] = createSignal(20)
-  // окно можно резать двумя способами: страницами или виртуальным скроллом.
+  // два режима: страницами или всё сразу, с ленивой отрисовкой за экраном.
   // Для таблицы разницы нет — она рисует те строки, что дали.
   const [mode, setMode] = createSignal<'pages' | 'virtual'>('pages')
   const [picked, setPicked] = createSignal<Product | null>(null)
@@ -79,23 +80,11 @@ export default function DumbTableExample() {
     return sorted().slice(from, from + pageSize())
   })
 
-  // ── виртуальное окно: строки одной высоты, поэтому хватает арифметики ──
-  const ROW_H = 37
-  const OVERSCAN = 6
-  let scroller!: HTMLDivElement
-  const [scrollTop, setScrollTop] = createSignal(0)
-  const [viewH, setViewH] = createSignal(420)
-  onMount(() => setViewH(scroller?.clientHeight || 420))
-
-  const win = createMemo(() => {
-    const total = sorted().length
-    const first = Math.max(0, Math.floor(scrollTop() / ROW_H) - OVERSCAN)
-    const visible = Math.ceil(viewH() / ROW_H) + OVERSCAN * 2
-    return { first, last: Math.min(total, first + visible), total }
-  })
-  const virtualRows = createMemo(() => sorted().slice(win().first, win().last))
-
-  const shown = () => (mode() === 'pages' ? pageRows() : virtualRows())
+  // Второй режим — БЕЗ арифметики: рисуем все строки и просим браузер не
+  // тратиться на те, что за экраном (content-visibility). Высоты строк при этом
+  // могут быть любыми: contain-intrinsic-size: auto запоминает фактический
+  // размер уже показанной строки, поэтому и полоса прокрутки честная.
+  const shown = () => (mode() === 'pages' ? pageRows() : sorted())
 
   // удалить выделенное: чистим и выделение, и заказ, и не оставляем пустую страницу
   const removeSelected = () => {
@@ -179,7 +168,7 @@ export default function DumbTableExample() {
             пагинация
           </button>
           <button class="btn" classList={{ on: mode() === 'virtual' }} onClick={() => setMode('virtual')}>
-            виртуальный скролл
+            все {sorted().length} строк
           </button>
         </div>
         <span>{picked() ? <>row click → <b>{picked()!.name}</b> · {picked()!.vendor_code}</> : 'click a row →'}</span>
@@ -204,12 +193,7 @@ export default function DumbTableExample() {
       </div>
 
       <SelectionArea class="surface" selectables="tbody tr" selected={selected} onChange={setSelected}>
-        <div
-          ref={scroller}
-          class="viewport"
-          classList={{ scrolling: mode() === 'virtual' }}
-          onScroll={(e) => mode() === 'virtual' && setScrollTop(e.currentTarget.scrollTop)}
-        >
+        <div class="viewport" classList={{ scrolling: mode() === 'virtual', lazy: mode() === 'virtual' }}>
         <DumbTable
           rows={shown()}
           columns={columns}
@@ -229,10 +213,8 @@ export default function DumbTableExample() {
           // кроссфейд всей таблицы
           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })}
           empty={<div class="empty">Ничего не найдено</div>}
-          spacerTop={mode() === 'virtual' ? win().first * ROW_H : 0}
-          spacerBottom={mode() === 'virtual' ? (win().total - win().last) * ROW_H : 0}
-          // в виртуальном режиме перетаскивание выключено: снимок позиций
-          // делается один раз, а строк вне окна в DOM просто нет
+          // при пяти тысячах строк перетаскивание выключаем: снимок позиций
+          // снимается разом по всему списку
           onReorder={mode() === 'virtual' ? undefined : (from, to) => {
             // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные.
             // Сортировка при этом заведомо снята: ручка гаснет, пока она активна.
@@ -247,11 +229,12 @@ export default function DumbTableExample() {
 
       <Show when={mode() === 'virtual'}>
         <p class="note">
-          Окно режется снаружи, как и страница, — таблица получает
-          {' '}{shown().length} строк из {win().total} плюс распорки{' '}
-          (<code>spacerTop</code>/<code>spacerBottom</code>). Сортировка при этом
-          по-прежнему идёт по всему набору: щёлкни заголовок и прокрути наверх.
-          Перетаскивание тут выключено — строк вне окна в DOM нет.
+          Здесь в DOM все {sorted().length} строк, а работу за экраном браузер
+          пропускает сам — <code>content-visibility: auto</code> плюс{' '}
+          <code>contain-intrinsic-size: auto 37px</code>. Ни окна, ни распорок, ни
+          пересчёта прокрутки: высоты строк могут быть любыми, фактический размер
+          показанной строки браузер запоминает сам. Сортировка, как и в режиме
+          страниц, идёт по всему набору.
         </p>
       </Show>
 
@@ -285,11 +268,13 @@ export default function DumbTableExample() {
 
         .surface { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden }
         .viewport.scrolling { max-height: 60vh; overflow-y: auto }
+        /* Браузерная «виртуализация»: строки за экраном не раскладываются и не
+           красятся, но остаются в DOM — поиск по странице и скринридеры живы. */
+        .viewport.lazy .row { content-visibility: auto; contain-intrinsic-size: auto 37px }
         .modes { display: flex; gap: 4px }
         .btn.on { border-color: #3b82f6; background: #3b82f6; color: #fff }
         .note { margin: 10px 0 0; font-size: 12px; color: #64748b }
-        /* фиксированная высота строки — на ней и держится арифметика окна */
-        .row, .row td { height: 37px; box-sizing: border-box }
+
         .pager { margin-top: 12px }
         .empty { padding: 24px; text-align: center; color: #94a3b8 }
 

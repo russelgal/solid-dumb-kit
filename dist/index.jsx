@@ -1828,7 +1828,7 @@ function DumbTree(props) {
 }
 
 // src/DumbTable/DumbTable.tsx
-import { For as For4, Show as Show3, createSignal as createSignal3 } from "solid-js";
+import { For as For4, Show as Show3, createSignal as createSignal3, createMemo as createMemo2 } from "solid-js";
 import {
   createSolidTable,
   flexRender,
@@ -1893,11 +1893,12 @@ function DumbTable(props) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel()
   });
-  const visibleRows = () => table.getRowModel().rows;
+  const visibleRows = createMemo2(() => table.getRowModel().rows.map((r) => r.original));
+  const rowOf = (original) => table.getRowModel().rows.find((r) => r.original === original);
   const dragDisabled = () => !props.onReorder || sorting().length > 0;
   const withHandle = () => props.handle !== false;
   const sortable = createDumbSortable({
-    order: () => visibleRows().map((r) => r.id),
+    order: () => table.getRowModel().rows.map((r) => r.id),
     disabled: dragDisabled,
     mouseThreshold: props.dragThreshold,
     get animate() {
@@ -1956,45 +1957,48 @@ function DumbTable(props) {
               <tr aria-hidden="true" style={{ height: `${props.spacerTop}px` }} />
             </Show3>
             <For4 each={visibleRows()}>
-              {(row) => <tr
-    ref={props.onReorder ? sortable.bind(row.id) : void 0}
-    data-key={row.id}
-    class={props.rowClass?.(row.original, row.index)}
-    style={{
-      cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
-      ...props.rowStyle?.(row.original, row.index)
-    }}
-    onClick={() => props.onRowClick?.(row.original, row.index)}
-  >
+              {(original) => {
+    const row = () => rowOf(original);
+    return <tr
+      ref={props.onReorder ? sortable.bind(row().id) : void 0}
+      data-key={row().id}
+      class={props.rowClass?.(original, row().index)}
+      style={{
+        cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
+        ...props.rowStyle?.(original, row().index)
+      }}
+      onClick={() => props.onRowClick?.(original, row().index)}
+    >
                   <Show3 when={props.onReorder && withHandle()}>
                     <td style={{ padding: "6px 4px", width: "1%" }} onClick={(e) => e.stopPropagation()}>
                       <span
-    data-drag-handle
-    style={{
-      display: "inline-block",
-      cursor: dragDisabled() ? "not-allowed" : "grab",
-      opacity: dragDisabled() ? ".3" : "1",
-      "touch-action": "none"
-    }}
-    title={dragDisabled() ? "reset sorting to reorder" : "drag"}
-  >
+      data-drag-handle
+      style={{
+        display: "inline-block",
+        cursor: dragDisabled() ? "not-allowed" : "grab",
+        opacity: dragDisabled() ? ".3" : "1",
+        "touch-action": "none"
+      }}
+      title={dragDisabled() ? "reset sorting to reorder" : "drag"}
+    >
                         {props.handle ?? "\u283F"}
                       </span>
                     </td>
                   </Show3>
-                  <For4 each={row.getVisibleCells()}>
+                  <For4 each={row().getVisibleCells()}>
                     {(cell) => {
-    const c = () => colOf(cell.column.columnDef);
-    return <td
-      class={c().class}
-      style={{ ...cellStyle(c()), padding: "6px 8px" }}
-      onClick={c().stopClick ? (e) => e.stopPropagation() : void 0}
-    >
+      const c = () => colOf(cell.column.columnDef);
+      return <td
+        class={c().class}
+        style={{ ...cellStyle(c()), padding: "6px 8px" }}
+        onClick={c().stopClick ? (e) => e.stopPropagation() : void 0}
+      >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>;
-  }}
+    }}
                   </For4>
-                </tr>}
+                </tr>;
+  }}
             </For4>
             <Show3 when={props.spacerBottom}>
               <tr aria-hidden="true" style={{ height: `${props.spacerBottom}px` }} />

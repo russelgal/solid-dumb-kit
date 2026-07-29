@@ -98,39 +98,31 @@ describe('DumbTable.example — сортировка идёт по всему н
   })
 })
 
-describe('DumbTable.example — виртуальный скролл', () => {
-  const rowCount = (host: HTMLElement) =>
-    host.querySelectorAll('tbody tr:not([aria-hidden])').length
-
+describe('DumbTable.example — режим «все строки»', () => {
   const switchTo = (host: HTMLElement, label: string) =>
-    Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.trim() === label)!.click()
+    Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.includes(label))!.click()
 
-  it('рисует окно строк и распорки вместо всех 137', () => {
+  it('рисует весь набор, а не окно', () => {
     const host = mount(DumbTableExample)
-    switchTo(host, 'виртуальный скролл')
+    expect(host.querySelectorAll('tbody tr').length).toBe(20)   // страница
 
-    const spacers = host.querySelectorAll('tbody tr[aria-hidden]')
-    expect(spacers.length).toBeGreaterThan(0)
-    expect(rowCount(host)).toBeLessThan(137)
+    switchTo(host, 'все')
+    expect(host.querySelectorAll('tbody tr').length).toBe(5000) // всё сразу
   })
 
-  it('сортировка и здесь идёт по всему набору, а не по видимому окну', () => {
+  it('сортировка идёт по всему набору', () => {
     const host = mount(DumbTableExample)
-    switchTo(host, 'виртуальный скролл')
-    const before = Array.from(host.querySelectorAll('tbody tr:not([aria-hidden]) td:nth-child(2)'))
-      .map((td) => td.textContent)
+    const first = () => host.querySelector('tbody tr td:nth-child(2)')?.textContent
 
+    const before = first()
     Array.from(host.querySelectorAll('th')).find((th) => th.textContent?.includes('Цена'))!.click()
-
-    const after = Array.from(host.querySelectorAll('tbody tr:not([aria-hidden]) td:nth-child(2)'))
-      .map((td) => td.textContent)
-    expect(after).not.toEqual(before)
+    expect(first()).not.toBe(before)
   })
 
-  it('в виртуальном режиме перетаскивание выключено', () => {
+  it('в режиме «все строки» перетаскивание выключено', () => {
     const host = mount(DumbTableExample)
     expect(host.querySelectorAll('[data-drag-handle]').length).toBeGreaterThan(0)
-    switchTo(host, 'виртуальный скролл')
+    switchTo(host, 'все')
     expect(host.querySelectorAll('[data-drag-handle]').length).toBe(0)
   })
 })

@@ -2076,11 +2076,12 @@ function DumbTable(props) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel()
   });
-  const visibleRows = () => table.getRowModel().rows;
+  const visibleRows = createMemo(() => table.getRowModel().rows.map((r) => r.original));
+  const rowOf = (original) => table.getRowModel().rows.find((r) => r.original === original);
   const dragDisabled = () => !props.onReorder || sorting().length > 0;
   const withHandle = () => props.handle !== false;
   const sortable = createDumbSortable({
-    order: () => visibleRows().map((r) => r.id),
+    order: () => table.getRowModel().rows.map((r) => r.id),
     disabled: dragDisabled,
     mouseThreshold: props.dragThreshold,
     get animate() {
@@ -2177,74 +2178,77 @@ function DumbTable(props) {
           get each() {
             return visibleRows();
           },
-          children: (row) => (() => {
-            var _el$10 = _tmpl$72();
-            _el$10.$$click = () => props.onRowClick?.(row.original, row.index);
-            var _ref$ = props.onReorder ? sortable.bind(row.id) : void 0;
-            typeof _ref$ === "function" && use(_ref$, _el$10);
-            insert(_el$10, createComponent(Show, {
-              get when() {
-                return memo(() => !!props.onReorder)() && withHandle();
-              },
-              get children() {
-                var _el$11 = _tmpl$92(), _el$12 = _el$11.firstChild;
-                _el$11.$$click = (e) => e.stopPropagation();
-                insert(_el$12, () => props.handle ?? "\u283F");
-                effect((_p$) => {
-                  var _v$7 = dragDisabled() ? "not-allowed" : "grab", _v$8 = dragDisabled() ? ".3" : "1", _v$9 = dragDisabled() ? "reset sorting to reorder" : "drag";
-                  _v$7 !== _p$.e && setStyleProperty(_el$12, "cursor", _p$.e = _v$7);
-                  _v$8 !== _p$.t && setStyleProperty(_el$12, "opacity", _p$.t = _v$8);
-                  _v$9 !== _p$.a && setAttribute(_el$12, "title", _p$.a = _v$9);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0,
-                  a: void 0
-                });
-                return _el$11;
-              }
-            }), null);
-            insert(_el$10, createComponent(For, {
-              get each() {
-                return row.getVisibleCells();
-              },
-              children: (cell) => {
-                const c = () => colOf(cell.column.columnDef);
-                return (() => {
-                  var _el$13 = _tmpl$02();
-                  addEventListener(_el$13, "click", c().stopClick ? (e) => e.stopPropagation() : void 0, true);
-                  insert(_el$13, () => flexRender(cell.column.columnDef.cell, cell.getContext()));
+          children: (original) => {
+            const row = () => rowOf(original);
+            return (() => {
+              var _el$10 = _tmpl$72();
+              _el$10.$$click = () => props.onRowClick?.(original, row().index);
+              var _ref$ = props.onReorder ? sortable.bind(row().id) : void 0;
+              typeof _ref$ === "function" && use(_ref$, _el$10);
+              insert(_el$10, createComponent(Show, {
+                get when() {
+                  return memo(() => !!props.onReorder)() && withHandle();
+                },
+                get children() {
+                  var _el$11 = _tmpl$92(), _el$12 = _el$11.firstChild;
+                  _el$11.$$click = (e) => e.stopPropagation();
+                  insert(_el$12, () => props.handle ?? "\u283F");
                   effect((_p$) => {
-                    var _v$11 = c().class, _v$12 = {
-                      ...cellStyle(c())
-                    };
-                    _v$11 !== _p$.e && className(_el$13, _p$.e = _v$11);
-                    _p$.t = style(_el$13, _v$12, _p$.t);
+                    var _v$7 = dragDisabled() ? "not-allowed" : "grab", _v$8 = dragDisabled() ? ".3" : "1", _v$9 = dragDisabled() ? "reset sorting to reorder" : "drag";
+                    _v$7 !== _p$.e && setStyleProperty(_el$12, "cursor", _p$.e = _v$7);
+                    _v$8 !== _p$.t && setStyleProperty(_el$12, "opacity", _p$.t = _v$8);
+                    _v$9 !== _p$.a && setAttribute(_el$12, "title", _p$.a = _v$9);
                     return _p$;
                   }, {
                     e: void 0,
-                    t: void 0
+                    t: void 0,
+                    a: void 0
                   });
-                  return _el$13;
-                })();
-              }
-            }), null);
-            effect((_p$) => {
-              var _v$0 = row.id, _v$1 = props.rowClass?.(row.original, row.index), _v$10 = {
-                cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
-                ...props.rowStyle?.(row.original, row.index)
-              };
-              _v$0 !== _p$.e && setAttribute(_el$10, "data-key", _p$.e = _v$0);
-              _v$1 !== _p$.t && className(_el$10, _p$.t = _v$1);
-              _p$.a = style(_el$10, _v$10, _p$.a);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0,
-              a: void 0
-            });
-            return _el$10;
-          })()
+                  return _el$11;
+                }
+              }), null);
+              insert(_el$10, createComponent(For, {
+                get each() {
+                  return row().getVisibleCells();
+                },
+                children: (cell) => {
+                  const c = () => colOf(cell.column.columnDef);
+                  return (() => {
+                    var _el$13 = _tmpl$02();
+                    addEventListener(_el$13, "click", c().stopClick ? (e) => e.stopPropagation() : void 0, true);
+                    insert(_el$13, () => flexRender(cell.column.columnDef.cell, cell.getContext()));
+                    effect((_p$) => {
+                      var _v$11 = c().class, _v$12 = {
+                        ...cellStyle(c())
+                      };
+                      _v$11 !== _p$.e && className(_el$13, _p$.e = _v$11);
+                      _p$.t = style(_el$13, _v$12, _p$.t);
+                      return _p$;
+                    }, {
+                      e: void 0,
+                      t: void 0
+                    });
+                    return _el$13;
+                  })();
+                }
+              }), null);
+              effect((_p$) => {
+                var _v$0 = row().id, _v$1 = props.rowClass?.(original, row().index), _v$10 = {
+                  cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
+                  ...props.rowStyle?.(original, row().index)
+                };
+                _v$0 !== _p$.e && setAttribute(_el$10, "data-key", _p$.e = _v$0);
+                _v$1 !== _p$.t && className(_el$10, _p$.t = _v$1);
+                _p$.a = style(_el$10, _v$10, _p$.a);
+                return _p$;
+              }, {
+                e: void 0,
+                t: void 0,
+                a: void 0
+              });
+              return _el$10;
+            })();
+          }
         }), null);
         insert(_el$5, createComponent(Show, {
           get when() {

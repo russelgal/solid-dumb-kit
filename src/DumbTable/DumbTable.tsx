@@ -1,4 +1,4 @@
-import { For, Show, createSignal, type JSX } from 'solid-js'
+import { For, Show, createSignal, createMemo, type JSX } from 'solid-js'
 import {
   createSolidTable,
   flexRender,
@@ -174,14 +174,22 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const visibleRows = () => table.getRowModel().rows
+  /**
+   * TanStack пересоздаёт объекты Row на каждую смену data, а <For> сравнивает
+   * элементы по ссылке — из-за этого при виртуальном скролле пересоздавались
+   * ВСЕ <tr> на каждый шаг прокрутки. Держимся за исходные объекты строк: они
+   * не меняются, значит уже отрисованные строки переиспользуются, а меняются
+   * только края окна.
+   */
+  const visibleRows = createMemo(() => table.getRowModel().rows.map(r => r.original))
+  const rowOf = (original: T) => table.getRowModel().rows.find(r => r.original === original)!
 
   // Перетаскивание отключается, пока активна сортировка: показанный порядок
   // больше не совпадает с порядком данных, и пара from→to соврала бы.
   const dragDisabled = () => !props.onReorder || sorting().length > 0
   const withHandle = () => props.handle !== false
   const sortable = createDumbSortable({
-    order: () => visibleRows().map(r => r.id),
+    order: () => table.getRowModel().rows.map(r => r.id),
     disabled: dragDisabled,
     mouseThreshold: props.dragThreshold,
     get animate() { return props.animate },
@@ -245,18 +253,20 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
               <tr aria-hidden="true" style={{ height: `${props.spacerTop}px` }} />
             </Show>
             <For each={visibleRows()}>
-              {(row) => (
+              {(original) => {
+                const row = () => rowOf(original)
+                return (
                 <tr
-                  ref={props.onReorder ? sortable.bind(row.id) : undefined}
-                  data-key={row.id}
-                  class={props.rowClass?.(row.original, row.index)}
+                  ref={props.onReorder ? sortable.bind(row().id) : undefined}
+                  data-key={row().id}
+                  class={props.rowClass?.(original, row().index)}
                   style={{
                     cursor: props.onReorder && !withHandle() && !dragDisabled()
                       ? 'grab'
                       : props.onRowClick ? 'pointer' : undefined,
-                    ...props.rowStyle?.(row.original, row.index),
+                    ...props.rowStyle?.(original, row().index),
                   }}
-                  onClick={() => props.onRowClick?.(row.original, row.index)}
+                  onClick={() => props.onRowClick?.(original, row().index)}
                 >
                   <Show when={props.onReorder && withHandle()}>
                     <td style={{ padding: '6px 4px', width: '1%' }} onClick={(e) => e.stopPropagation()}>
@@ -274,7 +284,7 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                       </span>
                     </td>
                   </Show>
-                  <For each={row.getVisibleCells()}>
+                  <For each={row().getVisibleCells()}>
                     {(cell) => {
                       const c = () => colOf(cell.column.columnDef)
                       return (
@@ -289,7 +299,8 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                     }}
                   </For>
                 </tr>
-              )}
+                )
+              }}
             </For>
             <Show when={props.spacerBottom}>
               <tr aria-hidden="true" style={{ height: `${props.spacerBottom}px` }} />

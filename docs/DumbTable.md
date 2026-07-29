@@ -146,27 +146,19 @@ const withViewTransition = (fn: () => void) =>
 
 The per-row `view-transition-name` is what makes each row travel to its new place; without it the browser cross-fades the whole table. This only applies to discrete changes — dragging is animated by the kit itself, frame by frame.
 
-## Virtual scrolling
+## Long lists
 
-The table doesn't virtualise for you — same deal as pagination: you cut the window, it renders what it's given. All it adds is `spacerTop` / `spacerBottom`, the pixels eaten by rows above and below the window, so the scrollbar keeps its real size:
+The table doesn't virtualise, and on purpose: hand-rolled windowing means estimating row heights, correcting `scrollTop` when the guess was wrong, and a scrollbar that lies until everything has been measured. With rows of differing heights that gets fragile fast.
 
-```tsx
-const win = createMemo(() => {
-  const first = Math.max(0, Math.floor(scrollTop() / ROW_H) - OVERSCAN)
-  return { first, last: Math.min(total(), first + visible()) }
-})
+Let the browser skip the work instead — it already knows how:
 
-<DumbTable rows={sorted().slice(win().first, win().last)} columns={columns}
-           spacerTop={win().first * ROW_H}
-           spacerBottom={(total() - win().last) * ROW_H} />
+```css
+.row { content-visibility: auto; contain-intrinsic-size: auto 40px }
 ```
 
-Two things follow from rows outside the window not existing in the DOM:
+Off-screen rows stay in the DOM (find-in-page and screen readers keep working) but skip layout and paint. `contain-intrinsic-size: auto` makes the browser remember each row's real size once it has been rendered, so **rows of different heights are fine** and there's nothing to compute.
 
-- **sort outside**, exactly as with pagination — otherwise you'd sort one screenful;
-- **turn dragging off** (`onReorder` undefined). Positions are snapshotted once at gesture start, and rows that aren't rendered can't be in that snapshot. Rubber-band selection has the same limit: it only picks up what was on screen when the gesture began.
-
-The example has a pagination/virtual switch so you can compare both.
+If you still need a window — say you're streaming from a server — `spacerTop` / `spacerBottom` render empty rows of a given height, so you can place your slice inside the full scroll height yourself. Sort outside in that case, exactly as with pagination, and turn dragging off: positions are snapshotted once, and rows outside the window aren't in the DOM.
 
 ## `DumbPagination`
 
