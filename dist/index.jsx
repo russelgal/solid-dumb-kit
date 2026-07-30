@@ -2381,6 +2381,19 @@ var LayoutSchema = v2.array(
     y: v2.optional(v2.number())
   })
 );
+function blockBox(span, pos) {
+  return {
+    // ЯВНАЯ позиция: раскладку считаем мы, браузер не домысливает
+    "grid-column": `${(pos?.col ?? 0) + 1} / span ${span.w}`,
+    "grid-row": `${(pos?.row ?? 0) + 1} / span ${span.h}`,
+    position: "relative",
+    "z-index": "1",
+    // над подложкой-сеткой
+    "min-width": "0",
+    "min-height": "0",
+    "box-sizing": "border-box"
+  };
+}
 function clampInt(n, lo, hi) {
   const i = Math.round(n);
   if (!Number.isFinite(i)) return lo;
@@ -2502,7 +2515,7 @@ function DumbGrid(props) {
     rowHeight: rowH,
     gapX,
     gapY,
-    disabled: () => props.disabled === true,
+    disabled: () => props.disabled === true || !editable(),
     resizable: () => props.resizable !== false,
     animate: props.animate,
     pressDelay: props.pressDelay,
@@ -2516,9 +2529,13 @@ function DumbGrid(props) {
     }
   });
   const posOf = (id) => placed().find((p) => p.id === id);
-  const spare = () => Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0));
+  const spare = () => (
+    // в режиме просмотра пустой хвост не нужен: уводить туда нечего
+    editable() ? Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0)) : 0
+  );
   const totalRows = () => rows() + spare();
   const heightOf = (n) => n * rowH() + Math.max(0, n - 1) * gapY();
+  const editable = () => props.editable !== false;
   const showGrid = () => props.showGrid ?? "drag";
   const gridVisible = () => showGrid() === true || showGrid() === "drag" && !!g.active();
   const gridBackground = () => gridLinesBackground({ cols: cols(), gapX: gapX(), rowH: rowH(), gapY: gapY() });
@@ -2540,7 +2557,7 @@ function DumbGrid(props) {
       ...props.style
     }}
   >
-      <Show2 when={showGrid() !== false}>
+      <Show2 when={editable() && showGrid() !== false}>
         <div
     data-grid-lines
     aria-hidden="true"
@@ -2562,6 +2579,26 @@ function DumbGrid(props) {
   />
       </Show2>
 
+      {
+    /*
+      Две ветки, а не одна с флагами: ref'ы навешиваются в момент создания
+      элемента, поэтому «выключить редактирование» — это пересоздать блоки без
+      привязки к движку. Иначе слушатели остались бы висеть, просто ничего не
+      делая. Show переключает ветку целиком, и в режиме просмотра на блоках
+      нет ни одного обработчика, ни ручек, ни кнопок.
+    */
+  }
+      <Show2 when={editable()} fallback={<For3 each={layout()}>
+          {(span) => {
+    const item = () => itemById().get(span.id);
+    const pos = () => posOf(span.id);
+    return <Show2 when={item()}>
+                {(it) => <div class={props.blockClass} style={{ ...blockBox(span, pos()), ...props.blockStyle }}>
+                    {it().content()}
+                  </div>}
+              </Show2>;
+  }}
+        </For3>}>
       <For3 each={layout()}>
         {(span) => {
     const item = () => itemById().get(span.id);
@@ -2572,15 +2609,7 @@ function DumbGrid(props) {
       ref={g.bind(span.id)}
       class={props.blockClass}
       style={{
-        // ЯВНАЯ позиция: раскладку считаем мы, браузер не домысливает
-        "grid-column": `${(pos()?.col ?? 0) + 1} / span ${span.w}`,
-        "grid-row": `${(pos()?.row ?? 0) + 1} / span ${span.h}`,
-        position: "relative",
-        "z-index": "1",
-        // над подложкой-сеткой
-        "min-width": "0",
-        "min-height": "0",
-        "box-sizing": "border-box",
+        ...blockBox(span, pos()),
         cursor: it().locked || props.disabled ? "default" : "grab",
         "touch-action": "manipulation",
         ...props.blockStyle
@@ -2588,7 +2617,7 @@ function DumbGrid(props) {
     >
                   {it().content()}
 
-                  <Show2 when={props.onRemove && it().removable !== false}>
+                  <Show2 when={props.onRemove && !props.disabled && it().removable !== false}>
                     <button
       type="button"
       data-grid-remove
@@ -2643,6 +2672,7 @@ function DumbGrid(props) {
             </Show2>;
   }}
       </For3>
+      </Show2>
     </div>;
 }
 

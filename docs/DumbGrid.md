@@ -107,7 +107,8 @@ Without a handle, pointer-downs on `input`, `button`, `a`, `select`, `label`, `[
 | `onRemove` | `(id: string) => void` | — | pass it to get a ✕ button on blocks |
 | `labels` | `{ remove?, resize? }` | ru | button titles / aria-labels |
 | `resizable` | `boolean` | `true` | show resize handles |
-| `disabled` | `boolean` | `false` | no gestures at all |
+| `editable` | `boolean` | `true` | `false` → plain grid: no chrome, no listeners |
+| `disabled` | `boolean` | `false` | gestures off, editor chrome stays |
 | `animate` | `boolean` | `true`\* | animate parting and landing |
 | `pressDelay` | `number` | `350` | touch: hold before a drag starts, ms |
 | `mouseThreshold` | `number` | `0` | mouse: distance before a drag starts, px |
@@ -117,6 +118,30 @@ Without a handle, pointer-downs on `input`, `button`, `a`, `select`, `label`, `[
 | `blockClass` / `blockStyle` | — | — | on each block wrapper |
 
 \* by default animations respect `prefers-reduced-motion: reduce`; an explicit `animate={true}` overrides even that.
+
+## Edit mode
+
+A dashboard is edited rarely and looked at constantly, so the editing chrome is a mode, not a permanent fixture:
+
+```tsx
+const [edit, setEdit] = createSignal(false)
+
+<DumbGrid editable={edit()} items={items} onRemove={remove} />
+```
+
+With `editable={false}` the component renders **the plain grid and nothing else** — no resize handles, no ✕ buttons, no grid overlay, no `cursor`/`touch-action`, and not a single listener on the blocks. The blocks keep exactly the positions they had, because the placement is the same arithmetic either way.
+
+That is deliberately stronger than `disabled`:
+
+| | `disabled` | `editable={false}` |
+|---|---|---|
+| Editing chrome | rendered | not rendered |
+| Listeners on blocks | attached, gestures rejected | none attached |
+| Grid overlay | rendered, hidden | not rendered |
+| Spare rows below | kept | dropped |
+| Good for | a save is in flight | the production screen |
+
+Switching the flag re-creates the blocks (that is how refs get attached or left off), so flipping it back restores everything.
 
 ## Size presets
 

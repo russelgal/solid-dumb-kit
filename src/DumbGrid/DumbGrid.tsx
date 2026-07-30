@@ -91,7 +91,17 @@ export type DumbGridProps = {
   labels?: { remove?: string; resize?: string }
   /** ресайз разрешён (по умолчанию да) */
   resizable?: boolean
-  /** жесты запрещены целиком */
+  /**
+   * Режим редактирования (по умолчанию `true`). `false` — готовая сетка и
+   * ничего лишнего: ни ручек ресайза, ни кнопок удаления, ни разметки сетки, ни
+   * единого обработчика на блоках. Ровно то, что нужно на «боевом» экране, где
+   * дашборд просто показывают.
+   *
+   * Отличие от `disabled`: тот оставляет редакторскую разметку и лишь глушит
+   * жесты (удобно, пока идёт сохранение), а `editable={false}` её не рендерит.
+   */
+  editable?: boolean
+  /** жесты запрещены целиком (разметка редактора остаётся) */
   disabled?: boolean
   /** анимировать расступание и приземление; по умолчанию да, но не при prefers-reduced-motion */
   animate?: boolean
@@ -135,6 +145,20 @@ const LayoutSchema = v.array(
     y: v.optional(v.number()),
   }),
 )
+
+/** Позиция и коробка блока — общее у режима редактирования и просмотра. */
+function blockBox(span: { w: number; h: number }, pos?: { col: number; row: number }): JSX.CSSProperties {
+  return {
+    // ЯВНАЯ позиция: раскладку считаем мы, браузер не домысливает
+    'grid-column': `${(pos?.col ?? 0) + 1} / span ${span.w}`,
+    'grid-row': `${(pos?.row ?? 0) + 1} / span ${span.h}`,
+    position: 'relative',
+    'z-index': '1',                    // над подложкой-сеткой
+    'min-width': '0',
+    'min-height': '0',
+    'box-sizing': 'border-box',
+  }
+}
 
 function clampInt(n: number, lo: number, hi: number): number {
   const i = Math.round(n)
@@ -331,7 +355,7 @@ export function DumbGrid(props: DumbGridProps) {
     rowHeight: rowH,
     gapX,
     gapY,
-    disabled: () => props.disabled === true,
+    disabled: () => props.disabled === true || !editable(),
     resizable: () => props.resizable !== false,
     animate: props.animate,
     pressDelay: props.pressDelay,
@@ -357,10 +381,13 @@ export function DumbGrid(props: DumbGridProps) {
    * контента уменьшается на его толщину — и ResizeObserver честно пересчитывает
    * ширину колонки прямо посреди жеста. Блоки при этом едут сами по себе.
    */
-  const spare = () => Math.max(0, props.spareRows ?? (mode() === 'free' ? 2 : 0))
+  const spare = () =>
+    // в режиме просмотра пустой хвост не нужен: уводить туда нечего
+    editable() ? Math.max(0, props.spareRows ?? (mode() === 'free' ? 2 : 0)) : 0
   const totalRows = () => rows() + spare()
   const heightOf = (n: number) => n * rowH() + Math.max(0, n - 1) * gapY()
 
+  const editable = () => props.editable !== false
   const showGrid = () => props.showGrid ?? 'drag'
   const gridVisible = () => showGrid() === true || (showGrid() === 'drag' && !!g.active())
 
@@ -385,7 +412,7 @@ export function DumbGrid(props: DumbGridProps) {
         ...props.style,
       }}
     >
-      <Show when={showGrid() !== false}>
+      <Show when={editable() && showGrid() !== false}>
         <div
           data-grid-lines
           aria-hidden="true"
@@ -407,6 +434,30 @@ export function DumbGrid(props: DumbGridProps) {
         />
       </Show>
 
+      {/*
+        Две ветки, а не одна с флагами: ref'ы навешиваются в момент создания
+        элемента, поэтому «выключить редактирование» — это пересоздать блоки без
+        привязки к движку. Иначе слушатели остались бы висеть, просто ничего не
+        делая. Show переключает ветку целиком, и в режиме просмотра на блоках
+        нет ни одного обработчика, ни ручек, ни кнопок.
+      */}
+      <Show when={editable()} fallback={
+        <For each={layout()}>
+          {(span) => {
+            const item = () => itemById().get(span.id)
+            const pos = () => posOf(span.id)
+            return (
+              <Show when={item()}>
+                {(it) => (
+                  <div class={props.blockClass} style={{ ...blockBox(span, pos()), ...props.blockStyle }}>
+                    {it().content()}
+                  </div>
+                )}
+              </Show>
+            )
+          }}
+        </For>
+      }>
       <For each={layout()}>
         {(span) => {
           const item = () => itemById().get(span.id)
@@ -419,14 +470,7 @@ export function DumbGrid(props: DumbGridProps) {
                   ref={g.bind(span.id)}
                   class={props.blockClass}
                   style={{
-                    // ЯВНАЯ позиция: раскладку считаем мы, браузер не домысливает
-                    'grid-column': `${(pos()?.col ?? 0) + 1} / span ${span.w}`,
-                    'grid-row': `${(pos()?.row ?? 0) + 1} / span ${span.h}`,
-                    position: 'relative',
-                    'z-index': '1',                    // над подложкой-сеткой
-                    'min-width': '0',
-                    'min-height': '0',
-                    'box-sizing': 'border-box',
+                    ...blockBox(span, pos()),
                     cursor: it().locked || props.disabled ? 'default' : 'grab',
                     'touch-action': 'manipulation',
                     ...props.blockStyle,
@@ -434,7 +478,7 @@ export function DumbGrid(props: DumbGridProps) {
                 >
                   {it().content()}
 
-                  <Show when={props.onRemove && it().removable !== false}>
+                  <Show when={props.onRemove && !props.disabled && it().removable !== false}>
                     <button
                       type="button"
                       data-grid-remove
@@ -492,6 +536,7 @@ export function DumbGrid(props: DumbGridProps) {
           )
         }}
       </For>
+      </Show>
     </div>
   )
 }

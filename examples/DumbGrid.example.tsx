@@ -80,6 +80,7 @@ const NEW_BLOCK = [
 export default function DumbGridExample() {
   const [items, setItems] = createSignal<Array<DumbGridItem>>(initialItems())
   const [seq, setSeq] = createSignal(0)
+  const [edit, setEdit] = createSignal(true)
   const [cols, setCols] = createSignal(12)
   const [mode, setMode] = createSignal<Mode>('flow')
   const [showGrid, setShowGrid] = createSignal<boolean | 'drag'>('drag')
@@ -117,10 +118,15 @@ export default function DumbGridExample() {
         Drag a block by its <b>⠿</b> header, resize from the <b>bottom-right corner</b> — both snap to
         whole columns and rows. In <b>free</b> mode you can drop a block anywhere, including the empty
         space below; a red frame means the spot is taken and the drop is refused. Layout is saved to
-        <code>localStorage</code> per mode; reload and it sticks.
+        <code>localStorage</code> per mode; reload and it sticks. Turn <b>edit mode</b> off and you get the
+        plain grid — no handles, no buttons, no listeners on the blocks.
       </p>
 
       <div class="bar">
+        <label class="switch">
+          <input type="checkbox" checked={edit()} onChange={(e) => setEdit(e.currentTarget.checked)} />
+          <b>edit mode</b>
+        </label>
         <label>
           mode
           <select value={mode()} onChange={(e) => setMode(e.currentTarget.value as Mode)}>
@@ -171,6 +177,7 @@ export default function DumbGridExample() {
           animate={animate()}
           resizable={resizable()}
           items={items()}
+          editable={edit()}
           onRemove={removeBlock}
           labels={{ remove: 'Remove block' }}
           blockStyle={{ cursor: 'default' }}
@@ -184,6 +191,8 @@ export default function DumbGridExample() {
         .dg-example .bar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
                            margin: 0 0 12px; font-size: 13px; color: #334155 }
         .dg-example .bar label { display: inline-flex; gap: 6px; align-items: center }
+        .dg-example .switch { padding: 4px 10px; border: 1px solid #cbd5e1;
+                              border-radius: 999px; background: #fff }
         .dg-example [data-grid-remove] { border-radius: 8px }
         .dg-example [data-grid-remove]:hover { opacity: 1 !important; color: #ef4444 }
         .dg-example .bar select, .dg-example .bar button {

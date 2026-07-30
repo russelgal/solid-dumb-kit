@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, effect, className, style, createComponent, setStyleProperty, setAttribute, memo, addEventListener, template } from 'solid-js/web';
+import { delegateEvents, use, insert, effect, className, style, createComponent, setStyleProperty, memo, setAttribute, addEventListener, template } from 'solid-js/web';
 import { onCleanup, onMount, createSignal, For, Show, createMemo } from 'solid-js';
 import { makePersisted } from '@solid-primitives/storage';
 import * as v from 'valibot';
@@ -2395,9 +2395,10 @@ function createDumbGrid(opts) {
 // src/DumbGrid/DumbGrid.tsx
 var _tmpl$6 = /* @__PURE__ */ template(`<div data-grid-lines aria-hidden=true style="position:absolute;inset:0;padding:inherit;box-sizing:border-box;pointer-events:none;z-index:0;background-origin:content-box;background-clip:content-box;background-repeat:no-repeat, repeat;transition:opacity .15s ease">`);
 var _tmpl$23 = /* @__PURE__ */ template(`<div style=display:grid;position:relative;scrollbar-gutter:stable>`);
-var _tmpl$32 = /* @__PURE__ */ template(`<button type=button data-grid-remove data-no-drag style=position:absolute;top:0;right:0;width:22px;height:22px;display:grid;place-items:center;padding:0;border:none;background:transparent;color:currentColor;font:inherit;line-height:1;cursor:pointer;opacity:0.45;z-index:2>\u2715`);
-var _tmpl$42 = /* @__PURE__ */ template(`<div style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55% 70%, currentColor 70% 80%, transparent 80%);border-bottom-right-radius:8px">`);
-var _tmpl$52 = /* @__PURE__ */ template(`<div style=position:relative;z-index:1;min-width:0;min-height:0;box-sizing:border-box;touch-action:manipulation>`);
+var _tmpl$32 = /* @__PURE__ */ template(`<div>`);
+var _tmpl$42 = /* @__PURE__ */ template(`<button type=button data-grid-remove data-no-drag style=position:absolute;top:0;right:0;width:22px;height:22px;display:grid;place-items:center;padding:0;border:none;background:transparent;color:currentColor;font:inherit;line-height:1;cursor:pointer;opacity:0.45;z-index:2>\u2715`);
+var _tmpl$52 = /* @__PURE__ */ template(`<div style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55% 70%, currentColor 70% 80%, transparent 80%);border-bottom-right-radius:8px">`);
+var _tmpl$62 = /* @__PURE__ */ template(`<div style=touch-action:manipulation>`);
 var DEFAULT_COLS = 12;
 var DEFAULT_ROW_H = 80;
 var DEFAULT_GAP = 12;
@@ -2408,6 +2409,19 @@ var LayoutSchema = v.array(v.object({
   x: v.optional(v.number()),
   y: v.optional(v.number())
 }));
+function blockBox(span, pos) {
+  return {
+    // ЯВНАЯ позиция: раскладку считаем мы, браузер не домысливает
+    "grid-column": `${(pos?.col ?? 0) + 1} / span ${span.w}`,
+    "grid-row": `${(pos?.row ?? 0) + 1} / span ${span.h}`,
+    position: "relative",
+    "z-index": "1",
+    // над подложкой-сеткой
+    "min-width": "0",
+    "min-height": "0",
+    "box-sizing": "border-box"
+  };
+}
 function clampInt(n, lo, hi) {
   const i = Math.round(n);
   if (!Number.isFinite(i)) return lo;
@@ -2548,7 +2562,7 @@ function DumbGrid(props) {
     rowHeight: rowH,
     gapX,
     gapY,
-    disabled: () => props.disabled === true,
+    disabled: () => props.disabled === true || !editable(),
     resizable: () => props.resizable !== false,
     animate: props.animate,
     pressDelay: props.pressDelay,
@@ -2570,9 +2584,13 @@ function DumbGrid(props) {
     }
   });
   const posOf = (id) => placed().find((p) => p.id === id);
-  const spare = () => Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0));
+  const spare = () => (
+    // в режиме просмотра пустой хвост не нужен: уводить туда нечего
+    editable() ? Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0)) : 0
+  );
   const totalRows = () => rows() + spare();
   const heightOf = (n) => n * rowH() + Math.max(0, n - 1) * gapY();
+  const editable = () => props.editable !== false;
   const showGrid = () => props.showGrid ?? "drag";
   const gridVisible = () => showGrid() === true || showGrid() === "drag" && !!g.active();
   const gridBackground = () => gridLinesBackground({
@@ -2587,7 +2605,7 @@ function DumbGrid(props) {
     typeof _ref$ === "function" ? use(_ref$, _el$) : g.container = _el$;
     insert(_el$, createComponent(Show, {
       get when() {
-        return showGrid() !== false;
+        return memo(() => !!editable())() && showGrid() !== false;
       },
       get children() {
         var _el$2 = _tmpl$6();
@@ -2605,79 +2623,117 @@ function DumbGrid(props) {
         return _el$2;
       }
     }), null);
-    insert(_el$, createComponent(For, {
-      get each() {
-        return layout();
+    insert(_el$, createComponent(Show, {
+      get when() {
+        return editable();
       },
-      children: (span) => {
-        const item = () => itemById().get(span.id);
-        const pos = () => posOf(span.id);
-        const dragging = () => g.active()?.id === span.id;
-        return createComponent(Show, {
-          get when() {
-            return item();
+      get fallback() {
+        return createComponent(For, {
+          get each() {
+            return layout();
           },
-          children: (it) => (() => {
-            var _el$3 = _tmpl$52();
-            var _ref$2 = g.bind(span.id);
-            typeof _ref$2 === "function" && use(_ref$2, _el$3);
-            insert(_el$3, () => it().content(), null);
-            insert(_el$3, createComponent(Show, {
+          children: (span) => {
+            const item = () => itemById().get(span.id);
+            const pos = () => posOf(span.id);
+            return createComponent(Show, {
               get when() {
-                return memo(() => !!props.onRemove)() && it().removable !== false;
+                return item();
               },
-              get children() {
-                var _el$4 = _tmpl$32();
-                _el$4.$$click = () => props.onRemove?.(span.id);
+              children: (it) => (() => {
+                var _el$3 = _tmpl$32();
+                insert(_el$3, () => it().content());
                 effect((_p$) => {
-                  var _v$6 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A", _v$7 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A";
-                  _v$6 !== _p$.e && setAttribute(_el$4, "title", _p$.e = _v$6);
-                  _v$7 !== _p$.t && setAttribute(_el$4, "aria-label", _p$.t = _v$7);
+                  var _v$6 = props.blockClass, _v$7 = {
+                    ...blockBox(span, pos()),
+                    ...props.blockStyle
+                  };
+                  _v$6 !== _p$.e && className(_el$3, _p$.e = _v$6);
+                  _p$.t = style(_el$3, _v$7, _p$.t);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0
+                });
+                return _el$3;
+              })()
+            });
+          }
+        });
+      },
+      get children() {
+        return createComponent(For, {
+          get each() {
+            return layout();
+          },
+          children: (span) => {
+            const item = () => itemById().get(span.id);
+            const pos = () => posOf(span.id);
+            const dragging = () => g.active()?.id === span.id;
+            return createComponent(Show, {
+              get when() {
+                return item();
+              },
+              children: (it) => (() => {
+                var _el$4 = _tmpl$62();
+                var _ref$2 = g.bind(span.id);
+                typeof _ref$2 === "function" && use(_ref$2, _el$4);
+                insert(_el$4, () => it().content(), null);
+                insert(_el$4, createComponent(Show, {
+                  get when() {
+                    return memo(() => !!(props.onRemove && !props.disabled))() && it().removable !== false;
+                  },
+                  get children() {
+                    var _el$5 = _tmpl$42();
+                    _el$5.$$click = () => props.onRemove?.(span.id);
+                    effect((_p$) => {
+                      var _v$8 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A", _v$9 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A";
+                      _v$8 !== _p$.e && setAttribute(_el$5, "title", _p$.e = _v$8);
+                      _v$9 !== _p$.t && setAttribute(_el$5, "aria-label", _p$.t = _v$9);
+                      return _p$;
+                    }, {
+                      e: void 0,
+                      t: void 0
+                    });
+                    return _el$5;
+                  }
+                }), null);
+                insert(_el$4, createComponent(Show, {
+                  get when() {
+                    return memo(() => !!(props.resizable !== false && !it().locked))() && !props.disabled;
+                  },
+                  get children() {
+                    var _el$6 = _tmpl$52();
+                    var _ref$3 = g.resize(span.id);
+                    typeof _ref$3 === "function" && use(_ref$3, _el$6);
+                    effect((_p$) => {
+                      var _v$0 = props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440", _v$1 = dragging() ? "0.9" : "0.35";
+                      _v$0 !== _p$.e && setAttribute(_el$6, "title", _p$.e = _v$0);
+                      _v$1 !== _p$.t && setStyleProperty(_el$6, "opacity", _p$.t = _v$1);
+                      return _p$;
+                    }, {
+                      e: void 0,
+                      t: void 0
+                    });
+                    return _el$6;
+                  }
+                }), null);
+                effect((_p$) => {
+                  var _v$10 = props.blockClass, _v$11 = {
+                    ...blockBox(span, pos()),
+                    cursor: it().locked || props.disabled ? "default" : "grab",
+                    ...props.blockStyle
+                  };
+                  _v$10 !== _p$.e && className(_el$4, _p$.e = _v$10);
+                  _p$.t = style(_el$4, _v$11, _p$.t);
                   return _p$;
                 }, {
                   e: void 0,
                   t: void 0
                 });
                 return _el$4;
-              }
-            }), null);
-            insert(_el$3, createComponent(Show, {
-              get when() {
-                return memo(() => !!(props.resizable !== false && !it().locked))() && !props.disabled;
-              },
-              get children() {
-                var _el$5 = _tmpl$42();
-                var _ref$3 = g.resize(span.id);
-                typeof _ref$3 === "function" && use(_ref$3, _el$5);
-                effect((_p$) => {
-                  var _v$8 = props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440", _v$9 = dragging() ? "0.9" : "0.35";
-                  _v$8 !== _p$.e && setAttribute(_el$5, "title", _p$.e = _v$8);
-                  _v$9 !== _p$.t && setStyleProperty(_el$5, "opacity", _p$.t = _v$9);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0
-                });
-                return _el$5;
-              }
-            }), null);
-            effect((_p$) => {
-              var _v$0 = props.blockClass, _v$1 = {
-                // ЯВНАЯ позиция: раскладку считаем мы, браузер не домысливает
-                "grid-column": `${(pos()?.col ?? 0) + 1} / span ${span.w}`,
-                "grid-row": `${(pos()?.row ?? 0) + 1} / span ${span.h}`,
-                cursor: it().locked || props.disabled ? "default" : "grab",
-                ...props.blockStyle
-              };
-              _v$0 !== _p$.e && className(_el$3, _p$.e = _v$0);
-              _p$.t = style(_el$3, _v$1, _p$.t);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0
+              })()
             });
-            return _el$3;
-          })()
+          }
         });
       }
     }), null);
@@ -2707,7 +2763,7 @@ var _tmpl$24 = /* @__PURE__ */ template(`<a><span></span><span>`);
 var _tmpl$33 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
 var _tmpl$43 = /* @__PURE__ */ template(`<ul class="pl-3 border-l border-base-200 ml-3">`);
 var _tmpl$53 = /* @__PURE__ */ template(`<li><div class="flex items-center">`);
-var _tmpl$62 = /* @__PURE__ */ template(`<span class="w-5 shrink-0">`);
+var _tmpl$63 = /* @__PURE__ */ template(`<span class="w-5 shrink-0">`);
 var _tmpl$72 = /* @__PURE__ */ template(`<div class="text-xs opacity-50 mb-2 px-1">`);
 var _tmpl$8 = /* @__PURE__ */ template(`<label class="input input-sm input-bordered flex items-center gap-2 mb-2 w-full"><span></span><input class=grow>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<div class="join mb-2 w-full"><button><span></span></button><button><span>`);
@@ -2854,7 +2910,7 @@ function DumbTree(props) {
             return kids().length;
           },
           get fallback() {
-            return _tmpl$62();
+            return _tmpl$63();
           },
           get children() {
             var _el$7 = _tmpl$33(), _el$8 = _el$7.firstChild;
@@ -3024,7 +3080,7 @@ var _tmpl$25 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
 var _tmpl$34 = /* @__PURE__ */ template(`<tfoot>`);
 var _tmpl$44 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
 var _tmpl$54 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
-var _tmpl$63 = /* @__PURE__ */ template(`<th style=width:1%>`);
+var _tmpl$64 = /* @__PURE__ */ template(`<th style=width:1%>`);
 var _tmpl$73 = /* @__PURE__ */ template(`<tr>`);
 var _tmpl$82 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
 var _tmpl$92 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
@@ -3142,7 +3198,7 @@ function DumbTable(props) {
                 return memo(() => !!props.onReorder)() && withHandle();
               },
               get children() {
-                return _tmpl$63();
+                return _tmpl$64();
               }
             }), null);
             insert(_el$9, createComponent(For, {

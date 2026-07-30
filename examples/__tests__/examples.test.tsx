@@ -1,6 +1,6 @@
 // Смоук-тест витрины: каждый пример должен монтироваться без падения и что-то
 // рисовать. Ловит опечатки в пропсах и рассинхрон примеров с API кита.
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render } from 'solid-js/web'
 import SelectionAreaExample from '../SelectionArea.example'
 import DumbSortableExample from '../DumbSortable.example'
@@ -359,5 +359,61 @@ describe('DumbGrid.example — добавление и удаление блок
 
     button(host, 'Reset layout').click()
     expect(blocks(host).length).toBe(7)
+  })
+})
+
+describe('DumbGrid.example — режим просмотра', () => {
+  const blocks = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll<HTMLElement>('div')).filter((el) => el.style.gridColumn)
+  const editToggle = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll<HTMLInputElement>('input[type=checkbox]'))
+      .find((i) => i.parentElement?.textContent?.includes('edit mode'))!
+
+  it('выключенное редактирование убирает ручки, кнопки и разметку сетки', () => {
+    const host = mount(DumbGridExample)
+    expect(host.querySelectorAll('[data-grid-resize]').length).toBeGreaterThan(0)
+
+    editToggle(host).click()
+
+    expect(host.querySelectorAll('[data-grid-resize]').length).toBe(0)
+    expect(host.querySelectorAll('[data-grid-remove]').length).toBe(0)
+    expect(host.querySelector('[data-grid-lines]')).toBeNull()
+  })
+
+  it('сами блоки остаются на своих местах — это та же сетка', () => {
+    const host = mount(DumbGridExample)
+    const before = blocks(host).map((el) => [el.style.gridColumn, el.style.gridRow])
+
+    editToggle(host).click()
+    expect(blocks(host).map((el) => [el.style.gridColumn, el.style.gridRow])).toEqual(before)
+  })
+
+  it('кит не навешивает на блоки ни курсора-хватайки, ни touch-action', () => {
+    const host = mount(DumbGridExample)
+    editToggle(host).click()
+
+    for (const el of blocks(host)) {
+      expect(el.style.cursor).not.toBe('grab')   // 'default' здесь от blockStyle примера
+      expect(el.style.touchAction).toBe('')
+    }
+  })
+
+  it('нажатие на блок не начинает драг: обработчиков просто нет', () => {
+    const host = mount(DumbGridExample)
+    editToggle(host).click()
+
+    const spy = vi.spyOn(window, 'addEventListener')
+    blocks(host)[0].dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 77 }))
+    expect(spy).not.toHaveBeenCalledWith('pointermove', expect.any(Function))
+    spy.mockRestore()
+  })
+
+  it('включение редактирования возвращает контролы', () => {
+    const host = mount(DumbGridExample)
+    editToggle(host).click()
+    editToggle(host).click()
+
+    expect(host.querySelectorAll('[data-grid-resize]').length).toBeGreaterThan(0)
+    expect(host.querySelector('[data-grid-lines]')).toBeTruthy()
   })
 })
