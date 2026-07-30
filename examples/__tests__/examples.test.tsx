@@ -7,6 +7,7 @@ import DumbSortableExample from '../DumbSortable.example'
 import ResizableGridExample from '../ResizableGrid.example'
 import DumbTreeExample from '../DumbTree.example'
 import DumbTableExample from '../DumbTable.example'
+import DumbGridExample from '../DumbGrid.example'
 import KanbanExample from '../Kanban.example'
 import UtilsExample from '../utils.example'
 import Odata1CExample from '../Odata1C.example'
@@ -27,6 +28,7 @@ const EXAMPLES = [
   ['ResizableGrid', ResizableGridExample],
   ['DumbTree', DumbTreeExample],
   ['DumbTable', DumbTableExample],
+  ['DumbGrid', DumbGridExample],
   ['Kanban', KanbanExample],
   ['utils', UtilsExample],
   ['Odata1C', Odata1CExample],
@@ -205,5 +207,157 @@ describe('Odata1C.example — витрина собирает настоящий
     )
     expect(run).toBeTruthy()
     expect(host.textContent).not.toContain('строк(и)')
+  })
+})
+
+describe('DumbGrid.example — раскладка выставлена явно, а не авто-потоком', () => {
+  // блоки-обёртки узнаём по inline grid-column: их ставит сам DumbGrid
+  const blocks = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll<HTMLElement>('div')).filter((el) => el.style.gridColumn)
+
+  it('первый блок занимает 6 колонок и 2 строки с первой позиции', () => {
+    const host = mount(DumbGridExample)
+    const first = blocks(host)[0]
+    expect(first.style.gridColumn).toBe('1 / span 6')
+    expect(first.style.gridRow).toBe('1 / span 2')
+  })
+
+  it('соседи встают за ним в той же строке, а не наползают', () => {
+    const host = mount(DumbGridExample)
+    const [, orders, refunds] = blocks(host)
+    expect(orders.style.gridColumn).toBe('7 / span 3')
+    expect(orders.style.gridRow).toBe('1 / span 1')
+    expect(refunds.style.gridColumn).toBe('10 / span 3')
+  })
+
+  it('заблокированный блок не отдаёт ручку ресайза', () => {
+    const host = mount(DumbGridExample)
+    // 7 блоков в примере, один из них locked
+    expect(blocks(host).length).toBe(7)
+    expect(host.querySelectorAll('[data-grid-resize]').length).toBe(6)
+  })
+
+  it('снятие resizable убирает ручки у всех', () => {
+    const host = mount(DumbGridExample)
+    const toggle = Array.from(host.querySelectorAll<HTMLInputElement>('input[type=checkbox]'))
+      .find((i) => i.parentElement?.textContent?.includes('resizable'))!
+    toggle.click()
+    expect(host.querySelectorAll('[data-grid-resize]').length).toBe(0)
+  })
+})
+
+describe('DumbGrid.example — режимы и разметка сетки', () => {
+  const blocks = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll<HTMLElement>('div')).filter((el) => el.style.gridColumn)
+  const pick = (host: HTMLElement, label: string) =>
+    Array.from(host.querySelectorAll<HTMLSelectElement>('select'))
+      .find((s) => s.parentElement?.textContent?.trim().startsWith(label))!
+  const choose = (sel: HTMLSelectElement, value: string) => {
+    sel.value = value
+    sel.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+
+  it('подложка сетки есть и по умолчанию скрыта до жеста', () => {
+    const host = mount(DumbGridExample)
+    const lines = host.querySelector<HTMLElement>('[data-grid-lines]')!
+    expect(lines).toBeTruthy()
+    expect(lines.style.opacity).toBe('0')          // showGrid=\'drag\', жеста нет
+  })
+
+  it('«always» показывает сетку сразу, «never» убирает подложку совсем', () => {
+    const host = mount(DumbGridExample)
+    const grid = pick(host, 'grid lines')
+
+    choose(grid, 'true')
+    expect(host.querySelector<HTMLElement>('[data-grid-lines]')!.style.opacity).toBe('1')
+
+    choose(grid, 'false')
+    expect(host.querySelector('[data-grid-lines]')).toBeNull()
+  })
+
+  it('dense затыкает дырку: блок из следующей строки поднимается в первую', () => {
+    const host = mount(DumbGridExample)
+    const rowsOf = (h: HTMLElement) => blocks(h).map((el) => el.style.gridRow)
+
+    const before = rowsOf(host)
+    choose(pick(host, 'mode'), 'dense')
+    const after = rowsOf(host)
+
+    expect(after).not.toEqual(before)
+    // в dense никто не оказывается ниже, чем был в flow
+    const rowNum = (s: string) => Number(s.split(' / ')[0])
+    after.forEach((r, i) => expect(rowNum(r)).toBeLessThanOrEqual(rowNum(before[i])))
+  })
+
+  it('free держит запас пустой строки под раскладкой — блоку есть куда уехать', () => {
+    const host = mount(DumbGridExample)
+    const ROW_H = 92, GAP = 12      // пропы примера
+    // сколько строк реально занято по разметке блоков
+    const usedRows = () =>
+      Math.max(
+        ...blocks(host).map((el) => {
+          const [start, span] = el.style.gridRow.split(' / ')
+          return Number(start) - 1 + Number(span.replace('span ', ''))
+        }),
+      )
+    const minRows = () => {
+      const box = host.querySelector<HTMLElement>('[data-grid-lines]')!.parentElement!
+      return (parseFloat(box.style.minHeight) + GAP) / (ROW_H + GAP)
+    }
+
+    // в потоке пустоты под раскладкой не нужно — там некуда «между»
+    expect(minRows()).toBeCloseTo(usedRows(), 5)
+
+    choose(pick(host, 'mode'), 'free')
+    expect(minRows()).toBeCloseTo(usedRows() + 2, 5)   // дефолтный запас free
+  })
+})
+
+describe('DumbGrid.example — добавление и удаление блоков', () => {
+  const blocks = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll<HTMLElement>('div')).filter((el) => el.style.gridColumn)
+  const button = (host: HTMLElement, label: string) =>
+    Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.trim() === label)!
+
+  it('кнопка ✕ есть у всех блоков, кроме помеченного removable: false', () => {
+    const host = mount(DumbGridExample)
+    expect(blocks(host).length).toBe(7)
+    expect(host.querySelectorAll('[data-grid-remove]').length).toBe(6)
+  })
+
+  it('клик по ✕ убирает блок из сетки', () => {
+    const host = mount(DumbGridExample)
+    const before = blocks(host).length
+    host.querySelector<HTMLButtonElement>('[data-grid-remove]')!.click()
+    expect(blocks(host).length).toBe(before - 1)
+  })
+
+  it('кнопка добавления кладёт блок заданного пресета', () => {
+    const host = mount(DumbGridExample)
+    const before = blocks(host).length
+
+    button(host, '+ full × 2').click()
+    const added = blocks(host)
+    expect(added.length).toBe(before + 1)
+
+    const last = added[added.length - 1]
+    expect(last.style.gridColumn).toBe('1 / span 12')   // full на 12 колонках
+    expect(last.style.gridRow).toContain('span 2')
+  })
+
+  it('кнопка ✕ не начинает драг — она <button> с [data-no-drag]', () => {
+    const host = mount(DumbGridExample)
+    const kill = host.querySelector<HTMLButtonElement>('[data-grid-remove]')!
+    expect(kill.dataset.noDrag).toBe('')
+    expect(kill.tagName).toBe('BUTTON')
+  })
+
+  it('Reset возвращает исходный набор блоков', () => {
+    const host = mount(DumbGridExample)
+    button(host, '+ half').click()
+    host.querySelector<HTMLButtonElement>('[data-grid-remove]')!.click()
+
+    button(host, 'Reset layout').click()
+    expect(blocks(host).length).toBe(7)
   })
 })

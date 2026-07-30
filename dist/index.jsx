@@ -557,12 +557,12 @@ function ResizableGrid(props) {
   }
   const colTemplate = () => {
     const s = colSizes();
-    return s.map((v2) => `${v2}fr`).join(` ${HANDLE_SIZE}px `);
+    return s.map((v3) => `${v3}fr`).join(` ${HANDLE_SIZE}px `);
   };
   const row2Template = () => {
     const s = rowSizes();
     if (!s) return "";
-    return s.map((v2) => `${v2}fr`).join(` ${HANDLE_SIZE}px `);
+    return s.map((v3) => `${v3}fr`).join(` ${HANDLE_SIZE}px `);
   };
   const rowTemplate = () => {
     const split = rowSplit();
@@ -1645,9 +1645,1010 @@ function DumbSortable(props) {
     </For2>;
 }
 
-// src/DumbTree/DumbTree.tsx
-import { createMemo, createSignal as createSignal2, For as For3, Show as Show2 } from "solid-js";
+// src/DumbGrid/DumbGrid.tsx
+import { createMemo, createSignal as createSignal3, For as For3, Show as Show2 } from "solid-js";
 import { makePersisted as makePersisted2 } from "@solid-primitives/storage";
+import * as v2 from "valibot";
+
+// src/DumbGrid/solid.ts
+import { createSignal as createSignal2, onCleanup as onCleanup3 } from "solid-js";
+
+// src/DumbGrid/gridMath.ts
+function clamp(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, n));
+}
+function createOccupancy() {
+  const busy = /* @__PURE__ */ new Map();
+  const free = (col, row, w, h) => {
+    for (let r = row; r < row + h; r++) {
+      const set = busy.get(r);
+      if (!set) continue;
+      for (let k = col; k < col + w; k++) if (set.has(k)) return false;
+    }
+    return true;
+  };
+  return {
+    free,
+    take(col, row, w, h) {
+      for (let r = row; r < row + h; r++) {
+        let set = busy.get(r);
+        if (!set) busy.set(r, set = /* @__PURE__ */ new Set());
+        for (let k = col; k < col + w; k++) set.add(k);
+      }
+    },
+    /** первое свободное место от (col,row): вправо до края, потом строкой ниже */
+    findFrom(col, row, w, h, cols) {
+      let c = col;
+      let r = row;
+      for (; ; ) {
+        if (c + w > cols) {
+          c = 0;
+          r++;
+          continue;
+        }
+        if (free(c, r, w, h)) return { col: c, row: r };
+        c++;
+      }
+    }
+  };
+}
+var PRESETS = {
+  full: [1, 1],
+  half: [1, 2],
+  third: [1, 3],
+  quarter: [1, 4],
+  "two-thirds": [2, 3],
+  "three-quarters": [3, 4]
+};
+function resolveSpan(value, cols) {
+  const c = Math.max(1, Math.floor(cols));
+  if (value === void 0) return 1;
+  if (typeof value === "number") return clamp(Math.round(value) || 1, 1, c);
+  const named = PRESETS[value];
+  const frac = named ?? (/^\d+\/\d+$/.test(value) ? value.split("/").map(Number) : null);
+  if (!frac) return 1;
+  const [num, den] = frac;
+  if (!den || !Number.isFinite(num)) return 1;
+  return clamp(Math.floor(c * num / den), 1, c);
+}
+function colWidth(contentW, cols, gapX) {
+  const c = Math.max(1, Math.floor(cols));
+  return Math.max(0, (contentW - gapX * (c - 1)) / c);
+}
+function spanSize(n, unit, gap) {
+  return n * unit + (n - 1) * gap;
+}
+function packFlow(items, cols, mode = "flow") {
+  const c = Math.max(1, Math.floor(cols));
+  const grid = createOccupancy();
+  const out = [];
+  let curCol = 0;
+  let curRow = 0;
+  for (const it of items) {
+    const w = clamp(Math.round(it.w) || 1, 1, c);
+    const h = Math.max(1, Math.round(it.h) || 1);
+    const { col, row } = grid.findFrom(mode === "dense" ? 0 : curCol, mode === "dense" ? 0 : curRow, w, h, c);
+    grid.take(col, row, w, h);
+    out.push({ id: it.id, w, h, col, row });
+    curCol = col + w;
+    curRow = row;
+    if (curCol >= c) {
+      curCol = 0;
+      curRow = row + 1;
+    }
+  }
+  return out;
+}
+function placeFree(items, cols) {
+  const c = Math.max(1, Math.floor(cols));
+  const grid = createOccupancy();
+  const out = [];
+  for (const it of items) {
+    const w = clamp(Math.round(it.w) || 1, 1, c);
+    const h = Math.max(1, Math.round(it.h) || 1);
+    const hasPos = Number.isFinite(it.x) && Number.isFinite(it.y);
+    const wantCol = hasPos ? clamp(Math.round(it.x), 0, c - w) : 0;
+    const wantRow = hasPos ? Math.max(0, Math.round(it.y)) : 0;
+    const spot = grid.free(wantCol, wantRow, w, h) ? { col: wantCol, row: wantRow } : grid.findFrom(hasPos ? wantCol : 0, wantRow, w, h, c);
+    grid.take(spot.col, spot.row, w, h);
+    out.push({ id: it.id, w, h, col: spot.col, row: spot.row });
+  }
+  return out;
+}
+function rowCount(placed) {
+  let n = 0;
+  for (const p of placed) n = Math.max(n, p.row + p.h);
+  return n;
+}
+function cellRect(p, m) {
+  return {
+    x: p.col * (m.colW + m.gapX),
+    y: p.row * (m.rowH + m.gapY),
+    width: spanSize(p.w, m.colW, m.gapX),
+    height: spanSize(p.h, m.rowH, m.gapY)
+  };
+}
+function reorder(list, from, to) {
+  const next = list.slice();
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+function insertIndex(args) {
+  const { base, dragId, m, pointerX, pointerY } = args;
+  let k = 0;
+  for (const p of base) {
+    if (p.id === dragId) continue;
+    const r = cellRect(p, m);
+    if (pointerY > r.y + r.height) k++;
+    else if (pointerY >= r.y && pointerX > r.x + r.width / 2) k++;
+  }
+  return k;
+}
+function moveDeltas(args) {
+  const { base, next, m, skipId } = args;
+  const to = /* @__PURE__ */ new Map();
+  for (const p of next) to.set(p.id, p);
+  const out = [];
+  for (const p of base) {
+    if (p.id === skipId) continue;
+    const t = to.get(p.id);
+    if (!t) continue;
+    if (t.col === p.col && t.row === p.row) {
+      out.push({ id: p.id, dx: 0, dy: 0 });
+      continue;
+    }
+    const a = cellRect(p, m);
+    const b = cellRect(t, m);
+    out.push({ id: p.id, dx: b.x - a.x, dy: b.y - a.y });
+  }
+  return out;
+}
+function pointToCell(args) {
+  const { x, y, w, m } = args;
+  const stepX = m.colW + m.gapX;
+  const stepY = m.rowH + m.gapY;
+  const col = stepX > 0 ? Math.round(x / stepX) : 0;
+  const row = stepY > 0 ? Math.round(y / stepY) : 0;
+  return {
+    col: clamp(col, 0, Math.max(0, m.cols - w)),
+    row: Math.max(0, row)
+  };
+}
+function firstFreeCell(args) {
+  const { placed, cols, w, h } = args;
+  const c = Math.max(1, Math.floor(cols));
+  const width = clamp(Math.round(w) || 1, 1, c);
+  const height = Math.max(1, Math.round(h) || 1);
+  const grid = createOccupancy();
+  for (const p of placed) grid.take(p.col, p.row, p.w, p.h);
+  const spot = grid.findFrom(0, 0, width, height, c);
+  return { x: spot.col, y: spot.row };
+}
+function overlaps(args) {
+  const { placed, id, col, row, w, h } = args;
+  for (const p of placed) {
+    if (p.id === id) continue;
+    if (col < p.col + p.w && p.col < col + w && row < p.row + p.h && p.row < row + h) return true;
+  }
+  return false;
+}
+function snapSpan(args) {
+  const { start, dx, dy, m, limits } = args;
+  const stepX = m.colW + m.gapX;
+  const stepY = m.rowH + m.gapY;
+  const lim = limits ?? {};
+  const w = stepX > 0 ? Math.round((spanSize(start.w, m.colW, m.gapX) + dx + m.gapX) / stepX) : start.w;
+  const h = stepY > 0 ? Math.round((spanSize(start.h, m.rowH, m.gapY) + dy + m.gapY) / stepY) : start.h;
+  return {
+    w: clamp(w, Math.max(1, lim.minW ?? 1), Math.min(m.cols, lim.maxW ?? m.cols)),
+    h: clamp(h, Math.max(1, lim.minH ?? 1), lim.maxH ?? Number.MAX_SAFE_INTEGER)
+  };
+}
+function fitSpan(args) {
+  const { placed, id, col, row, want, limits } = args;
+  const minW = Math.max(1, limits?.minW ?? 1);
+  const minH = Math.max(1, limits?.minH ?? 1);
+  let w = Math.max(minW, want.w);
+  let h = Math.max(minH, want.h);
+  while (w > minW && overlaps({ placed, id, col, row, w, h })) w--;
+  while (h > minH && overlaps({ placed, id, col, row, w, h })) h--;
+  return { w, h };
+}
+
+// src/shared/gesture.ts
+var NO_DRAG3 = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
+function targetIsInteractive3(ev) {
+  return ev.target instanceof Element && !!ev.target.closest(NO_DRAG3);
+}
+function focusInside3(el) {
+  const active = document.activeElement;
+  return !!active && active !== document.body && active !== el && el.contains(active);
+}
+var LONGPRESS3 = 350;
+var MOVE_TOL3 = 10;
+function createPressGate(opts = {}) {
+  const pressDelay = opts.pressDelay ?? LONGPRESS3;
+  const mousePress = opts.mousePressDelay ?? 0;
+  const mouseThresh = opts.mouseThreshold ?? 0;
+  let wait = null;
+  const clear = () => {
+    if (!wait) return;
+    if (wait.timer) clearTimeout(wait.timer);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onCancel);
+    window.removeEventListener("pointercancel", onCancel);
+    wait = null;
+  };
+  const listen = () => {
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onCancel);
+    window.addEventListener("pointercancel", onCancel);
+  };
+  function onMove(ev) {
+    if (!wait || ev.pointerId !== wait.pid) return;
+    const moved = Math.abs(ev.clientX - wait.x) > wait.thresh || Math.abs(ev.clientY - wait.y) > wait.thresh;
+    if (!moved) return;
+    if (wait.mode === "press") {
+      clear();
+      return;
+    }
+    const w = wait;
+    clear();
+    w.start(ev.clientX, ev.clientY);
+  }
+  function onCancel(ev) {
+    if (wait && ev.pointerId === wait.pid) clear();
+  }
+  return {
+    arm(ev, start) {
+      if (wait) return;
+      const touch = ev.pointerType === "touch";
+      const delay = touch ? pressDelay : mousePress;
+      if (delay > 0) {
+        wait = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "press", thresh: MOVE_TOL3, start };
+        wait.timer = setTimeout(() => {
+          const w = wait;
+          clear();
+          if (w) {
+            if (touch) navigator.vibrate?.(8);
+            w.start(w.x, w.y);
+          }
+        }, delay);
+        listen();
+        return;
+      }
+      if (!touch && mouseThresh > 0) {
+        wait = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "dist", thresh: mouseThresh, start };
+        listen();
+        return;
+      }
+      ev.preventDefault();
+      start(ev.clientX, ev.clientY);
+    },
+    pending: () => wait !== null,
+    cancel: clear
+  };
+}
+
+// src/DumbGrid/gridCore.ts
+var SLIDE3 = "transform .18s cubic-bezier(.2,.8,.2,1)";
+var LIFT_SHADOW3 = "0 12px 28px -8px rgba(0,0,0,.32)";
+var PREVIEW_BG = "rgba(59,130,246,.10)";
+var PREVIEW_LINE = "2px dashed rgba(59,130,246,.85)";
+var BLOCKED_BG = "rgba(239,68,68,.10)";
+var BLOCKED_LINE = "2px dashed rgba(239,68,68,.85)";
+var ACTIVE_Z = 3;
+var PREVIEW_Z = 5;
+function createGridEngine(opts) {
+  const blockEls = /* @__PURE__ */ new Map();
+  let container = null;
+  let ro = null;
+  let contentW = 0;
+  let padLeft = 0;
+  let padTop = 0;
+  let gesture = null;
+  let activeState = null;
+  const setActive = (state) => {
+    activeState = state;
+    opts.onActive?.(state);
+  };
+  const metrics = () => {
+    const cols = Math.max(1, Math.floor(opts.cols()));
+    const gapX = opts.gapX();
+    return { cols, colW: colWidth(contentW, cols, gapX), rowH: opts.rowHeight(), gapX, gapY: opts.gapY() };
+  };
+  const modeNow = () => opts.mode?.() ?? "flow";
+  const place = (blocks, mode, cols) => mode === "free" ? placeFree(blocks, cols) : packFlow(blocks, cols, mode);
+  function shift(g) {
+    const { sx, sy } = scrollOf(g.scroller);
+    const dx = sx - g.sx0 + (g.scroller ? window.scrollX - g.win0X : 0);
+    const dy = sy - g.sy0 + (g.scroller ? window.scrollY - g.win0Y : 0);
+    return { dx, dy, sy };
+  }
+  function snapOrigin(cb) {
+    const el = container;
+    if (!el || typeof IntersectionObserver !== "function") {
+      cb(null);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      io.disconnect();
+      cb(entries.length ? entries[0].boundingClientRect : null);
+    });
+    io.observe(el);
+  }
+  function slide(g, moves) {
+    for (const mv of moves) {
+      const el = blockEls.get(mv.id);
+      if (!el || el === g.el) continue;
+      if (!mv.dx && !mv.dy) {
+        if (g.touched.has(el)) el.style.transform = "";
+        continue;
+      }
+      if (!g.touched.has(el)) {
+        g.touched.add(el);
+        el.style.willChange = "transform";
+        if (!shouldAnimate(opts.animate)) {
+          el.style.transform = `translate(${mv.dx}px,${mv.dy}px)`;
+          continue;
+        }
+        el.style.transition = SLIDE3;
+        continue;
+      }
+      el.style.transform = `translate(${mv.dx}px,${mv.dy}px)`;
+    }
+  }
+  function resetStyles(g) {
+    const reset = (el) => {
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.zIndex = "";
+      el.style.willChange = "";
+      el.style.boxShadow = "";
+      el.style.opacity = "";
+      el.style.cursor = "";
+    };
+    reset(g.el);
+    for (const el of g.touched) reset(el);
+    g.preview?.remove();
+    g.preview = null;
+  }
+  function showPreview(g, rect, blocked = false) {
+    if (!container) return;
+    if (!g.preview) {
+      const box = document.createElement("div");
+      box.style.cssText = [
+        "position:absolute",
+        "pointer-events:none",
+        "box-sizing:border-box",
+        "border-radius:10px",
+        `z-index:${PREVIEW_Z}`,
+        "outline-offset:-2px",
+        "transition:background .12s ease, outline-color .12s ease"
+      ].join(";");
+      box.dataset.gridPreview = "";
+      container.appendChild(box);
+      g.preview = box;
+    }
+    g.preview.dataset.blocked = blocked ? "" : void 0;
+    g.preview.style.background = blocked ? BLOCKED_BG : PREVIEW_BG;
+    g.preview.style.outline = blocked ? BLOCKED_LINE : PREVIEW_LINE;
+    g.preview.style.width = `${rect.width}px`;
+    g.preview.style.height = `${rect.height}px`;
+    g.preview.style.transform = `translate(${padLeft + rect.x}px,${padTop + rect.y}px)`;
+  }
+  function previewFree(g) {
+    const me = g.base.find((p) => p.id === g.id);
+    if (!me) return;
+    showPreview(g, cellRect({ ...me, col: g.cell.col, row: g.cell.row, ...g.span }, g.m), g.blocked);
+  }
+  function frame() {
+    if (!gesture) return;
+    const g = gesture;
+    if (g.kind === "move") {
+      const s = shift(g);
+      if (g.moved) {
+        const speed = autoScrollSpeed({
+          pointerY: g.lastY,
+          // позиция скроллера во вьюпорте сейчас — арифметикой от снятой,
+          // а не свежим getBoundingClientRect
+          viewTop: g.scroller ? viewOrigin(g.geom, window.scrollX, window.scrollY).top : 0,
+          clientH: g.geom.clientH,
+          scrollY: s.sy,
+          scrollMax: g.geom.max
+        });
+        if (speed) doScroll(g.scroller, 0, speed);
+      }
+      const d = shift(g);
+      g.el.style.transform = `translate(${g.lastX - g.startX + d.dx}px,${g.lastY - g.startY + d.dy}px)`;
+      if (!g.ready) {
+        g.raf = requestAnimationFrame(frame);
+        return;
+      }
+      if (g.mode === "free") {
+        const me = g.base.find((p) => p.id === g.id);
+        if (!me) {
+          g.raf = requestAnimationFrame(frame);
+          return;
+        }
+        const at = cellRect(me, g.m);
+        const cell = pointToCell({
+          x: at.x + (g.lastX - g.startX + d.dx),
+          y: at.y + (g.lastY - g.startY + d.dy),
+          w: g.span.w,
+          m: g.m
+        });
+        const blocked = overlaps({ placed: g.base, id: g.id, ...cell, ...g.span });
+        if (cell.col !== g.cell.col || cell.row !== g.cell.row || blocked !== g.blocked) {
+          g.cell = cell;
+          g.blocked = blocked;
+          previewFree(g);
+        }
+      } else {
+        const pX = g.lastX - (g.gridLeft - d.dx);
+        const pY = g.lastY - (g.gridTop - d.dy);
+        const k = insertIndex({ base: g.base, dragId: g.id, m: g.m, pointerX: pX, pointerY: pY });
+        if (k !== g.toIndex) {
+          g.toIndex = k;
+          const next = packFlow(reorder(g.blocks, g.fromIndex, k), g.m.cols, g.mode);
+          slide(g, moveDeltas({ base: g.base, next, m: g.m, skipId: g.id }));
+        }
+      }
+    } else if (g.ready) {
+      const d = shift(g);
+      const dx = g.lastX - g.startX + d.dx;
+      const dy = g.lastY - g.startY + d.dy;
+      const limits = g.blocks[g.fromIndex];
+      const want = snapSpan({ start: { w: limits.w, h: limits.h }, dx, dy, m: g.m, limits });
+      const span = g.mode === "free" ? fitSpan({ placed: g.base, id: g.id, ...g.cell, want, limits }) : want;
+      if (span.w !== g.span.w || span.h !== g.span.h) {
+        g.span = span;
+        if (g.mode === "free") {
+          previewFree(g);
+        } else {
+          const resized = g.blocks.map((b, i) => i === g.fromIndex ? { ...b, ...span } : b);
+          const next = packFlow(resized, g.m.cols, g.mode);
+          slide(g, moveDeltas({ base: g.base, next, m: g.m, skipId: g.id }));
+          const me = next.find((p) => p.id === g.id);
+          if (me) showPreview(g, cellRect(me, g.m));
+        }
+      }
+    }
+    g.raf = requestAnimationFrame(frame);
+  }
+  function onMove(ev) {
+    if (!gesture || ev.pointerId !== gesture.pid) return;
+    if (!gesture.moved && (Math.abs(ev.clientX - gesture.startX) > 2 || Math.abs(ev.clientY - gesture.startY) > 2)) {
+      gesture.moved = true;
+    }
+    gesture.lastX = ev.clientX;
+    gesture.lastY = ev.clientY;
+  }
+  function detach() {
+    restoreTextSelection();
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+  }
+  function cleanup() {
+    if (!gesture) return;
+    const g = gesture;
+    if (g.raf) cancelAnimationFrame(g.raf);
+    detach();
+    resetStyles(g);
+    gesture = null;
+    setActive(null);
+  }
+  function land(g, done) {
+    const from = g.base.find((p) => p.id === g.id);
+    const to = g.mode === "free" ? from && !g.blocked ? { ...from, col: g.cell.col, row: g.cell.row } : from : place(reorder(g.blocks, g.fromIndex, g.toIndex), g.mode, g.m.cols).find((p) => p.id === g.id);
+    if (!shouldAnimate(opts.animate) || !from || !to) {
+      done();
+      return;
+    }
+    const a = cellRect(from, g.m);
+    const b = cellRect(to, g.m);
+    const el = g.el;
+    el.style.transition = SLIDE3;
+    el.style.transform = `translate(${b.x - a.x}px,${b.y - a.y}px)`;
+    let fired = false;
+    const finish = () => {
+      if (fired) return;
+      fired = true;
+      el.removeEventListener("transitionend", finish);
+      done();
+    };
+    el.addEventListener("transitionend", finish);
+    setTimeout(finish, 240);
+  }
+  function onUp(ev) {
+    if (!gesture || ev.pointerId !== gesture.pid) return;
+    const g = gesture;
+    const { kind, mode, id, fromIndex, toIndex, span, ready } = g;
+    if (kind === "resize") {
+      const before = g.blocks[fromIndex];
+      cleanup();
+      if (ready && before && (span.w !== before.w || span.h !== before.h)) opts.onResize(id, span.w, span.h);
+      return;
+    }
+    if (mode === "free") {
+      const home = g.base.find((p) => p.id === id);
+      const moved = !!home && (g.cell.col !== home.col || g.cell.row !== home.row);
+      if (!ready || g.blocked || !moved) {
+        cleanup();
+        return;
+      }
+      detach();
+      if (g.raf) cancelAnimationFrame(g.raf);
+      gesture = null;
+      setActive(null);
+      land(g, () => {
+        resetStyles(g);
+        opts.onMove?.(id, g.cell.col, g.cell.row);
+      });
+      return;
+    }
+    if (!ready || toIndex === fromIndex) {
+      cleanup();
+      return;
+    }
+    detach();
+    if (g.raf) cancelAnimationFrame(g.raf);
+    gesture = null;
+    setActive(null);
+    land(g, () => {
+      resetStyles(g);
+      opts.onReorder(fromIndex, toIndex);
+    });
+  }
+  function begin(kind, id, handle, pid, x, y) {
+    const el = blockEls.get(id);
+    if (!el || !container) return;
+    if (kind === "move" && handle === el && focusInside3(el)) return;
+    const blocks = opts.blocks();
+    const fromIndex = blocks.findIndex((b) => b.id === id);
+    if (fromIndex < 0 || blocks[fromIndex].locked) return;
+    const m = metrics();
+    if (!m.colW) return;
+    const mode = modeNow();
+    const base = place(blocks, mode, m.cols);
+    const home = base.find((p) => p.id === id);
+    const scroller = scrollParent(el);
+    const geom = measure(scroller);
+    const s0 = scrollOf(scroller);
+    gesture = {
+      kind,
+      mode,
+      id,
+      pid,
+      el,
+      startX: x,
+      startY: y,
+      lastX: x,
+      lastY: y,
+      blocks,
+      base,
+      m,
+      fromIndex,
+      toIndex: fromIndex,
+      span: { w: blocks[fromIndex].w, h: blocks[fromIndex].h },
+      cell: { col: home?.col ?? 0, row: home?.row ?? 0 },
+      blocked: false,
+      scroller,
+      geom,
+      sx0: s0.sx,
+      sy0: s0.sy,
+      win0X: window.scrollX,
+      win0Y: window.scrollY,
+      gridLeft: 0,
+      gridTop: 0,
+      ready: false,
+      moved: false,
+      raf: 0,
+      touched: /* @__PURE__ */ new Set(),
+      preview: null
+    };
+    setActive({ id, kind });
+    el.style.zIndex = `${ACTIVE_Z}`;
+    el.style.willChange = "transform";
+    el.style.transition = "box-shadow .15s ease, opacity .15s ease";
+    if (kind === "move") {
+      el.style.boxShadow = LIFT_SHADOW3;
+      el.style.opacity = "0.97";
+      el.style.cursor = "grabbing";
+    }
+    suppressTextSelection();
+    snapOrigin((rect) => {
+      if (!gesture || gesture.id !== id || gesture.pid !== pid) return;
+      if (rect) {
+        const d = shift(gesture);
+        gesture.gridLeft = rect.left + padLeft + d.dx;
+        gesture.gridTop = rect.top + padTop + d.dy;
+      }
+      gesture.ready = true;
+      if (gesture.kind === "resize" || gesture.mode === "free") previewFree(gesture);
+    });
+    try {
+      handle.setPointerCapture(pid);
+    } catch {
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    gesture.raf = requestAnimationFrame(frame);
+  }
+  const gate = createPressGate(opts);
+  function canStart() {
+    return !opts.disabled?.() && !gesture && !gate.pending();
+  }
+  return {
+    attachContainer(el) {
+      container = el;
+      if (typeof ResizeObserver === "function") {
+        ro = new ResizeObserver((entries) => {
+          const r = entries[entries.length - 1]?.contentRect;
+          if (!r) return;
+          contentW = r.width;
+          padLeft = r.left;
+          padTop = r.top;
+        });
+        ro.observe(el);
+      }
+      return () => {
+        ro?.disconnect();
+        ro = null;
+        if (container === el) container = null;
+      };
+    },
+    attach(el, id) {
+      blockEls.set(id, el);
+      const down = (ev) => {
+        if (ev.button !== 0 || !canStart()) return;
+        if (ev.target instanceof Element && ev.target.closest("[data-grid-resize]")) return;
+        const handle2 = el.querySelector("[data-drag-handle]");
+        if (handle2) {
+          if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
+        } else if (targetIsInteractive3(ev)) {
+          return;
+        }
+        gate.arm(ev, (x, y) => begin("move", id, handle2 || el, ev.pointerId, x, y));
+      };
+      el.addEventListener("pointerdown", down);
+      const handle = el.querySelector("[data-drag-handle]");
+      if (handle) handle.style.touchAction = "none";
+      return () => {
+        el.removeEventListener("pointerdown", down);
+        if (blockEls.get(id) === el) blockEls.delete(id);
+      };
+    },
+    attachResize(el, id) {
+      el.dataset.gridResize = "";
+      el.style.touchAction = "none";
+      const down = (ev) => {
+        if (ev.button !== 0 || !canStart() || opts.resizable?.() === false) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        begin("resize", id, el, ev.pointerId, ev.clientX, ev.clientY);
+      };
+      el.addEventListener("pointerdown", down);
+      return () => el.removeEventListener("pointerdown", down);
+    },
+    colWidth: () => metrics().colW,
+    active: () => activeState,
+    destroy() {
+      gate.cancel();
+      cleanup();
+      ro?.disconnect();
+      ro = null;
+      container = null;
+      blockEls.clear();
+    }
+  };
+}
+
+// src/DumbGrid/solid.ts
+function createDumbGrid(opts) {
+  const [active, setActive] = createSignal2(null);
+  const engine = createGridEngine({
+    ...opts,
+    onActive: (state) => {
+      setActive(state);
+      opts.onActive?.(state);
+    }
+  });
+  onCleanup3(engine.destroy);
+  return {
+    container: (el) => onCleanup3(engine.attachContainer(el)),
+    bind: (id) => (el) => onCleanup3(engine.attach(el, id)),
+    resize: (id) => (el) => onCleanup3(engine.attachResize(el, id)),
+    active
+  };
+}
+
+// src/DumbGrid/DumbGrid.tsx
+var DEFAULT_COLS = 12;
+var DEFAULT_ROW_H = 80;
+var DEFAULT_GAP = 12;
+var HANDLE = 16;
+var REMOVE = 22;
+var LayoutSchema = v2.array(
+  v2.object({
+    id: v2.string(),
+    w: v2.number(),
+    h: v2.number(),
+    x: v2.optional(v2.number()),
+    y: v2.optional(v2.number())
+  })
+);
+function clampInt(n, lo, hi) {
+  const i = Math.round(n);
+  if (!Number.isFinite(i)) return lo;
+  return Math.max(lo, Math.min(hi, i));
+}
+function spanOf(item, src, cols) {
+  const minW = item.minW === void 0 ? 1 : resolveSpan(item.minW, cols);
+  const maxW = item.maxW === void 0 ? cols : resolveSpan(item.maxW, cols);
+  const w = clampInt(src.w, Math.max(1, minW), Math.min(cols, maxW));
+  const out = {
+    id: item.id,
+    w,
+    h: clampInt(src.h, Math.max(1, item.minH ?? 1), item.maxH ?? Number.MAX_SAFE_INTEGER)
+  };
+  if (Number.isFinite(src.x)) out.x = clampInt(src.x, 0, Math.max(0, cols - w));
+  if (Number.isFinite(src.y)) out.y = Math.max(0, Math.round(src.y));
+  return out;
+}
+function mergeLayout(saved, items, cols, mode = "flow") {
+  const byId = new Map(items.map((it) => [it.id, it]));
+  const out = [];
+  for (const s of saved ?? []) {
+    const it = byId.get(s.id);
+    if (!it) continue;
+    out.push(spanOf(it, s, cols));
+    byId.delete(s.id);
+  }
+  for (const it of items) {
+    if (!byId.has(it.id)) continue;
+    const w = resolveSpan(it.w, cols);
+    const h = Math.max(1, Math.round(it.h ?? 1) || 1);
+    const spot = mode === "free" && it.x === void 0 && it.y === void 0 && out.length ? firstFreeCell({ placed: placeFree(out, cols), cols, w, h }) : { x: it.x, y: it.y };
+    out.push(spanOf(it, { w, h, x: spot.x, y: spot.y }, cols));
+  }
+  return out;
+}
+var GRID_LINE = "rgba(100,116,139,.28)";
+function gridLinesBackground(args) {
+  const { cols, gapX, rowH, gapY } = args;
+  const col = `calc((100% - ${(cols - 1) * gapX}px) / ${cols})`;
+  const stepX = `calc(${col} + ${gapX}px)`;
+  const lineW = Math.max(1, gapX);
+  const lineH = Math.max(1, gapY);
+  const stops = ["transparent 0"];
+  for (let i = 1; i < cols; i++) {
+    const at = `calc(${stepX} * ${i} - ${gapX}px)`;
+    const to = `calc(${stepX} * ${i} - ${gapX}px + ${lineW}px)`;
+    stops.push(`transparent ${at}`, `${GRID_LINE} ${at}`, `${GRID_LINE} ${to}`, `transparent ${to}`);
+  }
+  stops.push("transparent 100%");
+  const stepY = rowH + gapY;
+  return {
+    image: [
+      `linear-gradient(to right, ${stops.join(", ")})`,
+      `linear-gradient(to bottom, transparent 0, transparent ${stepY - lineH}px, ${GRID_LINE} ${stepY - lineH}px, ${GRID_LINE} ${stepY}px)`
+    ].join(", "),
+    // вертикальные линии — на всю ширину (тайлить нельзя, см. выше),
+    // горизонтальные — тайлом в одну строку
+    size: `100% 100%, 100% ${stepY}px`
+  };
+}
+function DumbGrid(props) {
+  const mode = () => props.mode ?? "flow";
+  const cols = () => Math.max(1, Math.floor(props.cols ?? DEFAULT_COLS));
+  const rowH = () => props.rowHeight ?? DEFAULT_ROW_H;
+  const gapX = () => props.gapX ?? props.gap ?? DEFAULT_GAP;
+  const gapY = () => props.gapY ?? props.gap ?? DEFAULT_GAP;
+  const persisted = props.storageKey ? makePersisted2(createSignal3(null), {
+    name: props.storageKey,
+    serialize: (l) => JSON.stringify(l ?? []),
+    deserialize: (raw) => {
+      try {
+        const parsed = v2.safeParse(LayoutSchema, JSON.parse(raw));
+        return parsed.success ? parsed.output : null;
+      } catch {
+        return null;
+      }
+    }
+  }) : null;
+  const [memory, setMemory] = createSignal3(null);
+  const saved = () => props.layout ?? (persisted ? persisted[0]() : memory());
+  const layout = createMemo(() => mergeLayout(saved(), props.items, cols(), mode()));
+  const commit = (next) => {
+    if (!props.layout) (persisted ? persisted[1] : setMemory)(next);
+    props.onLayout?.(next);
+  };
+  const placed = createMemo(() => {
+    const m = mode();
+    return m === "free" ? placeFree(layout(), cols()) : packFlow(layout(), cols(), m);
+  });
+  const rows = createMemo(() => rowCount(placed()));
+  const itemById = createMemo(() => new Map(props.items.map((it) => [it.id, it])));
+  const materialize = (next) => {
+    if (mode() !== "free") return next;
+    const pos = new Map(placeFree(next, cols()).map((p) => [p.id, p]));
+    return next.map((s) => {
+      const p = pos.get(s.id);
+      return p ? { ...s, x: p.col, y: p.row } : s;
+    });
+  };
+  const g = createDumbGrid({
+    blocks: () => {
+      const map = itemById();
+      const c = cols();
+      return layout().map((s) => {
+        const it = map.get(s.id);
+        return {
+          ...s,
+          minW: it?.minW === void 0 ? void 0 : resolveSpan(it.minW, c),
+          maxW: it?.maxW === void 0 ? void 0 : resolveSpan(it.maxW, c),
+          minH: it?.minH,
+          maxH: it?.maxH,
+          locked: it?.locked
+        };
+      });
+    },
+    mode,
+    cols,
+    rowHeight: rowH,
+    gapX,
+    gapY,
+    disabled: () => props.disabled === true,
+    resizable: () => props.resizable !== false,
+    animate: props.animate,
+    pressDelay: props.pressDelay,
+    mouseThreshold: props.mouseThreshold,
+    onReorder: (from, to) => commit(materialize(reorder(layout(), from, to))),
+    onMove: (id, x, y) => commit(materialize(layout().map((s) => s.id === id ? { ...s, x, y } : s))),
+    onResize: (id, w, h) => {
+      const it = itemById().get(id);
+      if (!it) return;
+      commit(materialize(layout().map((s) => s.id === id ? spanOf(it, { ...s, w, h }, cols()) : s)));
+    }
+  });
+  const posOf = (id) => placed().find((p) => p.id === id);
+  const spare = () => Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0));
+  const totalRows = () => rows() + spare();
+  const heightOf = (n) => n * rowH() + Math.max(0, n - 1) * gapY();
+  const showGrid = () => props.showGrid ?? "drag";
+  const gridVisible = () => showGrid() === true || showGrid() === "drag" && !!g.active();
+  const gridBackground = () => gridLinesBackground({ cols: cols(), gapX: gapX(), rowH: rowH(), gapY: gapY() });
+  return <div
+    ref={g.container}
+    class={props.class}
+    style={{
+      display: "grid",
+      "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
+      "grid-auto-rows": `${rowH()}px`,
+      "column-gap": `${gapX()}px`,
+      "row-gap": `${gapY()}px`,
+      position: "relative",
+      // высота под все строки плюс запас, чтобы блок было куда увести вниз
+      "min-height": `${heightOf(totalRows())}px`,
+      // если сетку положили в свой скроллер — место под полосу держим всегда,
+      // иначе её появление меняет ширину контента и сбивает шаг колонок
+      "scrollbar-gutter": "stable",
+      ...props.style
+    }}
+  >
+      <Show2 when={showGrid() !== false}>
+        <div
+    data-grid-lines
+    aria-hidden="true"
+    style={{
+      position: "absolute",
+      inset: "0",
+      padding: "inherit",
+      "box-sizing": "border-box",
+      "pointer-events": "none",
+      "z-index": "0",
+      "background-image": gridBackground().image,
+      "background-size": gridBackground().size,
+      "background-origin": "content-box",
+      "background-clip": "content-box",
+      "background-repeat": "no-repeat, repeat",
+      opacity: gridVisible() ? "1" : "0",
+      transition: "opacity .15s ease"
+    }}
+  />
+      </Show2>
+
+      <For3 each={layout()}>
+        {(span) => {
+    const item = () => itemById().get(span.id);
+    const pos = () => posOf(span.id);
+    const dragging = () => g.active()?.id === span.id;
+    return <Show2 when={item()}>
+              {(it) => <div
+      ref={g.bind(span.id)}
+      class={props.blockClass}
+      style={{
+        // ЯВНАЯ позиция: раскладку считаем мы, браузер не домысливает
+        "grid-column": `${(pos()?.col ?? 0) + 1} / span ${span.w}`,
+        "grid-row": `${(pos()?.row ?? 0) + 1} / span ${span.h}`,
+        position: "relative",
+        "z-index": "1",
+        // над подложкой-сеткой
+        "min-width": "0",
+        "min-height": "0",
+        "box-sizing": "border-box",
+        cursor: it().locked || props.disabled ? "default" : "grab",
+        "touch-action": "manipulation",
+        ...props.blockStyle
+      }}
+    >
+                  {it().content()}
+
+                  <Show2 when={props.onRemove && it().removable !== false}>
+                    <button
+      type="button"
+      data-grid-remove
+      data-no-drag
+      title={props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A"}
+      aria-label={props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A"}
+      onClick={() => props.onRemove?.(span.id)}
+      style={{
+        position: "absolute",
+        top: "0",
+        right: "0",
+        width: `${REMOVE}px`,
+        height: `${REMOVE}px`,
+        display: "grid",
+        "place-items": "center",
+        padding: "0",
+        border: "none",
+        background: "transparent",
+        color: "currentColor",
+        font: "inherit",
+        "line-height": "1",
+        cursor: "pointer",
+        opacity: "0.45",
+        // на кнопке жест не начинается: она <button> и с [data-no-drag],
+        // а это ровно то, что движок пропускает мимо драга
+        "z-index": "2"
+      }}
+    >
+                      ✕
+                    </button>
+                  </Show2>
+
+                  <Show2 when={props.resizable !== false && !it().locked && !props.disabled}>
+                    <div
+      ref={g.resize(span.id)}
+      title={props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440"}
+      style={{
+        position: "absolute",
+        right: "0",
+        bottom: "0",
+        width: `${HANDLE}px`,
+        height: `${HANDLE}px`,
+        cursor: "nwse-resize",
+        // уголок из двух штрихов — рисуем градиентом, без иконок
+        background: "linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55% 70%, currentColor 70% 80%, transparent 80%)",
+        opacity: dragging() ? "0.9" : "0.35",
+        "border-bottom-right-radius": "8px"
+      }}
+    />
+                  </Show2>
+                </div>}
+            </Show2>;
+  }}
+      </For3>
+    </div>;
+}
+
+// src/DumbTree/DumbTree.tsx
+import { createMemo as createMemo2, createSignal as createSignal4, For as For4, Show as Show3 } from "solid-js";
+import { makePersisted as makePersisted3 } from "@solid-primitives/storage";
 function fuzzy(q, text) {
   if (!q) return true;
   q = q.toLowerCase();
@@ -1670,22 +2671,22 @@ function DumbTree(props) {
   const icons = () => props.icons;
   const labels = () => ({ ...DEFAULT_LABELS, ...props.labels });
   const activeId = () => props.activeId?.();
-  const [q, setQ] = createSignal2("");
+  const [q, setQ] = createSignal4("");
   const key = props.storageKey ?? "dumb-tree";
-  const [expanded, setExpanded] = makePersisted2(createSignal2(/* @__PURE__ */ new Set()), {
+  const [expanded, setExpanded] = makePersisted3(createSignal4(/* @__PURE__ */ new Set()), {
     name: `${key}:expanded`,
     serialize: (s) => JSON.stringify([...s]),
     deserialize: (str) => new Set(JSON.parse(str))
   });
-  const [sort, setSort] = makePersisted2(createSignal2("index"), {
+  const [sort, setSort] = makePersisted3(createSignal4("index"), {
     name: `${key}:sort`,
     serialize: (vv) => vv,
     deserialize: (s) => s === "name" ? "name" : "index"
   });
   const sortMode = () => props.hideSort ? "index" : sort();
   const cmp = (a, b) => sortMode() === "name" ? a.title.localeCompare(b.title, props.locale) || (a.index ?? 0) - (b.index ?? 0) : (a.index ?? 0) - (b.index ?? 0) || a.title.localeCompare(b.title, props.locale);
-  const byId = createMemo(() => new Map((nodes() ?? []).map((n) => [n.id, n])));
-  const childrenOf = createMemo(() => {
+  const byId = createMemo2(() => new Map((nodes() ?? []).map((n) => [n.id, n])));
+  const childrenOf = createMemo2(() => {
     const m = /* @__PURE__ */ new Map();
     for (const n of nodes() ?? []) {
       let a = m.get(n.parent);
@@ -1698,14 +2699,14 @@ function DumbTree(props) {
     for (const a of m.values()) a.sort(cmp);
     return m;
   });
-  const rootId = createMemo(() => {
+  const rootId = createMemo2(() => {
     const ns = nodes() ?? [];
     if (!ns.length) return 0;
     const ids = new Set(ns.map((n) => n.id));
     return (ns.find((n) => !ids.has(n.parent)) ?? ns[0]).id;
   });
   const matches = (n, query) => props.match ? props.match(n, query) : fuzzy(query, n.title) || !!n.meta && fuzzy(query, n.meta) || String(n.id).includes(query);
-  const visible = createMemo(() => {
+  const visible = createMemo2(() => {
     const query = q().trim().toLowerCase();
     if (!query) return null;
     const ids = byId();
@@ -1721,7 +2722,7 @@ function DumbTree(props) {
     }
     return show;
   });
-  const flatList = createMemo(() => {
+  const flatList = createMemo2(() => {
     const query = q().trim().toLowerCase();
     return (nodes() ?? []).filter((n) => !query || matches(n, query)).sort(cmp);
   });
@@ -1746,46 +2747,46 @@ function DumbTree(props) {
   >
       <span class={`size-4 shrink-0 ${p.icon}`} />
       <span class={`truncate ${props.titleClass?.(p.node) ?? ""}`}>{p.node.title}</span>
-      <Show2 when={props.rowExtra}>
+      <Show3 when={props.rowExtra}>
         <span class="ml-auto shrink-0 flex items-center gap-1">{props.rowExtra(p.node)}</span>
-      </Show2>
+      </Show3>
     </a>;
   function Node2(p) {
     const node = () => byId().get(p.id);
     const kids = () => childrenOf().get(p.id) ?? [];
     const isExpanded = () => visible() ? true : expanded().has(p.id);
-    return <Show2 when={node() && (!visible() || visible().has(p.id))}>
+    return <Show3 when={node() && (!visible() || visible().has(p.id))}>
         <li>
           <div class="flex items-center">
-            <Show2 when={kids().length} fallback={<span class="w-5 shrink-0" />}>
+            <Show3 when={kids().length} fallback={<span class="w-5 shrink-0" />}>
               <button class="btn btn-ghost btn-xs btn-square" onClick={() => toggle(p.id)}>
                 <span class={`size-4 ${isExpanded() ? icons().expanded : icons().collapsed}`} />
               </button>
-            </Show2>
+            </Show3>
             <RowLink
       node={node()}
       icon={isExpanded() && kids().length ? icons().folderOpen : icons().folder}
     />
           </div>
-          <Show2 when={isExpanded() && kids().length}>
+          <Show3 when={isExpanded() && kids().length}>
             <ul class="pl-3 border-l border-base-200 ml-3">
-              <For3 each={kids()}>{(k) => <Node2 id={k.id} />}</For3>
+              <For4 each={kids()}>{(k) => <Node2 id={k.id} />}</For4>
             </ul>
-          </Show2>
+          </Show3>
         </li>
-      </Show2>;
+      </Show3>;
   }
   return <aside class={`w-64 shrink-0 sticky top-0 self-start max-h-screen overflow-y-auto ${props.class ?? ""}`}>
-      <Show2 when={props.title}>
+      <Show3 when={props.title}>
         <div class="text-xs opacity-50 mb-2 px-1">{props.title}</div>
-      </Show2>
-      <Show2 when={!props.hideSearch}>
+      </Show3>
+      <Show3 when={!props.hideSearch}>
         <label class="input input-sm input-bordered flex items-center gap-2 mb-2 w-full">
           <span class={`size-4 opacity-50 ${icons().search}`} />
           <input value={q()} onInput={(e) => setQ(e.currentTarget.value)} placeholder={props.placeholder ?? labels().search} class="grow" />
         </label>
-      </Show2>
-      <Show2 when={!props.hideSort}>
+      </Show3>
+      <Show3 when={!props.hideSort}>
         <div class="join mb-2 w-full">
           <button
     class={`btn btn-xs join-item grow gap-1 ${sort() === "index" ? "btn-active btn-primary" : "btn-ghost"}`}
@@ -1804,31 +2805,31 @@ function DumbTree(props) {
             {labels().sortName}
           </button>
         </div>
-      </Show2>
-      <Show2 when={nodes()} fallback={<span class="loading loading-spinner" />}>
+      </Show3>
+      <Show3 when={nodes()} fallback={<span class="loading loading-spinner" />}>
         <ul class="bg-base-100 rounded-box shadow w-full text-sm p-2 max-h-[80vh] overflow-auto">
-          <Show2
+          <Show3
     when={props.flat}
-    fallback={<For3 each={childrenOf().get(rootId()) ?? []}>{(n) => <Node2 id={n.id} />}</For3>}
+    fallback={<For4 each={childrenOf().get(rootId()) ?? []}>{(n) => <Node2 id={n.id} />}</For4>}
   >
-            <For3 each={flatList()}>
+            <For4 each={flatList()}>
               {(n) => <li ref={props.sortable ? fs.bind(String(n.id)) : void 0} class="flex items-center">
-                  <Show2 when={props.sortable}>
+                  <Show3 when={props.sortable}>
                     <button data-drag-handle type="button" class="cursor-grab text-base-content/30 hover:text-base-content shrink-0" title="Перетащить">
                       <span class={`size-4 ${icons().dragHandle}`} />
                     </button>
-                  </Show2>
+                  </Show3>
                   <RowLink node={n} icon={icons().leaf} />
                 </li>}
-            </For3>
-          </Show2>
+            </For4>
+          </Show3>
         </ul>
-      </Show2>
+      </Show3>
     </aside>;
 }
 
 // src/DumbTable/DumbTable.tsx
-import { For as For4, Show as Show3, createSignal as createSignal3, createMemo as createMemo2 } from "solid-js";
+import { For as For5, Show as Show4, createSignal as createSignal5, createMemo as createMemo3 } from "solid-js";
 import {
   createSolidTable,
   flexRender,
@@ -1846,7 +2847,7 @@ function SortMark(props) {
     </span>;
 }
 function DumbTable(props) {
-  const [localSort, setLocalSort] = createSignal3([]);
+  const [localSort, setLocalSort] = createSignal5([]);
   const serverMode = () => !!props.onSort;
   const sorting = () => serverMode() ? props.sort ? [{ id: props.sort, desc: props.order === "desc" }] : [] : localSort();
   const defs = () => props.columns.map((c) => ({
@@ -1893,7 +2894,7 @@ function DumbTable(props) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel()
   });
-  const visibleRows = createMemo2(() => table.getRowModel().rows.map((r) => r.original));
+  const visibleRows = createMemo3(() => table.getRowModel().rows.map((r) => r.original));
   const rowOf = (original) => table.getRowModel().rows.find((r) => r.original === original);
   const dragDisabled = () => !props.onReorder || sorting().length > 0;
   const withHandle = () => props.handle !== false;
@@ -1915,18 +2916,18 @@ function DumbTable(props) {
     class={props.class}
     style={{ opacity: props.loading ? ".5" : "1", transition: "opacity .15s" }}
   >
-      <Show3 when={visibleRows().length} fallback={props.empty}>
+      <Show4 when={visibleRows().length} fallback={props.empty}>
         <table
     class={props.tableClass}
     style={{ width: "100%", "border-collapse": "collapse" }}
   >
           <thead class={props.headClass}>
-            <For4 each={table.getHeaderGroups()}>
+            <For5 each={table.getHeaderGroups()}>
               {(hg) => <tr>
-                  <Show3 when={props.onReorder && withHandle()}>
+                  <Show4 when={props.onReorder && withHandle()}>
                     <th style={{ width: "1%" }} />
-                  </Show3>
-                  <For4 each={hg.headers}>
+                  </Show4>
+                  <For5 each={hg.headers}>
                     {(header) => {
     const c = () => colOf(header.column.columnDef);
     const canSort = () => header.column.getCanSort();
@@ -1942,21 +2943,21 @@ function DumbTable(props) {
       onClick={header.column.getToggleSortingHandler()}
     >
                           {flexRender(header.column.columnDef.header, header.getContext())}
-                          <Show3 when={canSort()}>
+                          <Show4 when={canSort()}>
                             <SortMark dir={header.column.getIsSorted()} />
-                          </Show3>
+                          </Show4>
                         </th>;
   }}
-                  </For4>
+                  </For5>
                 </tr>}
-            </For4>
+            </For5>
           </thead>
 
           <tbody>
-            <Show3 when={props.spacerTop}>
+            <Show4 when={props.spacerTop}>
               <tr aria-hidden="true" style={{ height: `${props.spacerTop}px` }} />
-            </Show3>
-            <For4 each={visibleRows()}>
+            </Show4>
+            <For5 each={visibleRows()}>
               {(original) => {
     const row = () => rowOf(original);
     return <tr
@@ -1969,7 +2970,7 @@ function DumbTable(props) {
       }}
       onClick={() => props.onRowClick?.(original, row().index)}
     >
-                  <Show3 when={props.onReorder && withHandle()}>
+                  <Show4 when={props.onReorder && withHandle()}>
                     <td style={{ padding: "6px 4px", width: "1%" }} onClick={(e) => e.stopPropagation()}>
                       <span
       data-drag-handle
@@ -1984,8 +2985,8 @@ function DumbTable(props) {
                         {props.handle ?? "\u283F"}
                       </span>
                     </td>
-                  </Show3>
-                  <For4 each={row().getVisibleCells()}>
+                  </Show4>
+                  <For5 each={row().getVisibleCells()}>
                     {(cell) => {
       const c = () => colOf(cell.column.columnDef);
       return <td
@@ -1996,25 +2997,25 @@ function DumbTable(props) {
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>;
     }}
-                  </For4>
+                  </For5>
                 </tr>;
   }}
-            </For4>
-            <Show3 when={props.spacerBottom}>
+            </For5>
+            <Show4 when={props.spacerBottom}>
               <tr aria-hidden="true" style={{ height: `${props.spacerBottom}px` }} />
-            </Show3>
+            </Show4>
           </tbody>
 
-          <Show3 when={props.footer}>
+          <Show4 when={props.footer}>
             <tfoot>{props.footer}</tfoot>
-          </Show3>
+          </Show4>
         </table>
-      </Show3>
+      </Show4>
     </div>;
 }
 
 // src/DumbTable/DumbPagination.tsx
-import { For as For5, Show as Show4 } from "solid-js";
+import { For as For6, Show as Show5 } from "solid-js";
 function buildPageNumbers(current, total) {
   if (total <= 10) return Array.from({ length: total }, (_, i) => i + 1);
   const pages = [1];
@@ -2057,9 +3058,9 @@ function DumbPagination(props) {
   >
       <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
         <span style={{ opacity: ".7", "font-size": "13px" }}>{summary()}</span>
-        <Show4 when={props.pageSizes?.length && props.onPageSizeChange}>
+        <Show5 when={props.pageSizes?.length && props.onPageSizeChange}>
           <div style={{ display: "flex", gap: "4px" }}>
-            <For5 each={props.pageSizes}>
+            <For6 each={props.pageSizes}>
               {(size) => <button
     class={`${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`.trim() || void 0}
     style={btn(props.pageSize === size, false)}
@@ -2067,12 +3068,12 @@ function DumbPagination(props) {
   >
                   {size}
                 </button>}
-            </For5>
+            </For6>
           </div>
-        </Show4>
+        </Show5>
       </div>
 
-      <Show4 when={pages() > 1}>
+      <Show5 when={pages() > 1}>
         <div style={{ display: "flex", gap: "4px", "flex-wrap": "wrap" }}>
           <button
     class={props.buttonClass}
@@ -2082,8 +3083,8 @@ function DumbPagination(props) {
   >
             «
           </button>
-          <For5 each={buildPageNumbers(props.page, pages())}>
-            {(p) => <Show4 when={p !== "\u2026"} fallback={<span style={{ padding: "3px 4px", opacity: ".4" }}>…</span>}>
+          <For6 each={buildPageNumbers(props.page, pages())}>
+            {(p) => <Show5 when={p !== "\u2026"} fallback={<span style={{ padding: "3px 4px", opacity: ".4" }}>…</span>}>
                 <button
     class={`${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`.trim() || void 0}
     style={btn(props.page === p, false)}
@@ -2091,8 +3092,8 @@ function DumbPagination(props) {
   >
                   {p}
                 </button>
-              </Show4>}
-          </For5>
+              </Show5>}
+          </For6>
           <button
     class={props.buttonClass}
     style={btn(false, props.page >= pages())}
@@ -2102,7 +3103,7 @@ function DumbPagination(props) {
             »
           </button>
         </div>
-      </Show4>
+      </Show5>
     </div>;
 }
 
@@ -2148,10 +3149,10 @@ var OdataClient = class {
   /** Сборка URL: параметры кодируются вручную (`%20`, не `+`) */
   url(resource, params = {}) {
     const all = {
-      ...Object.fromEntries(Object.entries(params).map(([k, v2]) => [k, String(v2)])),
+      ...Object.fromEntries(Object.entries(params).map(([k, v3]) => [k, String(v3)])),
       $format: JSON_NOMETA
     };
-    const qs = Object.entries(all).map(([k, v2]) => `${encodeURIComponent(k)}=${encodeURIComponent(v2)}`).join("&");
+    const qs = Object.entries(all).map(([k, v3]) => `${encodeURIComponent(k)}=${encodeURIComponent(v3)}`).join("&");
     return `${this.baseUrl}/${encodeURI(resource)}?${qs}`;
   }
   async request(resource, params = {}, init = {}) {
@@ -2246,37 +3247,37 @@ var RubIntl0 = new Intl.NumberFormat("ru-RU", {
 var RubIntl4 = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 4
 });
-function toNum(v2) {
-  if (v2 == null || v2 === "") return null;
-  const n = typeof v2 === "string" ? parseFloat(v2) : Number(v2);
+function toNum(v3) {
+  if (v3 == null || v3 === "") return null;
+  const n = typeof v3 === "string" ? parseFloat(v3) : Number(v3);
   return Number.isFinite(n) ? n : null;
 }
-function RubR2(v2) {
-  const n = toNum(v2);
+function RubR2(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) + " \u20BD" : "";
 }
-function Rub2(v2) {
-  const n = toNum(v2);
+function Rub2(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) : "";
 }
-function Rub0(v2) {
-  const n = toNum(v2);
+function Rub0(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) : "";
 }
-function Rub0R(v2) {
-  const n = toNum(v2);
+function Rub0R(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) + " \u20BD" : "";
 }
-function Rub4(v2) {
-  const n = toNum(v2);
+function Rub4(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl4.format(n) : "";
 }
-function fmtNum(v2) {
-  const n = toNum(v2);
+function fmtNum(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) : "\u2014";
 }
-function fmtPrice(v2) {
-  const n = toNum(v2);
+function fmtPrice(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) + " \u20BD" : "\u2014";
 }
 var DateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
@@ -2309,29 +3310,29 @@ var DateMonthFmt = new Intl.DateTimeFormat("ru-RU", {
   month: "short",
   year: "numeric"
 });
-function toDate(v2) {
-  if (v2 == null || v2 === "") return null;
-  const d = v2 instanceof Date ? v2 : new Date(v2);
+function toDate(v3) {
+  if (v3 == null || v3 === "") return null;
+  const d = v3 instanceof Date ? v3 : new Date(v3);
   return isNaN(d.getTime()) ? null : d;
 }
-function fmtDateTime(v2) {
-  const d = toDate(v2);
+function fmtDateTime(v3) {
+  const d = toDate(v3);
   return d ? DateTimeFmt.format(d) : "";
 }
-function fmtDateTimeShort(v2) {
-  const d = toDate(v2);
+function fmtDateTimeShort(v3) {
+  const d = toDate(v3);
   return d ? DateTimeShortFmt.format(d) : "";
 }
-function fmtDate(v2) {
-  const d = toDate(v2);
+function fmtDate(v3) {
+  const d = toDate(v3);
   return d ? DateFmt.format(d) : "";
 }
-function fmtTime(v2) {
-  const d = toDate(v2);
+function fmtTime(v3) {
+  const d = toDate(v3);
   return d ? TimeFmt.format(d) : "";
 }
-function fmtDateMonth(v2) {
-  const d = toDate(v2);
+function fmtDateMonth(v3) {
+  const d = toDate(v3);
   return d ? DateMonthFmt.format(d) : "";
 }
 function fmtSize(bytes) {
@@ -2339,8 +3340,8 @@ function fmtSize(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} \u041A\u0411`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} \u041C\u0411`;
 }
-function timeAgo(v2) {
-  const d = toDate(v2);
+function timeAgo(v3) {
+  const d = toDate(v3);
   if (!d) return "\u2014";
   const diff = Date.now() - d.getTime();
   if (diff < 0) return "\u0442\u043E\u043B\u044C\u043A\u043E \u0447\u0442\u043E";
@@ -2441,6 +3442,7 @@ function imgproxyUrl(src, opts = {}) {
   return `${base}/insecure/${processing}/${base64url(resolveSource(src))}${ext}`;
 }
 export {
+  DumbGrid,
   DumbPagination,
   DumbSortable,
   DumbTable,
@@ -2455,12 +3457,18 @@ export {
   RubR2,
   SelectionArea,
   buildPageNumbers,
+  cellRect,
+  colWidth,
   configureImgproxy,
+  createDumbGrid,
   createDumbSortable,
+  createGridEngine,
   createOdataClient,
   createSelectionArea,
   createSortableGroup,
   extractImagesFromZip,
+  firstFreeCell,
+  fitSpan,
   fmtDate,
   fmtDateMonth,
   fmtDateTime,
@@ -2471,7 +3479,18 @@ export {
   fmtTime,
   genSlug,
   imgproxyUrl,
+  insertIndex,
+  mergeLayout,
+  moveDeltas,
   odataString,
+  overlaps,
+  packFlow,
+  placeFree,
+  pointToCell,
+  resolveSpan,
+  rowCount,
+  snapSpan,
+  spanSize,
   timeAgo,
   toBase64
 };

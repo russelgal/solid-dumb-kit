@@ -9,6 +9,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[DumbSortable](docs/DumbSortable.md)** — zero-dep FLIP drag-reorder (vertical list **or** grid), no reflow during drag. Ships as a declarative component and a low-level `createDumbSortable` primitive.
 - **[DumbTree](docs/DumbTree.md)** — sidebar tree *or* flat list with fuzzy search, sorting, persisted expand state and optional drag-reorder. Styled for Tailwind + daisyUI.
 - **[DumbTable](docs/DumbTable.md)** — bring-your-own-columns table: sorting (client or server) on TanStack Table, row drag-reorder, pagination.
+- **[DumbGrid](docs/DumbGrid.md)** — dashboard grid: blocks sized in whole columns/rows, drag and resize in grid steps, three layout modes (`flow` / `dense` / free `{x,y}`), optional visible grid, layout persisted. No element measurements during a gesture.
 - **[utils](docs/utils.md)** — framework-free helpers: `ru-RU` number/date/size formatting, slugs, image extraction from a ZIP, imgproxy URLs.
 - **[Odata1C](docs/Odata1C.md)** — framework-free client for the 1C standard OData interface: Basic auth, request building, and the platform's quirks handled for you. Runs in the browser and in Node.
 
@@ -54,6 +55,9 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 | `DumbTree` / `DumbTreeProps` / `DumbTreeNode` / `DumbTreeIcons` / `DumbTreeLabels` | component | [docs/DumbTree.md](docs/DumbTree.md) |
 | `DumbTable` / `DumbTableProps` / `DumbColumn` | component | [docs/DumbTable.md](docs/DumbTable.md) |
 | `DumbPagination` / `DumbPaginationProps` / `buildPageNumbers` | component | [docs/DumbTable.md#dumbpagination](docs/DumbTable.md#dumbpagination) |
+| `DumbGrid` / `DumbGridProps` / `DumbGridItem` / `DumbGridLayout` / `mergeLayout` | component | [docs/DumbGrid.md](docs/DumbGrid.md) |
+| `createDumbGrid` / `DumbGridHandle` / `createGridEngine` / `DumbGridOptions` / `DumbGridBlock` | primitive | [docs/DumbGrid.md#createdumbgrid-primitive](docs/DumbGrid.md#createdumbgrid-primitive) |
+| `packFlow` / `cellRect` / `colWidth` / `spanSize` / `rowCount` / `insertIndex` / `moveDeltas` / `snapSpan` | grid maths | [docs/DumbGrid.md#engine-without-a-framework](docs/DumbGrid.md#engine-without-a-framework) |
 | `Rub0` / `Rub2` / `Rub4` / `Rub0R` / `RubR2` / `fmtNum` / `fmtPrice` | formatting | [docs/utils.md#fmt--numbers-dates-sizes](docs/utils.md#fmt--numbers-dates-sizes) |
 | `fmtDate` / `fmtDateTime` / `fmtDateTimeShort` / `fmtTime` / `fmtDateMonth` / `timeAgo` / `fmtSize` | formatting | [docs/utils.md#dates](docs/utils.md#dates) |
 | `genSlug` | util | [docs/utils.md#genslug--url-slugs](docs/utils.md#genslug--url-slugs) |
@@ -72,7 +76,7 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 
 ## Dependencies
 
-`solid-js ^1.8.0` is the only peer. Runtime deps are small and scoped: `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`), and `fflate` — the latter behind a dynamic `import()`, so it loads only when a ZIP is actually unpacked. `Odata1C` adds nothing at all — it is plain `fetch`.
+`solid-js ^1.8.0` is the only peer. Runtime deps are small and scoped: `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree, DumbGrid), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`), and `fflate` — the latter behind a dynamic `import()`, so it loads only when a ZIP is actually unpacked. `Odata1C` adds nothing at all — it is plain `fetch`.
 
 ## License
 

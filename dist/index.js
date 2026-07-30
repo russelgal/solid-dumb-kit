@@ -581,12 +581,12 @@ function ResizableGrid(props) {
   }
   const colTemplate = () => {
     const s = colSizes();
-    return s.map((v2) => `${v2}fr`).join(` ${HANDLE_SIZE}px `);
+    return s.map((v3) => `${v3}fr`).join(` ${HANDLE_SIZE}px `);
   };
   const row2Template = () => {
     const s = rowSizes();
     if (!s) return "";
-    return s.map((v2) => `${v2}fr`).join(` ${HANDLE_SIZE}px `);
+    return s.map((v3) => `${v3}fr`).join(` ${HANDLE_SIZE}px `);
   };
   const rowTemplate = () => {
     const split = rowSplit();
@@ -1678,13 +1678,1037 @@ function DumbSortable(props) {
     }
   });
 }
-var _tmpl$6 = /* @__PURE__ */ template(`<span class="ml-auto shrink-0 flex items-center gap-1">`);
-var _tmpl$23 = /* @__PURE__ */ template(`<a><span></span><span>`);
-var _tmpl$32 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
-var _tmpl$42 = /* @__PURE__ */ template(`<ul class="pl-3 border-l border-base-200 ml-3">`);
-var _tmpl$52 = /* @__PURE__ */ template(`<li><div class="flex items-center">`);
+
+// src/DumbGrid/gridMath.ts
+function clamp(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, n));
+}
+function createOccupancy() {
+  const busy = /* @__PURE__ */ new Map();
+  const free = (col, row, w, h) => {
+    for (let r = row; r < row + h; r++) {
+      const set = busy.get(r);
+      if (!set) continue;
+      for (let k = col; k < col + w; k++) if (set.has(k)) return false;
+    }
+    return true;
+  };
+  return {
+    free,
+    take(col, row, w, h) {
+      for (let r = row; r < row + h; r++) {
+        let set = busy.get(r);
+        if (!set) busy.set(r, set = /* @__PURE__ */ new Set());
+        for (let k = col; k < col + w; k++) set.add(k);
+      }
+    },
+    /** первое свободное место от (col,row): вправо до края, потом строкой ниже */
+    findFrom(col, row, w, h, cols) {
+      let c = col;
+      let r = row;
+      for (; ; ) {
+        if (c + w > cols) {
+          c = 0;
+          r++;
+          continue;
+        }
+        if (free(c, r, w, h)) return { col: c, row: r };
+        c++;
+      }
+    }
+  };
+}
+var PRESETS = {
+  full: [1, 1],
+  half: [1, 2],
+  third: [1, 3],
+  quarter: [1, 4],
+  "two-thirds": [2, 3],
+  "three-quarters": [3, 4]
+};
+function resolveSpan(value, cols) {
+  const c = Math.max(1, Math.floor(cols));
+  if (value === void 0) return 1;
+  if (typeof value === "number") return clamp(Math.round(value) || 1, 1, c);
+  const named = PRESETS[value];
+  const frac = named ?? (/^\d+\/\d+$/.test(value) ? value.split("/").map(Number) : null);
+  if (!frac) return 1;
+  const [num, den] = frac;
+  if (!den || !Number.isFinite(num)) return 1;
+  return clamp(Math.floor(c * num / den), 1, c);
+}
+function colWidth(contentW, cols, gapX) {
+  const c = Math.max(1, Math.floor(cols));
+  return Math.max(0, (contentW - gapX * (c - 1)) / c);
+}
+function spanSize(n, unit, gap) {
+  return n * unit + (n - 1) * gap;
+}
+function packFlow(items, cols, mode = "flow") {
+  const c = Math.max(1, Math.floor(cols));
+  const grid = createOccupancy();
+  const out = [];
+  let curCol = 0;
+  let curRow = 0;
+  for (const it of items) {
+    const w = clamp(Math.round(it.w) || 1, 1, c);
+    const h = Math.max(1, Math.round(it.h) || 1);
+    const { col, row } = grid.findFrom(mode === "dense" ? 0 : curCol, mode === "dense" ? 0 : curRow, w, h, c);
+    grid.take(col, row, w, h);
+    out.push({ id: it.id, w, h, col, row });
+    curCol = col + w;
+    curRow = row;
+    if (curCol >= c) {
+      curCol = 0;
+      curRow = row + 1;
+    }
+  }
+  return out;
+}
+function placeFree(items, cols) {
+  const c = Math.max(1, Math.floor(cols));
+  const grid = createOccupancy();
+  const out = [];
+  for (const it of items) {
+    const w = clamp(Math.round(it.w) || 1, 1, c);
+    const h = Math.max(1, Math.round(it.h) || 1);
+    const hasPos = Number.isFinite(it.x) && Number.isFinite(it.y);
+    const wantCol = hasPos ? clamp(Math.round(it.x), 0, c - w) : 0;
+    const wantRow = hasPos ? Math.max(0, Math.round(it.y)) : 0;
+    const spot = grid.free(wantCol, wantRow, w, h) ? { col: wantCol, row: wantRow } : grid.findFrom(hasPos ? wantCol : 0, wantRow, w, h, c);
+    grid.take(spot.col, spot.row, w, h);
+    out.push({ id: it.id, w, h, col: spot.col, row: spot.row });
+  }
+  return out;
+}
+function rowCount(placed) {
+  let n = 0;
+  for (const p of placed) n = Math.max(n, p.row + p.h);
+  return n;
+}
+function cellRect(p, m) {
+  return {
+    x: p.col * (m.colW + m.gapX),
+    y: p.row * (m.rowH + m.gapY),
+    width: spanSize(p.w, m.colW, m.gapX),
+    height: spanSize(p.h, m.rowH, m.gapY)
+  };
+}
+function reorder(list, from, to) {
+  const next = list.slice();
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+function insertIndex(args) {
+  const { base, dragId, m, pointerX, pointerY } = args;
+  let k = 0;
+  for (const p of base) {
+    if (p.id === dragId) continue;
+    const r = cellRect(p, m);
+    if (pointerY > r.y + r.height) k++;
+    else if (pointerY >= r.y && pointerX > r.x + r.width / 2) k++;
+  }
+  return k;
+}
+function moveDeltas(args) {
+  const { base, next, m, skipId } = args;
+  const to = /* @__PURE__ */ new Map();
+  for (const p of next) to.set(p.id, p);
+  const out = [];
+  for (const p of base) {
+    if (p.id === skipId) continue;
+    const t = to.get(p.id);
+    if (!t) continue;
+    if (t.col === p.col && t.row === p.row) {
+      out.push({ id: p.id, dx: 0, dy: 0 });
+      continue;
+    }
+    const a = cellRect(p, m);
+    const b = cellRect(t, m);
+    out.push({ id: p.id, dx: b.x - a.x, dy: b.y - a.y });
+  }
+  return out;
+}
+function pointToCell(args) {
+  const { x, y, w, m } = args;
+  const stepX = m.colW + m.gapX;
+  const stepY = m.rowH + m.gapY;
+  const col = stepX > 0 ? Math.round(x / stepX) : 0;
+  const row = stepY > 0 ? Math.round(y / stepY) : 0;
+  return {
+    col: clamp(col, 0, Math.max(0, m.cols - w)),
+    row: Math.max(0, row)
+  };
+}
+function firstFreeCell(args) {
+  const { placed, cols, w, h } = args;
+  const c = Math.max(1, Math.floor(cols));
+  const width = clamp(Math.round(w) || 1, 1, c);
+  const height = Math.max(1, Math.round(h) || 1);
+  const grid = createOccupancy();
+  for (const p of placed) grid.take(p.col, p.row, p.w, p.h);
+  const spot = grid.findFrom(0, 0, width, height, c);
+  return { x: spot.col, y: spot.row };
+}
+function overlaps(args) {
+  const { placed, id, col, row, w, h } = args;
+  for (const p of placed) {
+    if (p.id === id) continue;
+    if (col < p.col + p.w && p.col < col + w && row < p.row + p.h && p.row < row + h) return true;
+  }
+  return false;
+}
+function snapSpan(args) {
+  const { start, dx, dy, m, limits } = args;
+  const stepX = m.colW + m.gapX;
+  const stepY = m.rowH + m.gapY;
+  const lim = limits ?? {};
+  const w = stepX > 0 ? Math.round((spanSize(start.w, m.colW, m.gapX) + dx + m.gapX) / stepX) : start.w;
+  const h = stepY > 0 ? Math.round((spanSize(start.h, m.rowH, m.gapY) + dy + m.gapY) / stepY) : start.h;
+  return {
+    w: clamp(w, Math.max(1, lim.minW ?? 1), Math.min(m.cols, lim.maxW ?? m.cols)),
+    h: clamp(h, Math.max(1, lim.minH ?? 1), lim.maxH ?? Number.MAX_SAFE_INTEGER)
+  };
+}
+function fitSpan(args) {
+  const { placed, id, col, row, want, limits } = args;
+  const minW = Math.max(1, limits?.minW ?? 1);
+  const minH = Math.max(1, limits?.minH ?? 1);
+  let w = Math.max(minW, want.w);
+  let h = Math.max(minH, want.h);
+  while (w > minW && overlaps({ placed, id, col, row, w, h })) w--;
+  while (h > minH && overlaps({ placed, id, col, row, w, h })) h--;
+  return { w, h };
+}
+
+// src/shared/gesture.ts
+var NO_DRAG3 = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
+function targetIsInteractive3(ev) {
+  return ev.target instanceof Element && !!ev.target.closest(NO_DRAG3);
+}
+function focusInside3(el) {
+  const active = document.activeElement;
+  return !!active && active !== document.body && active !== el && el.contains(active);
+}
+var LONGPRESS3 = 350;
+var MOVE_TOL3 = 10;
+function createPressGate(opts = {}) {
+  const pressDelay = opts.pressDelay ?? LONGPRESS3;
+  const mousePress = opts.mousePressDelay ?? 0;
+  const mouseThresh = opts.mouseThreshold ?? 0;
+  let wait = null;
+  const clear = () => {
+    if (!wait) return;
+    if (wait.timer) clearTimeout(wait.timer);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onCancel);
+    window.removeEventListener("pointercancel", onCancel);
+    wait = null;
+  };
+  const listen = () => {
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onCancel);
+    window.addEventListener("pointercancel", onCancel);
+  };
+  function onMove(ev) {
+    if (!wait || ev.pointerId !== wait.pid) return;
+    const moved = Math.abs(ev.clientX - wait.x) > wait.thresh || Math.abs(ev.clientY - wait.y) > wait.thresh;
+    if (!moved) return;
+    if (wait.mode === "press") {
+      clear();
+      return;
+    }
+    const w = wait;
+    clear();
+    w.start(ev.clientX, ev.clientY);
+  }
+  function onCancel(ev) {
+    if (wait && ev.pointerId === wait.pid) clear();
+  }
+  return {
+    arm(ev, start) {
+      if (wait) return;
+      const touch = ev.pointerType === "touch";
+      const delay = touch ? pressDelay : mousePress;
+      if (delay > 0) {
+        wait = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "press", thresh: MOVE_TOL3, start };
+        wait.timer = setTimeout(() => {
+          const w = wait;
+          clear();
+          if (w) {
+            if (touch) navigator.vibrate?.(8);
+            w.start(w.x, w.y);
+          }
+        }, delay);
+        listen();
+        return;
+      }
+      if (!touch && mouseThresh > 0) {
+        wait = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "dist", thresh: mouseThresh, start };
+        listen();
+        return;
+      }
+      ev.preventDefault();
+      start(ev.clientX, ev.clientY);
+    },
+    pending: () => wait !== null,
+    cancel: clear
+  };
+}
+
+// src/DumbGrid/gridCore.ts
+var SLIDE3 = "transform .18s cubic-bezier(.2,.8,.2,1)";
+var LIFT_SHADOW3 = "0 12px 28px -8px rgba(0,0,0,.32)";
+var PREVIEW_BG = "rgba(59,130,246,.10)";
+var PREVIEW_LINE = "2px dashed rgba(59,130,246,.85)";
+var BLOCKED_BG = "rgba(239,68,68,.10)";
+var BLOCKED_LINE = "2px dashed rgba(239,68,68,.85)";
+var ACTIVE_Z = 3;
+var PREVIEW_Z = 5;
+function createGridEngine(opts) {
+  const blockEls = /* @__PURE__ */ new Map();
+  let container = null;
+  let ro = null;
+  let contentW = 0;
+  let padLeft = 0;
+  let padTop = 0;
+  let gesture = null;
+  let activeState = null;
+  const setActive = (state) => {
+    activeState = state;
+    opts.onActive?.(state);
+  };
+  const metrics = () => {
+    const cols = Math.max(1, Math.floor(opts.cols()));
+    const gapX = opts.gapX();
+    return { cols, colW: colWidth(contentW, cols, gapX), rowH: opts.rowHeight(), gapX, gapY: opts.gapY() };
+  };
+  const modeNow = () => opts.mode?.() ?? "flow";
+  const place = (blocks, mode, cols) => mode === "free" ? placeFree(blocks, cols) : packFlow(blocks, cols, mode);
+  function shift(g) {
+    const { sx, sy } = scrollOf(g.scroller);
+    const dx = sx - g.sx0 + (g.scroller ? window.scrollX - g.win0X : 0);
+    const dy = sy - g.sy0 + (g.scroller ? window.scrollY - g.win0Y : 0);
+    return { dx, dy, sy };
+  }
+  function snapOrigin(cb) {
+    const el = container;
+    if (!el || typeof IntersectionObserver !== "function") {
+      cb(null);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      io.disconnect();
+      cb(entries.length ? entries[0].boundingClientRect : null);
+    });
+    io.observe(el);
+  }
+  function slide(g, moves) {
+    for (const mv of moves) {
+      const el = blockEls.get(mv.id);
+      if (!el || el === g.el) continue;
+      if (!mv.dx && !mv.dy) {
+        if (g.touched.has(el)) el.style.transform = "";
+        continue;
+      }
+      if (!g.touched.has(el)) {
+        g.touched.add(el);
+        el.style.willChange = "transform";
+        if (!shouldAnimate(opts.animate)) {
+          el.style.transform = `translate(${mv.dx}px,${mv.dy}px)`;
+          continue;
+        }
+        el.style.transition = SLIDE3;
+        continue;
+      }
+      el.style.transform = `translate(${mv.dx}px,${mv.dy}px)`;
+    }
+  }
+  function resetStyles(g) {
+    const reset = (el) => {
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.zIndex = "";
+      el.style.willChange = "";
+      el.style.boxShadow = "";
+      el.style.opacity = "";
+      el.style.cursor = "";
+    };
+    reset(g.el);
+    for (const el of g.touched) reset(el);
+    g.preview?.remove();
+    g.preview = null;
+  }
+  function showPreview(g, rect, blocked = false) {
+    if (!container) return;
+    if (!g.preview) {
+      const box = document.createElement("div");
+      box.style.cssText = [
+        "position:absolute",
+        "pointer-events:none",
+        "box-sizing:border-box",
+        "border-radius:10px",
+        `z-index:${PREVIEW_Z}`,
+        "outline-offset:-2px",
+        "transition:background .12s ease, outline-color .12s ease"
+      ].join(";");
+      box.dataset.gridPreview = "";
+      container.appendChild(box);
+      g.preview = box;
+    }
+    g.preview.dataset.blocked = blocked ? "" : void 0;
+    g.preview.style.background = blocked ? BLOCKED_BG : PREVIEW_BG;
+    g.preview.style.outline = blocked ? BLOCKED_LINE : PREVIEW_LINE;
+    g.preview.style.width = `${rect.width}px`;
+    g.preview.style.height = `${rect.height}px`;
+    g.preview.style.transform = `translate(${padLeft + rect.x}px,${padTop + rect.y}px)`;
+  }
+  function previewFree(g) {
+    const me = g.base.find((p) => p.id === g.id);
+    if (!me) return;
+    showPreview(g, cellRect({ ...me, col: g.cell.col, row: g.cell.row, ...g.span }, g.m), g.blocked);
+  }
+  function frame() {
+    if (!gesture) return;
+    const g = gesture;
+    if (g.kind === "move") {
+      const s = shift(g);
+      if (g.moved) {
+        const speed = autoScrollSpeed({
+          pointerY: g.lastY,
+          // позиция скроллера во вьюпорте сейчас — арифметикой от снятой,
+          // а не свежим getBoundingClientRect
+          viewTop: g.scroller ? viewOrigin(g.geom, window.scrollX, window.scrollY).top : 0,
+          clientH: g.geom.clientH,
+          scrollY: s.sy,
+          scrollMax: g.geom.max
+        });
+        if (speed) doScroll(g.scroller, 0, speed);
+      }
+      const d = shift(g);
+      g.el.style.transform = `translate(${g.lastX - g.startX + d.dx}px,${g.lastY - g.startY + d.dy}px)`;
+      if (!g.ready) {
+        g.raf = requestAnimationFrame(frame);
+        return;
+      }
+      if (g.mode === "free") {
+        const me = g.base.find((p) => p.id === g.id);
+        if (!me) {
+          g.raf = requestAnimationFrame(frame);
+          return;
+        }
+        const at = cellRect(me, g.m);
+        const cell = pointToCell({
+          x: at.x + (g.lastX - g.startX + d.dx),
+          y: at.y + (g.lastY - g.startY + d.dy),
+          w: g.span.w,
+          m: g.m
+        });
+        const blocked = overlaps({ placed: g.base, id: g.id, ...cell, ...g.span });
+        if (cell.col !== g.cell.col || cell.row !== g.cell.row || blocked !== g.blocked) {
+          g.cell = cell;
+          g.blocked = blocked;
+          previewFree(g);
+        }
+      } else {
+        const pX = g.lastX - (g.gridLeft - d.dx);
+        const pY = g.lastY - (g.gridTop - d.dy);
+        const k = insertIndex({ base: g.base, dragId: g.id, m: g.m, pointerX: pX, pointerY: pY });
+        if (k !== g.toIndex) {
+          g.toIndex = k;
+          const next = packFlow(reorder(g.blocks, g.fromIndex, k), g.m.cols, g.mode);
+          slide(g, moveDeltas({ base: g.base, next, m: g.m, skipId: g.id }));
+        }
+      }
+    } else if (g.ready) {
+      const d = shift(g);
+      const dx = g.lastX - g.startX + d.dx;
+      const dy = g.lastY - g.startY + d.dy;
+      const limits = g.blocks[g.fromIndex];
+      const want = snapSpan({ start: { w: limits.w, h: limits.h }, dx, dy, m: g.m, limits });
+      const span = g.mode === "free" ? fitSpan({ placed: g.base, id: g.id, ...g.cell, want, limits }) : want;
+      if (span.w !== g.span.w || span.h !== g.span.h) {
+        g.span = span;
+        if (g.mode === "free") {
+          previewFree(g);
+        } else {
+          const resized = g.blocks.map((b, i) => i === g.fromIndex ? { ...b, ...span } : b);
+          const next = packFlow(resized, g.m.cols, g.mode);
+          slide(g, moveDeltas({ base: g.base, next, m: g.m, skipId: g.id }));
+          const me = next.find((p) => p.id === g.id);
+          if (me) showPreview(g, cellRect(me, g.m));
+        }
+      }
+    }
+    g.raf = requestAnimationFrame(frame);
+  }
+  function onMove(ev) {
+    if (!gesture || ev.pointerId !== gesture.pid) return;
+    if (!gesture.moved && (Math.abs(ev.clientX - gesture.startX) > 2 || Math.abs(ev.clientY - gesture.startY) > 2)) {
+      gesture.moved = true;
+    }
+    gesture.lastX = ev.clientX;
+    gesture.lastY = ev.clientY;
+  }
+  function detach() {
+    restoreTextSelection();
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+  }
+  function cleanup() {
+    if (!gesture) return;
+    const g = gesture;
+    if (g.raf) cancelAnimationFrame(g.raf);
+    detach();
+    resetStyles(g);
+    gesture = null;
+    setActive(null);
+  }
+  function land(g, done) {
+    const from = g.base.find((p) => p.id === g.id);
+    const to = g.mode === "free" ? from && !g.blocked ? { ...from, col: g.cell.col, row: g.cell.row } : from : place(reorder(g.blocks, g.fromIndex, g.toIndex), g.mode, g.m.cols).find((p) => p.id === g.id);
+    if (!shouldAnimate(opts.animate) || !from || !to) {
+      done();
+      return;
+    }
+    const a = cellRect(from, g.m);
+    const b = cellRect(to, g.m);
+    const el = g.el;
+    el.style.transition = SLIDE3;
+    el.style.transform = `translate(${b.x - a.x}px,${b.y - a.y}px)`;
+    let fired = false;
+    const finish = () => {
+      if (fired) return;
+      fired = true;
+      el.removeEventListener("transitionend", finish);
+      done();
+    };
+    el.addEventListener("transitionend", finish);
+    setTimeout(finish, 240);
+  }
+  function onUp(ev) {
+    if (!gesture || ev.pointerId !== gesture.pid) return;
+    const g = gesture;
+    const { kind, mode, id, fromIndex, toIndex, span, ready } = g;
+    if (kind === "resize") {
+      const before = g.blocks[fromIndex];
+      cleanup();
+      if (ready && before && (span.w !== before.w || span.h !== before.h)) opts.onResize(id, span.w, span.h);
+      return;
+    }
+    if (mode === "free") {
+      const home = g.base.find((p) => p.id === id);
+      const moved = !!home && (g.cell.col !== home.col || g.cell.row !== home.row);
+      if (!ready || g.blocked || !moved) {
+        cleanup();
+        return;
+      }
+      detach();
+      if (g.raf) cancelAnimationFrame(g.raf);
+      gesture = null;
+      setActive(null);
+      land(g, () => {
+        resetStyles(g);
+        opts.onMove?.(id, g.cell.col, g.cell.row);
+      });
+      return;
+    }
+    if (!ready || toIndex === fromIndex) {
+      cleanup();
+      return;
+    }
+    detach();
+    if (g.raf) cancelAnimationFrame(g.raf);
+    gesture = null;
+    setActive(null);
+    land(g, () => {
+      resetStyles(g);
+      opts.onReorder(fromIndex, toIndex);
+    });
+  }
+  function begin(kind, id, handle, pid, x, y) {
+    const el = blockEls.get(id);
+    if (!el || !container) return;
+    if (kind === "move" && handle === el && focusInside3(el)) return;
+    const blocks = opts.blocks();
+    const fromIndex = blocks.findIndex((b) => b.id === id);
+    if (fromIndex < 0 || blocks[fromIndex].locked) return;
+    const m = metrics();
+    if (!m.colW) return;
+    const mode = modeNow();
+    const base = place(blocks, mode, m.cols);
+    const home = base.find((p) => p.id === id);
+    const scroller = scrollParent(el);
+    const geom = measure(scroller);
+    const s0 = scrollOf(scroller);
+    gesture = {
+      kind,
+      mode,
+      id,
+      pid,
+      el,
+      startX: x,
+      startY: y,
+      lastX: x,
+      lastY: y,
+      blocks,
+      base,
+      m,
+      fromIndex,
+      toIndex: fromIndex,
+      span: { w: blocks[fromIndex].w, h: blocks[fromIndex].h },
+      cell: { col: home?.col ?? 0, row: home?.row ?? 0 },
+      blocked: false,
+      scroller,
+      geom,
+      sx0: s0.sx,
+      sy0: s0.sy,
+      win0X: window.scrollX,
+      win0Y: window.scrollY,
+      gridLeft: 0,
+      gridTop: 0,
+      ready: false,
+      moved: false,
+      raf: 0,
+      touched: /* @__PURE__ */ new Set(),
+      preview: null
+    };
+    setActive({ id, kind });
+    el.style.zIndex = `${ACTIVE_Z}`;
+    el.style.willChange = "transform";
+    el.style.transition = "box-shadow .15s ease, opacity .15s ease";
+    if (kind === "move") {
+      el.style.boxShadow = LIFT_SHADOW3;
+      el.style.opacity = "0.97";
+      el.style.cursor = "grabbing";
+    }
+    suppressTextSelection();
+    snapOrigin((rect) => {
+      if (!gesture || gesture.id !== id || gesture.pid !== pid) return;
+      if (rect) {
+        const d = shift(gesture);
+        gesture.gridLeft = rect.left + padLeft + d.dx;
+        gesture.gridTop = rect.top + padTop + d.dy;
+      }
+      gesture.ready = true;
+      if (gesture.kind === "resize" || gesture.mode === "free") previewFree(gesture);
+    });
+    try {
+      handle.setPointerCapture(pid);
+    } catch {
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    gesture.raf = requestAnimationFrame(frame);
+  }
+  const gate = createPressGate(opts);
+  function canStart() {
+    return !opts.disabled?.() && !gesture && !gate.pending();
+  }
+  return {
+    attachContainer(el) {
+      container = el;
+      if (typeof ResizeObserver === "function") {
+        ro = new ResizeObserver((entries) => {
+          const r = entries[entries.length - 1]?.contentRect;
+          if (!r) return;
+          contentW = r.width;
+          padLeft = r.left;
+          padTop = r.top;
+        });
+        ro.observe(el);
+      }
+      return () => {
+        ro?.disconnect();
+        ro = null;
+        if (container === el) container = null;
+      };
+    },
+    attach(el, id) {
+      blockEls.set(id, el);
+      const down = (ev) => {
+        if (ev.button !== 0 || !canStart()) return;
+        if (ev.target instanceof Element && ev.target.closest("[data-grid-resize]")) return;
+        const handle2 = el.querySelector("[data-drag-handle]");
+        if (handle2) {
+          if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
+        } else if (targetIsInteractive3(ev)) {
+          return;
+        }
+        gate.arm(ev, (x, y) => begin("move", id, handle2 || el, ev.pointerId, x, y));
+      };
+      el.addEventListener("pointerdown", down);
+      const handle = el.querySelector("[data-drag-handle]");
+      if (handle) handle.style.touchAction = "none";
+      return () => {
+        el.removeEventListener("pointerdown", down);
+        if (blockEls.get(id) === el) blockEls.delete(id);
+      };
+    },
+    attachResize(el, id) {
+      el.dataset.gridResize = "";
+      el.style.touchAction = "none";
+      const down = (ev) => {
+        if (ev.button !== 0 || !canStart() || opts.resizable?.() === false) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        begin("resize", id, el, ev.pointerId, ev.clientX, ev.clientY);
+      };
+      el.addEventListener("pointerdown", down);
+      return () => el.removeEventListener("pointerdown", down);
+    },
+    colWidth: () => metrics().colW,
+    active: () => activeState,
+    destroy() {
+      gate.cancel();
+      cleanup();
+      ro?.disconnect();
+      ro = null;
+      container = null;
+      blockEls.clear();
+    }
+  };
+}
+
+// src/DumbGrid/solid.ts
+function createDumbGrid(opts) {
+  const [active, setActive] = createSignal(null);
+  const engine = createGridEngine({
+    ...opts,
+    onActive: (state) => {
+      setActive(state);
+      opts.onActive?.(state);
+    }
+  });
+  onCleanup(engine.destroy);
+  return {
+    container: (el) => onCleanup(engine.attachContainer(el)),
+    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
+    resize: (id) => (el) => onCleanup(engine.attachResize(el, id)),
+    active
+  };
+}
+
+// src/DumbGrid/DumbGrid.tsx
+var _tmpl$6 = /* @__PURE__ */ template(`<div data-grid-lines aria-hidden=true style="position:absolute;inset:0;padding:inherit;box-sizing:border-box;pointer-events:none;z-index:0;background-origin:content-box;background-clip:content-box;background-repeat:no-repeat, repeat;transition:opacity .15s ease">`);
+var _tmpl$23 = /* @__PURE__ */ template(`<div style=display:grid;position:relative;scrollbar-gutter:stable>`);
+var _tmpl$32 = /* @__PURE__ */ template(`<button type=button data-grid-remove data-no-drag style=position:absolute;top:0;right:0;width:22px;height:22px;display:grid;place-items:center;padding:0;border:none;background:transparent;color:currentColor;font:inherit;line-height:1;cursor:pointer;opacity:0.45;z-index:2>\u2715`);
+var _tmpl$42 = /* @__PURE__ */ template(`<div style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55% 70%, currentColor 70% 80%, transparent 80%);border-bottom-right-radius:8px">`);
+var _tmpl$52 = /* @__PURE__ */ template(`<div style=position:relative;z-index:1;min-width:0;min-height:0;box-sizing:border-box;touch-action:manipulation>`);
+var DEFAULT_COLS = 12;
+var DEFAULT_ROW_H = 80;
+var DEFAULT_GAP = 12;
+var LayoutSchema = v.array(v.object({
+  id: v.string(),
+  w: v.number(),
+  h: v.number(),
+  x: v.optional(v.number()),
+  y: v.optional(v.number())
+}));
+function clampInt(n, lo, hi) {
+  const i = Math.round(n);
+  if (!Number.isFinite(i)) return lo;
+  return Math.max(lo, Math.min(hi, i));
+}
+function spanOf(item, src, cols) {
+  const minW = item.minW === void 0 ? 1 : resolveSpan(item.minW, cols);
+  const maxW = item.maxW === void 0 ? cols : resolveSpan(item.maxW, cols);
+  const w = clampInt(src.w, Math.max(1, minW), Math.min(cols, maxW));
+  const out = {
+    id: item.id,
+    w,
+    h: clampInt(src.h, Math.max(1, item.minH ?? 1), item.maxH ?? Number.MAX_SAFE_INTEGER)
+  };
+  if (Number.isFinite(src.x)) out.x = clampInt(src.x, 0, Math.max(0, cols - w));
+  if (Number.isFinite(src.y)) out.y = Math.max(0, Math.round(src.y));
+  return out;
+}
+function mergeLayout(saved, items, cols, mode = "flow") {
+  const byId = new Map(items.map((it) => [it.id, it]));
+  const out = [];
+  for (const s of saved ?? []) {
+    const it = byId.get(s.id);
+    if (!it) continue;
+    out.push(spanOf(it, s, cols));
+    byId.delete(s.id);
+  }
+  for (const it of items) {
+    if (!byId.has(it.id)) continue;
+    const w = resolveSpan(it.w, cols);
+    const h = Math.max(1, Math.round(it.h ?? 1) || 1);
+    const spot = mode === "free" && it.x === void 0 && it.y === void 0 && out.length ? firstFreeCell({
+      placed: placeFree(out, cols),
+      cols,
+      w,
+      h
+    }) : {
+      x: it.x,
+      y: it.y
+    };
+    out.push(spanOf(it, {
+      w,
+      h,
+      x: spot.x,
+      y: spot.y
+    }, cols));
+  }
+  return out;
+}
+var GRID_LINE = "rgba(100,116,139,.28)";
+function gridLinesBackground(args) {
+  const {
+    cols,
+    gapX,
+    rowH,
+    gapY
+  } = args;
+  const col = `calc((100% - ${(cols - 1) * gapX}px) / ${cols})`;
+  const stepX = `calc(${col} + ${gapX}px)`;
+  const lineW = Math.max(1, gapX);
+  const lineH = Math.max(1, gapY);
+  const stops = ["transparent 0"];
+  for (let i = 1; i < cols; i++) {
+    const at = `calc(${stepX} * ${i} - ${gapX}px)`;
+    const to = `calc(${stepX} * ${i} - ${gapX}px + ${lineW}px)`;
+    stops.push(`transparent ${at}`, `${GRID_LINE} ${at}`, `${GRID_LINE} ${to}`, `transparent ${to}`);
+  }
+  stops.push("transparent 100%");
+  const stepY = rowH + gapY;
+  return {
+    image: [`linear-gradient(to right, ${stops.join(", ")})`, `linear-gradient(to bottom, transparent 0, transparent ${stepY - lineH}px, ${GRID_LINE} ${stepY - lineH}px, ${GRID_LINE} ${stepY}px)`].join(", "),
+    // вертикальные линии — на всю ширину (тайлить нельзя, см. выше),
+    // горизонтальные — тайлом в одну строку
+    size: `100% 100%, 100% ${stepY}px`
+  };
+}
+function DumbGrid(props) {
+  const mode = () => props.mode ?? "flow";
+  const cols = () => Math.max(1, Math.floor(props.cols ?? DEFAULT_COLS));
+  const rowH = () => props.rowHeight ?? DEFAULT_ROW_H;
+  const gapX = () => props.gapX ?? props.gap ?? DEFAULT_GAP;
+  const gapY = () => props.gapY ?? props.gap ?? DEFAULT_GAP;
+  const persisted = props.storageKey ? makePersisted(createSignal(null), {
+    name: props.storageKey,
+    serialize: (l) => JSON.stringify(l ?? []),
+    deserialize: (raw) => {
+      try {
+        const parsed = v.safeParse(LayoutSchema, JSON.parse(raw));
+        return parsed.success ? parsed.output : null;
+      } catch {
+        return null;
+      }
+    }
+  }) : null;
+  const [memory, setMemory] = createSignal(null);
+  const saved = () => props.layout ?? (persisted ? persisted[0]() : memory());
+  const layout = createMemo(() => mergeLayout(saved(), props.items, cols(), mode()));
+  const commit = (next) => {
+    if (!props.layout) (persisted ? persisted[1] : setMemory)(next);
+    props.onLayout?.(next);
+  };
+  const placed = createMemo(() => {
+    const m = mode();
+    return m === "free" ? placeFree(layout(), cols()) : packFlow(layout(), cols(), m);
+  });
+  const rows = createMemo(() => rowCount(placed()));
+  const itemById = createMemo(() => new Map(props.items.map((it) => [it.id, it])));
+  const materialize = (next) => {
+    if (mode() !== "free") return next;
+    const pos = new Map(placeFree(next, cols()).map((p) => [p.id, p]));
+    return next.map((s) => {
+      const p = pos.get(s.id);
+      return p ? {
+        ...s,
+        x: p.col,
+        y: p.row
+      } : s;
+    });
+  };
+  const g = createDumbGrid({
+    blocks: () => {
+      const map = itemById();
+      const c = cols();
+      return layout().map((s) => {
+        const it = map.get(s.id);
+        return {
+          ...s,
+          minW: it?.minW === void 0 ? void 0 : resolveSpan(it.minW, c),
+          maxW: it?.maxW === void 0 ? void 0 : resolveSpan(it.maxW, c),
+          minH: it?.minH,
+          maxH: it?.maxH,
+          locked: it?.locked
+        };
+      });
+    },
+    mode,
+    cols,
+    rowHeight: rowH,
+    gapX,
+    gapY,
+    disabled: () => props.disabled === true,
+    resizable: () => props.resizable !== false,
+    animate: props.animate,
+    pressDelay: props.pressDelay,
+    mouseThreshold: props.mouseThreshold,
+    onReorder: (from, to) => commit(materialize(reorder(layout(), from, to))),
+    onMove: (id, x, y) => commit(materialize(layout().map((s) => s.id === id ? {
+      ...s,
+      x,
+      y
+    } : s))),
+    onResize: (id, w, h) => {
+      const it = itemById().get(id);
+      if (!it) return;
+      commit(materialize(layout().map((s) => s.id === id ? spanOf(it, {
+        ...s,
+        w,
+        h
+      }, cols()) : s)));
+    }
+  });
+  const posOf = (id) => placed().find((p) => p.id === id);
+  const spare = () => Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0));
+  const totalRows = () => rows() + spare();
+  const heightOf = (n) => n * rowH() + Math.max(0, n - 1) * gapY();
+  const showGrid = () => props.showGrid ?? "drag";
+  const gridVisible = () => showGrid() === true || showGrid() === "drag" && !!g.active();
+  const gridBackground = () => gridLinesBackground({
+    cols: cols(),
+    gapX: gapX(),
+    rowH: rowH(),
+    gapY: gapY()
+  });
+  return (() => {
+    var _el$ = _tmpl$23();
+    var _ref$ = g.container;
+    typeof _ref$ === "function" ? use(_ref$, _el$) : g.container = _el$;
+    insert(_el$, createComponent(Show, {
+      get when() {
+        return showGrid() !== false;
+      },
+      get children() {
+        var _el$2 = _tmpl$6();
+        effect((_p$) => {
+          var _v$ = gridBackground().image, _v$2 = gridBackground().size, _v$3 = gridVisible() ? "1" : "0";
+          _v$ !== _p$.e && setStyleProperty(_el$2, "background-image", _p$.e = _v$);
+          _v$2 !== _p$.t && setStyleProperty(_el$2, "background-size", _p$.t = _v$2);
+          _v$3 !== _p$.a && setStyleProperty(_el$2, "opacity", _p$.a = _v$3);
+          return _p$;
+        }, {
+          e: void 0,
+          t: void 0,
+          a: void 0
+        });
+        return _el$2;
+      }
+    }), null);
+    insert(_el$, createComponent(For, {
+      get each() {
+        return layout();
+      },
+      children: (span) => {
+        const item = () => itemById().get(span.id);
+        const pos = () => posOf(span.id);
+        const dragging = () => g.active()?.id === span.id;
+        return createComponent(Show, {
+          get when() {
+            return item();
+          },
+          children: (it) => (() => {
+            var _el$3 = _tmpl$52();
+            var _ref$2 = g.bind(span.id);
+            typeof _ref$2 === "function" && use(_ref$2, _el$3);
+            insert(_el$3, () => it().content(), null);
+            insert(_el$3, createComponent(Show, {
+              get when() {
+                return memo(() => !!props.onRemove)() && it().removable !== false;
+              },
+              get children() {
+                var _el$4 = _tmpl$32();
+                _el$4.$$click = () => props.onRemove?.(span.id);
+                effect((_p$) => {
+                  var _v$6 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A", _v$7 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A";
+                  _v$6 !== _p$.e && setAttribute(_el$4, "title", _p$.e = _v$6);
+                  _v$7 !== _p$.t && setAttribute(_el$4, "aria-label", _p$.t = _v$7);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0
+                });
+                return _el$4;
+              }
+            }), null);
+            insert(_el$3, createComponent(Show, {
+              get when() {
+                return memo(() => !!(props.resizable !== false && !it().locked))() && !props.disabled;
+              },
+              get children() {
+                var _el$5 = _tmpl$42();
+                var _ref$3 = g.resize(span.id);
+                typeof _ref$3 === "function" && use(_ref$3, _el$5);
+                effect((_p$) => {
+                  var _v$8 = props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440", _v$9 = dragging() ? "0.9" : "0.35";
+                  _v$8 !== _p$.e && setAttribute(_el$5, "title", _p$.e = _v$8);
+                  _v$9 !== _p$.t && setStyleProperty(_el$5, "opacity", _p$.t = _v$9);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0
+                });
+                return _el$5;
+              }
+            }), null);
+            effect((_p$) => {
+              var _v$0 = props.blockClass, _v$1 = {
+                // ЯВНАЯ позиция: раскладку считаем мы, браузер не домысливает
+                "grid-column": `${(pos()?.col ?? 0) + 1} / span ${span.w}`,
+                "grid-row": `${(pos()?.row ?? 0) + 1} / span ${span.h}`,
+                cursor: it().locked || props.disabled ? "default" : "grab",
+                ...props.blockStyle
+              };
+              _v$0 !== _p$.e && className(_el$3, _p$.e = _v$0);
+              _p$.t = style(_el$3, _v$1, _p$.t);
+              return _p$;
+            }, {
+              e: void 0,
+              t: void 0
+            });
+            return _el$3;
+          })()
+        });
+      }
+    }), null);
+    effect((_p$) => {
+      var _v$4 = props.class, _v$5 = {
+        "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
+        "grid-auto-rows": `${rowH()}px`,
+        "column-gap": `${gapX()}px`,
+        "row-gap": `${gapY()}px`,
+        // высота под все строки плюс запас, чтобы блок было куда увести вниз
+        "min-height": `${heightOf(totalRows())}px`,
+        ...props.style
+      };
+      _v$4 !== _p$.e && className(_el$, _p$.e = _v$4);
+      _p$.t = style(_el$, _v$5, _p$.t);
+      return _p$;
+    }, {
+      e: void 0,
+      t: void 0
+    });
+    return _el$;
+  })();
+}
+delegateEvents(["click"]);
+var _tmpl$7 = /* @__PURE__ */ template(`<span class="ml-auto shrink-0 flex items-center gap-1">`);
+var _tmpl$24 = /* @__PURE__ */ template(`<a><span></span><span>`);
+var _tmpl$33 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
+var _tmpl$43 = /* @__PURE__ */ template(`<ul class="pl-3 border-l border-base-200 ml-3">`);
+var _tmpl$53 = /* @__PURE__ */ template(`<li><div class="flex items-center">`);
 var _tmpl$62 = /* @__PURE__ */ template(`<span class="w-5 shrink-0">`);
-var _tmpl$7 = /* @__PURE__ */ template(`<div class="text-xs opacity-50 mb-2 px-1">`);
+var _tmpl$72 = /* @__PURE__ */ template(`<div class="text-xs opacity-50 mb-2 px-1">`);
 var _tmpl$8 = /* @__PURE__ */ template(`<label class="input input-sm input-bordered flex items-center gap-2 mb-2 w-full"><span></span><input class=grow>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<div class="join mb-2 w-full"><button><span></span></button><button><span>`);
 var _tmpl$0 = /* @__PURE__ */ template(`<ul class="bg-base-100 rounded-box shadow w-full text-sm p-2 max-h-[80vh] overflow-auto">`);
@@ -1787,7 +2811,7 @@ function DumbTree(props) {
   });
   const defaultTitle = (n) => `${n.title}${n.meta ? " \xB7 " + n.meta : ""} \xB7 id ${n.id}`;
   const RowLink = (p) => (() => {
-    var _el$ = _tmpl$23(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling;
+    var _el$ = _tmpl$24(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling;
     _el$.$$click = () => props.onSelect?.(p.node.id, p.node);
     insert(_el$3, () => p.node.title);
     insert(_el$, createComponent(Show, {
@@ -1795,7 +2819,7 @@ function DumbTree(props) {
         return props.rowExtra;
       },
       get children() {
-        var _el$4 = _tmpl$6();
+        var _el$4 = _tmpl$7();
         insert(_el$4, () => props.rowExtra(p.node));
         return _el$4;
       }
@@ -1824,7 +2848,7 @@ function DumbTree(props) {
         return memo(() => !!node())() && (!visible() || visible().has(p.id));
       },
       get children() {
-        var _el$5 = _tmpl$52(), _el$6 = _el$5.firstChild;
+        var _el$5 = _tmpl$53(), _el$6 = _el$5.firstChild;
         insert(_el$6, createComponent(Show, {
           get when() {
             return kids().length;
@@ -1833,7 +2857,7 @@ function DumbTree(props) {
             return _tmpl$62();
           },
           get children() {
-            var _el$7 = _tmpl$32(), _el$8 = _el$7.firstChild;
+            var _el$7 = _tmpl$33(), _el$8 = _el$7.firstChild;
             _el$7.$$click = () => toggle(p.id);
             effect(() => className(_el$8, `size-4 ${isExpanded() ? icons().expanded : icons().collapsed}`));
             return _el$7;
@@ -1852,7 +2876,7 @@ function DumbTree(props) {
             return memo(() => !!isExpanded())() && kids().length;
           },
           get children() {
-            var _el$9 = _tmpl$42();
+            var _el$9 = _tmpl$43();
             insert(_el$9, createComponent(For, {
               get each() {
                 return kids();
@@ -1877,7 +2901,7 @@ function DumbTree(props) {
         return props.title;
       },
       get children() {
-        var _el$10 = _tmpl$7();
+        var _el$10 = _tmpl$72();
         insert(_el$10, () => props.title);
         return _el$10;
       }
@@ -1996,12 +3020,12 @@ function DumbTree(props) {
 }
 delegateEvents(["click", "input"]);
 var _tmpl$13 = /* @__PURE__ */ template(`<span aria-hidden=true style=margin-left:4px>`);
-var _tmpl$24 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
-var _tmpl$33 = /* @__PURE__ */ template(`<tfoot>`);
-var _tmpl$43 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
-var _tmpl$53 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
+var _tmpl$25 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
+var _tmpl$34 = /* @__PURE__ */ template(`<tfoot>`);
+var _tmpl$44 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
+var _tmpl$54 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
 var _tmpl$63 = /* @__PURE__ */ template(`<th style=width:1%>`);
-var _tmpl$72 = /* @__PURE__ */ template(`<tr>`);
+var _tmpl$73 = /* @__PURE__ */ template(`<tr>`);
 var _tmpl$82 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
 var _tmpl$92 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
 var _tmpl$02 = /* @__PURE__ */ template(`<td style="padding:6px 8px">`);
@@ -2097,7 +3121,7 @@ function DumbTable(props) {
     } : {}
   });
   return (() => {
-    var _el$2 = _tmpl$53();
+    var _el$2 = _tmpl$54();
     insert(_el$2, createComponent(Show, {
       get when() {
         return visibleRows().length;
@@ -2106,13 +3130,13 @@ function DumbTable(props) {
         return props.empty;
       },
       get children() {
-        var _el$3 = _tmpl$43(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
+        var _el$3 = _tmpl$44(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
         insert(_el$4, createComponent(For, {
           get each() {
             return table.getHeaderGroups();
           },
           children: (hg) => (() => {
-            var _el$9 = _tmpl$72();
+            var _el$9 = _tmpl$73();
             insert(_el$9, createComponent(Show, {
               get when() {
                 return memo(() => !!props.onReorder)() && withHandle();
@@ -2169,7 +3193,7 @@ function DumbTable(props) {
             return props.spacerTop;
           },
           get children() {
-            var _el$6 = _tmpl$24();
+            var _el$6 = _tmpl$25();
             effect((_$p) => setStyleProperty(_el$6, "height", `${props.spacerTop}px`));
             return _el$6;
           }
@@ -2181,7 +3205,7 @@ function DumbTable(props) {
           children: (original) => {
             const row = () => rowOf(original);
             return (() => {
-              var _el$10 = _tmpl$72();
+              var _el$10 = _tmpl$73();
               _el$10.$$click = () => props.onRowClick?.(original, row().index);
               var _ref$ = props.onReorder ? sortable.bind(row().id) : void 0;
               typeof _ref$ === "function" && use(_ref$, _el$10);
@@ -2255,7 +3279,7 @@ function DumbTable(props) {
             return props.spacerBottom;
           },
           get children() {
-            var _el$7 = _tmpl$24();
+            var _el$7 = _tmpl$25();
             effect((_$p) => setStyleProperty(_el$7, "height", `${props.spacerBottom}px`));
             return _el$7;
           }
@@ -2265,7 +3289,7 @@ function DumbTable(props) {
             return props.footer;
           },
           get children() {
-            var _el$8 = _tmpl$33();
+            var _el$8 = _tmpl$34();
             insert(_el$8, () => props.footer);
             return _el$8;
           }
@@ -2296,10 +3320,10 @@ function DumbTable(props) {
 }
 delegateEvents(["click"]);
 var _tmpl$14 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px>`);
-var _tmpl$25 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px;flex-wrap:wrap><button>\xAB</button><button>\xBB`);
-var _tmpl$34 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
-var _tmpl$44 = /* @__PURE__ */ template(`<button>`);
-var _tmpl$54 = /* @__PURE__ */ template(`<span style="padding:3px 4px;opacity:.4">\u2026`);
+var _tmpl$26 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px;flex-wrap:wrap><button>\xAB</button><button>\xBB`);
+var _tmpl$35 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
+var _tmpl$45 = /* @__PURE__ */ template(`<button>`);
+var _tmpl$55 = /* @__PURE__ */ template(`<span style="padding:3px 4px;opacity:.4">\u2026`);
 function buildPageNumbers(current, total) {
   if (total <= 10) return Array.from({
     length: total
@@ -2337,7 +3361,7 @@ function DumbPagination(props) {
     "font-weight": active ? "700" : "400"
   });
   return (() => {
-    var _el$ = _tmpl$34(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
+    var _el$ = _tmpl$35(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
     insert(_el$3, summary);
     insert(_el$2, createComponent(Show, {
       get when() {
@@ -2350,7 +3374,7 @@ function DumbPagination(props) {
             return props.pageSizes;
           },
           children: (size) => (() => {
-            var _el$8 = _tmpl$44();
+            var _el$8 = _tmpl$45();
             _el$8.$$click = () => props.onPageSizeChange(size);
             insert(_el$8, size);
             effect((_p$) => {
@@ -2373,7 +3397,7 @@ function DumbPagination(props) {
         return pages() > 1;
       },
       get children() {
-        var _el$5 = _tmpl$25(), _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling;
+        var _el$5 = _tmpl$26(), _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling;
         _el$6.$$click = () => props.onPageChange(props.page - 1);
         insert(_el$5, createComponent(For, {
           get each() {
@@ -2382,10 +3406,10 @@ function DumbPagination(props) {
           children: (p) => createComponent(Show, {
             when: p !== "\u2026",
             get fallback() {
-              return _tmpl$54();
+              return _tmpl$55();
             },
             get children() {
-              var _el$9 = _tmpl$44();
+              var _el$9 = _tmpl$45();
               _el$9.$$click = () => props.onPageChange(p);
               insert(_el$9, p);
               effect((_p$) => {
@@ -2470,10 +3494,10 @@ var OdataClient = class {
   /** Сборка URL: параметры кодируются вручную (`%20`, не `+`) */
   url(resource, params = {}) {
     const all = {
-      ...Object.fromEntries(Object.entries(params).map(([k, v2]) => [k, String(v2)])),
+      ...Object.fromEntries(Object.entries(params).map(([k, v3]) => [k, String(v3)])),
       $format: JSON_NOMETA
     };
-    const qs = Object.entries(all).map(([k, v2]) => `${encodeURIComponent(k)}=${encodeURIComponent(v2)}`).join("&");
+    const qs = Object.entries(all).map(([k, v3]) => `${encodeURIComponent(k)}=${encodeURIComponent(v3)}`).join("&");
     return `${this.baseUrl}/${encodeURI(resource)}?${qs}`;
   }
   async request(resource, params = {}, init = {}) {
@@ -2568,37 +3592,37 @@ var RubIntl0 = new Intl.NumberFormat("ru-RU", {
 var RubIntl4 = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 4
 });
-function toNum(v2) {
-  if (v2 == null || v2 === "") return null;
-  const n = typeof v2 === "string" ? parseFloat(v2) : Number(v2);
+function toNum(v3) {
+  if (v3 == null || v3 === "") return null;
+  const n = typeof v3 === "string" ? parseFloat(v3) : Number(v3);
   return Number.isFinite(n) ? n : null;
 }
-function RubR2(v2) {
-  const n = toNum(v2);
+function RubR2(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) + " \u20BD" : "";
 }
-function Rub2(v2) {
-  const n = toNum(v2);
+function Rub2(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) : "";
 }
-function Rub0(v2) {
-  const n = toNum(v2);
+function Rub0(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) : "";
 }
-function Rub0R(v2) {
-  const n = toNum(v2);
+function Rub0R(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) + " \u20BD" : "";
 }
-function Rub4(v2) {
-  const n = toNum(v2);
+function Rub4(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl4.format(n) : "";
 }
-function fmtNum(v2) {
-  const n = toNum(v2);
+function fmtNum(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) : "\u2014";
 }
-function fmtPrice(v2) {
-  const n = toNum(v2);
+function fmtPrice(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) + " \u20BD" : "\u2014";
 }
 var DateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
@@ -2631,29 +3655,29 @@ var DateMonthFmt = new Intl.DateTimeFormat("ru-RU", {
   month: "short",
   year: "numeric"
 });
-function toDate(v2) {
-  if (v2 == null || v2 === "") return null;
-  const d = v2 instanceof Date ? v2 : new Date(v2);
+function toDate(v3) {
+  if (v3 == null || v3 === "") return null;
+  const d = v3 instanceof Date ? v3 : new Date(v3);
   return isNaN(d.getTime()) ? null : d;
 }
-function fmtDateTime(v2) {
-  const d = toDate(v2);
+function fmtDateTime(v3) {
+  const d = toDate(v3);
   return d ? DateTimeFmt.format(d) : "";
 }
-function fmtDateTimeShort(v2) {
-  const d = toDate(v2);
+function fmtDateTimeShort(v3) {
+  const d = toDate(v3);
   return d ? DateTimeShortFmt.format(d) : "";
 }
-function fmtDate(v2) {
-  const d = toDate(v2);
+function fmtDate(v3) {
+  const d = toDate(v3);
   return d ? DateFmt.format(d) : "";
 }
-function fmtTime(v2) {
-  const d = toDate(v2);
+function fmtTime(v3) {
+  const d = toDate(v3);
   return d ? TimeFmt.format(d) : "";
 }
-function fmtDateMonth(v2) {
-  const d = toDate(v2);
+function fmtDateMonth(v3) {
+  const d = toDate(v3);
   return d ? DateMonthFmt.format(d) : "";
 }
 function fmtSize(bytes) {
@@ -2661,8 +3685,8 @@ function fmtSize(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} \u041A\u0411`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} \u041C\u0411`;
 }
-function timeAgo(v2) {
-  const d = toDate(v2);
+function timeAgo(v3) {
+  const d = toDate(v3);
   if (!d) return "\u2014";
   const diff = Date.now() - d.getTime();
   if (diff < 0) return "\u0442\u043E\u043B\u044C\u043A\u043E \u0447\u0442\u043E";
@@ -2760,4 +3784,4 @@ function imgproxyUrl(src, opts = {}) {
   return `${base}/insecure/${processing}/${base64url(resolveSource(src))}${ext}`;
 }
 
-export { DumbPagination, DumbSortable, DumbTable, DumbTree, OdataClient, OdataError, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, configureImgproxy, createDumbSortable, createOdataClient, createSelectionArea, createSortableGroup, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, odataString, timeAgo, toBase64 };
+export { DumbGrid, DumbPagination, DumbSortable, DumbTable, DumbTree, OdataClient, OdataError, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbSortable, createGridEngine, createOdataClient, createSelectionArea, createSortableGroup, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };

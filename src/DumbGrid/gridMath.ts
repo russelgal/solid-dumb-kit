@@ -21,6 +21,19 @@ export type GridSpan = {
 /** блок, которому нашлось место: колонка и строка — нулевые индексы */
 export type Placed = GridSpan & { col: number; row: number }
 
+/** блок со своей позицией — для свободного режима */
+export type FreeSpan = GridSpan & { x?: number; y?: number }
+
+/**
+ * Как раскладывать:
+ *  • `flow`  — по порядку, курсор назад не возвращается (CSS без `dense`);
+ *  • `dense` — по порядку, но дырки затыкаются следующими блоками;
+ *  • `free`  — каждый блок стоит по своим `x`/`y`, дырки остаются.
+ */
+export type LayoutMode = 'flow' | 'dense' | 'free'
+/** режимы, у которых позиция выводится из порядка массива */
+export type FlowMode = 'flow' | 'dense'
+
 /** метрики сетки в px (colW приходит из ResizeObserver, остальное — пропы) */
 export type Metrics = {
   cols: number
@@ -35,6 +48,91 @@ export type Rect = { x: number; y: number; width: number; height: number }
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n))
+}
+
+/**
+ * Карта занятых ячеек — одна на обе раскладки. Разреженная (строка → набор
+ * колонок), потому что сетка вниз не ограничена: в свободном режиме блок можно
+ * увести на двадцатую строку, и заводить под это массив на 20×cols незачем.
+ */
+function createOccupancy() {
+  const busy = new Map<number, Set<number>>()
+
+  const free = (col: number, row: number, w: number, h: number): boolean => {
+    for (let r = row; r < row + h; r++) {
+      const set = busy.get(r)
+      if (!set) continue
+      for (let k = col; k < col + w; k++) if (set.has(k)) return false
+    }
+    return true
+  }
+
+  return {
+    free,
+    take(col: number, row: number, w: number, h: number) {
+      for (let r = row; r < row + h; r++) {
+        let set = busy.get(r)
+        if (!set) busy.set(r, (set = new Set()))
+        for (let k = col; k < col + w; k++) set.add(k)
+      }
+    },
+    /** первое свободное место от (col,row): вправо до края, потом строкой ниже */
+    findFrom(col: number, row: number, w: number, h: number, cols: number) {
+      let c = col
+      let r = row
+      for (;;) {
+        if (c + w > cols) { c = 0; r++; continue }
+        if (free(c, r, w, h)) return { col: c, row: r }
+        c++
+      }
+    },
+  }
+}
+
+/**
+ * Ширина «по-человечески»: доля сетки вместо счёта колонок.
+ * Числа тоже принимаются — пресет это удобство, а не замена.
+ */
+export type SpanPreset =
+  | 'full'            // вся ширина
+  | 'half'            // половина
+  | 'third'           // треть
+  | 'quarter'         // четверть
+  | 'two-thirds'
+  | 'three-quarters'
+  | `${number}/${number}`   // любая другая доля: '1/6', '5/12', …
+
+export type SpanValue = number | SpanPreset
+
+const PRESETS: Record<string, [number, number]> = {
+  full: [1, 1],
+  half: [1, 2],
+  third: [1, 3],
+  quarter: [1, 4],
+  'two-thirds': [2, 3],
+  'three-quarters': [3, 4],
+}
+
+/**
+ * Пресет → колонки. Доля округляется ВНИЗ: так N блоков ширины `1/N` всегда
+ * влезают в строку, даже когда сетка на доли не делится (`half` при 5 колонках —
+ * это 2, а не 3, иначе два таких блока в строку уже не встанут).
+ *
+ * Неизвестная строка даёт 1 колонку: опечатка в пресете должна бросаться в
+ * глаза сразу, а не тихо растягивать блок на всю сетку.
+ */
+export function resolveSpan(value: SpanValue | undefined, cols: number): number {
+  const c = Math.max(1, Math.floor(cols))
+  if (value === undefined) return 1
+  if (typeof value === 'number') return clamp(Math.round(value) || 1, 1, c)
+
+  const named = PRESETS[value]
+  const frac = named ?? (/^\d+\/\d+$/.test(value) ? (value.split('/').map(Number) as [number, number]) : null)
+  if (!frac) return 1
+
+  const [num, den] = frac
+  if (!den || !Number.isFinite(num)) return 1
+  return clamp(Math.floor((c * num) / den), 1, c)
 }
 
 /** Ширина колонки при заданной ширине контента: остаток после всех зазоров. */
@@ -57,25 +155,9 @@ export function spanSize(n: number, unit: number, gap: number): number {
  * как auto-flow: браузер тогда не «домысливает» раскладку, и наша арифметика для
  * FLIP гарантированно описывает то, что нарисовано.
  */
-export function packFlow(items: Array<GridSpan>, cols: number): Array<Placed> {
+export function packFlow(items: Array<GridSpan>, cols: number, mode: FlowMode = 'flow'): Array<Placed> {
   const c = Math.max(1, Math.floor(cols))
-  const busy = new Map<number, Set<number>>()   // строка → занятые колонки
-
-  const free = (col: number, row: number, w: number, h: number): boolean => {
-    for (let r = row; r < row + h; r++) {
-      const set = busy.get(r)
-      if (!set) continue
-      for (let k = col; k < col + w; k++) if (set.has(k)) return false
-    }
-    return true
-  }
-  const take = (col: number, row: number, w: number, h: number) => {
-    for (let r = row; r < row + h; r++) {
-      let set = busy.get(r)
-      if (!set) busy.set(r, (set = new Set()))
-      for (let k = col; k < col + w; k++) set.add(k)
-    }
-  }
+  const grid = createOccupancy()
 
   const out: Array<Placed> = []
   let curCol = 0
@@ -84,19 +166,47 @@ export function packFlow(items: Array<GridSpan>, cols: number): Array<Placed> {
   for (const it of items) {
     const w = clamp(Math.round(it.w) || 1, 1, c)
     const h = Math.max(1, Math.round(it.h) || 1)
-    let col = curCol
-    let row = curRow
-    // ищем первое место от курсора: вправо до края строки, потом строкой ниже
-    for (;;) {
-      if (col + w > c) { col = 0; row++; continue }
-      if (free(col, row, w, h)) break
-      col++
-    }
-    take(col, row, w, h)
+    // dense ищет с самого начала, поэтому затыкает дырки, оставленные широкими
+    // блоками; flow идёт от курсора и назад не возвращается (как CSS без dense)
+    const { col, row } = grid.findFrom(mode === 'dense' ? 0 : curCol, mode === 'dense' ? 0 : curRow, w, h, c)
+    grid.take(col, row, w, h)
     out.push({ id: it.id, w, h, col, row })
     curCol = col + w
     curRow = row
     if (curCol >= c) { curCol = 0; curRow = row + 1 }
+  }
+  return out
+}
+
+/**
+ * Свободная раскладка: блок стоит там, где ему сказано (`x`/`y`), а не там, куда
+ * его вынес поток. Это режим «двигай куда хочешь, в том числе вниз, в пустоту» —
+ * дырки между блоками остаются дырками.
+ *
+ * Координаты приходят от потребителя (и из localStorage), поэтому им нельзя
+ * доверять: `x` зажимается в сетку, а место, которое уже занято (набор блоков
+ * поменялся, `cols` уменьшился, стор вчерашний), разруливается поиском ближайшего
+ * свободного НИЖЕ — так блок не исчезает под соседом.
+ * Блоки без координат укладываются как в dense-потоке.
+ */
+export function placeFree(items: Array<FreeSpan>, cols: number): Array<Placed> {
+  const c = Math.max(1, Math.floor(cols))
+  const grid = createOccupancy()
+  const out: Array<Placed> = []
+
+  for (const it of items) {
+    const w = clamp(Math.round(it.w) || 1, 1, c)
+    const h = Math.max(1, Math.round(it.h) || 1)
+    const hasPos = Number.isFinite(it.x) && Number.isFinite(it.y)
+    const wantCol = hasPos ? clamp(Math.round(it.x as number), 0, c - w) : 0
+    const wantRow = hasPos ? Math.max(0, Math.round(it.y as number)) : 0
+
+    const spot = grid.free(wantCol, wantRow, w, h)
+      ? { col: wantCol, row: wantRow }
+      : grid.findFrom(hasPos ? wantCol : 0, wantRow, w, h, c)
+
+    grid.take(spot.col, spot.row, w, h)
+    out.push({ id: it.id, w, h, col: spot.col, row: spot.row })
   }
   return out
 }
@@ -180,6 +290,73 @@ export function moveDeltas(args: {
   return out
 }
 
+/**
+ * Ячейка под блоком в свободном режиме: пиксельную позицию его левого верхнего
+ * угла округляем до ближайшей ячейки и зажимаем в сетку.
+ *
+ * Считаем по УГЛУ блока, а не по курсору: пользователь тащит блок, значит
+ * прилипать должен блок, а не точка захвата — иначе за курсор блок «убегает»
+ * на половину своей ширины.
+ */
+export function pointToCell(args: {
+  x: number
+  y: number
+  w: number
+  m: Metrics
+}): { col: number; row: number } {
+  const { x, y, w, m } = args
+  const stepX = m.colW + m.gapX
+  const stepY = m.rowH + m.gapY
+  const col = stepX > 0 ? Math.round(x / stepX) : 0
+  const row = stepY > 0 ? Math.round(y / stepY) : 0
+  return {
+    col: clamp(col, 0, Math.max(0, m.cols - w)),
+    row: Math.max(0, row),
+  }
+}
+
+/**
+ * Первое свободное место под блок заданного размера — куда положить НОВЫЙ блок.
+ *
+ * В потоковых режимах координаты не нужны (новый блок дописывается в конец
+ * массива), а вот в свободном месте его надо выбрать осознанно: иначе добавленный
+ * блок либо накрывает соседа, либо уезжает в конец пустоты. Ищем сверху вниз,
+ * поэтому «добавить виджет» кладёт его в первую же дырку.
+ */
+export function firstFreeCell(args: {
+  placed: Array<Placed>
+  cols: number
+  w: number
+  h: number
+}): { x: number; y: number } {
+  const { placed, cols, w, h } = args
+  const c = Math.max(1, Math.floor(cols))
+  const width = clamp(Math.round(w) || 1, 1, c)
+  const height = Math.max(1, Math.round(h) || 1)
+
+  const grid = createOccupancy()
+  for (const p of placed) grid.take(p.col, p.row, p.w, p.h)
+  const spot = grid.findFrom(0, 0, width, height, c)
+  return { x: spot.col, y: spot.row }
+}
+
+/** Пересекается ли прямоугольник с кем-то, кроме себя. */
+export function overlaps(args: {
+  placed: Array<Placed>
+  id: string
+  col: number
+  row: number
+  w: number
+  h: number
+}): boolean {
+  const { placed, id, col, row, w, h } = args
+  for (const p of placed) {
+    if (p.id === id) continue
+    if (col < p.col + p.w && p.col < col + w && row < p.row + p.h && p.row < row + h) return true
+  }
+  return false
+}
+
 /** пределы размера блока в единицах сетки */
 export type SpanLimits = {
   minW?: number
@@ -215,4 +392,32 @@ export function snapSpan(args: {
     w: clamp(w, Math.max(1, lim.minW ?? 1), Math.min(m.cols, lim.maxW ?? m.cols)),
     h: clamp(h, Math.max(1, lim.minH ?? 1), lim.maxH ?? Number.MAX_SAFE_INTEGER),
   }
+}
+
+/**
+ * Свободный режим: обрезать желаемый размер до того, что реально свободно.
+ *
+ * В потоке растущий блок просто расталкивает соседей дальше по порядку, а здесь
+ * толкать некого — каждый стоит на своём месте. Поэтому упираемся: сначала
+ * отдаём ширину, потом высоту (ширина важнее — сетка колоночная). Если места нет
+ * даже под минимум, отдаём минимум: пусть лучше рамка честно перекроет соседа и
+ * дроп будет отклонён, чем блок молча схлопнется.
+ */
+export function fitSpan(args: {
+  placed: Array<Placed>
+  id: string
+  col: number
+  row: number
+  want: { w: number; h: number }
+  limits?: SpanLimits
+}): { w: number; h: number } {
+  const { placed, id, col, row, want, limits } = args
+  const minW = Math.max(1, limits?.minW ?? 1)
+  const minH = Math.max(1, limits?.minH ?? 1)
+
+  let w = Math.max(minW, want.w)
+  let h = Math.max(minH, want.h)
+  while (w > minW && overlaps({ placed, id, col, row, w, h })) w--
+  while (h > minH && overlaps({ placed, id, col, row, w, h })) h--
+  return { w, h }
 }

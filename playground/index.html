@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>solid-dumb-kit — examples</title>
+    <style>
+      /* место под полосу прокрутки держим всегда: иначе переключение вкладок и
+         рост сетки при драге меняют ширину контента, и вёрстка дёргается */
+      html { scrollbar-gutter: stable }
+    </style>
   </head>
   <body style="margin:0">
     <div id="root"></div>

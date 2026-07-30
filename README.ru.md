@@ -9,6 +9,7 @@
 - **[DumbSortable](docs/ru/DumbSortable.md)** — FLIP-перетаскивание для смены порядка (список **или** сетка) без зависимостей и без reflow во время драга. Есть декларативный компонент и низкоуровневый примитив `createDumbSortable`.
 - **[DumbTree](docs/ru/DumbTree.md)** — сайдбар-дерево *или* плоский список с нечётким поиском, сортировкой, сохранением раскрытых папок и опциональным drag-reorder. Оформлен под Tailwind + daisyUI.
 - **[DumbTable](docs/ru/DumbTable.md)** — таблица «принеси свои колонки»: сортировка (клиентская или серверная) на TanStack Table, перетаскивание строк, пагинация.
+- **[DumbGrid](docs/ru/DumbGrid.md)** — дашборд-сетка: блоки размером в целое число колонок и строк, перетаскивание и ресайз кратно сетке, три режима раскладки (`flow` / `dense` / свободный `{x,y}`), видимая разметка сетки, персист раскладки. Ни одного замера элементов за жест.
 - **[Утилиты](docs/ru/utils.md)** — хелперы без фреймворка: форматирование чисел/дат/размеров под `ru-RU`, слаги, извлечение картинок из ZIP, URL для imgproxy.
 - **[Odata1C](docs/ru/Odata1C.md)** — клиент стандартного интерфейса OData 1С без привязки к фреймворку: Basic-авторизация, сборка запросов и обход капризов платформы. Работает и в браузере, и в Node.
 
@@ -54,6 +55,9 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 | `DumbTree` / `DumbTreeProps` / `DumbTreeNode` / `DumbTreeIcons` / `DumbTreeLabels` | компонент | [docs/ru/DumbTree.md](docs/ru/DumbTree.md) |
 | `DumbTable` / `DumbTableProps` / `DumbColumn` | компонент | [docs/ru/DumbTable.md](docs/ru/DumbTable.md) |
 | `DumbPagination` / `DumbPaginationProps` / `buildPageNumbers` | компонент | [docs/ru/DumbTable.md#dumbpagination](docs/ru/DumbTable.md#dumbpagination) |
+| `DumbGrid` / `DumbGridProps` / `DumbGridItem` / `DumbGridLayout` / `mergeLayout` | компонент | [docs/ru/DumbGrid.md](docs/ru/DumbGrid.md) |
+| `createDumbGrid` / `DumbGridHandle` / `createGridEngine` / `DumbGridOptions` / `DumbGridBlock` | примитив | [docs/ru/DumbGrid.md#примитив-createdumbgrid](docs/ru/DumbGrid.md#примитив-createdumbgrid) |
+| `packFlow` / `cellRect` / `colWidth` / `spanSize` / `rowCount` / `insertIndex` / `moveDeltas` / `snapSpan` | математика сетки | [docs/ru/DumbGrid.md#движок-без-фреймворка](docs/ru/DumbGrid.md#движок-без-фреймворка) |
 | `Rub0` / `Rub2` / `Rub4` / `Rub0R` / `RubR2` / `fmtNum` / `fmtPrice` | форматирование | [docs/ru/utils.md#числа](docs/ru/utils.md#числа) |
 | `fmtDate` / `fmtDateTime` / `fmtDateTimeShort` / `fmtTime` / `fmtDateMonth` / `timeAgo` / `fmtSize` | форматирование | [docs/ru/utils.md#даты](docs/ru/utils.md#даты) |
 | `genSlug` | утилита | [docs/ru/utils.md#genslug--слаги-для-url](docs/ru/utils.md#genslug--слаги-для-url) |
@@ -72,7 +76,7 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 
 ## Зависимости
 
-Единственная peer-зависимость — `solid-js ^1.8.0`. Рантайм-зависимости маленькие и точечные: `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`) и `fflate` — причём последний за динамическим `import()`, поэтому грузится только при реальной распаковке ZIP. `Odata1C` не добавляет ничего — это голый `fetch`.
+Единственная peer-зависимость — `solid-js ^1.8.0`. Рантайм-зависимости маленькие и точечные: `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree, DumbGrid), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`) и `fflate` — причём последний за динамическим `import()`, поэтому грузится только при реальной распаковке ZIP. `Odata1C` не добавляет ничего — это голый `fetch`.
 
 ## Лицензия
 
