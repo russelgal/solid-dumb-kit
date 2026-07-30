@@ -1,7 +1,7 @@
 import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
 import { makePersisted } from '@solid-primitives/storage'
 import * as v from 'valibot'
-import { createDumbGrid } from './solid'
+import { createDumbGrid, type DumbGridGroupHandle } from './solid'
 import {
   cellRect, firstFreeCell, packFlow, placeFree, reorder, resolveSpan, rowCount,
   type GridSpan, type LayoutMode, type SpanValue,
@@ -89,6 +89,15 @@ export type DumbGridProps = {
   onRemove?: (id: string) => void
   /** подписи для кнопок (title/aria-label) */
   labels?: { remove?: string; resize?: string }
+  /**
+   * Группа сеток (`createDumbGridGroup`) — с ней блок можно перетащить в другую
+   * сетку той же группы. Локальные изменения (перестановка, ресайз, перенос
+   * внутри) компонент по-прежнему применяет сам; наружу, в `onTransfer` группы,
+   * уходит только переезд между сетками — он затрагивает две раскладки сразу.
+   */
+  group?: DumbGridGroupHandle
+  /** имя этой сетки в группе (обязательно, если задан `group`) */
+  name?: string
   /** ресайз разрешён (по умолчанию да) */
   resizable?: boolean
   /**
@@ -342,7 +351,7 @@ export function DumbGrid(props: DumbGridProps) {
     })
   }
 
-  const g = createDumbGrid({
+  const engineOptions = {
     blocks: () => {
       const map = itemById()
       const c = cols()
@@ -369,15 +378,22 @@ export function DumbGrid(props: DumbGridProps) {
     animate: props.animate,
     pressDelay: props.pressDelay,
     mouseThreshold: props.mouseThreshold,
-    onReorder: (from, to) => commit(materialize(reorder(layout(), from, to))),
-    onMove: (id, x, y) =>
+    onReorder: (from: number, to: number) => commit(materialize(reorder(layout(), from, to))),
+    onMove: (id: string, x: number, y: number) =>
       commit(materialize(layout().map((s) => (s.id === id ? { ...s, x, y } : s)))),
-    onResize: (id, w, h) => {
+    onResize: (id: string, w: number, h: number) => {
       const it = itemById().get(id)
       if (!it) return
       commit(materialize(layout().map((s) => (s.id === id ? spanOf(it, { ...s, w, h }, cols()) : s))))
     },
-  })
+  }
+
+  // В группе сетка регистрируется зоной общего движка — тогда жест видит все
+  // сетки сразу и умеет переносить блок между ними. Без группы всё как было:
+  // свой движок на компонент.
+  const g = props.group
+    ? props.group.grid(props.name ?? 'grid', engineOptions)
+    : createDumbGrid(engineOptions)
 
 
   /**

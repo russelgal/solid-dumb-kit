@@ -1,16 +1,15 @@
-// Вложенные сетки: блок DumbGrid сам является DumbGrid'ом.
+// Вложенные сетки + ПЕРЕНОС БЛОКОВ МЕЖДУ НИМИ.
 //
-// Внешняя сетка раскладывает СЕКЦИИ, внутри каждой — своя сетка виджетов со
-// своими колонками, шагом строки и раскладкой. Оба уровня двигаются и
-// ресайзятся одинаково, но жесты не путаются: блок вложенной сетки помечен
-// [data-grid-block], и внешняя сетка нажатия по нему пропускает — вмешивается
-// только если ближайший блок под указателем её собственный. Секцию поэтому
-// тянут за её шапку.
+// Внешняя сетка раскладывает СЕКЦИИ, внутри каждой — своя сетка виджетов. Все
+// внутренние сетки состоят в одной группе (createDumbGridGroup), поэтому виджет
+// перетаскивается из секции в секцию — как карточка между колонками канбана, но
+// это полноценные блоки сетки: со своим размером, ресайзом и местом в раскладке.
 //
-// Раскладка обоих уровней тут контролируемая (layout + onLayout), чтобы было
-// видно: состояние сеток — обычные данные, вложенность его не усложняет.
+// Уровни не путаются: блок помечен [data-grid-block], и сетка забирает жест,
+// только если ближайший блок под указателем — её собственный. Секцию тянут за
+// шапку, виджет — за его тело.
 import { createMemo, createSignal, For } from 'solid-js'
-import { DumbGrid, type DumbGridItem, type DumbGridLayout } from 'solid-dumb-kit'
+import { createDumbGridGroup, DumbGrid, type DumbGridItem, type DumbGridLayout } from 'solid-dumb-kit'
 
 type Widget = { id: string; title: string; hue: number }
 type Section = { id: string; title: string }
@@ -57,6 +56,34 @@ export default function BoardExample() {
   const [inner, setInner] = createSignal<Record<string, DumbGridLayout>>(INNER)
   const [edit, setEdit] = createSignal(true)
   const [seq, setSeq] = createSignal(0)
+  const [log, setLog] = createSignal('тащи виджет из секции в секцию')
+
+  // Группа: перенос между сетками — единственное, что она отдаёт наружу.
+  // Всё локальное (перестановка, ресайз) сетки применяют сами.
+  const group = createDumbGridGroup({
+    onTransfer: (from, to) => {
+      const moved = (widgets()[from.grid] ?? []).find((w) => w.id === from.id)
+      if (!moved) return
+
+      setWidgets((all) => ({
+        ...all,
+        [from.grid]: (all[from.grid] ?? []).filter((w) => w.id !== from.id),
+        [to.grid]: [
+          ...(all[to.grid] ?? []).slice(0, to.index),
+          moved,
+          ...(all[to.grid] ?? []).slice(to.index),
+        ],
+      }))
+      setInner((all) => {
+        const src = (all[from.grid] ?? []).filter((s) => s.id !== from.id)
+        const span = (all[from.grid] ?? []).find((s) => s.id === from.id) ?? { id: from.id, w: 3, h: 1 }
+        const dst = [...(all[to.grid] ?? [])]
+        dst.splice(to.index, 0, { ...span, id: from.id })
+        return { ...all, [from.grid]: src, [to.grid]: dst }
+      })
+      setLog(`«${moved.title}»: ${from.grid} → ${to.grid} #${to.index}`)
+    },
+  })
 
   const nextId = () => {
     const n = seq() + 1
@@ -128,8 +155,10 @@ export default function BoardExample() {
         </header>
 
         {/* ВЛОЖЕННАЯ сетка: свои колонки, свой шаг строки, своя раскладка */}
-        <div class="inner">
+        <div class="inner" classList={{ over: group.over() === p.section.id && group.active()?.grid !== p.section.id }}>
           <DumbGrid
+            group={group}
+            name={p.section.id}
             cols={6}
             rowHeight={56}
             gap={8}
@@ -160,10 +189,10 @@ export default function BoardExample() {
     <div class="bd-example">
       <h3>Вложенные сетки</h3>
       <p class="note">
-        Каждый блок внешней сетки — <b>сам DumbGrid</b>: секцию двигаешь и ресайзишь за её <b>⠿</b>,
-        виджеты внутри — за их собственные тела, в своей сетке из 6 колонок. Уровни не путаются: блок
-        вложенной сетки помечен <code>data-grid-block</code>, и внешняя сетка нажатия по нему пропускает.
-        Раскладки обоих уровней здесь контролируемые — это просто данные.
+        Каждый блок внешней сетки — <b>сам DumbGrid</b>, и все внутренние сетки состоят в одной
+        <b> группе</b>: виджет перетаскивается <b>из секции в секцию</b>, как карточка в канбане, только
+        это полноценный блок — со своим размером и ресайзом. Секцию двигаешь за её <b>⠿</b>, виджет — за
+        тело. Приёмник подсвечивается, <b>Esc</b> отменяет перенос.
       </p>
 
       <div class="bar">
@@ -172,6 +201,7 @@ export default function BoardExample() {
           <b>edit mode</b>
         </label>
         <button onClick={addSection}>+ секция</button>
+        <span class="log">{log()}</span>
       </div>
 
       <DumbGrid
@@ -214,7 +244,10 @@ export default function BoardExample() {
                            color: #475569; cursor: pointer; line-height: 1 }
 
         .bd-example .inner { flex: 1; min-height: 0; padding: 8px; overflow: auto;
-                             scrollbar-gutter: stable }
+                             scrollbar-gutter: stable; border-radius: 0 0 11px 11px;
+                             transition: background .15s, box-shadow .15s }
+        .bd-example .inner.over { background: #eef2ff; box-shadow: inset 0 0 0 2px #6366f1 }
+        .bd-example .log { color: #64748b }
 
         .bd-example .widget { height: 100%; box-sizing: border-box; display: flex;
                               flex-direction: column; justify-content: center; gap: 2px;

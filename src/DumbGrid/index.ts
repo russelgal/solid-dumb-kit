@@ -10,6 +10,9 @@ export {
 export {
   createDumbGrid,
   type DumbGridHandle,
+  createDumbGridGroup,
+  type DumbGridGroupHandle,
+  type GridGroupActive,
   type GridActive,
 } from './solid'
 
@@ -20,6 +23,17 @@ export {
   type DumbGridOptions,
   type DumbGridBlock,
 } from './gridCore'
+
+// Группа сеток: перенос блока между сетками
+export {
+  createGridGroupEngine,
+  type GridGroupEngine,
+  type GridGroupOptions,
+  type GridZoneOptions,
+  type GridZoneEngine,
+  type GridTransferSource,
+  type GridTransferTarget,
+} from './gridGroup'
 
 // Математика сетки — чистые функции, полезны и снаружи
 export {

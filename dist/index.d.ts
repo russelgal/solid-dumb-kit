@@ -419,6 +419,164 @@ declare function fitSpan(args: {
     h: number;
 };
 
+type PressGateOptions = {
+    /** тач: удержание до старта, мс (0 = сразу). По умолчанию 350 */
+    pressDelay?: number;
+    /** мышь: long-press до старта, мс (0 = выкл). Приоритетнее mouseThreshold */
+    mousePressDelay?: number;
+    /** мышь: дистанция до старта, px (0 = сразу) */
+    mouseThreshold?: number;
+};
+
+/** блок сетки: размеры в единицах + пределы ресайза (+ позиция в режиме free) */
+type DumbGridBlock = GridSpan & FreeSpan & SpanLimits & {
+    /** ни двигать, ни ресайзить (двигаться от соседей всё равно может) */
+    locked?: boolean;
+};
+type DumbGridOptions = PressGateOptions & {
+    /** текущий порядок и размеры блоков — источник истины у потребителя */
+    blocks: () => Array<DumbGridBlock>;
+    /** как раскладывать: поток, плотный поток или свободные позиции */
+    mode?: () => LayoutMode;
+    /** число колонок сетки */
+    cols: () => number;
+    /** высота строки, px */
+    rowHeight: () => number;
+    gapX: () => number;
+    gapY: () => number;
+    /** жесты запрещены целиком */
+    disabled?: () => boolean;
+    /** ресайз разрешён (драг остаётся) */
+    resizable?: () => boolean;
+    /**
+     * Анимировать расступание соседей и приземление. По умолчанию да, но при
+     * системном `prefers-reduced-motion: reduce` — нет; явное `true` перебивает.
+     */
+    animate?: boolean;
+    /** поток: на дропе переставить блок из fromIndex в toIndex (индексы в blocks()) */
+    onReorder: (fromIndex: number, toIndex: number) => void;
+    /** free: на дропе поставить блок в ячейку (x — колонка, y — строка) */
+    onMove?: (id: string, x: number, y: number) => void;
+    /** на отпускании ручки ресайза: новый размер блока в единицах сетки */
+    onResize: (id: string, w: number, h: number) => void;
+    /**
+     * Жест начался/закончился. Движку нельзя знать про сигналы, поэтому
+     * реактивность строит обёртка: ./solid.ts пишет отсюда в createSignal.
+     */
+    onActive?: (state: {
+        id: string;
+        kind: 'move' | 'resize';
+    } | null) => void;
+};
+type GridEngine = {
+    /** ref на контейнер сетки: с него берутся ширина колонки и система координат */
+    attachContainer: (el: HTMLElement) => () => void;
+    /** ref на блок: регистрация + старт драга (ручка = дочка с [data-drag-handle]) */
+    attach: (el: HTMLElement, id: string) => () => void;
+    /** ref на ручку ресайза внутри блока */
+    attachResize: (el: HTMLElement, id: string) => () => void;
+    /** ширина колонки в px по последнему ResizeObserver (0 — ещё не измерено) */
+    colWidth: () => number;
+    /** id блока под жестом и его вид — для подсветки в UI */
+    active: () => {
+        id: string;
+        kind: 'move' | 'resize';
+    } | null;
+    destroy: () => void;
+};
+declare function createGridEngine(opts: DumbGridOptions): GridEngine;
+
+/** куда блок уехал: сетка, индекс в потоке и ячейка для свободного режима */
+type GridTransferTarget = {
+    grid: string;
+    index: number;
+    x: number;
+    y: number;
+};
+type GridTransferSource = {
+    grid: string;
+    id: string;
+    index: number;
+};
+type GridGroupOptions = PressGateOptions & {
+    animate?: boolean;
+    /** блок переехал в ДРУГУЮ сетку — обе раскладки правит потребитель */
+    onTransfer?: (from: GridTransferSource, to: GridTransferTarget) => void;
+    /** идёт жест: имя сетки, блок и вид — для подсветки */
+    onActive?: (state: {
+        grid: string;
+        id: string;
+        kind: 'move' | 'resize';
+    } | null) => void;
+    /** над какой сеткой сейчас указатель (null — ни над какой) */
+    onOver?: (grid: string | null) => void;
+};
+/** сетка внутри группы: те же опции, что у одиночной, плюс приём чужих блоков */
+type GridZoneOptions = {
+    blocks: () => Array<DumbGridBlock>;
+    mode?: () => LayoutMode;
+    cols: () => number;
+    rowHeight: () => number;
+    gapX: () => number;
+    gapY: () => number;
+    disabled?: () => boolean;
+    resizable?: () => boolean;
+    /** пускать ли к себе блок из сетки `from` (по умолчанию да) */
+    accepts?: (from: string) => boolean;
+    /** перестановка внутри этой сетки (потоковые режимы) */
+    onReorder?: (from: number, to: number) => void;
+    /** перемещение внутри этой сетки (режим free) */
+    onMove?: (id: string, x: number, y: number) => void;
+    /** ресайз внутри этой сетки */
+    onResize?: (id: string, w: number, h: number) => void;
+};
+type GridZoneEngine = {
+    attachContainer: (el: HTMLElement) => () => void;
+    attach: (el: HTMLElement, id: string) => () => void;
+    attachResize: (el: HTMLElement, id: string) => () => void;
+};
+type GridGroupEngine = {
+    grid: (name: string, opts: GridZoneOptions) => GridZoneEngine;
+    active: () => {
+        grid: string;
+        id: string;
+        kind: 'move' | 'resize';
+    } | null;
+    over: () => string | null;
+    destroy: () => void;
+};
+declare function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine;
+
+type GridActive = {
+    id: string;
+    kind: 'move' | 'resize';
+} | null;
+type DumbGridHandle = {
+    /** ref на контейнер сетки (обязателен: с него берётся ширина колонки) */
+    container: (el: HTMLElement) => void;
+    /** ref на блок (ручка = дочка с [data-drag-handle]) */
+    bind: (id: string) => (el: HTMLElement) => void;
+    /** ref на ручку ресайза внутри блока */
+    resize: (id: string) => (el: HTMLElement) => void;
+    /** блок под жестом и вид жеста, реактивно */
+    active: () => GridActive;
+};
+declare function createDumbGrid(opts: DumbGridOptions): DumbGridHandle;
+type GridGroupActive = {
+    grid: string;
+    id: string;
+    kind: 'move' | 'resize';
+} | null;
+type DumbGridGroupHandle = {
+    /** зарегистрировать сетку; результат отдаётся компоненту как проп `group` */
+    grid: (name: string, opts: GridZoneOptions) => DumbGridHandle;
+    /** что сейчас тащат, реактивно */
+    active: () => GridGroupActive;
+    /** над какой сеткой указатель, реактивно (для подсветки приёмника) */
+    over: () => string | null;
+};
+declare function createDumbGridGroup(opts: GridGroupOptions): DumbGridGroupHandle;
+
 /** блок сетки */
 type DumbGridItem = {
     id: string;
@@ -488,6 +646,15 @@ type DumbGridProps = {
         remove?: string;
         resize?: string;
     };
+    /**
+     * Группа сеток (`createDumbGridGroup`) — с ней блок можно перетащить в другую
+     * сетку той же группы. Локальные изменения (перестановка, ресайз, перенос
+     * внутри) компонент по-прежнему применяет сам; наружу, в `onTransfer` группы,
+     * уходит только переезд между сетками — он затрагивает две раскладки сразу.
+     */
+    group?: DumbGridGroupHandle;
+    /** имя этой сетки в группе (обязательно, если задан `group`) */
+    name?: string;
     /** ресайз разрешён (по умолчанию да) */
     resizable?: boolean;
     /**
@@ -539,89 +706,6 @@ type DumbGridProps = {
  */
 declare function mergeLayout(saved: DumbGridLayout | null | undefined, items: Array<DumbGridItem>, cols: number, mode?: LayoutMode): DumbGridLayout;
 declare function DumbGrid(props: DumbGridProps): JSX.Element;
-
-type PressGateOptions = {
-    /** тач: удержание до старта, мс (0 = сразу). По умолчанию 350 */
-    pressDelay?: number;
-    /** мышь: long-press до старта, мс (0 = выкл). Приоритетнее mouseThreshold */
-    mousePressDelay?: number;
-    /** мышь: дистанция до старта, px (0 = сразу) */
-    mouseThreshold?: number;
-};
-
-/** блок сетки: размеры в единицах + пределы ресайза (+ позиция в режиме free) */
-type DumbGridBlock = GridSpan & FreeSpan & SpanLimits & {
-    /** ни двигать, ни ресайзить (двигаться от соседей всё равно может) */
-    locked?: boolean;
-};
-type DumbGridOptions = PressGateOptions & {
-    /** текущий порядок и размеры блоков — источник истины у потребителя */
-    blocks: () => Array<DumbGridBlock>;
-    /** как раскладывать: поток, плотный поток или свободные позиции */
-    mode?: () => LayoutMode;
-    /** число колонок сетки */
-    cols: () => number;
-    /** высота строки, px */
-    rowHeight: () => number;
-    gapX: () => number;
-    gapY: () => number;
-    /** жесты запрещены целиком */
-    disabled?: () => boolean;
-    /** ресайз разрешён (драг остаётся) */
-    resizable?: () => boolean;
-    /**
-     * Анимировать расступание соседей и приземление. По умолчанию да, но при
-     * системном `prefers-reduced-motion: reduce` — нет; явное `true` перебивает.
-     */
-    animate?: boolean;
-    /** поток: на дропе переставить блок из fromIndex в toIndex (индексы в blocks()) */
-    onReorder: (fromIndex: number, toIndex: number) => void;
-    /** free: на дропе поставить блок в ячейку (x — колонка, y — строка) */
-    onMove?: (id: string, x: number, y: number) => void;
-    /** на отпускании ручки ресайза: новый размер блока в единицах сетки */
-    onResize: (id: string, w: number, h: number) => void;
-    /**
-     * Жест начался/закончился. Движку нельзя знать про сигналы, поэтому
-     * реактивность строит обёртка: ./solid.ts пишет отсюда в createSignal.
-     */
-    onActive?: (state: {
-        id: string;
-        kind: 'move' | 'resize';
-    } | null) => void;
-};
-type GridEngine = {
-    /** ref на контейнер сетки: с него берутся ширина колонки и система координат */
-    attachContainer: (el: HTMLElement) => () => void;
-    /** ref на блок: регистрация + старт драга (ручка = дочка с [data-drag-handle]) */
-    attach: (el: HTMLElement, id: string) => () => void;
-    /** ref на ручку ресайза внутри блока */
-    attachResize: (el: HTMLElement, id: string) => () => void;
-    /** ширина колонки в px по последнему ResizeObserver (0 — ещё не измерено) */
-    colWidth: () => number;
-    /** id блока под жестом и его вид — для подсветки в UI */
-    active: () => {
-        id: string;
-        kind: 'move' | 'resize';
-    } | null;
-    destroy: () => void;
-};
-declare function createGridEngine(opts: DumbGridOptions): GridEngine;
-
-type GridActive = {
-    id: string;
-    kind: 'move' | 'resize';
-} | null;
-type DumbGridHandle = {
-    /** ref на контейнер сетки (обязателен: с него берётся ширина колонки) */
-    container: (el: HTMLElement) => void;
-    /** ref на блок (ручка = дочка с [data-drag-handle]) */
-    bind: (id: string) => (el: HTMLElement) => void;
-    /** ref на ручку ресайза внутри блока */
-    resize: (id: string) => (el: HTMLElement) => void;
-    /** блок под жестом и вид жеста, реактивно */
-    active: () => GridActive;
-};
-declare function createDumbGrid(opts: DumbGridOptions): DumbGridHandle;
 
 type DumbTreeNode = {
     id: number | string;
@@ -971,4 +1055,4 @@ declare function configureImgproxy(c: ImgproxyConfig): void;
  */
 declare function imgproxyUrl(src: string, opts?: ImgproxyOps): string;
 
-export { type DumbColumn, DumbGrid, type DumbGridBlock, type DumbGridHandle, type DumbGridItem, type DumbGridLayout, type DumbGridOptions, type DumbGridProps, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type FlowMode, type FreeSpan, type GridActive, type GridEngine, type GridPanel, type GridSpan, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, type LayoutMode, type Metrics, OdataClient, type OdataClientOptions, OdataError, type OdataListResponse, type Placed, type Rect, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, type SpanLimits, type SpanPreset, type SpanValue, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbSortable, createGridEngine, createOdataClient, createSelectionArea, createSortableGroup, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };
+export { type DumbColumn, DumbGrid, type DumbGridBlock, type DumbGridGroupHandle, type DumbGridHandle, type DumbGridItem, type DumbGridLayout, type DumbGridOptions, type DumbGridProps, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type FlowMode, type FreeSpan, type GridActive, type GridEngine, type GridGroupActive, type GridGroupEngine, type GridGroupOptions, type GridPanel, type GridSpan, type GridTransferSource, type GridTransferTarget, type GridZoneEngine, type GridZoneOptions, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, type LayoutMode, type Metrics, OdataClient, type OdataClientOptions, OdataError, type OdataListResponse, type Placed, type Rect, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, type SpanLimits, type SpanPreset, type SpanValue, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbGridGroup, createDumbSortable, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortableGroup, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };

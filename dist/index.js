@@ -2380,6 +2380,557 @@ function createGridEngine(opts) {
   };
 }
 
+// src/DumbGrid/gridGroup.ts
+var SLIDE4 = "transform .18s cubic-bezier(.2,.8,.2,1)";
+var LIFT_SHADOW4 = "0 12px 28px -8px rgba(0,0,0,.35)";
+var PREVIEW_BG2 = "rgba(59,130,246,.10)";
+var PREVIEW_LINE2 = "2px dashed rgba(59,130,246,.85)";
+var BLOCKED_BG2 = "rgba(239,68,68,.10)";
+var BLOCKED_LINE2 = "2px dashed rgba(239,68,68,.85)";
+var PREVIEW_Z2 = 5;
+var GHOST_STYLE_ID = "dumb-grid-ghost";
+var canPopover2 = () => typeof HTMLElement !== "undefined" && typeof HTMLElement.prototype.showPopover === "function";
+function injectGhostReset2() {
+  if (typeof document === "undefined" || document.getElementById(GHOST_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = GHOST_STYLE_ID;
+  style.textContent = `@layer dumb-grid {
+  [data-dumb-grid-ghost]:popover-open {
+    position: fixed; inset: auto; margin: 0; padding: 0; border: 0;
+    background: transparent; color: inherit; overflow: visible;
+  }
+}`;
+  document.head.appendChild(style);
+}
+function makeGhost2(src, r) {
+  const ghost = src.cloneNode(true);
+  ghost.setAttribute("data-dumb-grid-ghost", "");
+  ghost.removeAttribute("id");
+  src.insertAdjacentElement("afterend", ghost);
+  if (canPopover2()) {
+    ghost.setAttribute("popover", "manual");
+    try {
+      ghost.showPopover();
+    } catch {
+    }
+  }
+  ghost.style.viewTransitionName = "none";
+  ghost.style.boxSizing = "border-box";
+  ghost.style.position = "fixed";
+  ghost.style.margin = "0";
+  ghost.style.top = `${r.top}px`;
+  ghost.style.left = `${r.left}px`;
+  ghost.style.width = `${r.width}px`;
+  ghost.style.height = `${r.height}px`;
+  ghost.style.zIndex = "9999";
+  ghost.style.pointerEvents = "none";
+  ghost.style.willChange = "transform";
+  ghost.style.boxShadow = LIFT_SHADOW4;
+  ghost.style.cursor = "grabbing";
+  for (const el of Array.from(ghost.querySelectorAll("[data-grid-resize],[data-grid-remove]"))) el.remove();
+  return ghost;
+}
+function createGridGroupEngine(opts) {
+  const zones = /* @__PURE__ */ new Map();
+  let drag = null;
+  let activeState = null;
+  let overName = null;
+  const setActive = (s) => {
+    activeState = s;
+    opts.onActive?.(s);
+  };
+  const setOver = (name) => {
+    if (overName === name) return;
+    overName = name;
+    opts.onOver?.(name);
+  };
+  const metricsOf = (z) => {
+    const cols = Math.max(1, Math.floor(z.opts.cols()));
+    const gapX = z.opts.gapX();
+    return { cols, colW: colWidth(z.contentW, cols, gapX), rowH: z.opts.rowHeight(), gapX, gapY: z.opts.gapY() };
+  };
+  const placeOf = (blocks, mode, cols) => mode === "free" ? placeFree(blocks, cols) : packFlow(blocks, cols, mode);
+  function snapshot(cb) {
+    const out = /* @__PURE__ */ new Map();
+    const targets = [];
+    for (const z of zones.values()) if (z.el) targets.push(z.el);
+    if (!targets.length || typeof IntersectionObserver !== "function") {
+      cb(out);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) out.set(e.target, e.boundingClientRect);
+      io.disconnect();
+      cb(out);
+    });
+    for (const t of targets) io.observe(t);
+  }
+  function buildSnaps(rects) {
+    const snaps = /* @__PURE__ */ new Map();
+    for (const z of zones.values()) {
+      if (!z.el) continue;
+      const scroller = scrollParent(z.el, true);
+      const geom = measure(scroller);
+      const s0 = scrollOf(scroller);
+      const box = rects.get(z.el);
+      const mode = z.opts.mode?.() ?? "flow";
+      const m = metricsOf(z);
+      const blocks = z.opts.blocks();
+      snaps.set(z.name, {
+        name: z.name,
+        m,
+        mode,
+        blocks,
+        base: placeOf(blocks, mode, m.cols),
+        padLeft: z.padLeft,
+        padTop: z.padTop,
+        boxTop: box ? box.top : geom.top,
+        boxLeft: box ? box.left : geom.left,
+        boxW: box ? box.width : geom.clientW,
+        boxH: box ? box.height : geom.clientH,
+        boxWinX: window.scrollX,
+        boxWinY: window.scrollY,
+        scroller,
+        geom,
+        sx0: s0.sx,
+        sy0: s0.sy
+      });
+    }
+    return snaps;
+  }
+  function boxOf2(z) {
+    const s = scrollOf(z.scroller);
+    const dx = window.scrollX - z.boxWinX + (z.scroller ? s.sx - z.sx0 : 0);
+    const dy = window.scrollY - z.boxWinY + (z.scroller ? s.sy - z.sy0 : 0);
+    return { left: z.boxLeft - dx, top: z.boxTop - dy, right: z.boxLeft - dx + z.boxW, bottom: z.boxTop - dy + z.boxH };
+  }
+  function zoneAt(d, x, y) {
+    for (const z of d.zones.values()) {
+      const b = boxOf2(z);
+      if (x < b.left || x > b.right || y < b.top || y > b.bottom) continue;
+      if (z.name !== d.fromZone) {
+        const accepts = zones.get(z.name)?.opts.accepts;
+        if (accepts && !accepts(d.fromZone)) continue;
+      }
+      return z.name;
+    }
+    return d.target;
+  }
+  function pointIn(z, x, y) {
+    const b = boxOf2(z);
+    return { x: x - b.left - z.padLeft, y: y - b.top - z.padTop };
+  }
+  function slide(d, moves, zoneName) {
+    const zone = zones.get(zoneName);
+    if (!zone) return;
+    for (const mv of moves) {
+      const el = zone.els.get(mv.id);
+      if (!el || el === d.el) continue;
+      if (!mv.dx && !mv.dy) {
+        if (d.touched.has(el)) el.style.transform = "";
+        continue;
+      }
+      if (!d.touched.has(el)) {
+        d.touched.add(el);
+        el.style.willChange = "transform";
+        if (!shouldAnimate(opts.animate)) {
+          el.style.transform = `translate(${mv.dx}px,${mv.dy}px)`;
+          continue;
+        }
+        el.style.transition = SLIDE4;
+        continue;
+      }
+      el.style.transform = `translate(${mv.dx}px,${mv.dy}px)`;
+    }
+  }
+  function calmDown(d) {
+    for (const el of d.touched) el.style.transform = "";
+  }
+  function showPreview(d, zoneName, rect, blocked) {
+    const zone = zones.get(zoneName);
+    const snap = d.zones.get(zoneName);
+    if (!zone?.el || !snap) return;
+    if (d.preview && d.previewZone !== zoneName) {
+      d.preview.remove();
+      d.preview = null;
+    }
+    if (!d.preview) {
+      const box = document.createElement("div");
+      box.style.cssText = [
+        "position:absolute",
+        "pointer-events:none",
+        "box-sizing:border-box",
+        "border-radius:10px",
+        `z-index:${PREVIEW_Z2}`,
+        "outline-offset:-2px",
+        "transition:background .12s ease, outline-color .12s ease"
+      ].join(";");
+      box.dataset.gridPreview = "";
+      zone.el.appendChild(box);
+      d.preview = box;
+      d.previewZone = zoneName;
+    }
+    d.preview.dataset.blocked = blocked ? "" : void 0;
+    d.preview.style.background = blocked ? BLOCKED_BG2 : PREVIEW_BG2;
+    d.preview.style.outline = blocked ? BLOCKED_LINE2 : PREVIEW_LINE2;
+    d.preview.style.width = `${rect.width}px`;
+    d.preview.style.height = `${rect.height}px`;
+    d.preview.style.transform = `translate(${snap.padLeft + rect.x}px,${snap.padTop + rect.y}px)`;
+  }
+  function resetStyles(d) {
+    const reset = (el) => {
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.zIndex = "";
+      el.style.willChange = "";
+      el.style.boxShadow = "";
+      el.style.opacity = "";
+      el.style.cursor = "";
+    };
+    reset(d.el);
+    for (const el of d.touched) reset(el);
+    d.preview?.remove();
+    d.preview = null;
+    d.previewZone = null;
+    d.ghost?.remove();
+    d.ghost = null;
+  }
+  function frame() {
+    if (!drag) return;
+    const d = drag;
+    if (d.kind === "resize") {
+      if (d.ready) resizeFrame(d);
+      d.raf = requestAnimationFrame(frame);
+      return;
+    }
+    if (d.ghost) d.ghost.style.transform = `translate(${d.lastX - d.startX}px,${d.lastY - d.startY}px)`;
+    if (d.ready) {
+      const name = zoneAt(d, d.lastX, d.lastY);
+      const snap = d.zones.get(name);
+      if (snap) {
+        if (name !== d.target) {
+          d.target = name;
+          calmDown(d);
+          setOver(name);
+        }
+        const p = pointIn(snap, d.lastX, d.lastY);
+        if (name === d.fromZone) homeFrame(d, snap, p);
+        else guestFrame(d, snap, p);
+      }
+    }
+    d.raf = requestAnimationFrame(frame);
+  }
+  function homeFrame(d, snap, p) {
+    if (snap.mode === "free") {
+      const me = snap.base.find((b) => b.id === d.id);
+      if (!me) return;
+      const at = cellRect(me, snap.m);
+      const cell = pointToCell({
+        x: at.x + (d.lastX - d.startX),
+        y: at.y + (d.lastY - d.startY),
+        w: d.span.w,
+        m: snap.m
+      });
+      const blocked = overlaps({ placed: snap.base, id: d.id, ...cell, ...d.span });
+      if (cell.col !== d.cell.col || cell.row !== d.cell.row || blocked !== d.blocked || d.previewZone !== snap.name) {
+        d.cell = cell;
+        d.blocked = blocked;
+        showPreview(d, snap.name, cellRect({ ...me, ...cell, ...d.span }, snap.m), blocked);
+      }
+      return;
+    }
+    const k = insertIndex({ base: snap.base, dragId: d.id, m: snap.m, pointerX: p.x, pointerY: p.y });
+    if (k !== d.index || d.previewZone !== snap.name) {
+      d.index = k;
+      const next = placeOf(reorder(snap.blocks, d.fromIndex, k), snap.mode, snap.m.cols);
+      slide(d, moveDeltas({ base: snap.base, next, m: snap.m, skipId: d.id }), snap.name);
+      const me = next.find((b) => b.id === d.id);
+      if (me) showPreview(d, snap.name, cellRect(me, snap.m), false);
+    }
+  }
+  function guestFrame(d, snap, p) {
+    const w = Math.min(d.span.w, snap.m.cols);
+    const h = d.span.h;
+    if (snap.mode === "free") {
+      const cell = pointToCell({ x: p.x, y: p.y, w, m: snap.m });
+      const blocked = overlaps({ placed: snap.base, id: d.id, ...cell, w, h });
+      if (cell.col !== d.cell.col || cell.row !== d.cell.row || blocked !== d.blocked || d.previewZone !== snap.name) {
+        d.cell = cell;
+        d.blocked = blocked;
+        d.index = snap.blocks.length;
+        showPreview(d, snap.name, cellRect({ id: d.id, col: cell.col, row: cell.row, w, h }, snap.m), blocked);
+      }
+      return;
+    }
+    const k = insertIndex({ base: snap.base, dragId: d.id, m: snap.m, pointerX: p.x, pointerY: p.y });
+    if (k !== d.index || d.previewZone !== snap.name) {
+      d.index = k;
+      const guest = { id: d.id, w, h };
+      const merged = snap.blocks.slice();
+      merged.splice(k, 0, guest);
+      const next = placeOf(merged, snap.mode, snap.m.cols);
+      const me = next.find((b) => b.id === d.id);
+      d.blocked = false;
+      if (me) showPreview(d, snap.name, cellRect(me, snap.m), false);
+    }
+  }
+  function resizeFrame(d) {
+    const snap = d.zones.get(d.fromZone);
+    if (!snap) return;
+    const limits = snap.blocks[d.fromIndex];
+    if (!limits) return;
+    const want = snapSpan({
+      start: { w: limits.w, h: limits.h },
+      dx: d.lastX - d.startX,
+      dy: d.lastY - d.startY,
+      m: snap.m,
+      limits
+    });
+    const span = snap.mode === "free" ? fitSpan({ placed: snap.base, id: d.id, ...d.cell, want, limits }) : want;
+    if (span.w === d.span.w && span.h === d.span.h) return;
+    d.span = span;
+    if (snap.mode === "free") {
+      showPreview(d, snap.name, cellRect({ id: d.id, ...d.cell, ...span }, snap.m), false);
+      return;
+    }
+    const resized = snap.blocks.map((b, i) => i === d.fromIndex ? { ...b, ...span } : b);
+    const next = placeOf(resized, snap.mode, snap.m.cols);
+    slide(d, moveDeltas({ base: snap.base, next, m: snap.m, skipId: d.id }), snap.name);
+    const me = next.find((b) => b.id === d.id);
+    if (me) showPreview(d, snap.name, cellRect(me, snap.m), false);
+  }
+  function onMove(ev) {
+    if (!drag || ev.pointerId !== drag.pid) return;
+    if (!drag.moved && (Math.abs(ev.clientX - drag.startX) > 2 || Math.abs(ev.clientY - drag.startY) > 2)) drag.moved = true;
+    drag.lastX = ev.clientX;
+    drag.lastY = ev.clientY;
+  }
+  function detach() {
+    restoreTextSelection();
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+    window.removeEventListener("keydown", onKey);
+  }
+  function cleanup() {
+    if (!drag) return;
+    const d = drag;
+    if (d.raf) cancelAnimationFrame(d.raf);
+    detach();
+    resetStyles(d);
+    drag = null;
+    setActive(null);
+    setOver(null);
+  }
+  function onKey(ev) {
+    if (ev.key === "Escape") cleanup();
+  }
+  function onUp(ev) {
+    if (!drag || ev.pointerId !== drag.pid) return;
+    const d = drag;
+    const zone = zones.get(d.fromZone);
+    const snap = d.zones.get(d.fromZone);
+    if (d.kind === "resize") {
+      const before = snap?.blocks[d.fromIndex];
+      cleanup();
+      if (d.ready && before && (d.span.w !== before.w || d.span.h !== before.h)) {
+        zone?.opts.onResize?.(d.id, d.span.w, d.span.h);
+      }
+      return;
+    }
+    const ready = d.ready;
+    const target = d.target;
+    const blocked = d.blocked;
+    const index = d.index;
+    const cell = d.cell;
+    const home = snap?.base.find((b) => b.id === d.id);
+    cleanup();
+    if (!ready) return;
+    if (target !== d.fromZone) {
+      if (blocked) return;
+      opts.onTransfer?.(
+        { grid: d.fromZone, id: d.id, index: d.fromIndex },
+        { grid: target, index, x: cell.col, y: cell.row }
+      );
+      return;
+    }
+    if (snap?.mode === "free") {
+      if (blocked || !home || cell.col === home.col && cell.row === home.row) return;
+      zone?.opts.onMove?.(d.id, cell.col, cell.row);
+      return;
+    }
+    if (index !== d.fromIndex) zone?.opts.onReorder?.(d.fromIndex, index);
+  }
+  function begin(kind, name, id, handle, pid, x, y) {
+    const zone = zones.get(name);
+    const el = zone?.els.get(id);
+    if (!zone || !el || !zone.el) return;
+    if (kind === "move" && handle === el && focusInside3(el)) return;
+    const blocks = zone.opts.blocks();
+    const fromIndex = blocks.findIndex((b) => b.id === id);
+    if (fromIndex < 0 || blocks[fromIndex].locked) return;
+    const m = metricsOf(zone);
+    if (!m.colW) return;
+    drag = {
+      kind,
+      id,
+      fromZone: name,
+      fromIndex,
+      pid,
+      el,
+      startX: x,
+      startY: y,
+      lastX: x,
+      lastY: y,
+      zones: /* @__PURE__ */ new Map(),
+      target: name,
+      index: fromIndex,
+      cell: { col: 0, row: 0 },
+      blocked: false,
+      span: { w: blocks[fromIndex].w, h: blocks[fromIndex].h },
+      ghost: null,
+      preview: null,
+      previewZone: null,
+      touched: /* @__PURE__ */ new Set(),
+      raf: 0,
+      ready: false,
+      moved: false
+    };
+    setActive({ grid: name, id, kind });
+    setOver(name);
+    suppressTextSelection();
+    el.style.willChange = "transform";
+    if (kind === "move") {
+      injectGhostReset2();
+      el.style.opacity = "0.4";
+      el.style.cursor = "grabbing";
+    } else {
+      el.style.zIndex = "3";
+    }
+    snapshot((rects) => {
+      if (!drag || drag.id !== id || drag.pid !== pid) return;
+      drag.zones = buildSnaps(rects);
+      const snap = drag.zones.get(name);
+      const home = snap?.base.find((b) => b.id === id);
+      if (snap && home) {
+        drag.cell = { col: home.col, row: home.row };
+        if (kind === "move") {
+          const r = cellRect(home, snap.m);
+          const b = boxOf2(snap);
+          drag.ghost = makeGhost2(el, {
+            left: b.left + snap.padLeft + r.x,
+            top: b.top + snap.padTop + r.y,
+            width: r.width,
+            height: r.height
+          });
+        } else {
+          showPreview(drag, name, cellRect(home, snap.m), false);
+        }
+      }
+      drag.ready = true;
+    });
+    try {
+      handle.setPointerCapture(pid);
+    } catch {
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("keydown", onKey);
+    drag.raf = requestAnimationFrame(frame);
+  }
+  const gate = createPressGate(opts);
+  const canStart = (zone) => !zone.opts.disabled?.() && !drag && !gate.pending();
+  return {
+    grid(name, zoneOpts) {
+      const zone = zones.get(name) ?? {
+        name,
+        el: null,
+        els: /* @__PURE__ */ new Map(),
+        opts: zoneOpts,
+        ro: null,
+        contentW: 0,
+        padLeft: 0,
+        padTop: 0
+      };
+      zone.opts = zoneOpts;
+      zones.set(name, zone);
+      return {
+        attachContainer(el) {
+          zone.el = el;
+          if (typeof ResizeObserver === "function") {
+            zone.ro = new ResizeObserver((entries) => {
+              const r = entries[entries.length - 1]?.contentRect;
+              if (!r) return;
+              zone.contentW = r.width;
+              zone.padLeft = r.left;
+              zone.padTop = r.top;
+            });
+            zone.ro.observe(el);
+          }
+          return () => {
+            zone.ro?.disconnect();
+            zone.ro = null;
+            if (zone.el === el) zone.el = null;
+          };
+        },
+        attach(el, id) {
+          zone.els.set(id, el);
+          el.dataset.gridBlock = id;
+          const down = (ev) => {
+            if (ev.button !== 0 || !canStart(zone)) return;
+            if (!(ev.target instanceof Element)) return;
+            if (ev.target.closest("[data-grid-resize]")) return;
+            if (ev.target.closest("[data-flip-id]")) return;
+            const nested = ev.target.closest("[data-grid-block]");
+            if (nested && nested !== el) return;
+            const handle2 = el.querySelector("[data-drag-handle]");
+            if (handle2) {
+              if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
+            } else if (targetIsInteractive3(ev)) {
+              return;
+            }
+            gate.arm(ev, (px, py) => begin("move", name, id, handle2 || el, ev.pointerId, px, py));
+          };
+          el.addEventListener("pointerdown", down);
+          const handle = el.querySelector("[data-drag-handle]");
+          if (handle) handle.style.touchAction = "none";
+          return () => {
+            el.removeEventListener("pointerdown", down);
+            delete el.dataset.gridBlock;
+            if (zone.els.get(id) === el) zone.els.delete(id);
+          };
+        },
+        attachResize(el, id) {
+          el.dataset.gridResize = "";
+          el.style.touchAction = "none";
+          const down = (ev) => {
+            if (ev.button !== 0 || !canStart(zone) || zone.opts.resizable?.() === false) return;
+            ev.stopPropagation();
+            ev.preventDefault();
+            begin("resize", name, id, el, ev.pointerId, ev.clientX, ev.clientY);
+          };
+          el.addEventListener("pointerdown", down);
+          return () => el.removeEventListener("pointerdown", down);
+        }
+      };
+    },
+    active: () => activeState,
+    over: () => overName,
+    destroy() {
+      gate.cancel();
+      cleanup();
+      for (const z of zones.values()) {
+        z.ro?.disconnect();
+        z.ro = null;
+        z.els.clear();
+        z.el = null;
+      }
+      zones.clear();
+    }
+  };
+}
+
 // src/DumbGrid/solid.ts
 function createDumbGrid(opts) {
   const [active, setActive] = createSignal(null);
@@ -2396,6 +2947,39 @@ function createDumbGrid(opts) {
     bind: (id) => (el) => onCleanup(engine.attach(el, id)),
     resize: (id) => (el) => onCleanup(engine.attachResize(el, id)),
     active
+  };
+}
+function createDumbGridGroup(opts) {
+  const [active, setActive] = createSignal(null);
+  const [over, setOver] = createSignal(null);
+  const engine = createGridGroupEngine({
+    ...opts,
+    onActive: (state) => {
+      setActive(state);
+      opts.onActive?.(state);
+    },
+    onOver: (name) => {
+      setOver(name);
+      opts.onOver?.(name);
+    }
+  });
+  onCleanup(engine.destroy);
+  return {
+    grid(name, zoneOpts) {
+      const zone = engine.grid(name, zoneOpts);
+      return {
+        container: (el) => onCleanup(zone.attachContainer(el)),
+        bind: (id) => (el) => onCleanup(zone.attach(el, id)),
+        resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
+        // «активен ли этот блок» — общий сигнал группы, суженный до своей сетки
+        active: () => {
+          const a = active();
+          return a && a.grid === name ? { id: a.id, kind: a.kind } : null;
+        }
+      };
+    },
+    active,
+    over
   };
 }
 
@@ -2550,7 +3134,7 @@ function DumbGrid(props) {
       } : s;
     });
   };
-  const g = createDumbGrid({
+  const engineOptions = {
     blocks: () => {
       const map = itemById();
       const c = cols();
@@ -2591,7 +3175,8 @@ function DumbGrid(props) {
         h
       }, cols()) : s)));
     }
-  });
+  };
+  const g = props.group ? props.group.grid(props.name ?? "grid", engineOptions) : createDumbGrid(engineOptions);
   const spare = () => (
     // в режиме просмотра пустой хвост не нужен: уводить туда нечего
     editable() ? Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0)) : 0
@@ -3846,4 +4431,4 @@ function imgproxyUrl(src, opts = {}) {
   return `${base}/insecure/${processing}/${base64url(resolveSource(src))}${ext}`;
 }
 
-export { DumbGrid, DumbPagination, DumbSortable, DumbTable, DumbTree, OdataClient, OdataError, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbSortable, createGridEngine, createOdataClient, createSelectionArea, createSortableGroup, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };
+export { DumbGrid, DumbPagination, DumbSortable, DumbTable, DumbTree, OdataClient, OdataError, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbGridGroup, createDumbSortable, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortableGroup, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };

@@ -4,6 +4,7 @@
 
 import { createSignal, onCleanup } from 'solid-js'
 import { createGridEngine, type DumbGridOptions } from './gridCore'
+import { createGridGroupEngine, type GridGroupOptions, type GridZoneOptions } from './gridGroup'
 
 export type GridActive = { id: string; kind: 'move' | 'resize' } | null
 
@@ -34,5 +35,47 @@ export function createDumbGrid(opts: DumbGridOptions): DumbGridHandle {
     bind: (id) => (el) => onCleanup(engine.attach(el, id)),
     resize: (id) => (el) => onCleanup(engine.attachResize(el, id)),
     active,
+  }
+}
+
+/* ────────── группа сеток: блок переезжает из одной в другую ────────── */
+
+export type GridGroupActive = { grid: string; id: string; kind: 'move' | 'resize' } | null
+
+export type DumbGridGroupHandle = {
+  /** зарегистрировать сетку; результат отдаётся компоненту как проп `group` */
+  grid: (name: string, opts: GridZoneOptions) => DumbGridHandle
+  /** что сейчас тащат, реактивно */
+  active: () => GridGroupActive
+  /** над какой сеткой указатель, реактивно (для подсветки приёмника) */
+  over: () => string | null
+}
+
+export function createDumbGridGroup(opts: GridGroupOptions): DumbGridGroupHandle {
+  const [active, setActive] = createSignal<GridGroupActive>(null)
+  const [over, setOver] = createSignal<string | null>(null)
+  const engine = createGridGroupEngine({
+    ...opts,
+    onActive: (state) => { setActive(state); opts.onActive?.(state) },
+    onOver: (name) => { setOver(name); opts.onOver?.(name) },
+  })
+  onCleanup(engine.destroy)
+
+  return {
+    grid(name, zoneOpts) {
+      const zone = engine.grid(name, zoneOpts)
+      return {
+        container: (el) => onCleanup(zone.attachContainer(el)),
+        bind: (id) => (el) => onCleanup(zone.attach(el, id)),
+        resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
+        // «активен ли этот блок» — общий сигнал группы, суженный до своей сетки
+        active: () => {
+          const a = active()
+          return a && a.grid === name ? { id: a.id, kind: a.kind } : null
+        },
+      }
+    },
+    active,
+    over,
   }
 }

@@ -112,6 +112,8 @@ Without a handle, pointer-downs on `input`, `button`, `a`, `select`, `label`, `[
 | `animate` | `boolean` | `true`\* | animate parting and landing |
 | `pressDelay` | `number` | `350` | touch: hold before a drag starts, ms |
 | `mouseThreshold` | `number` | `0` | mouse: distance before a drag starts, px |
+| `group` | `DumbGridGroupHandle` | — | join a group so blocks can be dragged to another grid |
+| `name` | `string` | — | this grid's name inside the group |
 | `showGrid` | `boolean \| 'drag'` | `'drag'` | draw the grid: while dragging / always / never |
 | `spareRows` | `number` | `2` in `free`, `0` in flow | empty rows kept below, so a block can be dragged into nothing (constant — see below) |
 | `class` / `style` | — | — | on the grid container |
@@ -142,6 +144,38 @@ The same rule covers a sortable inside a block (`createDumbSortable`, or a kanba
 One thing to keep in mind: **`items` must not depend on the nested state**. Derive it from the list of blocks only (a `createMemo` over the sections), so moving something inside does not rebuild the outer items mid-gesture. Blocks are rendered from `items` rather than from the computed layout, precisely so a drop never re-creates the DOM inside them — scroll, focus and nested refs survive.
 
 See `examples/Board.example.tsx`: two levels, controlled layouts on both, plus adding and removing sections and widgets.
+
+## Moving a block between grids
+
+Nesting on its own is static — each block stays in the grid it was born in. To carry a block **from one grid to another**, put the grids in a group:
+
+```tsx
+const group = createDumbGridGroup({
+  onTransfer: (from, to) => {
+    // from: { grid, id, index } — to: { grid, index, x, y }
+    setWidgets((all) => ({
+      ...all,
+      [from.grid]: all[from.grid].filter((w) => w.id !== from.id),
+      [to.grid]: insertAt(all[to.grid], to.index, moved),
+    }))
+  },
+})
+
+<DumbGrid group={group} name="sales" items={salesItems()} … />
+<DumbGrid group={group} name="ops"   items={opsItems()}   … />
+```
+
+This is to grids what `createSortableGroup` is to lists, and works the same way: one gesture for the whole group, every container snapshotted by a single `IntersectionObserver`, the zone under the pointer resolved from cached rects, and a clone flying in the **top layer** — necessary, because sections usually scroll and a block carried past their edge would be clipped by `overflow`.
+
+- the original stays in place, dimmed, so the source grid does not collapse mid-drag;
+- in the target grid neighbours **do not** part — a dashed frame shows where the block will land. Rearranging someone else's layout before the drop would lie about the result if you carried the block back out;
+- `accepts: (from) => boolean` per grid refuses incoming blocks (the pointer then keeps the previous zone);
+- **Esc** cancels;
+- a drop onto an occupied cell in a `free` target is refused, exactly as inside one grid.
+
+Local changes — reorder, resize, moving within one grid — are still applied by the component itself. Only the transfer goes out to the group, because it is the one event that touches two layouts at once.
+
+`examples/Board.example.tsx` puts both together: an outer grid of sections, a nested grid inside each, all nested grids in one group, so widgets travel between sections.
 
 ## Edit mode
 
