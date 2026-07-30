@@ -72,15 +72,13 @@ export {
 } from './DumbGrid'
 export {
   DumbGridDnd,
-  mergeDndLayout,
-  dndGridLines,
   type DumbGridDndProps,
   type DumbGridDndItem,
-  type DumbGridDndLayout,
   createDumbGridDndGroup,
   type DumbGridDndGroupHandle,
   type DumbGridDndHandle,
   type DndActive,
+  type DndDrop,
   createGridDndEngine,
   dndSupported,
   DND_MIME,
@@ -88,7 +86,6 @@ export {
   type DndGroupOptions,
   type DndZoneOptions,
   type DndZoneEngine,
-  type DndBlock,
   type DndTransferSource,
   type DndTransferTarget,
 } from './DumbGridDnd'

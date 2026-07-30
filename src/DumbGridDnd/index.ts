@@ -1,18 +1,16 @@
 export {
   DumbGridDnd,
-  mergeDndLayout,
-  dndGridLines,
   type DumbGridDndProps,
   type DumbGridDndItem,
-  type DumbGridDndLayout,
 } from './DumbGridDnd'
 
-// Solid-обёртки
+// Solid-обёртка (группа сеток)
 export {
   createDumbGridDndGroup,
   type DumbGridDndGroupHandle,
   type DumbGridDndHandle,
   type DndActive,
+  type DndDrop,
 } from './solid'
 
 // Движок без привязки к фреймворку
@@ -24,7 +22,6 @@ export {
   type DndGroupOptions,
   type DndZoneOptions,
   type DndZoneEngine,
-  type DndBlock,
   type DndTransferSource,
   type DndTransferTarget,
 } from './dndCore'

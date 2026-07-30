@@ -581,12 +581,12 @@ function ResizableGrid(props) {
   }
   const colTemplate = () => {
     const s = colSizes();
-    return s.map((v4) => `${v4}fr`).join(` ${HANDLE_SIZE}px `);
+    return s.map((v3) => `${v3}fr`).join(` ${HANDLE_SIZE}px `);
   };
   const row2Template = () => {
     const s = rowSizes();
     if (!s) return "";
-    return s.map((v4) => `${v4}fr`).join(` ${HANDLE_SIZE}px `);
+    return s.map((v3) => `${v3}fr`).join(` ${HANDLE_SIZE}px `);
   };
   const rowTemplate = () => {
     const split = rowSplit();
@@ -3359,134 +3359,50 @@ delegateEvents(["click"]);
 
 // src/DumbGridDnd/dndCore.ts
 var DND_MIME = "application/x-dumb-grid";
-var SLIDE5 = "transform .18s cubic-bezier(.2,.8,.2,1)";
-var PREVIEW_BG3 = "rgba(59,130,246,.10)";
-var PREVIEW_LINE3 = "2px dashed rgba(59,130,246,.85)";
-var BLOCKED_BG3 = "rgba(239,68,68,.10)";
-var BLOCKED_LINE3 = "2px dashed rgba(239,68,68,.85)";
-var PREVIEW_Z3 = 5;
 var dndSupported = () => typeof DataTransfer === "function" && typeof DragEvent === "function";
-function createGridDndEngine(opts) {
+function createGridDndEngine(opts = {}) {
   const zones = /* @__PURE__ */ new Map();
   let drag = null;
-  let resize = null;
-  let activeState = null;
-  let overName = null;
-  const setActive = (s) => {
-    activeState = s;
-    opts.onActive?.(s);
-  };
+  let over = null;
   const setOver = (name) => {
-    if (overName === name) return;
-    overName = name;
+    if (over === name) return;
+    over = name;
     opts.onOver?.(name);
   };
-  const metricsOf = (z) => {
-    const cols = Math.max(1, Math.floor(z.opts.cols()));
-    const gapX = z.opts.gapX();
-    return { cols, colW: colWidth(z.contentW, cols, gapX), rowH: z.opts.rowHeight(), gapX, gapY: z.opts.gapY() };
-  };
-  const placeOf = (blocks, mode, cols) => mode === "free" ? placeFree(blocks, cols) : packFlow(blocks, cols, mode);
-  function snapOf(zone) {
-    if (!zone.el) return null;
-    const box = zone.el.getBoundingClientRect();
-    const scroller = scrollParent(zone.el, true);
-    const s0 = scrollOf(scroller);
-    const mode = zone.opts.mode?.() ?? "flow";
-    const m = metricsOf(zone);
-    const blocks = zone.opts.blocks();
-    return {
-      name: zone.name,
-      m,
-      mode,
-      blocks,
-      base: placeOf(blocks, mode, m.cols),
-      padLeft: zone.padLeft,
-      padTop: zone.padTop,
-      boxLeft: box.left,
-      boxTop: box.top,
-      winX: window.scrollX,
-      winY: window.scrollY,
-      scroller,
-      sx0: s0.sx,
-      sy0: s0.sy
-    };
-  }
-  function pointIn(s, x, y) {
-    const sc = scrollOf(s.scroller);
-    const dx = window.scrollX - s.winX + (s.scroller ? sc.sx - s.sx0 : 0);
-    const dy = window.scrollY - s.winY + (s.scroller ? sc.sy - s.sy0 : 0);
-    return { x: x - (s.boxLeft - dx) - s.padLeft, y: y - (s.boxTop - dy) - s.padTop };
-  }
-  function slide(touched, zoneName, moves, skip) {
+  function markDrop(zoneName, index) {
+    if (!drag) return;
+    if (drag.toZone === zoneName && drag.toIndex === index) return;
+    drag.toZone = zoneName;
+    drag.toIndex = index;
+    clearMarks();
     const zone = zones.get(zoneName);
     if (!zone) return;
-    for (const mv of moves) {
-      const el = zone.els.get(mv.id);
-      if (!el || el === skip) continue;
-      if (!mv.dx && !mv.dy) {
-        if (touched.has(el)) el.style.transform = "";
-        continue;
-      }
-      if (!touched.has(el)) {
-        touched.add(el);
-        el.style.willChange = "transform";
-        if (!shouldAnimate(opts.animate)) {
-          el.style.transform = `translate(${mv.dx}px,${mv.dy}px)`;
-          continue;
-        }
-        el.style.transition = SLIDE5;
-        continue;
-      }
-      el.style.transform = `translate(${mv.dx}px,${mv.dy}px)`;
-    }
+    const order = zone.opts.order().filter((id) => !(zoneName === drag.fromZone && id === drag.id));
+    const beforeId = order[index];
+    const afterId = order[order.length - 1];
+    if (beforeId) zone.els.get(beforeId)?.setAttribute("data-drop-before", "");
+    else if (afterId) zone.els.get(afterId)?.setAttribute("data-drop-after", "");
   }
-  function calm(touched) {
-    for (const el of touched) {
-      el.style.transition = "";
-      el.style.transform = "";
-      el.style.willChange = "";
+  function clearMarks() {
+    for (const zone of zones.values()) {
+      for (const el of zone.els.values()) {
+        el.removeAttribute("data-drop-before");
+        el.removeAttribute("data-drop-after");
+      }
     }
-    touched.clear();
-  }
-  function preview(holder, zoneName, rect, pad, blocked = false) {
-    const zone = zones.get(zoneName);
-    if (!zone?.el) return;
-    if (holder.preview && holder.previewZone && holder.previewZone !== zoneName) {
-      holder.preview.remove();
-      holder.preview = null;
-    }
-    if (!holder.preview) {
-      const box = document.createElement("div");
-      box.style.cssText = [
-        "position:absolute",
-        "pointer-events:none",
-        "box-sizing:border-box",
-        "border-radius:10px",
-        `z-index:${PREVIEW_Z3}`,
-        "outline-offset:-2px",
-        "transition:background .12s ease, outline-color .12s ease"
-      ].join(";");
-      box.dataset.gridPreview = "";
-      zone.el.appendChild(box);
-      holder.preview = box;
-      if ("previewZone" in holder) holder.previewZone = zoneName;
-    }
-    holder.preview.dataset.blocked = blocked ? "" : void 0;
-    holder.preview.style.background = blocked ? BLOCKED_BG3 : PREVIEW_BG3;
-    holder.preview.style.outline = blocked ? BLOCKED_LINE3 : PREVIEW_LINE3;
-    holder.preview.style.width = `${rect.width}px`;
-    holder.preview.style.height = `${rect.height}px`;
-    holder.preview.style.transform = `translate(${pad.left + rect.x}px,${pad.top + rect.y}px)`;
   }
   function clearDrag() {
     if (!drag) return;
-    calm(drag.touched);
-    drag.preview?.remove();
+    clearMarks();
     drag.el.style.opacity = "";
     drag = null;
-    setActive(null);
     setOver(null);
+    opts.onActive?.(null);
+  }
+  function accepted(zone) {
+    if (!drag) return false;
+    if (zone.name === drag.fromZone) return true;
+    return !zone.opts.accepts || zone.opts.accepts(drag.fromZone);
   }
   function onDragStart(zone, id, el, ev) {
     if (!ev.dataTransfer || zone.opts.disabled?.()) {
@@ -3502,7 +3418,7 @@ function createGridDndEngine(opts) {
         ev.preventDefault();
         return;
       }
-      const nested = ev.target.closest("[data-grid-block]");
+      const nested = ev.target.closest("[data-dnd-block]");
       if (nested && nested !== el) {
         ev.preventDefault();
         return;
@@ -3513,15 +3429,8 @@ function createGridDndEngine(opts) {
         return;
       }
     }
-    const blocks = zone.opts.blocks();
-    const fromIndex = blocks.findIndex((b) => b.id === id);
-    if (fromIndex < 0 || blocks[fromIndex].locked) {
-      ev.preventDefault();
-      return;
-    }
-    const snap = snapOf(zone);
-    const home = snap?.base.find((b) => b.id === id);
-    if (!snap || !home) {
+    const index = zone.opts.order().indexOf(id);
+    if (index < 0) {
       ev.preventDefault();
       return;
     }
@@ -3534,312 +3443,123 @@ function createGridDndEngine(opts) {
       ev.dataTransfer.setData("text/plain", id);
     } catch {
     }
-    try {
-      ev.dataTransfer.setDragImage?.(el, ev.offsetX || 0, ev.offsetY || 0);
-    } catch {
-    }
-    drag = {
-      fromZone: zone.name,
-      id,
-      fromIndex,
-      el,
-      span: { w: blocks[fromIndex].w, h: blocks[fromIndex].h },
-      target: zone.name,
-      index: fromIndex,
-      cell: { col: home.col, row: home.row },
-      blocked: false,
-      snaps: /* @__PURE__ */ new Map([[zone.name, snap]]),
-      preview: null,
-      previewZone: null,
-      touched: /* @__PURE__ */ new Set()
-    };
-    setActive({ grid: zone.name, id, kind: "move" });
+    drag = { fromZone: zone.name, id, fromIndex: index, el, toZone: zone.name, toIndex: -1 };
     setOver(zone.name);
+    opts.onActive?.({ grid: zone.name, id });
     requestAnimationFrame(() => {
       if (drag) el.style.opacity = "0.4";
     });
   }
-  function homeTarget(d, s, p) {
-    if (s.mode === "free") {
-      const me2 = s.base.find((b) => b.id === d.id);
-      if (!me2) return;
-      const cell = pointToCell({ x: p.x - d.span.w * (s.m.colW + s.m.gapX) / 2, y: p.y - s.m.rowH / 2, w: d.span.w, m: s.m });
-      const blocked = overlaps({ placed: s.base, id: d.id, ...cell, ...d.span });
-      if (cell.col === d.cell.col && cell.row === d.cell.row && blocked === d.blocked && d.previewZone === s.name) return;
-      d.cell = cell;
-      d.blocked = blocked;
-      preview(d, s.name, cellRect({ ...me2, ...cell, ...d.span }, s.m), { left: s.padLeft, top: s.padTop }, blocked);
-      return;
-    }
-    const k = insertIndex({ base: s.base, dragId: d.id, m: s.m, pointerX: p.x, pointerY: p.y });
-    if (k === d.index && d.previewZone === s.name) return;
-    d.index = k;
-    d.blocked = false;
-    const next = placeOf(reorder(s.blocks, d.fromIndex, k), s.mode, s.m.cols);
-    slide(d.touched, s.name, moveDeltas({ base: s.base, next, m: s.m, skipId: d.id }), d.el);
-    const me = next.find((b) => b.id === d.id);
-    if (me) preview(d, s.name, cellRect(me, s.m), { left: s.padLeft, top: s.padTop }, false);
-  }
-  function guestTarget(d, s, p) {
-    const w = Math.min(d.span.w, s.m.cols);
-    const h = d.span.h;
-    if (s.mode === "free") {
-      const cell = pointToCell({ x: p.x - w * (s.m.colW + s.m.gapX) / 2, y: p.y - s.m.rowH / 2, w, m: s.m });
-      const blocked = overlaps({ placed: s.base, id: d.id, ...cell, w, h });
-      if (cell.col === d.cell.col && cell.row === d.cell.row && blocked === d.blocked && d.previewZone === s.name) return;
-      d.cell = cell;
-      d.blocked = blocked;
-      d.index = s.blocks.length;
-      preview(d, s.name, cellRect({ id: d.id, col: cell.col, row: cell.row, w, h }, s.m), { left: s.padLeft, top: s.padTop }, blocked);
-      return;
-    }
-    const k = insertIndex({ base: s.base, dragId: d.id, m: s.m, pointerX: p.x, pointerY: p.y });
-    if (k === d.index && d.previewZone === s.name) return;
-    d.index = k;
-    d.blocked = false;
-    const merged = s.blocks.slice();
-    merged.splice(k, 0, { id: d.id, w, h });
-    const next = placeOf(merged, s.mode, s.m.cols);
-    const me = next.find((b) => b.id === d.id);
-    if (me) preview(d, s.name, cellRect(me, s.m), { left: s.padLeft, top: s.padTop }, false);
-  }
-  function onDragOver(zone, ev) {
-    if (!drag || !zone.el) return;
-    if (zone.name !== drag.fromZone) {
-      const accepts = zone.opts.accepts;
-      if (accepts && !accepts(drag.fromZone)) return;
-    }
+  function onBlockOver(zone, id, el, ev, rect) {
+    if (!drag || !accepted(zone) || !rect) return;
     ev.preventDefault();
     ev.stopPropagation();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-    let s = drag.snaps.get(zone.name);
-    if (!s) {
-      const fresh = snapOf(zone);
-      if (!fresh) return;
-      drag.snaps.set(zone.name, s = fresh);
-    }
-    if (drag.target !== zone.name) {
-      drag.target = zone.name;
-      calm(drag.touched);
-      setOver(zone.name);
-    }
-    const p = pointIn(s, ev.clientX, ev.clientY);
-    if (zone.name === drag.fromZone) homeTarget(drag, s, p);
-    else guestTarget(drag, s, p);
+    const order = zone.opts.order().filter((x) => !(zone.name === drag.fromZone && x === drag.id));
+    const at = order.indexOf(id);
+    if (at < 0) return;
+    const after = ev.clientX > rect.left + rect.width / 2;
+    markDrop(zone.name, after ? at + 1 : at);
+    setOver(zone.name);
   }
-  function onDrop(zone, ev) {
-    if (!drag) return;
-    if (zone.name !== drag.fromZone) {
-      const accepts = zone.opts.accepts;
-      if (accepts && !accepts(drag.fromZone)) return;
-    }
+  function onZoneOver(zone, ev) {
+    if (!drag || !accepted(zone)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+    setOver(zone.name);
+    const order = zone.opts.order().filter((id) => !(zone.name === drag.fromZone && id === drag.id));
+    markDrop(zone.name, order.length);
+  }
+  function onZoneDrop(zone, ev) {
+    if (!drag || !accepted(zone)) return;
     ev.preventDefault();
     ev.stopPropagation();
     const d = drag;
-    const s = d.snaps.get(d.fromZone);
-    const home = s?.base.find((b) => b.id === d.id);
-    const to = zone.name;
-    const { index, cell, blocked } = d;
+    const to = { zone: d.toZone, index: d.toIndex };
     clearDrag();
-    if (to !== d.fromZone) {
-      if (blocked) return;
-      opts.onTransfer?.({ grid: d.fromZone, id: d.id, index: d.fromIndex }, { grid: to, index, x: cell.col, y: cell.row });
+    if (to.index < 0) return;
+    if (to.zone !== d.fromZone) {
+      opts.onTransfer?.({ grid: d.fromZone, id: d.id, index: d.fromIndex }, { grid: to.zone, index: to.index });
       return;
     }
-    const from = zones.get(d.fromZone);
-    if (s?.mode === "free") {
-      if (blocked || !home || cell.col === home.col && cell.row === home.row) return;
-      from?.opts.onMove?.(d.id, cell.col, cell.row);
-      return;
-    }
-    if (index !== d.fromIndex) from?.opts.onReorder?.(d.fromIndex, index);
-  }
-  function resizeFrame() {
-    if (!resize) return;
-    const r = resize;
-    const limits = r.snap.blocks.find((b) => b.id === r.id);
-    if (limits) {
-      const want = snapSpan({
-        start: { w: limits.w, h: limits.h },
-        dx: r.lastX - r.startX,
-        dy: r.lastY - r.startY,
-        m: r.snap.m,
-        limits
-      });
-      const span = r.snap.mode === "free" ? fitSpan({ placed: r.snap.base, id: r.id, col: r.home.col, row: r.home.row, want, limits }) : want;
-      if (span.w !== r.span.w || span.h !== r.span.h) {
-        r.span = span;
-        if (r.snap.mode === "free") {
-          preview(r, r.snap.name, cellRect({ ...r.home, ...span }, r.snap.m), { left: r.snap.padLeft, top: r.snap.padTop });
-        } else {
-          const resized = r.snap.blocks.map((b) => b.id === r.id ? { ...b, ...span } : b);
-          const next = placeOf(resized, r.snap.mode, r.snap.m.cols);
-          slide(r.touched, r.snap.name, moveDeltas({ base: r.snap.base, next, m: r.snap.m, skipId: r.id }), r.el);
-          const me = next.find((b) => b.id === r.id);
-          if (me) preview(r, r.snap.name, cellRect(me, r.snap.m), { left: r.snap.padLeft, top: r.snap.padTop });
-        }
-      }
-    }
-    r.raf = requestAnimationFrame(resizeFrame);
-  }
-  function onResizeMove(ev) {
-    if (!resize || ev.pointerId !== resize.pid) return;
-    resize.lastX = ev.clientX;
-    resize.lastY = ev.clientY;
-  }
-  function endResize(ev) {
-    if (!resize || ev.pointerId !== resize.pid) return;
-    const r = resize;
-    cancelAnimationFrame(r.raf);
-    window.removeEventListener("pointermove", onResizeMove);
-    window.removeEventListener("pointerup", endResize);
-    window.removeEventListener("pointercancel", endResize);
-    calm(r.touched);
-    r.preview?.remove();
-    r.el.style.zIndex = "";
-    resize = null;
-    setActive(null);
-    const before = r.snap.blocks.find((b) => b.id === r.id);
-    if (before && (r.span.w !== before.w || r.span.h !== before.h)) {
-      zones.get(r.zone)?.opts.onResize?.(r.id, r.span.w, r.span.h);
-    }
-  }
-  function beginResize(zone, id, ev) {
-    const el = zone.els.get(id);
-    if (!el || drag || resize) return;
-    const blocks = zone.opts.blocks();
-    const block = blocks.find((b) => b.id === id);
-    if (!block || block.locked) return;
-    const snap = snapOf(zone);
-    const home = snap?.base.find((b) => b.id === id);
-    if (!snap || !home || !snap.m.colW) return;
-    resize = {
-      zone: zone.name,
-      id,
-      el,
-      pid: ev.pointerId,
-      startX: ev.clientX,
-      startY: ev.clientY,
-      lastX: ev.clientX,
-      lastY: ev.clientY,
-      snap,
-      home,
-      span: { w: block.w, h: block.h },
-      preview: null,
-      touched: /* @__PURE__ */ new Set(),
-      raf: 0
-    };
-    setActive({ grid: zone.name, id, kind: "resize" });
-    el.style.zIndex = "3";
-    preview(resize, zone.name, cellRect(home, snap.m), { left: snap.padLeft, top: snap.padTop });
-    window.addEventListener("pointermove", onResizeMove);
-    window.addEventListener("pointerup", endResize);
-    window.addEventListener("pointercancel", endResize);
-    resize.raf = requestAnimationFrame(resizeFrame);
+    if (to.index !== d.fromIndex) zones.get(d.fromZone)?.opts.onReorder?.(d.fromIndex, to.index);
   }
   return {
     grid(name, zoneOpts) {
-      const zone = zones.get(name) ?? {
-        name,
-        el: null,
-        els: /* @__PURE__ */ new Map(),
-        opts: zoneOpts,
-        ro: null,
-        contentW: 0,
-        padLeft: 0,
-        padTop: 0
-      };
+      const zone = zones.get(name) ?? { name, el: null, els: /* @__PURE__ */ new Map(), opts: zoneOpts };
       zone.opts = zoneOpts;
       zones.set(name, zone);
       return {
         attachContainer(el) {
           zone.el = el;
-          const enter = (ev) => {
-            if (drag) {
+          const onEnter = (ev) => {
+            if (drag && accepted(zone)) {
               ev.preventDefault();
               ev.stopPropagation();
             }
           };
-          const over = (ev) => onDragOver(zone, ev);
-          const leave = (ev) => {
+          const onOver = (ev) => onZoneOver(zone, ev);
+          const onLeave = (ev) => {
             if (!drag || ev.relatedTarget instanceof Node && el.contains(ev.relatedTarget)) return;
-            if (drag.target === zone.name) setOver(null);
+            if (over === zone.name) setOver(null);
           };
-          const drop = (ev) => onDrop(zone, ev);
-          el.addEventListener("dragenter", enter);
-          el.addEventListener("dragover", over);
-          el.addEventListener("dragleave", leave);
-          el.addEventListener("drop", drop);
-          if (typeof ResizeObserver === "function") {
-            zone.ro = new ResizeObserver((entries) => {
-              const r = entries[entries.length - 1]?.contentRect;
-              if (!r) return;
-              zone.contentW = r.width;
-              zone.padLeft = r.left;
-              zone.padTop = r.top;
-            });
-            zone.ro.observe(el);
-          }
+          const onDrop = (ev) => onZoneDrop(zone, ev);
+          el.addEventListener("dragenter", onEnter);
+          el.addEventListener("dragover", onOver);
+          el.addEventListener("dragleave", onLeave);
+          el.addEventListener("drop", onDrop);
           return () => {
-            el.removeEventListener("dragenter", enter);
-            el.removeEventListener("dragover", over);
-            el.removeEventListener("dragleave", leave);
-            el.removeEventListener("drop", drop);
-            zone.ro?.disconnect();
-            zone.ro = null;
+            el.removeEventListener("dragenter", onEnter);
+            el.removeEventListener("dragover", onOver);
+            el.removeEventListener("dragleave", onLeave);
+            el.removeEventListener("drop", onDrop);
             if (zone.el === el) zone.el = null;
           };
         },
         attach(el, id) {
           zone.els.set(id, el);
-          el.dataset.gridBlock = id;
+          el.dataset.dndBlock = id;
           el.setAttribute("draggable", "true");
-          const start = (ev) => onDragStart(zone, id, el, ev);
-          const end = () => clearDrag();
-          el.addEventListener("dragstart", start);
-          el.addEventListener("dragend", end);
+          let rect = null;
+          const onStart = (ev) => onDragStart(zone, id, el, ev);
+          const onEnd = () => clearDrag();
+          const onEnter = () => {
+            rect = el.getBoundingClientRect();
+          };
+          const onOver = (ev) => {
+            if (!rect) rect = el.getBoundingClientRect();
+            onBlockOver(zone, id, el, ev, rect);
+          };
+          const onLeave = () => {
+            rect = null;
+          };
+          const onDrop = (ev) => onZoneDrop(zone, ev);
+          el.addEventListener("dragstart", onStart);
+          el.addEventListener("dragend", onEnd);
+          el.addEventListener("dragenter", onEnter);
+          el.addEventListener("dragover", onOver);
+          el.addEventListener("dragleave", onLeave);
+          el.addEventListener("drop", onDrop);
           return () => {
-            el.removeEventListener("dragstart", start);
-            el.removeEventListener("dragend", end);
+            el.removeEventListener("dragstart", onStart);
+            el.removeEventListener("dragend", onEnd);
+            el.removeEventListener("dragenter", onEnter);
+            el.removeEventListener("dragover", onOver);
+            el.removeEventListener("dragleave", onLeave);
+            el.removeEventListener("drop", onDrop);
             el.removeAttribute("draggable");
-            delete el.dataset.gridBlock;
+            delete el.dataset.dndBlock;
             if (zone.els.get(id) === el) zone.els.delete(id);
           };
-        },
-        attachResize(el, id) {
-          el.dataset.gridResize = "";
-          el.style.touchAction = "none";
-          el.setAttribute("draggable", "false");
-          const down = (ev) => {
-            if (ev.button !== 0 || zone.opts.disabled?.() || zone.opts.resizable?.() === false) return;
-            ev.stopPropagation();
-            ev.preventDefault();
-            beginResize(zone, id, ev);
-          };
-          el.addEventListener("pointerdown", down);
-          return () => el.removeEventListener("pointerdown", down);
         }
       };
     },
-    active: () => activeState,
-    over: () => overName,
+    active: () => drag ? { grid: drag.fromZone, id: drag.id } : null,
+    over: () => over,
+    drop: () => drag && drag.toIndex >= 0 ? { grid: drag.toZone, index: drag.toIndex } : null,
     destroy() {
       clearDrag();
-      if (resize) {
-        cancelAnimationFrame(resize.raf);
-        window.removeEventListener("pointermove", onResizeMove);
-        window.removeEventListener("pointerup", endResize);
-        window.removeEventListener("pointercancel", endResize);
-        resize.preview?.remove();
-        resize = null;
-        setActive(null);
-      }
-      for (const z of zones.values()) {
-        z.ro?.disconnect();
-        z.ro = null;
-        z.els.clear();
-        z.el = null;
-      }
       zones.clear();
     }
   };
@@ -3849,14 +3569,17 @@ function createGridDndEngine(opts) {
 function createDumbGridDndGroup(opts = {}) {
   const [active, setActive] = createSignal(null);
   const [over, setOver] = createSignal(null);
+  const [drop, setDrop] = createSignal(null);
   const engine = createGridDndEngine({
     ...opts,
     onActive: (state) => {
       setActive(state);
+      setDrop(state ? engine.drop() : null);
       opts.onActive?.(state);
     },
     onOver: (name) => {
       setOver(name);
+      setDrop(engine.drop());
       opts.onOver?.(name);
     }
   });
@@ -3867,382 +3590,106 @@ function createDumbGridDndGroup(opts = {}) {
       return {
         container: (el) => onCleanup(zone.attachContainer(el)),
         bind: (id) => (el) => onCleanup(zone.attach(el, id)),
-        resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
         active: () => {
           const a = active();
-          return a && a.grid === name ? { id: a.id, kind: a.kind } : null;
+          return a && a.grid === name ? a.id : null;
         }
       };
     },
     active,
-    over
+    over,
+    drop
   };
 }
 
 // src/DumbGridDnd/DumbGridDnd.tsx
-var _tmpl$7 = /* @__PURE__ */ template(`<div data-grid-lines aria-hidden=true style="position:absolute;inset:0;padding:inherit;box-sizing:border-box;pointer-events:none;z-index:0;background-origin:content-box;background-clip:content-box;background-repeat:no-repeat, repeat;transition:opacity .15s ease">`);
-var _tmpl$24 = /* @__PURE__ */ template(`<div style=display:grid;position:relative;scrollbar-gutter:stable>`);
-var _tmpl$33 = /* @__PURE__ */ template(`<div>`);
-var _tmpl$43 = /* @__PURE__ */ template(`<button type=button data-grid-remove data-no-drag style=position:absolute;top:0;right:0;width:22px;height:22px;display:grid;place-items:center;padding:0;border:none;background:transparent;color:currentColor;font:inherit;line-height:1;cursor:pointer;opacity:0.45;z-index:2>\u2715`);
-var _tmpl$53 = /* @__PURE__ */ template(`<div style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55% 70%, currentColor 70% 80%, transparent 80%);border-bottom-right-radius:8px">`);
+var _tmpl$7 = /* @__PURE__ */ template(`<div style=display:grid>`);
+var _tmpl$24 = /* @__PURE__ */ template(`<div style=position:relative;min-width:0;min-height:0;box-sizing:border-box>`);
 var DEFAULT_COLS2 = 12;
 var DEFAULT_ROW_H2 = 80;
 var DEFAULT_GAP2 = 12;
-var GRID_LINE2 = "rgba(100,116,139,.28)";
-var LayoutSchema2 = v.array(v.object({
-  id: v.string(),
-  w: v.number(),
-  h: v.number(),
-  x: v.optional(v.number()),
-  y: v.optional(v.number())
-}));
-function clampInt2(n, lo, hi) {
-  const i = Math.round(n);
-  if (!Number.isFinite(i)) return lo;
-  return Math.max(lo, Math.min(hi, i));
-}
-function spanOf2(item, src, cols) {
-  const minW = item.minW === void 0 ? 1 : resolveSpan(item.minW, cols);
-  const maxW = item.maxW === void 0 ? cols : resolveSpan(item.maxW, cols);
-  const w = clampInt2(src.w, Math.max(1, minW), Math.min(cols, maxW));
-  const out = {
-    id: item.id,
-    w,
-    h: clampInt2(src.h, Math.max(1, item.minH ?? 1), item.maxH ?? Number.MAX_SAFE_INTEGER)
-  };
-  if (Number.isFinite(src.x)) out.x = clampInt2(src.x, 0, Math.max(0, cols - w));
-  if (Number.isFinite(src.y)) out.y = Math.max(0, Math.round(src.y));
-  return out;
-}
-function mergeDndLayout(saved, items, cols, mode = "flow") {
-  const byId = new Map(items.map((it) => [it.id, it]));
-  const out = [];
-  for (const s of saved ?? []) {
-    const it = byId.get(s.id);
-    if (!it) continue;
-    out.push(spanOf2(it, s, cols));
-    byId.delete(s.id);
-  }
-  for (const it of items) {
-    if (!byId.has(it.id)) continue;
-    const w = resolveSpan(it.w, cols);
-    const h = Math.max(1, Math.round(it.h ?? 1) || 1);
-    const spot = mode === "free" && it.x === void 0 && it.y === void 0 && out.length ? firstFreeCell({
-      placed: placeFree(out, cols),
-      cols,
-      w,
-      h
-    }) : {
-      x: it.x,
-      y: it.y
-    };
-    out.push(spanOf2(it, {
-      w,
-      h,
-      x: spot.x,
-      y: spot.y
-    }, cols));
-  }
-  return out;
-}
-function dndGridLines(args) {
-  const {
-    cols,
-    gapX,
-    rowH,
-    gapY
-  } = args;
-  const col = `calc((100% - ${(cols - 1) * gapX}px) / ${cols})`;
-  const stepX = `calc(${col} + ${gapX}px)`;
-  const lineW = Math.max(1, gapX);
-  const lineH = Math.max(1, gapY);
-  const stops = ["transparent 0"];
-  for (let i = 1; i < cols; i++) {
-    const at = `calc(${stepX} * ${i} - ${gapX}px)`;
-    const to = `calc(${stepX} * ${i} - ${gapX}px + ${lineW}px)`;
-    stops.push(`transparent ${at}`, `${GRID_LINE2} ${at}`, `${GRID_LINE2} ${to}`, `transparent ${to}`);
-  }
-  stops.push("transparent 100%");
-  const stepY = rowH + gapY;
-  return {
-    image: [`linear-gradient(to right, ${stops.join(", ")})`, `linear-gradient(to bottom, transparent 0, transparent ${stepY - lineH}px, ${GRID_LINE2} ${stepY - lineH}px, ${GRID_LINE2} ${stepY}px)`].join(", "),
-    size: `100% 100%, 100% ${stepY}px`
-  };
-}
-function blockBox2(span, pos) {
-  return {
-    "grid-column": `${(pos?.col ?? 0) + 1} / span ${span.w}`,
-    "grid-row": `${(pos?.row ?? 0) + 1} / span ${span.h}`,
-    position: "relative",
-    "z-index": "1",
-    "min-width": "0",
-    "min-height": "0",
-    "box-sizing": "border-box"
-  };
-}
 function DumbGridDnd(props) {
-  const mode = () => props.mode ?? "flow";
   const cols = () => Math.max(1, Math.floor(props.cols ?? DEFAULT_COLS2));
   const rowH = () => props.rowHeight ?? DEFAULT_ROW_H2;
-  const gapX = () => props.gapX ?? props.gap ?? DEFAULT_GAP2;
-  const gapY = () => props.gapY ?? props.gap ?? DEFAULT_GAP2;
-  const editable = () => props.editable !== false;
-  const persisted = props.storageKey ? makePersisted(createSignal(null), {
-    name: props.storageKey,
-    serialize: (l) => JSON.stringify(l ?? []),
-    deserialize: (raw) => {
-      try {
-        const parsed = v.safeParse(LayoutSchema2, JSON.parse(raw));
-        return parsed.success ? parsed.output : null;
-      } catch {
-        return null;
-      }
-    }
-  }) : null;
-  const [memory, setMemory] = createSignal(null);
-  const saved = () => props.layout ?? (persisted ? persisted[0]() : memory());
-  const layout = createMemo(() => mergeDndLayout(saved(), props.items, cols(), mode()));
-  const commit = (next) => {
-    if (!props.layout) (persisted ? persisted[1] : setMemory)(next);
-    props.onLayout?.(next);
-  };
-  const placed = createMemo(() => {
-    const m = mode();
-    return m === "free" ? placeFree(layout(), cols()) : packFlow(layout(), cols(), m);
-  });
-  const rows = createMemo(() => rowCount(placed()));
-  const itemById = createMemo(() => new Map(props.items.map((it) => [it.id, it])));
-  const spanById = createMemo(() => new Map(layout().map((s) => [s.id, s])));
+  const gap = () => props.gap ?? DEFAULT_GAP2;
+  const spans = createMemo(() => props.items.map((it) => ({
+    id: it.id,
+    w: resolveSpan(it.w, cols()),
+    h: Math.max(1, Math.round(it.h ?? 1) || 1)
+  })));
+  const placed = createMemo(() => packFlow(spans(), cols()));
   const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])));
-  const materialize = (next) => {
-    if (mode() !== "free") return next;
-    const pos = new Map(placeFree(next, cols()).map((p) => [p.id, p]));
-    return next.map((s) => {
-      const p = pos.get(s.id);
-      return p ? {
-        ...s,
-        x: p.col,
-        y: p.row
-      } : s;
-    });
-  };
-  const zoneOptions = {
-    blocks: () => {
-      const map = itemById();
-      const c = cols();
-      return layout().map((s) => {
-        const it = map.get(s.id);
-        return {
-          ...s,
-          minW: it?.minW === void 0 ? void 0 : resolveSpan(it.minW, c),
-          maxW: it?.maxW === void 0 ? void 0 : resolveSpan(it.maxW, c),
-          minH: it?.minH,
-          maxH: it?.maxH,
-          locked: it?.locked
-        };
-      });
-    },
-    mode,
-    cols,
-    rowHeight: rowH,
-    gapX,
-    gapY,
-    disabled: () => props.disabled === true || !editable(),
-    resizable: () => props.resizable !== false,
-    onReorder: (from, to) => commit(materialize(reorder(layout(), from, to))),
-    onMove: (id, x, y) => commit(materialize(layout().map((s) => s.id === id ? {
-      ...s,
-      x,
-      y
-    } : s))),
-    onResize: (id, w, h) => {
-      const it = itemById().get(id);
-      if (!it) return;
-      commit(materialize(layout().map((s) => s.id === id ? spanOf2(it, {
-        ...s,
-        w,
-        h
-      }, cols()) : s)));
-    }
-  };
-  const solo = props.group ? null : createDumbGridDndGroup({
-    animate: props.animate
-  });
-  const g = (props.group ?? solo).grid(props.name ?? "grid", zoneOptions);
-  const spare = () => editable() ? Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0)) : 0;
-  const heightOf = (n) => n * rowH() + Math.max(0, n - 1) * gapY();
-  const showGrid = () => props.showGrid ?? "drag";
-  const gridVisible = () => showGrid() === true || showGrid() === "drag" && !!g.active();
-  const lines = () => dndGridLines({
-    cols: cols(),
-    gapX: gapX(),
-    rowH: rowH(),
-    gapY: gapY()
+  const rows = createMemo(() => rowCount(placed()));
+  const solo = props.group ? null : createDumbGridDndGroup();
+  const g = (props.group ?? solo).grid(props.name ?? "grid", {
+    order: () => props.items.map((it) => it.id),
+    disabled: () => props.disabled === true,
+    onReorder: (from, to) => props.onReorder?.(from, to)
   });
   return (() => {
-    var _el$ = _tmpl$24();
+    var _el$ = _tmpl$7();
     var _ref$ = g.container;
     typeof _ref$ === "function" ? use(_ref$, _el$) : g.container = _el$;
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return memo(() => !!editable())() && showGrid() !== false;
+    insert(_el$, createComponent(For, {
+      get each() {
+        return props.items;
       },
-      get children() {
-        var _el$2 = _tmpl$7();
-        effect((_p$) => {
-          var _v$ = lines().image, _v$2 = lines().size, _v$3 = gridVisible() ? "1" : "0";
-          _v$ !== _p$.e && setStyleProperty(_el$2, "background-image", _p$.e = _v$);
-          _v$2 !== _p$.t && setStyleProperty(_el$2, "background-size", _p$.t = _v$2);
-          _v$3 !== _p$.a && setStyleProperty(_el$2, "opacity", _p$.a = _v$3);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0,
-          a: void 0
-        });
-        return _el$2;
-      }
-    }), null);
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return editable();
-      },
-      get fallback() {
-        return createComponent(For, {
-          get each() {
-            return props.items;
+      children: (it) => {
+        const pos = () => posById().get(it.id);
+        const dragging = () => g.active() === it.id;
+        return createComponent(Show, {
+          get when() {
+            return pos();
           },
-          children: (it) => {
-            const span = () => spanById().get(it.id);
-            return createComponent(Show, {
-              get when() {
-                return span();
-              },
-              children: (s) => (() => {
-                var _el$3 = _tmpl$33();
-                insert(_el$3, () => it.content());
-                effect((_p$) => {
-                  var _v$7 = props.blockClass, _v$8 = {
-                    ...blockBox2(s(), posById().get(it.id)),
-                    ...props.blockStyle
-                  };
-                  _v$7 !== _p$.e && className(_el$3, _p$.e = _v$7);
-                  _p$.t = style(_el$3, _v$8, _p$.t);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0
-                });
-                return _el$3;
-              })()
+          children: (p) => (() => {
+            var _el$2 = _tmpl$24();
+            var _ref$2 = props.disabled ? void 0 : g.bind(it.id);
+            typeof _ref$2 === "function" && use(_ref$2, _el$2);
+            insert(_el$2, () => it.content());
+            effect((_p$) => {
+              var _v$3 = props.blockClass, _v$4 = {
+                // позицию считаем мы, браузер её не домысливает
+                "grid-column": `${p().col + 1} / span ${p().w}`,
+                "grid-row": `${p().row + 1} / span ${p().h}`,
+                cursor: props.disabled ? "default" : "grab",
+                opacity: dragging() ? "0.4" : void 0,
+                ...props.blockStyle
+              };
+              _v$3 !== _p$.e && className(_el$2, _p$.e = _v$3);
+              _p$.t = style(_el$2, _v$4, _p$.t);
+              return _p$;
+            }, {
+              e: void 0,
+              t: void 0
             });
-          }
-        });
-      },
-      get children() {
-        return createComponent(For, {
-          get each() {
-            return props.items;
-          },
-          children: (it) => {
-            const span = () => spanById().get(it.id);
-            const dragging = () => g.active()?.id === it.id;
-            return createComponent(Show, {
-              get when() {
-                return span();
-              },
-              children: (s) => (() => {
-                var _el$4 = _tmpl$33();
-                var _ref$2 = g.bind(it.id);
-                typeof _ref$2 === "function" && use(_ref$2, _el$4);
-                insert(_el$4, () => it.content(), null);
-                insert(_el$4, createComponent(Show, {
-                  get when() {
-                    return memo(() => !!(props.onRemove && !props.disabled))() && it.removable !== false;
-                  },
-                  get children() {
-                    var _el$5 = _tmpl$43();
-                    _el$5.$$click = () => props.onRemove?.(it.id);
-                    setAttribute(_el$5, "draggable", false);
-                    effect((_p$) => {
-                      var _v$9 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A", _v$0 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A";
-                      _v$9 !== _p$.e && setAttribute(_el$5, "title", _p$.e = _v$9);
-                      _v$0 !== _p$.t && setAttribute(_el$5, "aria-label", _p$.t = _v$0);
-                      return _p$;
-                    }, {
-                      e: void 0,
-                      t: void 0
-                    });
-                    return _el$5;
-                  }
-                }), null);
-                insert(_el$4, createComponent(Show, {
-                  get when() {
-                    return memo(() => !!(props.resizable !== false && !it.locked))() && !props.disabled;
-                  },
-                  get children() {
-                    var _el$6 = _tmpl$53();
-                    var _ref$3 = g.resize(it.id);
-                    typeof _ref$3 === "function" && use(_ref$3, _el$6);
-                    effect((_p$) => {
-                      var _v$1 = props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440", _v$10 = dragging() ? "0.9" : "0.35";
-                      _v$1 !== _p$.e && setAttribute(_el$6, "title", _p$.e = _v$1);
-                      _v$10 !== _p$.t && setStyleProperty(_el$6, "opacity", _p$.t = _v$10);
-                      return _p$;
-                    }, {
-                      e: void 0,
-                      t: void 0
-                    });
-                    return _el$6;
-                  }
-                }), null);
-                effect((_p$) => {
-                  var _v$11 = props.blockClass, _v$12 = {
-                    ...blockBox2(s(), posById().get(it.id)),
-                    cursor: it.locked || props.disabled ? "default" : "grab",
-                    ...props.blockStyle
-                  };
-                  _v$11 !== _p$.e && className(_el$4, _p$.e = _v$11);
-                  _p$.t = style(_el$4, _v$12, _p$.t);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0
-                });
-                return _el$4;
-              })()
-            });
-          }
+            return _el$2;
+          })()
         });
       }
-    }), null);
+    }));
     effect((_p$) => {
-      var _v$4 = props.class, _v$5 = dndSupported() ? "" : void 0, _v$6 = {
+      var _v$ = props.class, _v$2 = {
         "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
         "grid-auto-rows": `${rowH()}px`,
-        "column-gap": `${gapX()}px`,
-        "row-gap": `${gapY()}px`,
-        "min-height": `${heightOf(rows() + spare())}px`,
+        gap: `${gap()}px`,
+        "min-height": `${rows() * rowH() + Math.max(0, rows() - 1) * gap()}px`,
         ...props.style
       };
-      _v$4 !== _p$.e && className(_el$, _p$.e = _v$4);
-      _v$5 !== _p$.t && setAttribute(_el$, "data-dnd-grid", _p$.t = _v$5);
-      _p$.a = style(_el$, _v$6, _p$.a);
+      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
+      _p$.t = style(_el$, _v$2, _p$.t);
       return _p$;
     }, {
       e: void 0,
-      t: void 0,
-      a: void 0
+      t: void 0
     });
     return _el$;
   })();
 }
-delegateEvents(["click"]);
 var _tmpl$8 = /* @__PURE__ */ template(`<span class="ml-auto shrink-0 flex items-center gap-1">`);
 var _tmpl$25 = /* @__PURE__ */ template(`<a><span></span><span>`);
-var _tmpl$34 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
-var _tmpl$44 = /* @__PURE__ */ template(`<ul class="pl-3 border-l border-base-200 ml-3">`);
-var _tmpl$54 = /* @__PURE__ */ template(`<li><div class="flex items-center">`);
+var _tmpl$33 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
+var _tmpl$43 = /* @__PURE__ */ template(`<ul class="pl-3 border-l border-base-200 ml-3">`);
+var _tmpl$53 = /* @__PURE__ */ template(`<li><div class="flex items-center">`);
 var _tmpl$63 = /* @__PURE__ */ template(`<span class="w-5 shrink-0">`);
 var _tmpl$72 = /* @__PURE__ */ template(`<div class="text-xs opacity-50 mb-2 px-1">`);
 var _tmpl$82 = /* @__PURE__ */ template(`<label class="input input-sm input-bordered flex items-center gap-2 mb-2 w-full"><span></span><input class=grow>`);
@@ -4384,7 +3831,7 @@ function DumbTree(props) {
         return memo(() => !!node())() && (!visible() || visible().has(p.id));
       },
       get children() {
-        var _el$5 = _tmpl$54(), _el$6 = _el$5.firstChild;
+        var _el$5 = _tmpl$53(), _el$6 = _el$5.firstChild;
         insert(_el$6, createComponent(Show, {
           get when() {
             return kids().length;
@@ -4393,7 +3840,7 @@ function DumbTree(props) {
             return _tmpl$63();
           },
           get children() {
-            var _el$7 = _tmpl$34(), _el$8 = _el$7.firstChild;
+            var _el$7 = _tmpl$33(), _el$8 = _el$7.firstChild;
             _el$7.$$click = () => toggle(p.id);
             effect(() => className(_el$8, `size-4 ${isExpanded() ? icons().expanded : icons().collapsed}`));
             return _el$7;
@@ -4412,7 +3859,7 @@ function DumbTree(props) {
             return memo(() => !!isExpanded())() && kids().length;
           },
           get children() {
-            var _el$9 = _tmpl$44();
+            var _el$9 = _tmpl$43();
             insert(_el$9, createComponent(For, {
               get each() {
                 return kids();
@@ -4557,9 +4004,9 @@ function DumbTree(props) {
 delegateEvents(["click", "input"]);
 var _tmpl$13 = /* @__PURE__ */ template(`<span aria-hidden=true style=margin-left:4px>`);
 var _tmpl$26 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
-var _tmpl$35 = /* @__PURE__ */ template(`<tfoot>`);
-var _tmpl$45 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
-var _tmpl$55 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
+var _tmpl$34 = /* @__PURE__ */ template(`<tfoot>`);
+var _tmpl$44 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
+var _tmpl$54 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
 var _tmpl$64 = /* @__PURE__ */ template(`<th style=width:1%>`);
 var _tmpl$73 = /* @__PURE__ */ template(`<tr>`);
 var _tmpl$83 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
@@ -4657,7 +4104,7 @@ function DumbTable(props) {
     } : {}
   });
   return (() => {
-    var _el$2 = _tmpl$55();
+    var _el$2 = _tmpl$54();
     insert(_el$2, createComponent(Show, {
       get when() {
         return visibleRows().length;
@@ -4666,7 +4113,7 @@ function DumbTable(props) {
         return props.empty;
       },
       get children() {
-        var _el$3 = _tmpl$45(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
+        var _el$3 = _tmpl$44(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
         insert(_el$4, createComponent(For, {
           get each() {
             return table.getHeaderGroups();
@@ -4825,7 +4272,7 @@ function DumbTable(props) {
             return props.footer;
           },
           get children() {
-            var _el$8 = _tmpl$35();
+            var _el$8 = _tmpl$34();
             insert(_el$8, () => props.footer);
             return _el$8;
           }
@@ -4857,9 +4304,9 @@ function DumbTable(props) {
 delegateEvents(["click"]);
 var _tmpl$14 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px>`);
 var _tmpl$27 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px;flex-wrap:wrap><button>\xAB</button><button>\xBB`);
-var _tmpl$36 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
-var _tmpl$46 = /* @__PURE__ */ template(`<button>`);
-var _tmpl$56 = /* @__PURE__ */ template(`<span style="padding:3px 4px;opacity:.4">\u2026`);
+var _tmpl$35 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
+var _tmpl$45 = /* @__PURE__ */ template(`<button>`);
+var _tmpl$55 = /* @__PURE__ */ template(`<span style="padding:3px 4px;opacity:.4">\u2026`);
 function buildPageNumbers(current, total) {
   if (total <= 10) return Array.from({
     length: total
@@ -4897,7 +4344,7 @@ function DumbPagination(props) {
     "font-weight": active ? "700" : "400"
   });
   return (() => {
-    var _el$ = _tmpl$36(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
+    var _el$ = _tmpl$35(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
     insert(_el$3, summary);
     insert(_el$2, createComponent(Show, {
       get when() {
@@ -4910,7 +4357,7 @@ function DumbPagination(props) {
             return props.pageSizes;
           },
           children: (size) => (() => {
-            var _el$8 = _tmpl$46();
+            var _el$8 = _tmpl$45();
             _el$8.$$click = () => props.onPageSizeChange(size);
             insert(_el$8, size);
             effect((_p$) => {
@@ -4942,10 +4389,10 @@ function DumbPagination(props) {
           children: (p) => createComponent(Show, {
             when: p !== "\u2026",
             get fallback() {
-              return _tmpl$56();
+              return _tmpl$55();
             },
             get children() {
-              var _el$9 = _tmpl$46();
+              var _el$9 = _tmpl$45();
               _el$9.$$click = () => props.onPageChange(p);
               insert(_el$9, p);
               effect((_p$) => {
@@ -5030,10 +4477,10 @@ var OdataClient = class {
   /** Сборка URL: параметры кодируются вручную (`%20`, не `+`) */
   url(resource, params = {}) {
     const all = {
-      ...Object.fromEntries(Object.entries(params).map(([k, v4]) => [k, String(v4)])),
+      ...Object.fromEntries(Object.entries(params).map(([k, v3]) => [k, String(v3)])),
       $format: JSON_NOMETA
     };
-    const qs = Object.entries(all).map(([k, v4]) => `${encodeURIComponent(k)}=${encodeURIComponent(v4)}`).join("&");
+    const qs = Object.entries(all).map(([k, v3]) => `${encodeURIComponent(k)}=${encodeURIComponent(v3)}`).join("&");
     return `${this.baseUrl}/${encodeURI(resource)}?${qs}`;
   }
   async request(resource, params = {}, init = {}) {
@@ -5128,37 +4575,37 @@ var RubIntl0 = new Intl.NumberFormat("ru-RU", {
 var RubIntl4 = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 4
 });
-function toNum(v4) {
-  if (v4 == null || v4 === "") return null;
-  const n = typeof v4 === "string" ? parseFloat(v4) : Number(v4);
+function toNum(v3) {
+  if (v3 == null || v3 === "") return null;
+  const n = typeof v3 === "string" ? parseFloat(v3) : Number(v3);
   return Number.isFinite(n) ? n : null;
 }
-function RubR2(v4) {
-  const n = toNum(v4);
+function RubR2(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) + " \u20BD" : "";
 }
-function Rub2(v4) {
-  const n = toNum(v4);
+function Rub2(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) : "";
 }
-function Rub0(v4) {
-  const n = toNum(v4);
+function Rub0(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) : "";
 }
-function Rub0R(v4) {
-  const n = toNum(v4);
+function Rub0R(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) + " \u20BD" : "";
 }
-function Rub4(v4) {
-  const n = toNum(v4);
+function Rub4(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl4.format(n) : "";
 }
-function fmtNum(v4) {
-  const n = toNum(v4);
+function fmtNum(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl0.format(n) : "\u2014";
 }
-function fmtPrice(v4) {
-  const n = toNum(v4);
+function fmtPrice(v3) {
+  const n = toNum(v3);
   return n != null ? RubIntl2.format(n) + " \u20BD" : "\u2014";
 }
 var DateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
@@ -5191,29 +4638,29 @@ var DateMonthFmt = new Intl.DateTimeFormat("ru-RU", {
   month: "short",
   year: "numeric"
 });
-function toDate(v4) {
-  if (v4 == null || v4 === "") return null;
-  const d = v4 instanceof Date ? v4 : new Date(v4);
+function toDate(v3) {
+  if (v3 == null || v3 === "") return null;
+  const d = v3 instanceof Date ? v3 : new Date(v3);
   return isNaN(d.getTime()) ? null : d;
 }
-function fmtDateTime(v4) {
-  const d = toDate(v4);
+function fmtDateTime(v3) {
+  const d = toDate(v3);
   return d ? DateTimeFmt.format(d) : "";
 }
-function fmtDateTimeShort(v4) {
-  const d = toDate(v4);
+function fmtDateTimeShort(v3) {
+  const d = toDate(v3);
   return d ? DateTimeShortFmt.format(d) : "";
 }
-function fmtDate(v4) {
-  const d = toDate(v4);
+function fmtDate(v3) {
+  const d = toDate(v3);
   return d ? DateFmt.format(d) : "";
 }
-function fmtTime(v4) {
-  const d = toDate(v4);
+function fmtTime(v3) {
+  const d = toDate(v3);
   return d ? TimeFmt.format(d) : "";
 }
-function fmtDateMonth(v4) {
-  const d = toDate(v4);
+function fmtDateMonth(v3) {
+  const d = toDate(v3);
   return d ? DateMonthFmt.format(d) : "";
 }
 function fmtSize(bytes) {
@@ -5221,8 +4668,8 @@ function fmtSize(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} \u041A\u0411`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} \u041C\u0411`;
 }
-function timeAgo(v4) {
-  const d = toDate(v4);
+function timeAgo(v3) {
+  const d = toDate(v3);
   if (!d) return "\u2014";
   const diff = Date.now() - d.getTime();
   if (diff < 0) return "\u0442\u043E\u043B\u044C\u043A\u043E \u0447\u0442\u043E";
@@ -5320,4 +4767,4 @@ function imgproxyUrl(src, opts = {}) {
   return `${base}/insecure/${processing}/${base64url(resolveSource(src))}${ext}`;
 }
 
-export { DND_MIME, DumbGrid, DumbGridDnd, DumbPagination, DumbSortable, DumbTable, DumbTree, OdataClient, OdataError, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbGridDndGroup, createDumbGridGroup, createDumbSortable, createGridDndEngine, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortableGroup, dndGridLines, dndSupported, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeDndLayout, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };
+export { DND_MIME, DumbGrid, DumbGridDnd, DumbPagination, DumbSortable, DumbTable, DumbTree, OdataClient, OdataError, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbGridDndGroup, createDumbGridGroup, createDumbSortable, createGridDndEngine, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortableGroup, dndSupported, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };

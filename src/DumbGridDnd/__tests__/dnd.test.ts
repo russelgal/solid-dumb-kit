@@ -1,33 +1,7 @@
-// Движок нативной сетки: живой перенос тестами не проверить, но всё, что решает
-// исход — какая сетка приняла dragover, куда встанет блок и что уйдёт наружу, —
-// проверяется настоящими DragEvent с DataTransfer.
+// Движок нативной сетки. Проверяем ровно то, что он решает: какая сетка приняла
+// событие, перед каким соседом встанет блок и что уходит наружу.
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { createGridDndEngine, DND_MIME } from '../dndCore'
-
-type Box = { left: number; top: number; width: number; height: number }
-
-/** ResizeObserver в happy-dom отсутствует: подкладываем ширину контента зон */
-function stubRO(boxes: Map<Element, Box>) {
-  class RO {
-    constructor(private cb: ResizeObserverCallback) {}
-    observe(el: Element) {
-      const b = boxes.get(el)
-      this.cb([{ target: el, contentRect: { width: b?.width ?? 0, height: b?.height ?? 0, left: 0, top: 0 } } as any], this as any)
-    }
-    unobserve() {}
-    disconnect() {}
-  }
-  vi.stubGlobal('ResizeObserver', RO)
-}
-
-/** getBoundingClientRect happy-dom всегда нулевой — подставляем свой */
-function stubRect(el: HTMLElement, box: Box) {
-  el.getBoundingClientRect = () => ({
-    left: box.left, top: box.top, width: box.width, height: box.height,
-    right: box.left + box.width, bottom: box.top + box.height, x: box.left, y: box.top,
-    toJSON: () => ({}),
-  }) as DOMRect
-}
 
 const el = () => {
   const node = document.createElement('div')
@@ -35,214 +9,226 @@ const el = () => {
   return node
 }
 
+/** happy-dom всегда отдаёт нулевой прямоугольник — подставляем свой */
+function rect(node: HTMLElement, left: number, width = 100) {
+  node.getBoundingClientRect = () => ({
+    left, top: 0, width, height: 100, right: left + width, bottom: 100, x: left, y: 0,
+    toJSON: () => ({}),
+  }) as DOMRect
+}
+
 const dt = () => new DataTransfer()
-const fire = (
-  target: EventTarget,
-  type: string,
-  at: { clientX?: number; clientY?: number } = {},
-  transfer?: DataTransfer,
-) => {
+const fire = (target: EventTarget, type: string, x = 0, transfer?: DataTransfer) => {
   const ev = new DragEvent(type, { bubbles: true, cancelable: true })
   // happy-dom не пробрасывает через конструктор ни dataTransfer, ни координаты
   if (transfer && !ev.dataTransfer) Object.defineProperty(ev, 'dataTransfer', { value: transfer })
-  Object.defineProperty(ev, 'clientX', { value: at.clientX ?? 0 })
-  Object.defineProperty(ev, 'clientY', { value: at.clientY ?? 0 })
+  Object.defineProperty(ev, 'clientX', { value: x })
+  Object.defineProperty(ev, 'clientY', { value: 50 })
   target.dispatchEvent(ev)
   return ev
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { document.body.innerHTML = '' })
 
-// Две сетки бок о бок: A занимает 0–600 по X, B — 600–1200.
-// По 6 колонок шириной 100px без зазоров, строка 100px.
-function setup(opts: { accepts?: (from: string) => boolean; mode?: 'flow' | 'free' } = {}) {
-  const boxA = el()
-  const boxB = el()
-  const boxes = new Map<Element, Box>([
-    [boxA, { left: 0, top: 0, width: 600, height: 400 }],
-    [boxB, { left: 600, top: 0, width: 600, height: 400 }],
-  ])
-  stubRO(boxes)
-  stubRect(boxA, boxes.get(boxA)!)
-  stubRect(boxB, boxes.get(boxB)!)
-
+/**
+ * Две сетки. В A блоки a1 (0–100) и a2 (100–200), в B — b1 (400–500).
+ * Порядок держит тест, как это делает потребитель.
+ */
+function setup(opts: { accepts?: (from: string) => boolean } = {}) {
   const onTransfer = vi.fn()
   const onReorderA = vi.fn()
-  const onMoveA = vi.fn()
-  const onResizeA = vi.fn()
-  const engine = createGridDndEngine({ onTransfer, animate: false })
+  const engine = createGridDndEngine({ onTransfer })
 
-  const zoneA = engine.grid('a', {
-    blocks: () => [
-      { id: 'a1', w: 3, h: 1, x: 0, y: 0 },
-      { id: 'a2', w: 3, h: 1, x: 3, y: 0 },
-    ],
-    mode: () => opts.mode ?? 'flow',
-    cols: () => 6, rowHeight: () => 100, gapX: () => 0, gapY: () => 0,
-    onReorder: onReorderA, onMove: onMoveA, onResize: onResizeA,
-  })
-  const zoneB = engine.grid('b', {
-    blocks: () => [{ id: 'b1', w: 3, h: 1, x: 0, y: 0 }],
-    mode: () => opts.mode ?? 'flow',
-    cols: () => 6, rowHeight: () => 100, gapX: () => 0, gapY: () => 0,
-    accepts: opts.accepts,
-  })
-
+  const boxA = el(); const boxB = el()
   const a1 = el(); const a2 = el(); const b1 = el()
+  rect(a1, 0); rect(a2, 100); rect(b1, 400)
+
+  const zoneA = engine.grid('a', { order: () => ['a1', 'a2'], onReorder: onReorderA })
+  const zoneB = engine.grid('b', { order: () => ['b1'], accepts: opts.accepts })
   zoneA.attachContainer(boxA)
   zoneA.attach(a1, 'a1')
   zoneA.attach(a2, 'a2')
   zoneB.attachContainer(boxB)
   zoneB.attach(b1, 'b1')
 
-  return { engine, onTransfer, onReorderA, onMoveA, onResizeA, a1, a2, b1, boxA, boxB, zoneA }
+  return { engine, onTransfer, onReorderA, boxA, boxB, a1, a2, b1 }
 }
 
 describe('createGridDndEngine — вне Solid', () => {
-  it('создаётся без реактивного контекста', () => {
+  it('блок становится перетаскиваемым, отписка это снимает', () => {
+    const engine = createGridDndEngine()
+    const zone = engine.grid('a', { order: () => ['x'] })
+    const block = el()
+    const off = zone.attach(block, 'x')
+
+    expect(block.getAttribute('draggable')).toBe('true')
+    expect(block.dataset.dndBlock).toBe('x')
+    off()
+    expect(block.getAttribute('draggable')).toBeNull()
+    expect(block.dataset.dndBlock).toBeUndefined()
+    engine.destroy()
+  })
+
+  it('до жеста состояние пустое', () => {
     const { engine } = setup()
     expect(engine.active()).toBeNull()
     expect(engine.over()).toBeNull()
-    engine.destroy()
-  })
-
-  it('блоки становятся нативно перетаскиваемыми, отписка это снимает', () => {
-    const { engine, zoneA, a1 } = setup()
-    expect(a1.getAttribute('draggable')).toBe('true')
-    expect(a1.dataset.gridBlock).toBe('a1')
-
-    const block = el()
-    const off = zoneA.attach(block, 'tmp')
-    off()
-    expect(block.getAttribute('draggable')).toBeNull()
-    expect(block.dataset.gridBlock).toBeUndefined()
-    engine.destroy()
-  })
-
-  it('ручка ресайза сама не перетаскивается', () => {
-    const { engine, zoneA } = setup()
-    const handle = el()
-    zoneA.attachResize(handle, 'a1')
-    expect(handle.getAttribute('draggable')).toBe('false')
-    expect(handle.dataset.gridResize).toBe('')
+    expect(engine.drop()).toBeNull()
     engine.destroy()
   })
 })
 
-describe('перенос между сетками — зону выбирает браузер', () => {
-  it('dragover в чужой сетке, дроп отдаёт onTransfer', () => {
-    const { engine, onTransfer, a1, boxB } = setup()
+describe('место вставки — по половине соседнего блока', () => {
+  it('правее середины соседа — встаём за ним', () => {
+    const { engine, onReorderA, a1, a2 } = setup()
     const transfer = dt()
 
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    expect(engine.active()).toEqual({ grid: 'a', id: 'a1', kind: 'move' })
+    fire(a1, 'dragstart', 10, transfer)
+    expect(engine.active()).toEqual({ grid: 'a', id: 'a1' })
 
-    fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer)
-    expect(engine.over()).toBe('b')
-    fire(boxB, 'drop', { clientX: 950, clientY: 50 }, transfer)
+    fire(a2, 'dragenter', 180, transfer)
+    fire(a2, 'dragover', 180, transfer)          // a2: 100–200, центр 150
+    expect(engine.drop()).toEqual({ grid: 'a', index: 1 })
 
-    expect(onTransfer).toHaveBeenCalledWith(
-      { grid: 'a', id: 'a1', index: 0 },
-      expect.objectContaining({ grid: 'b', index: 1 }),
-    )
-    engine.destroy()
-  })
-
-  it('и обратно — направление больше ничего не решает', () => {
-    const { engine, onTransfer, b1, boxA } = setup()
-    const transfer = dt()
-
-    fire(b1, 'dragstart', { clientX: 650, clientY: 50 }, transfer)
-    fire(boxA, 'dragover', { clientX: 50, clientY: 50 }, transfer)
-    fire(boxA, 'drop', { clientX: 50, clientY: 50 }, transfer)
-
-    expect(onTransfer).toHaveBeenCalledWith(
-      expect.objectContaining({ grid: 'b', id: 'b1' }),
-      expect.objectContaining({ grid: 'a', index: 0 }),
-    )
-    engine.destroy()
-  })
-
-  it('сортировка внутри своей сетки идёт тем же dragover', () => {
-    const { engine, onReorderA, onTransfer, a1, boxA } = setup()
-    const transfer = dt()
-
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    fire(boxA, 'dragover', { clientX: 470, clientY: 50 }, transfer)   // правее центра a2
-    fire(boxA, 'drop', { clientX: 470, clientY: 50 }, transfer)
-
-    expect(onTransfer).not.toHaveBeenCalled()
+    fire(a2, 'drop', 180, transfer)
     expect(onReorderA).toHaveBeenCalledWith(0, 1)
     engine.destroy()
   })
 
-  it('в свободном режиме дроп кладёт блок в ячейку под курсором', () => {
-    const { engine, onMoveA, a1, boxA } = setup({ mode: 'free' })
+  it('левее середины соседа — встаём перед ним', () => {
+    const { engine, onReorderA, a1, a2 } = setup()
     const transfer = dt()
 
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    fire(boxA, 'dragover', { clientX: 200, clientY: 250 }, transfer)
-    fire(boxA, 'drop', { clientX: 200, clientY: 250 }, transfer)
+    fire(a2, 'dragstart', 150, transfer)
+    fire(a1, 'dragenter', 20, transfer)
+    fire(a1, 'dragover', 20, transfer)           // a1: 0–100, центр 50
+    expect(engine.drop()).toEqual({ grid: 'a', index: 0 })
 
-    expect(onMoveA).toHaveBeenCalledWith('a1', expect.any(Number), 2)
+    fire(a1, 'drop', 20, transfer)
+    expect(onReorderA).toHaveBeenCalledWith(1, 0)
+    engine.destroy()
+  })
+
+  it('пустое место сетки — это «в конец»', () => {
+    const { engine, onReorderA, a1, boxA } = setup()
+    const transfer = dt()
+
+    fire(a1, 'dragstart', 10, transfer)
+    fire(boxA, 'dragover', 500, transfer)        // мимо блоков
+    expect(engine.drop()).toEqual({ grid: 'a', index: 1 })
+
+    fire(boxA, 'drop', 500, transfer)
+    expect(onReorderA).toHaveBeenCalledWith(0, 1)
+    engine.destroy()
+  })
+
+  it('дроп на своё же место ничего не зовёт', () => {
+    const { engine, onReorderA, onTransfer, a1 } = setup()
+    const transfer = dt()
+
+    fire(a1, 'dragstart', 10, transfer)
+    fire(a1, 'dragenter', 20, transfer)
+    fire(a1, 'dragover', 20, transfer)
+    fire(a1, 'drop', 20, transfer)
+
+    expect(onReorderA).not.toHaveBeenCalled()
+    expect(onTransfer).not.toHaveBeenCalled()
+    engine.destroy()
+  })
+
+  it('сосед помечен атрибутом — по нему рисуется место вставки', () => {
+    const { engine, a1, a2 } = setup()
+    const transfer = dt()
+
+    fire(a1, 'dragstart', 10, transfer)
+    fire(a2, 'dragenter', 120, transfer)
+    fire(a2, 'dragover', 120, transfer)          // левее центра a2
+    expect(a2.hasAttribute('data-drop-before')).toBe(true)
+
+    fire(a2, 'dragover', 180, transfer)          // правее центра
+    expect(a2.hasAttribute('data-drop-before')).toBe(false)
+    expect(a2.hasAttribute('data-drop-after')).toBe(true)
+
+    fire(a1, 'dragend', 0, transfer)
+    expect(a2.hasAttribute('data-drop-after')).toBe(false)
+    engine.destroy()
+  })
+})
+
+describe('перенос между сетками', () => {
+  it('дроп в чужой сетке отдаёт onTransfer', () => {
+    const { engine, onTransfer, a1, b1 } = setup()
+    const transfer = dt()
+
+    fire(a1, 'dragstart', 10, transfer)
+    fire(b1, 'dragenter', 480, transfer)
+    fire(b1, 'dragover', 480, transfer)          // b1: 400–500, центр 450
+    expect(engine.over()).toBe('b')
+    fire(b1, 'drop', 480, transfer)
+
+    expect(onTransfer).toHaveBeenCalledWith(
+      { grid: 'a', id: 'a1', index: 0 },
+      { grid: 'b', index: 1 },
+    )
+    engine.destroy()
+  })
+
+  it('и обратно — направление роли не играет', () => {
+    const { engine, onTransfer, b1, a1 } = setup()
+    const transfer = dt()
+
+    fire(b1, 'dragstart', 420, transfer)
+    fire(a1, 'dragenter', 20, transfer)
+    fire(a1, 'dragover', 20, transfer)
+    fire(a1, 'drop', 20, transfer)
+
+    expect(onTransfer).toHaveBeenCalledWith(
+      { grid: 'b', id: 'b1', index: 0 },
+      { grid: 'a', index: 0 },
+    )
+    engine.destroy()
+  })
+
+  it('в пустую чужую сетку — в конец', () => {
+    const { engine, onTransfer, a1, boxB } = setup()
+    const transfer = dt()
+
+    fire(a1, 'dragstart', 10, transfer)
+    fire(boxB, 'dragover', 550, transfer)
+    fire(boxB, 'drop', 550, transfer)
+
+    expect(onTransfer).toHaveBeenCalledWith(expect.objectContaining({ id: 'a1' }), { grid: 'b', index: 1 })
     engine.destroy()
   })
 
   it('непринимающая сетка не помечает dragover — браузер дропа не даст', () => {
-    const { engine, onTransfer, a1, boxB } = setup({ accepts: (from) => from !== 'a' })
+    const { engine, onTransfer, a1, b1 } = setup({ accepts: (from) => from !== 'a' })
     const transfer = dt()
 
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    const over = fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer)
+    fire(a1, 'dragstart', 10, transfer)
+    const over = fire(b1, 'dragover', 480, transfer)
     expect(over.defaultPrevented).toBe(false)
     expect(engine.over()).toBe('a')
 
-    fire(boxB, 'drop', { clientX: 950, clientY: 50 }, transfer)
+    fire(b1, 'drop', 480, transfer)
     expect(onTransfer).not.toHaveBeenCalled()
     engine.destroy()
   })
 
   it('принимающая — помечает, иначе дропа не будет вовсе', () => {
-    const { engine, a1, boxB } = setup()
+    const { engine, a1, b1 } = setup()
     const transfer = dt()
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    expect(fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer).defaultPrevented).toBe(true)
+    fire(a1, 'dragstart', 10, transfer)
+    expect(fire(b1, 'dragover', 480, transfer).defaultPrevented).toBe(true)
     engine.destroy()
   })
+})
 
-  it('рамка будущего места переезжает в целевую сетку', () => {
-    const { engine, a1, boxA, boxB } = setup()
-    const transfer = dt()
-
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    fire(boxA, 'dragover', { clientX: 470, clientY: 50 }, transfer)
-    expect(boxA.querySelector('[data-grid-preview]')).toBeTruthy()
-
-    fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer)
-    expect(boxA.querySelector('[data-grid-preview]')).toBeNull()
-    expect(boxB.querySelector('[data-grid-preview]')).toBeTruthy()
-    engine.destroy()
-  })
-
-  it('dragend прибирает за собой', () => {
-    const { engine, a1, boxB } = setup()
-    const transfer = dt()
-
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer)
-    fire(a1, 'dragend', {}, transfer)
-
-    expect(engine.active()).toBeNull()
-    expect(engine.over()).toBeNull()
-    expect(boxB.querySelector('[data-grid-preview]')).toBeNull()
-    expect(a1.style.opacity).toBe('')
-    engine.destroy()
-  })
-
+describe('старт и уборка', () => {
   it('блок объявлен в dataTransfer — его поймёт и чужой приёмник', () => {
     const { engine, a1 } = setup()
     const transfer = dt()
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
+    fire(a1, 'dragstart', 10, transfer)
 
     expect(transfer.getData(DND_MIME)).toBe(JSON.stringify({ grid: 'a', id: 'a1' }))
     expect(transfer.getData('text/plain')).toBe('a1')
@@ -250,34 +236,43 @@ describe('перенос между сетками — зону выбирает
     engine.destroy()
   })
 
-  it('заблокированный блок перенос не начинает', () => {
-    stubRO(new Map())
+  it('выключенная сетка перенос не начинает', () => {
     const engine = createGridDndEngine({})
-    const box = el()
-    stubRect(box, { left: 0, top: 0, width: 600, height: 400 })
-    const zone = engine.grid('a', {
-      blocks: () => [{ id: 'x', w: 3, h: 1, locked: true }],
-      cols: () => 6, rowHeight: () => 100, gapX: () => 0, gapY: () => 0,
-    })
+    const zone = engine.grid('a', { order: () => ['x'], disabled: () => true })
     const block = el()
-    zone.attachContainer(box)
     zone.attach(block, 'x')
 
-    const ev = fire(block, 'dragstart', { clientX: 10, clientY: 10 }, dt())
-    expect(ev.defaultPrevented).toBe(true)      // отменённый dragstart = переноса нет
+    const ev = fire(block, 'dragstart', 10, dt())
+    expect(ev.defaultPrevented).toBe(true)
     expect(engine.active()).toBeNull()
     engine.destroy()
   })
 
-  it('вложенная сетка забирает жест себе', () => {
+  it('вложенный блок забирает жест себе', () => {
     const { engine, a1 } = setup()
     const inner = document.createElement('div')
-    inner.dataset.gridBlock = 'nested'
+    inner.dataset.dndBlock = 'nested'
     a1.appendChild(inner)
 
-    const ev = fire(inner, 'dragstart', { clientX: 20, clientY: 20 }, dt())
+    const ev = fire(inner, 'dragstart', 20, dt())
     expect(ev.defaultPrevented).toBe(true)
     expect(engine.active()).toBeNull()
+    engine.destroy()
+  })
+
+  it('dragend прибирает состояние и метки', () => {
+    const { engine, a1, a2 } = setup()
+    const transfer = dt()
+
+    fire(a1, 'dragstart', 10, transfer)
+    fire(a2, 'dragenter', 180, transfer)
+    fire(a2, 'dragover', 180, transfer)
+    fire(a1, 'dragend', 0, transfer)
+
+    expect(engine.active()).toBeNull()
+    expect(engine.over()).toBeNull()
+    expect(a1.style.opacity).toBe('')
+    expect(document.querySelectorAll('[data-drop-before],[data-drop-after]').length).toBe(0)
     engine.destroy()
   })
 })

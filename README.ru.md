@@ -9,7 +9,6 @@
 - **[DumbSortable](docs/ru/DumbSortable.md)** — FLIP-перетаскивание для смены порядка (список **или** сетка) без зависимостей и без reflow во время драга. Есть декларативный компонент и низкоуровневый примитив `createDumbSortable`.
 - **[DumbTree](docs/ru/DumbTree.md)** — сайдбар-дерево *или* плоский список с нечётким поиском, сортировкой, сохранением раскрытых папок и опциональным drag-reorder. Оформлен под Tailwind + daisyUI.
 - **[DumbTable](docs/ru/DumbTable.md)** — таблица «принеси свои колонки»: сортировка (клиентская или серверная) на TanStack Table, перетаскивание строк, пагинация.
-- **[DumbGridDnd](docs/ru/DumbGridDnd.md)** — та же сетка на **нативном HTML5 drag-and-drop**: какая сетка под указателем решает браузер, блок умеет уходить за пределы страницы через `dataTransfer`. Только десктоп — отдельный компонент, а не режим.
 - **[DumbGrid](docs/ru/DumbGrid.md)** — дашборд-сетка: блоки размером в целое число колонок и строк, перетаскивание и ресайз кратно сетке, три режима раскладки (`flow` / `dense` / свободный `{x,y}`), видимая разметка сетки, персист раскладки. Ни одного замера элементов за жест.
 - **[Утилиты](docs/ru/utils.md)** — хелперы без фреймворка: форматирование чисел/дат/размеров под `ru-RU`, слаги, извлечение картинок из ZIP, URL для imgproxy.
 - **[Odata1C](docs/ru/Odata1C.md)** — клиент стандартного интерфейса OData 1С без привязки к фреймворку: Basic-авторизация, сборка запросов и обход капризов платформы. Работает и в браузере, и в Node.
@@ -57,8 +56,6 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 | `DumbTable` / `DumbTableProps` / `DumbColumn` | компонент | [docs/ru/DumbTable.md](docs/ru/DumbTable.md) |
 | `DumbPagination` / `DumbPaginationProps` / `buildPageNumbers` | компонент | [docs/ru/DumbTable.md#dumbpagination](docs/ru/DumbTable.md#dumbpagination) |
 | `DumbGrid` / `DumbGridProps` / `DumbGridItem` / `DumbGridLayout` / `mergeLayout` | компонент | [docs/ru/DumbGrid.md](docs/ru/DumbGrid.md) |
-| `DumbGridDnd` / `DumbGridDndProps` / `DumbGridDndItem` / `DumbGridDndLayout` / `mergeDndLayout` | компонент | [docs/ru/DumbGridDnd.md](docs/ru/DumbGridDnd.md) |
-| `createDumbGridDndGroup` / `createGridDndEngine` / `dndSupported` / `DND_MIME` | примитив | [docs/ru/DumbGridDnd.md](docs/ru/DumbGridDnd.md) |
 | `createDumbGrid` / `DumbGridHandle` / `createGridEngine` / `DumbGridOptions` / `DumbGridBlock` | примитив | [docs/ru/DumbGrid.md#примитив-createdumbgrid](docs/ru/DumbGrid.md#примитив-createdumbgrid) |
 | `packFlow` / `cellRect` / `colWidth` / `spanSize` / `rowCount` / `insertIndex` / `moveDeltas` / `snapSpan` | математика сетки | [docs/ru/DumbGrid.md#движок-без-фреймворка](docs/ru/DumbGrid.md#движок-без-фреймворка) |
 | `Rub0` / `Rub2` / `Rub4` / `Rub0R` / `RubR2` / `fmtNum` / `fmtPrice` | форматирование | [docs/ru/utils.md#числа](docs/ru/utils.md#числа) |

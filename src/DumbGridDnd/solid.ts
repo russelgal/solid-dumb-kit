@@ -1,38 +1,47 @@
-// Solid-обёртки над нативным движком: вешают его отписки на onCleanup и
-// заворачивают состояние жеста в сигналы. Ничего больше здесь нет.
+// Solid-обёртка: отписки движка на onCleanup, состояние жеста в сигналах.
 
 import { createSignal, onCleanup } from 'solid-js'
 import { createGridDndEngine, type DndGroupOptions, type DndZoneOptions } from './dndCore'
 
-export type DndActive = { grid: string; id: string; kind: 'move' | 'resize' } | null
+export type DndActive = { grid: string; id: string } | null
+export type DndDrop = { grid: string; index: number } | null
 
 export type DumbGridDndHandle = {
-  /** ref на контейнер сетки — он же приёмник dragover/drop */
+  /** ref на контейнер сетки */
   container: (el: HTMLElement) => void
-  /** ref на блок (он становится нативно перетаскиваемым) */
+  /** ref на блок — он становится нативно перетаскиваемым */
   bind: (id: string) => (el: HTMLElement) => void
-  /** ref на ручку ресайза */
-  resize: (id: string) => (el: HTMLElement) => void
-  /** блок под жестом в ЭТОЙ сетке, реактивно */
-  active: () => { id: string; kind: 'move' | 'resize' } | null
+  /** блок, который тащат из ЭТОЙ сетки */
+  active: () => string | null
 }
 
 export type DumbGridDndGroupHandle = {
-  /** зарегистрировать сетку; результат отдаётся компоненту пропом `group` */
   grid: (name: string, opts: DndZoneOptions) => DumbGridDndHandle
-  /** что тащат сейчас, реактивно */
+  /** что тащат сейчас */
   active: () => DndActive
-  /** над какой сеткой указатель, реактивно (для подсветки приёмника) */
+  /** сетка под указателем — для подсветки приёмника */
   over: () => string | null
+  /** куда встанет блок прямо сейчас */
+  drop: () => DndDrop
 }
 
 export function createDumbGridDndGroup(opts: DndGroupOptions = {}): DumbGridDndGroupHandle {
   const [active, setActive] = createSignal<DndActive>(null)
   const [over, setOver] = createSignal<string | null>(null)
+  const [drop, setDrop] = createSignal<DndDrop>(null)
+
   const engine = createGridDndEngine({
     ...opts,
-    onActive: (state) => { setActive(state); opts.onActive?.(state) },
-    onOver: (name) => { setOver(name); opts.onOver?.(name) },
+    onActive: (state) => {
+      setActive(state)
+      setDrop(state ? engine.drop() : null)
+      opts.onActive?.(state)
+    },
+    onOver: (name) => {
+      setOver(name)
+      setDrop(engine.drop())
+      opts.onOver?.(name)
+    },
   })
   onCleanup(engine.destroy)
 
@@ -42,14 +51,14 @@ export function createDumbGridDndGroup(opts: DndGroupOptions = {}): DumbGridDndG
       return {
         container: (el) => onCleanup(zone.attachContainer(el)),
         bind: (id) => (el) => onCleanup(zone.attach(el, id)),
-        resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
         active: () => {
           const a = active()
-          return a && a.grid === name ? { id: a.id, kind: a.kind } : null
+          return a && a.grid === name ? a.id : null
         },
       }
     },
     active,
     over,
+    drop,
   }
 }

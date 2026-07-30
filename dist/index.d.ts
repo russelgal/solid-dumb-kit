@@ -707,11 +707,7 @@ type DumbGridProps = {
 declare function mergeLayout(saved: DumbGridLayout | null | undefined, items: Array<DumbGridItem>, cols: number, mode?: LayoutMode): DumbGridLayout;
 declare function DumbGrid(props: DumbGridProps): JSX.Element;
 
-/** блок сетки: размеры, пределы, позиция для свободного режима */
-type DndBlock = GridSpan & FreeSpan & SpanLimits & {
-    locked?: boolean;
-};
-/** откуда и куда переехал блок */
+/** блок глазами движка: важен только id, размеры — дело раскладки */
 type DndTransferSource = {
     grid: string;
     id: string;
@@ -720,86 +716,80 @@ type DndTransferSource = {
 type DndTransferTarget = {
     grid: string;
     index: number;
-    x: number;
-    y: number;
 };
 type DndGroupOptions = {
-    animate?: boolean;
     /** блок переехал в ДРУГУЮ сетку — обе раскладки правит потребитель */
     onTransfer?: (from: DndTransferSource, to: DndTransferTarget) => void;
-    /** идёт жест: сетка, блок и его вид */
+    /** что тащат сейчас */
     onActive?: (state: {
         grid: string;
         id: string;
-        kind: 'move' | 'resize';
     } | null) => void;
     /** над какой сеткой указатель */
     onOver?: (grid: string | null) => void;
 };
 type DndZoneOptions = {
-    blocks: () => Array<DndBlock>;
-    mode?: () => LayoutMode;
-    cols: () => number;
-    rowHeight: () => number;
-    gapX: () => number;
-    gapY: () => number;
+    /** текущий порядок блоков */
+    order: () => Array<string>;
+    /** жесты запрещены */
     disabled?: () => boolean;
-    resizable?: () => boolean;
     /** пускать ли к себе блок из сетки `from` (по умолчанию да) */
     accepts?: (from: string) => boolean;
+    /** перестановка внутри этой сетки */
     onReorder?: (from: number, to: number) => void;
-    onMove?: (id: string, x: number, y: number) => void;
-    onResize?: (id: string, w: number, h: number) => void;
 };
 type DndZoneEngine = {
     attachContainer: (el: HTMLElement) => () => void;
     attach: (el: HTMLElement, id: string) => () => void;
-    attachResize: (el: HTMLElement, id: string) => () => void;
 };
 type DndEngine = {
     grid: (name: string, opts: DndZoneOptions) => DndZoneEngine;
+    /** что тащат: сетка и блок */
     active: () => {
         grid: string;
         id: string;
-        kind: 'move' | 'resize';
     } | null;
+    /** сетка под указателем */
     over: () => string | null;
+    /** куда встанет блок: сетка и индекс вставки (для подсветки) */
+    drop: () => {
+        grid: string;
+        index: number;
+    } | null;
     destroy: () => void;
 };
 /** формат данных переноса: по нему блок узнаёт и чужой приёмник */
 declare const DND_MIME = "application/x-dumb-grid";
 declare const dndSupported: () => boolean;
-declare function createGridDndEngine(opts: DndGroupOptions): DndEngine;
+declare function createGridDndEngine(opts?: DndGroupOptions): DndEngine;
 
 type DndActive = {
     grid: string;
     id: string;
-    kind: 'move' | 'resize';
+} | null;
+type DndDrop = {
+    grid: string;
+    index: number;
 } | null;
 type DumbGridDndHandle = {
-    /** ref на контейнер сетки — он же приёмник dragover/drop */
+    /** ref на контейнер сетки */
     container: (el: HTMLElement) => void;
-    /** ref на блок (он становится нативно перетаскиваемым) */
+    /** ref на блок — он становится нативно перетаскиваемым */
     bind: (id: string) => (el: HTMLElement) => void;
-    /** ref на ручку ресайза */
-    resize: (id: string) => (el: HTMLElement) => void;
-    /** блок под жестом в ЭТОЙ сетке, реактивно */
-    active: () => {
-        id: string;
-        kind: 'move' | 'resize';
-    } | null;
+    /** блок, который тащат из ЭТОЙ сетки */
+    active: () => string | null;
 };
 type DumbGridDndGroupHandle = {
-    /** зарегистрировать сетку; результат отдаётся компоненту пропом `group` */
     grid: (name: string, opts: DndZoneOptions) => DumbGridDndHandle;
-    /** что тащат сейчас, реактивно */
+    /** что тащат сейчас */
     active: () => DndActive;
-    /** над какой сеткой указатель, реактивно (для подсветки приёмника) */
+    /** сетка под указателем — для подсветки приёмника */
     over: () => string | null;
+    /** куда встанет блок прямо сейчас */
+    drop: () => DndDrop;
 };
 declare function createDumbGridDndGroup(opts?: DndGroupOptions): DumbGridDndGroupHandle;
 
-/** блок сетки */
 type DumbGridDndItem = {
     id: string;
     content: () => JSX.Element;
@@ -807,50 +797,17 @@ type DumbGridDndItem = {
     w?: SpanValue;
     /** высота в строках */
     h?: number;
-    /** стартовая ячейка в режиме free */
-    x?: number;
-    y?: number;
-    minW?: SpanValue;
-    maxW?: SpanValue;
-    minH?: number;
-    maxH?: number;
-    /** ни двигать, ни ресайзить */
-    locked?: boolean;
-    /** показывать кнопку удаления (по умолчанию да, если задан onRemove) */
-    removable?: boolean;
 };
-type DumbGridDndLayout = Array<{
-    id: string;
-    w: number;
-    h: number;
-    x?: number;
-    y?: number;
-}>;
 type DumbGridDndProps = {
     items: Array<DumbGridDndItem>;
-    /** `flow` (по умолчанию), `dense` или `free` — как в DumbGrid */
-    mode?: LayoutMode;
     cols?: number;
     rowHeight?: number;
     gap?: number;
-    gapX?: number;
-    gapY?: number;
-    storageKey?: string;
-    layout?: DumbGridDndLayout;
-    onLayout?: (layout: DumbGridDndLayout) => void;
-    onRemove?: (id: string) => void;
-    labels?: {
-        remove?: string;
-        resize?: string;
-    };
-    resizable?: boolean;
-    /** режим редактирования: `false` — голая сетка без обвязки и обработчиков */
-    editable?: boolean;
+    /** перестановка внутри этой сетки */
+    onReorder?: (from: number, to: number) => void;
+    /** перетаскивание выключено — рисуем просто сетку */
     disabled?: boolean;
-    animate?: boolean;
-    showGrid?: boolean | 'drag';
-    spareRows?: number;
-    /** группа сеток — тогда блок можно перетащить в соседнюю сетку группы */
+    /** группа сеток: с ней блок можно утащить в соседнюю сетку */
     group?: DumbGridDndGroupHandle;
     /** имя этой сетки в группе */
     name?: string;
@@ -858,18 +815,6 @@ type DumbGridDndProps = {
     style?: JSX.CSSProperties;
     blockClass?: string;
     blockStyle?: JSX.CSSProperties;
-};
-/** Слить сохранённую раскладку с текущим набором блоков (см. DumbGrid.mergeLayout). */
-declare function mergeDndLayout(saved: DumbGridDndLayout | null | undefined, items: Array<DumbGridDndItem>, cols: number, mode?: LayoutMode): DumbGridDndLayout;
-/** Разметка сетки — двумя градиентами на одной подложке (см. DumbGrid). */
-declare function dndGridLines(args: {
-    cols: number;
-    gapX: number;
-    rowH: number;
-    gapY: number;
-}): {
-    image: string;
-    size: string;
 };
 declare function DumbGridDnd(props: DumbGridDndProps): JSX.Element;
 
@@ -1221,4 +1166,4 @@ declare function configureImgproxy(c: ImgproxyConfig): void;
  */
 declare function imgproxyUrl(src: string, opts?: ImgproxyOps): string;
 
-export { DND_MIME, type DndActive, type DndBlock, type DndEngine, type DndGroupOptions, type DndTransferSource, type DndTransferTarget, type DndZoneEngine, type DndZoneOptions, type DumbColumn, DumbGrid, type DumbGridBlock, DumbGridDnd, type DumbGridDndGroupHandle, type DumbGridDndHandle, type DumbGridDndItem, type DumbGridDndLayout, type DumbGridDndProps, type DumbGridGroupHandle, type DumbGridHandle, type DumbGridItem, type DumbGridLayout, type DumbGridOptions, type DumbGridProps, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type FlowMode, type FreeSpan, type GridActive, type GridEngine, type GridGroupActive, type GridGroupEngine, type GridGroupOptions, type GridPanel, type GridSpan, type GridTransferSource, type GridTransferTarget, type GridZoneEngine, type GridZoneOptions, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, type LayoutMode, type Metrics, OdataClient, type OdataClientOptions, OdataError, type OdataListResponse, type Placed, type Rect, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, type SpanLimits, type SpanPreset, type SpanValue, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbGridDndGroup, createDumbGridGroup, createDumbSortable, createGridDndEngine, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortableGroup, dndGridLines, dndSupported, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeDndLayout, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };
+export { DND_MIME, type DndActive, type DndDrop, type DndEngine, type DndGroupOptions, type DndTransferSource, type DndTransferTarget, type DndZoneEngine, type DndZoneOptions, type DumbColumn, DumbGrid, type DumbGridBlock, DumbGridDnd, type DumbGridDndGroupHandle, type DumbGridDndHandle, type DumbGridDndItem, type DumbGridDndProps, type DumbGridGroupHandle, type DumbGridHandle, type DumbGridItem, type DumbGridLayout, type DumbGridOptions, type DumbGridProps, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type FlowMode, type FreeSpan, type GridActive, type GridEngine, type GridGroupActive, type GridGroupEngine, type GridGroupOptions, type GridPanel, type GridSpan, type GridTransferSource, type GridTransferTarget, type GridZoneEngine, type GridZoneOptions, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, type LayoutMode, type Metrics, OdataClient, type OdataClientOptions, OdataError, type OdataListResponse, type Placed, type Rect, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, type SpanLimits, type SpanPreset, type SpanValue, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbGridDndGroup, createDumbGridGroup, createDumbSortable, createGridDndEngine, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortableGroup, dndSupported, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };

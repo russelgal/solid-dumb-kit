@@ -509,37 +509,27 @@ describe('Board.example — вложенные сетки', () => {
   })
 })
 
-describe('DumbGridDnd.example — нативная сетка живёт отдельно от указательной', () => {
+describe('DumbGridDnd.example — нативная сетка', () => {
   const blocks = (host: HTMLElement) =>
     Array.from(host.querySelectorAll<HTMLElement>('div')).filter((el) => el.style.gridColumn)
 
-  it('две сетки группы, блоки нативно перетаскиваемые', () => {
+  it('две доски, блоки нативно перетаскиваемые', () => {
     const host = mount(DumbGridDndExample)
     expect(host.querySelectorAll('.board').length).toBe(2)
-    expect(blocks(host).length).toBe(6)                       // 4 + 2 виджета
-    expect(host.querySelectorAll('[data-grid-block][draggable="true"]').length).toBe(6)
+    expect(blocks(host).length).toBe(6)
+    expect(host.querySelectorAll('[data-dnd-block][draggable="true"]').length).toBe(6)
   })
 
-  it('ручка ресайза перенос не начинает', () => {
+  it('раскладка считается нами: широкий блок занимает 6 колонок из 6', () => {
     const host = mount(DumbGridDndExample)
-    const handles = Array.from(host.querySelectorAll<HTMLElement>('[data-grid-resize]'))
-    expect(handles.length).toBe(6)
-    expect(handles.every((h) => h.getAttribute('draggable') === 'false')).toBe(true)
+    const first = blocks(host)[0]
+    expect(first.style.gridColumn).toBe('1 / span 6')
+    expect(first.style.gridRow).toBe('1 / span 2')
   })
 
-  it('в режиме просмотра ни draggable, ни обвязки', () => {
-    const host = mount(DumbGridDndExample)
-    const toggle = host.querySelector<HTMLInputElement>('input[type=checkbox]')!
-    toggle.click()
-
-    expect(host.querySelectorAll('[draggable="true"]').length).toBe(0)
-    expect(host.querySelectorAll('[data-grid-resize]').length).toBe(0)
-    expect(host.querySelectorAll('.widget').length).toBe(6)   // содержимое на месте
-  })
-
-  it('указательная витрина рядом не изменилась: там draggable нет вовсе', () => {
+  it('указательная витрина рядом не изменилась — там нет ни draggable, ни dnd-блоков', () => {
     const host = mount(DumbGridExample)
     expect(host.querySelectorAll('[draggable="true"]').length).toBe(0)
-    expect(host.querySelectorAll('[data-grid-block]').length).toBe(7)
+    expect(host.querySelectorAll('[data-dnd-block]').length).toBe(0)
   })
 })
