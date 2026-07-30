@@ -201,14 +201,31 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
   const placeOf = (blocks: Array<DumbGridBlock>, mode: LayoutMode, cols: number): Array<Placed> =>
     mode === 'free' ? placeFree(blocks, cols) : packFlow(blocks, cols, mode)
 
-  /** Снимок прямоугольников ВСЕХ контейнеров — один IO, ноль forced layout. */
+  /**
+   * Снимок прямоугольников ВСЕХ контейнеров — IntersectionObserver, ноль forced
+   * layout.
+   *
+   * Ждём записи по КАЖДОЙ цели, а не отписываемся после первого колбэка:
+   * наблюдатель не обязан присылать всё одним батчем, и потерянный контейнер
+   * раньше получал запасной размер «во весь экран». Такая зона накрывает
+   * остальные и забирает любой хиттест — из неё блок не вынести никуда, а к ней
+   * прилетает всё. Ровно такая асимметрия («из правой в левую можно, обратно
+   * нет») и вылезала.
+   *
+   * Страховка на случай, если цель молчит совсем (например, `display: none`):
+   * после нескольких порций отдаём то, что собрали.
+   */
   function snapshot(cb: (rects: Map<Element, DOMRectReadOnly>) => void) {
     const out = new Map<Element, DOMRectReadOnly>()
     const targets: Element[] = []
     for (const z of zones.values()) if (z.el) targets.push(z.el)
     if (!targets.length || typeof IntersectionObserver !== 'function') { cb(out); return }
+
+    let batches = 0
     const io = new IntersectionObserver(entries => {
       for (const e of entries) out.set(e.target, e.boundingClientRect)
+      batches++
+      if (out.size < targets.length && batches < 4) return
       io.disconnect()
       cb(out)
     })
@@ -230,10 +247,13 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
         name: z.name, m, mode, blocks,
         base: placeOf(blocks, mode, m.cols),
         padLeft: z.padLeft, padTop: z.padTop,
-        boxTop: box ? box.top : geom.top,
-        boxLeft: box ? box.left : geom.left,
-        boxW: box ? box.width : geom.clientW,
-        boxH: box ? box.height : geom.clientH,
+        // Прямоугольник не пришёл — зона просто не участвует в хиттесте
+        // (нулевой размер). Подставлять сюда геометрию скроллера нельзя: для
+        // страницы это весь экран, и такая зона перехватывала бы все дропы.
+        boxTop: box ? box.top : 0,
+        boxLeft: box ? box.left : 0,
+        boxW: box ? box.width : 0,
+        boxH: box ? box.height : 0,
         boxWinX: window.scrollX, boxWinY: window.scrollY,
         scroller, geom, sx0: s0.sx, sy0: s0.sy,
       })
@@ -256,6 +276,7 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
   /** Зона под указателем; ни одной — держим прошлую, чтобы дроп у края не терялся. */
   function zoneAt(d: Drag, x: number, y: number): string {
     for (const z of d.zones.values()) {
+      if (!z.boxW || !z.boxH) continue          // размер неизвестен — не претендует
       const b = boxOf(z)
       if (x < b.left || x > b.right || y < b.top || y > b.bottom) continue
       if (z.name !== d.fromZone) {

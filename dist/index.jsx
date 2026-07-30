@@ -2432,8 +2432,11 @@ function createGridGroupEngine(opts) {
       cb(out);
       return;
     }
+    let batches = 0;
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) out.set(e.target, e.boundingClientRect);
+      batches++;
+      if (out.size < targets.length && batches < 4) return;
       io.disconnect();
       cb(out);
     });
@@ -2458,10 +2461,13 @@ function createGridGroupEngine(opts) {
         base: placeOf(blocks, mode, m.cols),
         padLeft: z.padLeft,
         padTop: z.padTop,
-        boxTop: box ? box.top : geom.top,
-        boxLeft: box ? box.left : geom.left,
-        boxW: box ? box.width : geom.clientW,
-        boxH: box ? box.height : geom.clientH,
+        // Прямоугольник не пришёл — зона просто не участвует в хиттесте
+        // (нулевой размер). Подставлять сюда геометрию скроллера нельзя: для
+        // страницы это весь экран, и такая зона перехватывала бы все дропы.
+        boxTop: box ? box.top : 0,
+        boxLeft: box ? box.left : 0,
+        boxW: box ? box.width : 0,
+        boxH: box ? box.height : 0,
         boxWinX: window.scrollX,
         boxWinY: window.scrollY,
         scroller,
@@ -2480,6 +2486,7 @@ function createGridGroupEngine(opts) {
   }
   function zoneAt(d, x, y) {
     for (const z of d.zones.values()) {
+      if (!z.boxW || !z.boxH) continue;
       const b = boxOf2(z);
       if (x < b.left || x > b.right || y < b.top || y > b.bottom) continue;
       if (z.name !== d.fromZone) {

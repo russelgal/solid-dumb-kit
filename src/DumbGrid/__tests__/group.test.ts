@@ -11,7 +11,7 @@ type Box = { left: number; top: number; width: number; height: number }
  * отдаёт их ОДНИМ колбэком на микротаске — как настоящий: движок снимает все
  * контейнеры разом и ждёт единственного вызова.
  */
-function stubObservers(boxes: Map<Element, Box>) {
+function stubObservers(boxes: Map<Element, Box>, opts: { splitBatches?: boolean } = {}) {
   class RO {
     constructor(private cb: ResizeObserverCallback) {}
     observe(el: Element) {
@@ -24,20 +24,31 @@ function stubObservers(boxes: Map<Element, Box>) {
   class IO {
     private targets: Element[] = []
     private scheduled = false
+    private dead = false
     constructor(private cb: IntersectionObserverCallback) {}
+    private entry(t: Element) {
+      return { target: t, boundingClientRect: boxes.get(t) ?? { left: 0, top: 0, width: 0, height: 0 } } as any
+    }
     observe(el: Element) {
       this.targets.push(el)
       if (this.scheduled) return
       this.scheduled = true
       queueMicrotask(() => {
-        this.cb(
-          this.targets.map((t) => ({ target: t, boundingClientRect: boxes.get(t) ?? { left: 0, top: 0, width: 0, height: 0 } } as any)),
-          this as any,
-        )
+        if (this.dead) return
+        // настоящий наблюдатель НЕ обязан присылать все цели одним батчем —
+        // этот режим отдаёт их по одной, отдельными колбэками
+        if (opts.splitBatches) {
+          for (const t of this.targets) {
+            if (this.dead) return
+            this.cb([this.entry(t)], this as any)
+          }
+          return
+        }
+        this.cb(this.targets.map((t) => this.entry(t)), this as any)
       })
     }
     unobserve() {}
-    disconnect() {}
+    disconnect() { this.dead = true }
     takeRecords() { return [] }
   }
   vi.stubGlobal('ResizeObserver', RO)
@@ -58,14 +69,14 @@ const el = () => {
 
 // Две сетки бок о бок: A занимает 0–600 по X, B — 600–1200. Обе по 6 колонок
 // шириной 100px без зазоров, строка 100px — координаты читаются глазами.
-function setup(opts: { accepts?: (from: string) => boolean } = {}) {
+function setup(opts: { accepts?: (from: string) => boolean; splitBatches?: boolean } = {}) {
   const boxA = el()
   const boxB = el()
   const boxes = new Map<Element, Box>([
     [boxA, { left: 0, top: 0, width: 600, height: 400 }],
     [boxB, { left: 600, top: 0, width: 600, height: 400 }],
   ])
-  stubObservers(boxes)
+  stubObservers(boxes, { splitBatches: opts.splitBatches })
 
   const onTransfer = vi.fn()
   const onReorderA = vi.fn()
@@ -239,6 +250,78 @@ describe('перенос блока между сетками', () => {
     expect(boxB.querySelector('[data-grid-preview]')).toBeTruthy()
 
     up()
+    group.destroy()
+  })
+})
+
+describe('перенос работает в обе стороны', () => {
+  // Регрессия: снимок отписывался после ПЕРВОГО колбэка наблюдателя, из-за чего
+  // второй контейнер терял прямоугольник и получал запасной размер «во весь
+  // экран». Такая зона накрывала соседей и забирала любой хиттест: в неё блок
+  // прилетал, а из неё не выносился.
+  for (const splitBatches of [false, true]) {
+    const label = splitBatches ? 'наблюдатель отдаёт цели по одной' : 'наблюдатель отдаёт цели батчем'
+
+    it(`слева направо — ${label}`, async () => {
+      const { group, onTransfer, a1 } = setup({ splitBatches })
+      down(a1, 50, 50)
+      await nextFrames()
+      move(950, 50)
+      await nextFrames()
+      up()
+
+      expect(onTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({ grid: 'a', id: 'a1' }),
+        expect.objectContaining({ grid: 'b' }),
+      )
+      group.destroy()
+    })
+
+    it(`справа налево — ${label}`, async () => {
+      const { group, onTransfer, b1 } = setup({ splitBatches })
+      down(b1, 650, 50)
+      await nextFrames()
+      move(50, 50)
+      await nextFrames()
+      up()
+
+      expect(onTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({ grid: 'b', id: 'b1' }),
+        expect.objectContaining({ grid: 'a' }),
+      )
+      group.destroy()
+    })
+  }
+
+  it('зона без известного прямоугольника не перехватывает дропы', async () => {
+    // контейнер b наблюдателю не известен — он не должен претендовать на весь экран
+    const boxA = el()
+    const boxB = el()
+    stubObservers(new Map([[boxA, { left: 0, top: 0, width: 600, height: 400 }]]))
+
+    const onTransfer = vi.fn()
+    const group = createGridGroupEngine({ onTransfer })
+    const zoneA = group.grid('a', {
+      blocks: () => [{ id: 'a1', w: 3, h: 1 }],
+      cols: () => 6, rowHeight: () => 100, gapX: () => 0, gapY: () => 0,
+    })
+    const zoneB = group.grid('b', {
+      blocks: () => [],
+      cols: () => 6, rowHeight: () => 100, gapX: () => 0, gapY: () => 0,
+    })
+    const a1 = el()
+    zoneA.attachContainer(boxA)
+    zoneA.attach(a1, 'a1')
+    zoneB.attachContainer(boxB)
+
+    down(a1, 50, 50)
+    await nextFrames()
+    move(950, 50)                       // мимо всех известных зон
+    await nextFrames()
+    expect(group.over()).toBe('a')      // держим прошлую, а не «зону во весь экран»
+    up()
+
+    expect(onTransfer).not.toHaveBeenCalled()
     group.destroy()
   })
 })
