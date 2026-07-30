@@ -392,6 +392,84 @@ type DumbPaginationProps = {
 declare function buildPageNumbers(current: number, total: number): Array<number | '…'>;
 declare function DumbPagination(props: DumbPaginationProps): solid_js.JSX.Element;
 
+/**
+ * Клиент стандартного интерфейса OData 1С (`standard.odata`).
+ *
+ * Framework-free и универсальный (браузер и Node 18+): fetch, TextEncoder,
+ * без зависимостей. Инкапсулирует известные капризы 1С:
+ * - `$format=application/json;odata=nometadata` в каждом запросе — иначе в
+ *   ответе светится внутренний адрес сервера 1С (Accept 1С игнорирует).
+ * - Пробелы в параметрах кодируются как `%20` — с `+` 1С МОЛЧА игнорирует
+ *   `$filter` (поэтому не URLSearchParams).
+ * - `$filter`/`$orderby` по полям могут быть запрещены правами роли
+ *   («Операция не разрешена в предложении "ГДЕ"») — для хронологических
+ *   списков есть `tailPage()` (листание с конца через `$skip`).
+ * - Точечное чтение `Entity(guid'...')` работает даже когда `$filter` запрещён.
+ * - Ошибки 1С приходят как `odata.error` (иногда с BOM) — парсятся.
+ */
+type OdataClientOptions = {
+    /** Базовый URL: прямой `https://host/base/odata/standard.odata` или прокси `/odata` */
+    baseUrl: string;
+    /** Логин 1С (Basic). Либо передайте готовый token. */
+    login?: string;
+    password?: string;
+    /** Готовый base64(login:password) — если логин/пароль не хранится */
+    token?: string;
+    /** Свой fetch (например, с логированием или ретраями) */
+    fetch?: typeof fetch;
+    /** Таймаут запроса, мс (по умолчанию 30000). Защита от зависших запросов 1С. */
+    timeoutMs?: number;
+};
+type OdataListResponse<T> = {
+    value: T[];
+    'odata.count'?: string;
+};
+declare class OdataError extends Error {
+    readonly status?: number | undefined;
+    constructor(message: string, status?: number | undefined);
+}
+/** base64 c поддержкой UTF-8 (кириллица в логинах 1С), работает в браузере и Node */
+declare function toBase64(s: string): string;
+/** Экранирование строки для `$filter`: апостроф удваивается */
+declare function odataString(s: string): string;
+declare class OdataClient {
+    private readonly baseUrl;
+    private readonly token;
+    private readonly fetchFn;
+    private readonly timeoutMs;
+    constructor(opts: OdataClientOptions);
+    /** Сборка URL: параметры кодируются вручную (`%20`, не `+`) */
+    url(resource: string, params?: Record<string, string | number>): string;
+    request<T>(resource: string, params?: Record<string, string | number>, init?: {
+        method?: string;
+        body?: unknown;
+    }): Promise<T>;
+    /** GET сущности/набора */
+    get<T = Record<string, unknown>>(resource: string, params?: Record<string, string | number>): Promise<T>;
+    /** GET набора → массив `value` */
+    list<T = Record<string, unknown>>(resource: string, params?: Record<string, string | number>): Promise<T[]>;
+    /** Точечное чтение по ключу: `Entity(guid'...')` — работает даже при запрете `$filter` */
+    one<T = Record<string, unknown>>(entity: string, refKey: string, select?: string): Promise<T>;
+    /** Точное число записей набора (опционально — с `$filter`) */
+    count(resource: string, filter?: string): Promise<number>;
+    /**
+     * Страница «свежие сверху» хронологического набора, когда `$orderby`
+     * игнорируется/запрещён: читаем кусок с конца через `$skip` и разворачиваем.
+     * `filter` (опционально) применяется и к count, и к странице — поиск
+     * с пагинацией поверх того же приёма.
+     */
+    tailPage<T = Record<string, unknown>>(resource: string, opts: {
+        page: number;
+        pageSize: number;
+        select?: string;
+        filter?: string;
+    }): Promise<{
+        rows: T[];
+        total: number;
+    }>;
+}
+declare function createOdataClient(opts: OdataClientOptions): OdataClient;
+
 type Numeric = number | string | null | undefined;
 /** 1 234,56 ₽ */
 declare function RubR2(v: Numeric): string;
@@ -481,4 +559,4 @@ declare function configureImgproxy(c: ImgproxyConfig): void;
  */
 declare function imgproxyUrl(src: string, opts?: ImgproxyOps): string;
 
-export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, buildPageNumbers, configureImgproxy, createDumbSortable, createSelectionArea, createSortableGroup, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };
+export { type DumbColumn, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type GridPanel, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, OdataClient, type OdataClientOptions, OdataError, type OdataListResponse, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, buildPageNumbers, configureImgproxy, createDumbSortable, createOdataClient, createSelectionArea, createSortableGroup, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, odataString, timeAgo, toBase64 };

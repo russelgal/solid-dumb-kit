@@ -9,6 +9,7 @@ import DumbTreeExample from '../DumbTree.example'
 import DumbTableExample from '../DumbTable.example'
 import KanbanExample from '../Kanban.example'
 import UtilsExample from '../utils.example'
+import Odata1CExample from '../Odata1C.example'
 
 const mounted: Array<() => void> = []
 afterEach(() => { mounted.splice(0).forEach((dispose) => dispose()) })
@@ -28,6 +29,7 @@ const EXAMPLES = [
   ['DumbTable', DumbTableExample],
   ['Kanban', KanbanExample],
   ['utils', UtilsExample],
+  ['Odata1C', Odata1CExample],
 ] as const
 
 describe('examples — монтируются и рендерят разметку', () => {
@@ -98,6 +100,34 @@ describe('DumbTable.example — сортировка идёт по всему н
   })
 })
 
+describe('Odata1C.example — URL для 1С', () => {
+  it('показывает оба варианта: закодированный и читаемый', () => {
+    const host = mount(Odata1CExample)
+    const outs = Array.from(host.querySelectorAll('.out')).map((el) => el.textContent ?? '')
+    const encoded = outs.find((s) => s.includes('%D0'))          // кириллица в percent-encoding
+    const readable = outs.find((s) => /[А-Яа-я]/.test(s))        // она же буквами
+
+    expect(encoded).toBeTruthy()
+    expect(readable).toBeTruthy()
+    expect(encoded).not.toBe(readable)
+  })
+
+  it('оба варианта — про один и тот же адрес', () => {
+    const host = mount(Odata1CExample)
+    const outs = Array.from(host.querySelectorAll('.out')).map((el) => el.textContent ?? '')
+    const encoded = outs.find((s) => s.includes('%D0'))!
+    const readable = outs.find((s) => /[А-Яа-я]/.test(s))!
+    expect(decodeURIComponent(encoded)).toBe(readable)
+  })
+
+  it('в закодированном пробелы — %20, а не плюс: 1С понимает только их', () => {
+    const host = mount(Odata1CExample)
+    const encoded = Array.from(host.querySelectorAll('.out'))
+      .map((el) => el.textContent ?? '').find((s) => s.includes('%D0'))!
+    expect(encoded).not.toContain('+')
+  })
+})
+
 describe('Kanban.example — перемешивание', () => {
   it('кнопка есть и раскидывает карточки, сохраняя размеры колонок', () => {
     const host = mount(KanbanExample)
@@ -156,5 +186,24 @@ describe('utils.example — хелперы посчитались вживую',
   it('строит imgproxy URL с подставленным бакетом', () => {
     const host = mount(UtilsExample)
     expect(host.textContent).toContain('https://img.example.com/insecure/rs:fill:800:0:0:0/')
+  })
+})
+
+describe('Odata1C.example — витрина собирает настоящий URL', () => {
+  it('показывает $format=nometadata и пробелы как %20', () => {
+    const host = mount(Odata1CExample)
+    const text = host.textContent ?? ''
+    expect(text).toContain('%24format=application%2Fjson%3Bodata%3Dnometadata')
+    // пробел внутри $filter — только %20: с «+» 1С молча вернёт выборку без отбора
+    expect(text).toMatch(/%24filter=[^\s]*%20/)
+  })
+
+  it('на монтировании в сеть не ходит — запрос только по кнопке', () => {
+    const host = mount(Odata1CExample)
+    const run = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Выполнить'),
+    )
+    expect(run).toBeTruthy()
+    expect(host.textContent).not.toContain('строк(и)')
   })
 })
