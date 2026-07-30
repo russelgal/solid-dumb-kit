@@ -113,6 +113,7 @@ Without a handle, pointer-downs on `input`, `button`, `a`, `select`, `label`, `[
 | `pressDelay` | `number` | `350` | touch: hold before a drag starts, ms |
 | `mouseThreshold` | `number` | `0` | mouse: distance before a drag starts, px |
 | `group` | `DumbGridGroupHandle` | — | join a group so blocks can be dragged to another grid |
+| `nativeDnd` | `boolean` | `true` | use the HTML5 DnD API where available (touch always uses pointer) |
 | `name` | `string` | — | this grid's name inside the group |
 | `showGrid` | `boolean \| 'drag'` | `'drag'` | draw the grid: while dragging / always / never |
 | `spareRows` | `number` | `2` in `free`, `0` in flow | empty rows kept below, so a block can be dragged into nothing (constant — see below) |
@@ -144,6 +145,24 @@ The same rule covers a sortable inside a block (`createDumbSortable`, or a kanba
 One thing to keep in mind: **`items` must not depend on the nested state**. Derive it from the list of blocks only (a `createMemo` over the sections), so moving something inside does not rebuild the outer items mid-gesture. Blocks are rendered from `items` rather than from the computed layout, precisely so a drop never re-creates the DOM inside them — scroll, focus and nested refs survive.
 
 See `examples/Board.example.tsx`: two levels, controlled layouts on both, plus adding and removing sections and widgets.
+
+## Two worlds: native DnD plus our maths
+
+Dragging runs on the **HTML5 drag-and-drop API** wherever it exists, and the kit keeps everything that API does badly:
+
+| Done by the browser | Done by the kit |
+|---|---|
+| which grid is under the pointer (`dragover` arrives at the container) | where inside it the block lands (`insertIndex` / `pointToCell`) |
+| the drag image and edge auto-scroll | neighbours parting via `transform`, the dashed preview frame |
+| carrying data (`dataTransfer`, so a block is legible outside) | resize snapping, layout, persistence |
+
+The trade that matters is the first line. A hand-rolled hit test over snapshotted rects is a permanent source of asymmetric bugs — one container losing its rect once made transfers work in a single direction. `dragover` is delivered straight to the container, so that class of bug is gone: the browser is the authority on what is under the cursor, including nested grids.
+
+Touch devices do not implement HTML5 DnD at all, so there the pointer gesture is used — the same engine, same maths, same look. Set `nativeDnd={false}` to force it everywhere.
+
+Resizing stays on pointer events in both worlds: it is not a transfer, it never leaves its grid, and it needs per-frame precision that `dragover` does not give.
+
+The dragged block is announced as `application/x-dumb-grid` (`{grid, id}`) plus `text/plain`, so another window — or a non-kit drop target — can make sense of it.
 
 ## Moving a block between grids
 

@@ -2848,6 +2848,211 @@ function createGridGroupEngine(opts) {
   }
   const gate = createPressGate(opts);
   const canStart = (zone) => !zone.opts.disabled?.() && !drag && !gate.pending();
+  const nativeOn = () => opts.native !== false && typeof DataTransfer === "function" && typeof DragEvent === "function";
+  const MIME = "application/x-dumb-grid";
+  let nd = null;
+  function nativeSnap(zone) {
+    if (!zone.el) return null;
+    const box = zone.el.getBoundingClientRect();
+    const scroller = scrollParent(zone.el, true);
+    const geom = measure(scroller);
+    const s0 = scrollOf(scroller);
+    const mode = zone.opts.mode?.() ?? "flow";
+    const m = metricsOf(zone);
+    const blocks = zone.opts.blocks();
+    return {
+      name: zone.name,
+      m,
+      mode,
+      blocks,
+      base: placeOf(blocks, mode, m.cols),
+      padLeft: zone.padLeft,
+      padTop: zone.padTop,
+      boxTop: box.top,
+      boxLeft: box.left,
+      boxW: box.width,
+      boxH: box.height,
+      boxWinX: window.scrollX,
+      boxWinY: window.scrollY,
+      scroller,
+      geom,
+      sx0: s0.sx,
+      sy0: s0.sy
+    };
+  }
+  function asDrag(n, x, y) {
+    return {
+      kind: "move",
+      id: n.id,
+      fromZone: n.fromZone,
+      fromIndex: n.fromIndex,
+      pid: -1,
+      el: n.el,
+      startX: x,
+      startY: y,
+      lastX: x,
+      lastY: y,
+      zones: n.snaps,
+      target: n.target ?? n.fromZone,
+      index: n.index,
+      cell: n.cell,
+      blocked: n.blocked,
+      span: n.span,
+      ghost: null,
+      preview: n.preview,
+      previewZone: n.previewZone,
+      touched: n.touched,
+      raf: 0,
+      ready: true,
+      moved: true
+    };
+  }
+  function syncBack(n, d) {
+    n.index = d.index;
+    n.cell = d.cell;
+    n.blocked = d.blocked;
+    n.preview = d.preview;
+    n.previewZone = d.previewZone;
+  }
+  function nativeClear() {
+    if (!nd) return;
+    for (const el of nd.touched) {
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.willChange = "";
+    }
+    nd.preview?.remove();
+    nd.el.style.opacity = "";
+    nd = null;
+    setActive(null);
+    setOver(null);
+  }
+  function onDragStart(zone, id, el, ev) {
+    if (!nativeOn() || !ev.dataTransfer) return;
+    if (zone.opts.disabled?.() || drag) {
+      ev.preventDefault();
+      return;
+    }
+    if (ev.target instanceof Element) {
+      if (ev.target.closest("[data-grid-resize]")) {
+        ev.preventDefault();
+        return;
+      }
+      if (ev.target.closest("[data-flip-id]")) {
+        ev.preventDefault();
+        return;
+      }
+      const nested = ev.target.closest("[data-grid-block]");
+      if (nested && nested !== el) {
+        ev.preventDefault();
+        return;
+      }
+      const handle = el.querySelector("[data-drag-handle]");
+      if (handle && !(ev.target instanceof Node && handle.contains(ev.target))) {
+        ev.preventDefault();
+        return;
+      }
+    }
+    const blocks = zone.opts.blocks();
+    const fromIndex = blocks.findIndex((b) => b.id === id);
+    if (fromIndex < 0 || blocks[fromIndex].locked) {
+      ev.preventDefault();
+      return;
+    }
+    const snap = nativeSnap(zone);
+    const home = snap?.base.find((b) => b.id === id);
+    if (!snap || !home) {
+      ev.preventDefault();
+      return;
+    }
+    ev.dataTransfer.effectAllowed = "move";
+    try {
+      ev.dataTransfer.setData(MIME, JSON.stringify({ grid: zone.name, id }));
+    } catch {
+    }
+    try {
+      ev.dataTransfer.setData("text/plain", id);
+    } catch {
+    }
+    try {
+      ev.dataTransfer.setDragImage?.(el, ev.offsetX || 0, ev.offsetY || 0);
+    } catch {
+    }
+    nd = {
+      fromZone: zone.name,
+      id,
+      fromIndex,
+      span: { w: blocks[fromIndex].w, h: blocks[fromIndex].h },
+      target: zone.name,
+      index: fromIndex,
+      cell: { col: home.col, row: home.row },
+      blocked: false,
+      snaps: /* @__PURE__ */ new Map([[zone.name, snap]]),
+      preview: null,
+      previewZone: null,
+      touched: /* @__PURE__ */ new Set(),
+      el
+    };
+    setActive({ grid: zone.name, id, kind: "move" });
+    setOver(zone.name);
+    requestAnimationFrame(() => {
+      if (nd) el.style.opacity = "0.4";
+    });
+  }
+  function onDragOverZone(zone, ev) {
+    if (!nd || !zone.el) return;
+    const accepts = zone.opts.accepts;
+    if (zone.name !== nd.fromZone && accepts && !accepts(nd.fromZone)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+    let snap = nd.snaps.get(zone.name);
+    if (!snap) {
+      const fresh = nativeSnap(zone);
+      if (!fresh) return;
+      nd.snaps.set(zone.name, snap = fresh);
+    }
+    if (nd.target !== zone.name) {
+      nd.target = zone.name;
+      for (const el of nd.touched) el.style.transform = "";
+      setOver(zone.name);
+    }
+    const d = asDrag(nd, ev.clientX, ev.clientY);
+    const p = pointIn(snap, ev.clientX, ev.clientY);
+    if (zone.name === nd.fromZone) homeFrame(d, snap, p);
+    else guestFrame(d, snap, p);
+    syncBack(nd, d);
+  }
+  function onDropZone(zone, ev) {
+    if (!nd) return;
+    const accepts = zone.opts.accepts;
+    if (zone.name !== nd.fromZone && accepts && !accepts(nd.fromZone)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const n = nd;
+    const snap = n.snaps.get(n.fromZone);
+    const home = snap?.base.find((b) => b.id === n.id);
+    const toZone = zone.name;
+    const index = n.index;
+    const cell = n.cell;
+    const blocked = n.blocked;
+    nativeClear();
+    if (toZone !== n.fromZone) {
+      if (blocked) return;
+      opts.onTransfer?.(
+        { grid: n.fromZone, id: n.id, index: n.fromIndex },
+        { grid: toZone, index, x: cell.col, y: cell.row }
+      );
+      return;
+    }
+    const zoneFrom = zones.get(n.fromZone);
+    if (snap?.mode === "free") {
+      if (blocked || !home || cell.col === home.col && cell.row === home.row) return;
+      zoneFrom?.opts.onMove?.(n.id, cell.col, cell.row);
+      return;
+    }
+    if (index !== n.fromIndex) zoneFrom?.opts.onReorder?.(n.fromIndex, index);
+  }
   return {
     grid(name, zoneOpts) {
       const zone = zones.get(name) ?? {
@@ -2865,6 +3070,22 @@ function createGridGroupEngine(opts) {
       return {
         attachContainer(el) {
           zone.el = el;
+          const over = (ev) => onDragOverZone(zone, ev);
+          const enter = (ev) => {
+            if (nd) {
+              ev.preventDefault();
+              ev.stopPropagation();
+            }
+          };
+          const leave = (ev) => {
+            if (!nd || ev.relatedTarget instanceof Node && el.contains(ev.relatedTarget)) return;
+            if (nd.target === zone.name) setOver(null);
+          };
+          const drop = (ev) => onDropZone(zone, ev);
+          el.addEventListener("dragenter", enter);
+          el.addEventListener("dragover", over);
+          el.addEventListener("dragleave", leave);
+          el.addEventListener("drop", drop);
           if (typeof ResizeObserver === "function") {
             zone.ro = new ResizeObserver((entries) => {
               const r = entries[entries.length - 1]?.contentRect;
@@ -2876,6 +3097,10 @@ function createGridGroupEngine(opts) {
             zone.ro.observe(el);
           }
           return () => {
+            el.removeEventListener("dragenter", enter);
+            el.removeEventListener("dragover", over);
+            el.removeEventListener("dragleave", leave);
+            el.removeEventListener("drop", drop);
             zone.ro?.disconnect();
             zone.ro = null;
             if (zone.el === el) zone.el = null;
@@ -2884,8 +3109,14 @@ function createGridGroupEngine(opts) {
         attach(el, id) {
           zone.els.set(id, el);
           el.dataset.gridBlock = id;
+          if (nativeOn()) el.setAttribute("draggable", "true");
+          const dragStart = (ev) => onDragStart(zone, id, el, ev);
+          const dragEnd = () => nativeClear();
+          el.addEventListener("dragstart", dragStart);
+          el.addEventListener("dragend", dragEnd);
           const down = (ev) => {
             if (ev.button !== 0 || !canStart(zone)) return;
+            if (nativeOn() && ev.pointerType !== "touch") return;
             if (!(ev.target instanceof Element)) return;
             if (ev.target.closest("[data-grid-resize]")) return;
             if (ev.target.closest("[data-flip-id]")) return;
@@ -2904,6 +3135,9 @@ function createGridGroupEngine(opts) {
           if (handle) handle.style.touchAction = "none";
           return () => {
             el.removeEventListener("pointerdown", down);
+            el.removeEventListener("dragstart", dragStart);
+            el.removeEventListener("dragend", dragEnd);
+            el.removeAttribute("draggable");
             delete el.dataset.gridBlock;
             if (zone.els.get(id) === el) zone.els.delete(id);
           };
@@ -2927,6 +3161,7 @@ function createGridGroupEngine(opts) {
     destroy() {
       gate.cancel();
       cleanup();
+      nativeClear();
       for (const z of zones.values()) {
         z.ro?.disconnect();
         z.ro = null;
@@ -3183,7 +3418,13 @@ function DumbGrid(props) {
       }, cols()) : s)));
     }
   };
-  const g = props.group ? props.group.grid(props.name ?? "grid", engineOptions) : createDumbGrid(engineOptions);
+  const solo = props.group ? null : createDumbGridGroup({
+    animate: props.animate,
+    native: props.nativeDnd,
+    pressDelay: props.pressDelay,
+    mouseThreshold: props.mouseThreshold
+  });
+  const g = (props.group ?? solo).grid(props.name ?? "grid", engineOptions);
   const spare = () => (
     // в режиме просмотра пустой хвост не нужен: уводить туда нечего
     editable() ? Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0)) : 0

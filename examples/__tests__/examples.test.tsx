@@ -506,3 +506,26 @@ describe('Board.example — вложенные сетки', () => {
     expect(host.querySelectorAll('.widget').length).toBe(7)   // содержимое на месте
   })
 })
+
+describe('DumbGrid — нативный DnD в витрине', () => {
+  it('блоки помечены draggable: перенос ведёт браузер', () => {
+    const host = mount(DumbGridExample)
+    const draggables = Array.from(host.querySelectorAll('[data-grid-block]'))
+      .filter((el) => el.getAttribute('draggable') === 'true')
+    expect(draggables.length).toBe(7)
+  })
+
+  it('в режиме просмотра нет ни блоков-целей, ни draggable', () => {
+    const host = mount(DumbGridExample)
+    const toggle = Array.from(host.querySelectorAll<HTMLInputElement>('input[type=checkbox]'))
+      .find((i) => i.parentElement?.textContent?.includes('edit mode'))!
+    toggle.click()
+    expect(host.querySelectorAll('[draggable="true"]').length).toBe(0)
+  })
+
+  it('вложенные сетки тоже нативные — на обоих уровнях', () => {
+    const host = mount(BoardExample)
+    const marked = Array.from(host.querySelectorAll('[data-grid-block][draggable="true"]'))
+    expect(marked.length).toBe(9)     // 2 секции + 7 виджетов
+  })
+})

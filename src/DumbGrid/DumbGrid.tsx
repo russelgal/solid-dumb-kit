@@ -1,7 +1,7 @@
 import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
 import { makePersisted } from '@solid-primitives/storage'
 import * as v from 'valibot'
-import { createDumbGrid, type DumbGridGroupHandle } from './solid'
+import { createDumbGridGroup, type DumbGridGroupHandle } from './solid'
 import {
   cellRect, firstFreeCell, packFlow, placeFree, reorder, resolveSpan, rowCount,
   type GridSpan, type LayoutMode, type SpanValue,
@@ -98,6 +98,12 @@ export type DumbGridProps = {
   group?: DumbGridGroupHandle
   /** имя этой сетки в группе (обязательно, если задан `group`) */
   name?: string
+  /**
+   * Использовать нативный HTML5 drag-and-drop (по умолчанию да). Тогда зону под
+   * указателем определяет браузер, а не наш хиттест; на тач-устройствах, где
+   * этого API нет, работает указательный жест. `false` — всегда наш.
+   */
+  nativeDnd?: boolean
   /** ресайз разрешён (по умолчанию да) */
   resizable?: boolean
   /**
@@ -388,12 +394,19 @@ export function DumbGrid(props: DumbGridProps) {
     },
   }
 
-  // В группе сетка регистрируется зоной общего движка — тогда жест видит все
-  // сетки сразу и умеет переносить блок между ними. Без группы всё как было:
-  // свой движок на компонент.
-  const g = props.group
-    ? props.group.grid(props.name ?? 'grid', engineOptions)
-    : createDumbGrid(engineOptions)
+  // Даже одна сетка живёт как группа из одной зоны: механика жеста тогда ровно
+  // одна на все случаи — нативный DnD там, где он есть, и указательный жест на
+  // тач. Чистый указательный движок остался примитивом (createDumbGrid) для
+  // тех, кому нативный DnD не нужен вовсе.
+  const solo = props.group
+    ? null
+    : createDumbGridGroup({
+        animate: props.animate,
+        native: props.nativeDnd,
+        pressDelay: props.pressDelay,
+        mouseThreshold: props.mouseThreshold,
+      })
+  const g = (props.group ?? solo!).grid(props.name ?? 'grid', engineOptions)
 
 
   /**
