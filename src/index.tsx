@@ -71,6 +71,28 @@ export {
   type SpanLimits,
 } from './DumbGrid'
 export {
+  DumbGridDnd,
+  mergeDndLayout,
+  dndGridLines,
+  type DumbGridDndProps,
+  type DumbGridDndItem,
+  type DumbGridDndLayout,
+  createDumbGridDndGroup,
+  type DumbGridDndGroupHandle,
+  type DumbGridDndHandle,
+  type DndActive,
+  createGridDndEngine,
+  dndSupported,
+  DND_MIME,
+  type DndEngine,
+  type DndGroupOptions,
+  type DndZoneOptions,
+  type DndZoneEngine,
+  type DndBlock,
+  type DndTransferSource,
+  type DndTransferTarget,
+} from './DumbGridDnd'
+export {
   DumbTree,
   type DumbTreeProps,
   type DumbTreeNode,

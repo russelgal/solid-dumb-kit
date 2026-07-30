@@ -37,7 +37,8 @@ src/
   Sortable/            index.ts, solid.ts, sortableCore.ts, sortableGroup.ts, geometry.ts, DumbSortable.tsx, __tests__/
   DumbTree/            index.ts, DumbTree.tsx
   DumbTable/           index.ts, DumbTable.tsx, DumbPagination.tsx, __tests__/
-  DumbGrid/            index.ts, DumbGrid.tsx, solid.ts, gridCore.ts, gridMath.ts, __tests__/
+  DumbGrid/            index.ts, DumbGrid.tsx, solid.ts, gridCore.ts, gridGroup.ts, gridMath.ts, __tests__/
+  DumbGridDnd/         index.ts, DumbGridDnd.tsx, solid.ts, dndCore.ts, __tests__/  (нативный HTML5 DnD)
   utils/               index.ts, fmt.ts, slug.ts, zip.ts, imgproxy.ts, __tests__/
 ```
 
@@ -120,6 +121,13 @@ pnpm test           # vitest run (утилиты + смоук-монтирова
 - Блок может быть контейнером — вложенной сеткой или чужим жестом. Разводится метками: блоки помечены `[data-grid-block]` (жест берёт та сетка, чей блок ближайший к цели), элементы сортировщиков — `[data-flip-id]` (их `gridCore` пропускает; метку ставят и `sortableCore`, и `sortableGroup`). Блоки рендерятся `<For each={props.items}>`, НЕ по `layout()`: тот пересоздаётся на каждом дропе и пересоздавал бы DOM блоков вместе с вложенными ref'ами. Порядок в DOM не важен — позиция задана явными `grid-column/row`.
 - `editable={false}` — режим просмотра: блоки рендерятся ОТДЕЛЬНОЙ веткой `Show`, без ref'ов движка, контролов и подложки. Две ветки, а не флаги в одной, потому что ref навешивается при создании элемента: иначе слушатели остались бы висеть. `disabled` — другое: обвязка остаётся, глушатся только жесты.
 - Сохранённую раскладку всегда прогоняй через `mergeLayout`: набор блоков меняется, а в localStorage лежит вчерашний снимок (исчезнувшие — выбросить, новые — в конец, размеры зажать в пределы и в `cols`).
+
+## Две сетки: указательная и нативная — НЕ смешивать
+`DumbGrid` (указательные события, работает пальцем, зону под курсором считаем сами) и `DumbGridDnd` (нативный HTML5 DnD, зону решает браузер, тач не поддерживается) — **две независимые реализации**. Общая у них только математика: `DumbGridDnd` импортирует `../DumbGrid/gridMath` и больше ничего.
+
+Так сделано осознанно: попытка свести их в один код флагом закончилась тем, что сломалось рабочее поведение. Правишь одну — вторую не трогаешь; общая правка возможна только в `gridMath`, и тогда прогоняй тесты обеих.
+
+Ресайз в обеих на указателе: это не перенос, из своей сетки не уходит, и ему нужна покадровая точность, которой `dragover` не даёт.
 
 ## Анимации: отключаемые и с оглядкой на систему
 Всё, что двигается само (расступание соседей при драге, приземление на дропе, View Transitions при сортировке), выключается пропом `animate={false}` / `viewTransition`. Решение принимает `shared/motion.ts`:

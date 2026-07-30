@@ -9,6 +9,7 @@ import DumbTreeExample from '../DumbTree.example'
 import DumbTableExample from '../DumbTable.example'
 import DumbGridExample from '../DumbGrid.example'
 import BoardExample from '../Board.example'
+import DumbGridDndExample from '../DumbGridDnd.example'
 import KanbanExample from '../Kanban.example'
 import UtilsExample from '../utils.example'
 import Odata1CExample from '../Odata1C.example'
@@ -31,6 +32,7 @@ const EXAMPLES = [
   ['DumbTable', DumbTableExample],
   ['DumbGrid', DumbGridExample],
   ['Board', BoardExample],
+  ['DumbGridDnd', DumbGridDndExample],
   ['Kanban', KanbanExample],
   ['utils', UtilsExample],
   ['Odata1C', Odata1CExample],
@@ -504,5 +506,40 @@ describe('Board.example — вложенные сетки', () => {
     editToggle(host).click()
     expect(host.querySelectorAll('[data-grid-resize]').length).toBe(0)
     expect(host.querySelectorAll('.widget').length).toBe(7)   // содержимое на месте
+  })
+})
+
+describe('DumbGridDnd.example — нативная сетка живёт отдельно от указательной', () => {
+  const blocks = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll<HTMLElement>('div')).filter((el) => el.style.gridColumn)
+
+  it('две сетки группы, блоки нативно перетаскиваемые', () => {
+    const host = mount(DumbGridDndExample)
+    expect(host.querySelectorAll('.board').length).toBe(2)
+    expect(blocks(host).length).toBe(6)                       // 4 + 2 виджета
+    expect(host.querySelectorAll('[data-grid-block][draggable="true"]').length).toBe(6)
+  })
+
+  it('ручка ресайза перенос не начинает', () => {
+    const host = mount(DumbGridDndExample)
+    const handles = Array.from(host.querySelectorAll<HTMLElement>('[data-grid-resize]'))
+    expect(handles.length).toBe(6)
+    expect(handles.every((h) => h.getAttribute('draggable') === 'false')).toBe(true)
+  })
+
+  it('в режиме просмотра ни draggable, ни обвязки', () => {
+    const host = mount(DumbGridDndExample)
+    const toggle = host.querySelector<HTMLInputElement>('input[type=checkbox]')!
+    toggle.click()
+
+    expect(host.querySelectorAll('[draggable="true"]').length).toBe(0)
+    expect(host.querySelectorAll('[data-grid-resize]').length).toBe(0)
+    expect(host.querySelectorAll('.widget').length).toBe(6)   // содержимое на месте
+  })
+
+  it('указательная витрина рядом не изменилась: там draggable нет вовсе', () => {
+    const host = mount(DumbGridExample)
+    expect(host.querySelectorAll('[draggable="true"]').length).toBe(0)
+    expect(host.querySelectorAll('[data-grid-block]').length).toBe(7)
   })
 })
