@@ -119,6 +119,38 @@ Without a handle, pointer-downs on `input`, `button`, `a`, `select`, `label`, `[
 
 \* by default animations respect `prefers-reduced-motion: reduce`; an explicit `animate={true}` overrides even that.
 
+## Blocks as containers
+
+A block can hold anything, including another kit gesture — a sortable list, or a kanban column from `createSortableGroup`. The two do not fight, because the kit separates them by two rules:
+
+- give the block a `[data-drag-handle]` (its header, say), so its body is not a drag surface;
+- sortable items are marked `data-flip-id`, and the grid **skips pointer-downs coming from them** — a card drag is the card's gesture, not the grid's.
+
+```tsx
+const group = createSortableGroup({ onEnd: moveCard })
+
+<DumbGrid items={columns().map((col) => ({
+  id: col.id, w: 'third', h: 4,
+  content: () => {
+    const zone = zoneOf(col.id)          // group.list(col.id, …), cached per column
+    return (
+      <section>
+        <header data-drag-handle>⠿ {col.title}</header>
+        <div ref={zone.container}>
+          <For each={cards()[col.id]}>
+            {(c) => <article ref={zone.bind(c.id)}>…</article>}
+          </For>
+        </div>
+      </section>
+    )
+  },
+}))} />
+```
+
+One thing to keep in mind: **`items` must not depend on the nested state**. Derive it from the list of blocks only (a `createMemo` over the columns), so moving a card does not rebuild the grid's items mid-gesture. Blocks are rendered by `items`, not by the computed layout, precisely so a drop never re-creates the DOM inside them — scroll positions, focus and nested refs survive.
+
+See `examples/Board.example.tsx` for the whole thing, plus adding and removing columns.
+
 ## Edit mode
 
 A dashboard is edited rarely and looked at constantly, so the editing chrome is a mode, not a permanent fixture:

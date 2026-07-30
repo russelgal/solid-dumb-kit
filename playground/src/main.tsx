@@ -6,6 +6,7 @@ import ResizableGridExample from '../../examples/ResizableGrid.example'
 import DumbTreeExample from '../../examples/DumbTree.example'
 import DumbTableExample from '../../examples/DumbTable.example'
 import DumbGridExample from '../../examples/DumbGrid.example'
+import BoardExample from '../../examples/Board.example'
 import KanbanExample from '../../examples/Kanban.example'
 import UtilsExample from '../../examples/utils.example'
 import Odata1CExample from '../../examples/Odata1C.example'
@@ -18,6 +19,7 @@ const TABS = [
   { id: 'tree', label: 'DumbTree', Comp: DumbTreeExample },
   { id: 'table', label: 'DumbTable', Comp: DumbTableExample },
   { id: 'dashboard', label: 'DumbGrid', Comp: DumbGridExample },
+  { id: 'board', label: 'DumbGrid × Kanban', Comp: BoardExample },
   { id: 'utils', label: 'utils', Comp: UtilsExample },
   { id: 'odata1c', label: 'Odata1C', Comp: Odata1CExample },
 ] as const

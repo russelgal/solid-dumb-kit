@@ -1566,6 +1566,7 @@ function createSortableGroupEngine(opts) {
         },
         attach(el, id) {
           zone.els.set(id, el);
+          el.dataset.flipId = id;
           const h = el.querySelector("[data-drag-handle]");
           if (h) h.style.touchAction = "none";
           const down = (ev) => {
@@ -2305,7 +2306,9 @@ function createGridEngine(opts) {
       blockEls.set(id, el);
       const down = (ev) => {
         if (ev.button !== 0 || !canStart()) return;
-        if (ev.target instanceof Element && ev.target.closest("[data-grid-resize]")) return;
+        if (!(ev.target instanceof Element)) return;
+        if (ev.target.closest("[data-grid-resize]")) return;
+        if (ev.target.closest("[data-flip-id]")) return;
         const handle2 = el.querySelector("[data-drag-handle]");
         if (handle2) {
           if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
@@ -2486,6 +2489,8 @@ function DumbGrid(props) {
   });
   const rows = createMemo(() => rowCount(placed()));
   const itemById = createMemo(() => new Map(props.items.map((it) => [it.id, it])));
+  const spanById = createMemo(() => new Map(layout().map((s) => [s.id, s])));
+  const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])));
   const materialize = (next) => {
     if (mode() !== "free") return next;
     const pos = new Map(placeFree(next, cols()).map((p) => [p.id, p]));
@@ -2528,7 +2533,6 @@ function DumbGrid(props) {
       commit(materialize(layout().map((s) => s.id === id ? spanOf(it, { ...s, w, h }, cols()) : s)));
     }
   });
-  const posOf = (id) => placed().find((p) => p.id === id);
   const spare = () => (
     // в режиме просмотра пустой хвост не нужен: уводить туда нечего
     editable() ? Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0)) : 0
@@ -2588,43 +2592,41 @@ function DumbGrid(props) {
       нет ни одного обработчика, ни ручек, ни кнопок.
     */
   }
-      <Show2 when={editable()} fallback={<For3 each={layout()}>
-          {(span) => {
-    const item = () => itemById().get(span.id);
-    const pos = () => posOf(span.id);
-    return <Show2 when={item()}>
-                {(it) => <div class={props.blockClass} style={{ ...blockBox(span, pos()), ...props.blockStyle }}>
-                    {it().content()}
+      <Show2 when={editable()} fallback={<For3 each={props.items}>
+          {(it) => {
+    const span = () => spanById().get(it.id);
+    return <Show2 when={span()}>
+                {(s) => <div class={props.blockClass} style={{ ...blockBox(s(), posById().get(it.id)), ...props.blockStyle }}>
+                    {it.content()}
                   </div>}
               </Show2>;
   }}
         </For3>}>
-      <For3 each={layout()}>
-        {(span) => {
-    const item = () => itemById().get(span.id);
-    const pos = () => posOf(span.id);
-    const dragging = () => g.active()?.id === span.id;
-    return <Show2 when={item()}>
-              {(it) => <div
-      ref={g.bind(span.id)}
+      <For3 each={props.items}>
+        {(it) => {
+    const span = () => spanById().get(it.id);
+    const dragging = () => g.active()?.id === it.id;
+    return <Show2 when={span()}>
+              {(s) => <div
+      ref={g.bind(it.id)}
       class={props.blockClass}
       style={{
-        ...blockBox(span, pos()),
-        cursor: it().locked || props.disabled ? "default" : "grab",
+        ...blockBox(s(), posById().get(it.id)),
+        cursor: it.locked || props.disabled ? "default" : "grab",
         "touch-action": "manipulation",
         ...props.blockStyle
       }}
     >
-                  {it().content()}
+                  {it.content()}
 
-                  <Show2 when={props.onRemove && !props.disabled && it().removable !== false}>
+                  <Show2 when={props.onRemove && !props.disabled && it.removable !== false}>
                     <button
       type="button"
       data-grid-remove
       data-no-drag
       title={props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A"}
       aria-label={props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A"}
-      onClick={() => props.onRemove?.(span.id)}
+      onClick={() => props.onRemove?.(it.id)}
       style={{
         position: "absolute",
         top: "0",
@@ -2650,9 +2652,9 @@ function DumbGrid(props) {
                     </button>
                   </Show2>
 
-                  <Show2 when={props.resizable !== false && !it().locked && !props.disabled}>
+                  <Show2 when={props.resizable !== false && !it.locked && !props.disabled}>
                     <div
-      ref={g.resize(span.id)}
+      ref={g.resize(it.id)}
       title={props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440"}
       style={{
         position: "absolute",

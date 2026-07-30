@@ -1597,6 +1597,7 @@ function createSortableGroupEngine(opts) {
         },
         attach(el, id) {
           zone.els.set(id, el);
+          el.dataset.flipId = id;
           const h = el.querySelector("[data-drag-handle]");
           if (h) h.style.touchAction = "none";
           const down = (ev) => {
@@ -2331,7 +2332,9 @@ function createGridEngine(opts) {
       blockEls.set(id, el);
       const down = (ev) => {
         if (ev.button !== 0 || !canStart()) return;
-        if (ev.target instanceof Element && ev.target.closest("[data-grid-resize]")) return;
+        if (!(ev.target instanceof Element)) return;
+        if (ev.target.closest("[data-grid-resize]")) return;
+        if (ev.target.closest("[data-flip-id]")) return;
         const handle2 = el.querySelector("[data-drag-handle]");
         if (handle2) {
           if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
@@ -2529,6 +2532,8 @@ function DumbGrid(props) {
   });
   const rows = createMemo(() => rowCount(placed()));
   const itemById = createMemo(() => new Map(props.items.map((it) => [it.id, it])));
+  const spanById = createMemo(() => new Map(layout().map((s) => [s.id, s])));
+  const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])));
   const materialize = (next) => {
     if (mode() !== "free") return next;
     const pos = new Map(placeFree(next, cols()).map((p) => [p.id, p]));
@@ -2583,7 +2588,6 @@ function DumbGrid(props) {
       }, cols()) : s)));
     }
   });
-  const posOf = (id) => placed().find((p) => p.id === id);
   const spare = () => (
     // в режиме просмотра пустой хвост не нужен: уводить туда нечего
     editable() ? Math.max(0, props.spareRows ?? (mode() === "free" ? 2 : 0)) : 0
@@ -2630,21 +2634,20 @@ function DumbGrid(props) {
       get fallback() {
         return createComponent(For, {
           get each() {
-            return layout();
+            return props.items;
           },
-          children: (span) => {
-            const item = () => itemById().get(span.id);
-            const pos = () => posOf(span.id);
+          children: (it) => {
+            const span = () => spanById().get(it.id);
             return createComponent(Show, {
               get when() {
-                return item();
+                return span();
               },
-              children: (it) => (() => {
+              children: (s) => (() => {
                 var _el$3 = _tmpl$32();
-                insert(_el$3, () => it().content());
+                insert(_el$3, () => it.content());
                 effect((_p$) => {
                   var _v$6 = props.blockClass, _v$7 = {
-                    ...blockBox(span, pos()),
+                    ...blockBox(s(), posById().get(it.id)),
                     ...props.blockStyle
                   };
                   _v$6 !== _p$.e && className(_el$3, _p$.e = _v$6);
@@ -2663,28 +2666,27 @@ function DumbGrid(props) {
       get children() {
         return createComponent(For, {
           get each() {
-            return layout();
+            return props.items;
           },
-          children: (span) => {
-            const item = () => itemById().get(span.id);
-            const pos = () => posOf(span.id);
-            const dragging = () => g.active()?.id === span.id;
+          children: (it) => {
+            const span = () => spanById().get(it.id);
+            const dragging = () => g.active()?.id === it.id;
             return createComponent(Show, {
               get when() {
-                return item();
+                return span();
               },
-              children: (it) => (() => {
+              children: (s) => (() => {
                 var _el$4 = _tmpl$62();
-                var _ref$2 = g.bind(span.id);
+                var _ref$2 = g.bind(it.id);
                 typeof _ref$2 === "function" && use(_ref$2, _el$4);
-                insert(_el$4, () => it().content(), null);
+                insert(_el$4, () => it.content(), null);
                 insert(_el$4, createComponent(Show, {
                   get when() {
-                    return memo(() => !!(props.onRemove && !props.disabled))() && it().removable !== false;
+                    return memo(() => !!(props.onRemove && !props.disabled))() && it.removable !== false;
                   },
                   get children() {
                     var _el$5 = _tmpl$42();
-                    _el$5.$$click = () => props.onRemove?.(span.id);
+                    _el$5.$$click = () => props.onRemove?.(it.id);
                     effect((_p$) => {
                       var _v$8 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A", _v$9 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A";
                       _v$8 !== _p$.e && setAttribute(_el$5, "title", _p$.e = _v$8);
@@ -2699,11 +2701,11 @@ function DumbGrid(props) {
                 }), null);
                 insert(_el$4, createComponent(Show, {
                   get when() {
-                    return memo(() => !!(props.resizable !== false && !it().locked))() && !props.disabled;
+                    return memo(() => !!(props.resizable !== false && !it.locked))() && !props.disabled;
                   },
                   get children() {
                     var _el$6 = _tmpl$52();
-                    var _ref$3 = g.resize(span.id);
+                    var _ref$3 = g.resize(it.id);
                     typeof _ref$3 === "function" && use(_ref$3, _el$6);
                     effect((_p$) => {
                       var _v$0 = props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440", _v$1 = dragging() ? "0.9" : "0.35";
@@ -2719,8 +2721,8 @@ function DumbGrid(props) {
                 }), null);
                 effect((_p$) => {
                   var _v$10 = props.blockClass, _v$11 = {
-                    ...blockBox(span, pos()),
-                    cursor: it().locked || props.disabled ? "default" : "grab",
+                    ...blockBox(s(), posById().get(it.id)),
+                    cursor: it.locked || props.disabled ? "default" : "grab",
                     ...props.blockStyle
                   };
                   _v$10 !== _p$.e && className(_el$4, _p$.e = _v$10);

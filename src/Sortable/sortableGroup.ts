@@ -586,6 +586,10 @@ export function createSortableGroupEngine(opts: SortableGroupOptions): SortableG
                 },
                 attach(el: HTMLElement, id: string) {
                     zone.els.set(id, el);
+                    // та же метка, что у одиночного сортировщика: по ней внешние
+                    // жесты (напр. драг блока DumbGrid, внутри которого лежит
+                    // зона) понимают, что нажатие принадлежит карточке
+                    el.dataset.flipId = id;
                     const h = el.querySelector('[data-drag-handle]') as HTMLElement | null;
                     if (h) h.style.touchAction = 'none';
                     const down = (ev: PointerEvent) => {

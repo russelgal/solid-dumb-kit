@@ -319,6 +319,15 @@ export function DumbGrid(props: DumbGridProps) {
   const rows = createMemo(() => rowCount(placed()))
   const itemById = createMemo(() => new Map(props.items.map((it) => [it.id, it])))
 
+  // Раскладка и позиции — по id, потому что рендер идёт по props.items, а не по
+  // layout(): layout пересоздаётся на каждом дропе, и <For> по нему пересоздавал
+  // бы DOM всех блоков. Внутри блока может жить что угодно со своим состоянием —
+  // скролл, фокус, вложенный сортировщик со своими ref'ами, — и терять его на
+  // каждую перестановку нельзя. Порядок в DOM при этом не важен: позиция задана
+  // явными grid-column/grid-row.
+  const spanById = createMemo(() => new Map(layout().map((s) => [s.id, s])))
+  const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])))
+
   /**
    * В свободном режиме координаты пишем ВСЕМ блокам сразу, а не только
    * сдвинутому: иначе у остальных `x/y` остаются пустыми, и первый же дроп
@@ -370,7 +379,6 @@ export function DumbGrid(props: DumbGridProps) {
     },
   })
 
-  const posOf = (id: string) => placed().find((p) => p.id === id)
 
   /**
    * Запас пустых строк: без него блок некуда увести вниз — сетка кончается ровно
@@ -442,15 +450,14 @@ export function DumbGrid(props: DumbGridProps) {
         нет ни одного обработчика, ни ручек, ни кнопок.
       */}
       <Show when={editable()} fallback={
-        <For each={layout()}>
-          {(span) => {
-            const item = () => itemById().get(span.id)
-            const pos = () => posOf(span.id)
+        <For each={props.items}>
+          {(it) => {
+            const span = () => spanById().get(it.id)
             return (
-              <Show when={item()}>
-                {(it) => (
-                  <div class={props.blockClass} style={{ ...blockBox(span, pos()), ...props.blockStyle }}>
-                    {it().content()}
+              <Show when={span()}>
+                {(s) => (
+                  <div class={props.blockClass} style={{ ...blockBox(s(), posById().get(it.id)), ...props.blockStyle }}>
+                    {it.content()}
                   </div>
                 )}
               </Show>
@@ -458,34 +465,33 @@ export function DumbGrid(props: DumbGridProps) {
           }}
         </For>
       }>
-      <For each={layout()}>
-        {(span) => {
-          const item = () => itemById().get(span.id)
-          const pos = () => posOf(span.id)
-          const dragging = () => g.active()?.id === span.id
+      <For each={props.items}>
+        {(it) => {
+          const span = () => spanById().get(it.id)
+          const dragging = () => g.active()?.id === it.id
           return (
-            <Show when={item()}>
-              {(it) => (
+            <Show when={span()}>
+              {(s) => (
                 <div
-                  ref={g.bind(span.id)}
+                  ref={g.bind(it.id)}
                   class={props.blockClass}
                   style={{
-                    ...blockBox(span, pos()),
-                    cursor: it().locked || props.disabled ? 'default' : 'grab',
+                    ...blockBox(s(), posById().get(it.id)),
+                    cursor: it.locked || props.disabled ? 'default' : 'grab',
                     'touch-action': 'manipulation',
                     ...props.blockStyle,
                   }}
                 >
-                  {it().content()}
+                  {it.content()}
 
-                  <Show when={props.onRemove && !props.disabled && it().removable !== false}>
+                  <Show when={props.onRemove && !props.disabled && it.removable !== false}>
                     <button
                       type="button"
                       data-grid-remove
                       data-no-drag
                       title={props.labels?.remove ?? 'Удалить блок'}
                       aria-label={props.labels?.remove ?? 'Удалить блок'}
-                      onClick={() => props.onRemove?.(span.id)}
+                      onClick={() => props.onRemove?.(it.id)}
                       style={{
                         position: 'absolute',
                         top: '0',
@@ -511,9 +517,9 @@ export function DumbGrid(props: DumbGridProps) {
                     </button>
                   </Show>
 
-                  <Show when={props.resizable !== false && !it().locked && !props.disabled}>
+                  <Show when={props.resizable !== false && !it.locked && !props.disabled}>
                     <div
-                      ref={g.resize(span.id)}
+                      ref={g.resize(it.id)}
                       title={props.labels?.resize ?? 'Потяни, чтобы изменить размер'}
                       style={{
                         position: 'absolute',

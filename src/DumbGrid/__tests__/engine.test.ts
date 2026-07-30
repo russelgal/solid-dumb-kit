@@ -119,6 +119,33 @@ describe('createGridEngine — вне Solid', () => {
     engine.destroy()
   })
 
+  it('нажатие по вложенному сортировщику не утаскивает блок', () => {
+    // внутри блока живёт карточка чужого сортировщика: он метит свои элементы
+    // data-flip-id, и этот жест принадлежит ему, а не сетке
+    stubObservers()
+    const engine = engineFor(['a', 'b'])
+    engine.attachContainer(el())
+    const block = el()
+    const card = document.createElement('div')
+    card.dataset.flipId = 'card-1'
+    const inner = document.createElement('span')
+    card.appendChild(inner)
+    block.appendChild(card)
+    engine.attach(block, 'a')
+
+    inner.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 12 }))
+    expect(engine.active()).toBeNull()
+
+    // а с собственного тела блока драг по-прежнему начинается
+    const own = document.createElement('span')
+    block.appendChild(own)
+    own.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 13 }))
+    expect(engine.active()).toEqual({ id: 'a', kind: 'move' })
+
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 13 }))
+    engine.destroy()
+  })
+
   it('заблокированный блок не двигается', () => {
     const engine = createGridEngine({
       blocks: () => [{ id: 'a', w: 3, h: 1, locked: true }],

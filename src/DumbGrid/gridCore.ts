@@ -527,7 +527,12 @@ export function createGridEngine(opts: DumbGridOptions): GridEngine {
       blockEls.set(id, el)
       const down = (ev: PointerEvent) => {
         if (ev.button !== 0 || !canStart()) return
-        if (ev.target instanceof Element && ev.target.closest('[data-grid-resize]')) return
+        if (!(ev.target instanceof Element)) return
+        if (ev.target.closest('[data-grid-resize]')) return
+        // Внутри блока может жить сортировщик (список, канбан-колонка): его
+        // элементы помечены data-flip-id. Жест по такому элементу принадлежит
+        // ему, а не сетке — иначе перетаскивание карточки утащило бы весь блок.
+        if (ev.target.closest('[data-flip-id]')) return
         const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
         if (handle) {
           if (!(ev.target instanceof Node && handle.contains(ev.target))) return
