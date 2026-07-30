@@ -2330,11 +2330,14 @@ function createGridEngine(opts) {
     },
     attach(el, id) {
       blockEls.set(id, el);
+      el.dataset.gridBlock = id;
       const down = (ev) => {
         if (ev.button !== 0 || !canStart()) return;
         if (!(ev.target instanceof Element)) return;
         if (ev.target.closest("[data-grid-resize]")) return;
         if (ev.target.closest("[data-flip-id]")) return;
+        const nested = ev.target.closest("[data-grid-block]");
+        if (nested && nested !== el) return;
         const handle2 = el.querySelector("[data-drag-handle]");
         if (handle2) {
           if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
@@ -2348,6 +2351,7 @@ function createGridEngine(opts) {
       if (handle) handle.style.touchAction = "none";
       return () => {
         el.removeEventListener("pointerdown", down);
+        delete el.dataset.gridBlock;
         if (blockEls.get(id) === el) blockEls.delete(id);
       };
     },

@@ -19,7 +19,7 @@ const TABS = [
   { id: 'tree', label: 'DumbTree', Comp: DumbTreeExample },
   { id: 'table', label: 'DumbTable', Comp: DumbTableExample },
   { id: 'dashboard', label: 'DumbGrid', Comp: DumbGridExample },
-  { id: 'board', label: 'DumbGrid × Kanban', Comp: BoardExample },
+  { id: 'board', label: 'Вложенные сетки', Comp: BoardExample },
   { id: 'utils', label: 'utils', Comp: UtilsExample },
   { id: 'odata1c', label: 'Odata1C', Comp: Odata1CExample },
 ] as const

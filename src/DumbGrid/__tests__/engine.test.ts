@@ -146,6 +146,59 @@ describe('createGridEngine — вне Solid', () => {
     engine.destroy()
   })
 
+  it('вложенная сетка забирает жест себе, внешняя не вмешивается', () => {
+    // блок внешней сетки, внутри которого лежит блок вложенной: он помечен
+    // data-grid-block своим движком, и жест по нему — его
+    stubObservers()
+    const outer = createGridEngine({
+      blocks: () => [{ id: 'section', w: 6, h: 4 }],
+      cols: () => 12, rowHeight: () => 100, gapX: () => 0, gapY: () => 0,
+      onReorder: () => {}, onResize: () => {},
+    })
+    const innerEngine = createGridEngine({
+      blocks: () => [{ id: 'widget', w: 3, h: 1 }],
+      cols: () => 6, rowHeight: () => 50, gapX: () => 0, gapY: () => 0,
+      onReorder: () => {}, onResize: () => {},
+    })
+
+    const box = el()
+    const section = el()
+    const innerBox = document.createElement('div')
+    const widget = document.createElement('div')
+    innerBox.appendChild(widget)
+    section.appendChild(innerBox)
+
+    outer.attachContainer(box)
+    outer.attach(section, 'section')
+    innerEngine.attachContainer(innerBox)
+    innerEngine.attach(widget, 'widget')
+
+    widget.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 61 }))
+    expect(innerEngine.active()).toEqual({ id: 'widget', kind: 'move' })
+    expect(outer.active()).toBeNull()                    // секцию никто не потащил
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 61 }))
+
+    // а по собственному телу секции внешняя сетка работает как обычно
+    const header = document.createElement('div')
+    section.appendChild(header)
+    header.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 62 }))
+    expect(outer.active()).toEqual({ id: 'section', kind: 'move' })
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 62 }))
+
+    innerEngine.destroy()
+    outer.destroy()
+  })
+
+  it('отписка снимает метку блока', () => {
+    const engine = engineFor(['a'])
+    const block = el()
+    const off = engine.attach(block, 'a')
+    expect(block.dataset.gridBlock).toBe('a')
+    off()
+    expect(block.dataset.gridBlock).toBeUndefined()
+    engine.destroy()
+  })
+
   it('заблокированный блок не двигается', () => {
     const engine = createGridEngine({
       blocks: () => [{ id: 'a', w: 3, h: 1, locked: true }],

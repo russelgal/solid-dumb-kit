@@ -525,6 +525,7 @@ export function createGridEngine(opts: DumbGridOptions): GridEngine {
 
     attach(el: HTMLElement, id: string) {
       blockEls.set(id, el)
+      el.dataset.gridBlock = id
       const down = (ev: PointerEvent) => {
         if (ev.button !== 0 || !canStart()) return
         if (!(ev.target instanceof Element)) return
@@ -533,6 +534,11 @@ export function createGridEngine(opts: DumbGridOptions): GridEngine {
         // элементы помечены data-flip-id. Жест по такому элементу принадлежит
         // ему, а не сетке — иначе перетаскивание карточки утащило бы весь блок.
         if (ev.target.closest('[data-flip-id]')) return
+        // Точно так же блок может содержать ВЛОЖЕННУЮ сетку. Её блоки ближе к
+        // указателю, значит жест их: внешняя сетка вмешивается, только если
+        // ближайший блок — она сама.
+        const nested = ev.target.closest('[data-grid-block]')
+        if (nested && nested !== el) return
         const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
         if (handle) {
           if (!(ev.target instanceof Node && handle.contains(ev.target))) return
@@ -546,6 +552,7 @@ export function createGridEngine(opts: DumbGridOptions): GridEngine {
       if (handle) handle.style.touchAction = 'none'
       return () => {
         el.removeEventListener('pointerdown', down)
+        delete el.dataset.gridBlock
         if (blockEls.get(id) === el) blockEls.delete(id)
       }
     },

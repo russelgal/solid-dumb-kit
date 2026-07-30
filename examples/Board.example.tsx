@@ -1,169 +1,169 @@
-// DumbGrid + createSortableGroup — сетка, чьи блоки САМИ являются контейнерами.
+// Вложенные сетки: блок DumbGrid сам является DumbGrid'ом.
 //
-// Два жеста живут друг в друге и не дерутся:
-//   • блок-колонка двигается и ресайзится сеткой — за ⠿ в своей шапке;
-//   • карточки внутри перетаскиваются между блоками — за своё ⠿.
-// Разводятся они по двум правилам кита: у блока есть [data-drag-handle], поэтому
-// с остального его тела драг не стартует, а карточки помечены [data-flip-id], и
-// нажатие по ним DumbGrid пропускает мимо себя.
+// Внешняя сетка раскладывает СЕКЦИИ, внутри каждой — своя сетка виджетов со
+// своими колонками, шагом строки и раскладкой. Оба уровня двигаются и
+// ресайзятся одинаково, но жесты не путаются: блок вложенной сетки помечен
+// [data-grid-block], и внешняя сетка нажатия по нему пропускает — вмешивается
+// только если ближайший блок под указателем её собственный. Секцию поэтому
+// тянут за её шапку.
 //
-// Переключатель edit mode гасит только сетку: карточки продолжают ездить.
-import { createMemo, createSignal, For, Show } from 'solid-js'
-import { createSortableGroup, DumbGrid, type DumbGridItem } from 'solid-dumb-kit'
+// Раскладка обоих уровней тут контролируемая (layout + onLayout), чтобы было
+// видно: состояние сеток — обычные данные, вложенность его не усложняет.
+import { createMemo, createSignal, For } from 'solid-js'
+import { DumbGrid, type DumbGridItem, type DumbGridLayout } from 'solid-dumb-kit'
 
-type Card = { id: string; title: string; tag: string; hue: number }
-type Column = { id: string; title: string; w: DumbGridItem['w']; h: number }
+type Widget = { id: string; title: string; hue: number }
+type Section = { id: string; title: string }
 
-const STORAGE_KEY = 'example:board-grid'
-
-const card = (id: string, title: string, tag: string, hue: number): Card => ({ id, title, tag, hue })
-
-const COLUMNS: Array<Column> = [
-  { id: 'todo', title: 'Бэклог', w: 'third', h: 4 },
-  { id: 'doing', title: 'В работе', w: 'third', h: 4 },
-  { id: 'done', title: 'Готово', w: 'third', h: 4 },
+const SECTIONS: Array<Section> = [
+  { id: 'sales', title: 'Продажи' },
+  { id: 'ops', title: 'Операционка' },
 ]
 
-const CARDS: Record<string, Array<Card>> = {
-  todo: [
-    card('t1', 'Кросс-контейнерный драг', 'core', 265),
-    card('t2', 'Клавиатурная доступность', 'a11y', 200),
-    card('t3', 'Виртуализованные списки', 'perf', 30),
+const WIDGETS: Record<string, Array<Widget>> = {
+  sales: [
+    { id: 's1', title: 'Выручка', hue: 265 },
+    { id: 's2', title: 'Средний чек', hue: 200 },
+    { id: 's3', title: 'Конверсия', hue: 30 },
+    { id: 's4', title: 'Возвраты', hue: 20 },
   ],
-  doing: [
-    card('d1', 'Убрать forced layout из кадра', 'perf', 30),
-    card('d2', 'Пример «сетка + канбан»', 'docs', 90),
+  ops: [
+    { id: 'o1', title: 'Склад', hue: 150 },
+    { id: 'o2', title: 'Доставка', hue: 90 },
+    { id: 'o3', title: 'Поддержка', hue: 320 },
   ],
-  done: [card('n1', 'Раскладка по папкам', 'chore', 220)],
+}
+
+// стартовые раскладки: внешняя — половина ширины на секцию, внутренняя — виджеты
+const OUTER: DumbGridLayout = SECTIONS.map((s) => ({ id: s.id, w: 6, h: 4 }))
+const INNER: Record<string, DumbGridLayout> = {
+  sales: [
+    { id: 's1', w: 6, h: 2 },
+    { id: 's2', w: 3, h: 1 },
+    { id: 's3', w: 3, h: 1 },
+    { id: 's4', w: 6, h: 1 },
+  ],
+  ops: [
+    { id: 'o1', w: 3, h: 2 },
+    { id: 'o2', w: 3, h: 1 },
+    { id: 'o3', w: 3, h: 1 },
+  ],
 }
 
 export default function BoardExample() {
-  const [columns, setColumns] = createSignal<Array<Column>>(COLUMNS)
-  const [cards, setCards] = createSignal<Record<string, Array<Card>>>(CARDS)
+  const [sections, setSections] = createSignal<Array<Section>>(SECTIONS)
+  const [widgets, setWidgets] = createSignal<Record<string, Array<Widget>>>(WIDGETS)
+  const [outer, setOuter] = createSignal<DumbGridLayout>(OUTER)
+  const [inner, setInner] = createSignal<Record<string, DumbGridLayout>>(INNER)
   const [edit, setEdit] = createSignal(true)
-  const [log, setLog] = createSignal('тащи карточку между блоками, а блок — за ⠿ в шапке')
   const [seq, setSeq] = createSignal(0)
 
-  const group = createSortableGroup({
-    onEnd: (from, to) => {
-      const next = { ...cards() }
-      const src = [...(next[from.list] ?? [])]
-      const [moved] = src.splice(from.index, 1)
-      if (!moved) return
-
-      if (from.list === to.list) {
-        src.splice(to.index, 0, moved)
-        next[from.list] = src
-      } else {
-        const dst = [...(next[to.list] ?? [])]
-        dst.splice(to.index, 0, moved)
-        next[from.list] = src
-        next[to.list] = dst
-      }
-      setCards(next)
-      setLog(`«${moved.title}»: ${from.list} #${from.index} → ${to.list} #${to.index}`)
-    },
-  })
-
-  // Зоны регистрируем по одной на колонку и кэшируем: список колонок меняется
-  // (их добавляют и удаляют), а зона должна пережить перерисовку.
-  const zones = new Map<string, ReturnType<typeof group.list>>()
-  const zoneOf = (id: string) => {
-    let zone = zones.get(id)
-    if (!zone) {
-      zone = group.list(id, { order: () => (cards()[id] ?? []).map((c) => c.id) })
-      zones.set(id, zone)
-    }
-    return zone
-  }
-
-  const addColumn = () => {
+  const nextId = () => {
     const n = seq() + 1
     setSeq(n)
-    const id = `col-${n}`
-    setCards((c) => ({ ...c, [id]: [] }))
-    setColumns((list) => [...list, { id, title: `Колонка ${n}`, w: 'third', h: 4 }])
+    return n
   }
 
-  const removeColumn = (id: string) => {
-    // карточки удалённой колонки не бросаем — возвращаем в первую
-    const rest = columns().filter((c) => c.id !== id)
-    const home = rest[0]?.id
-    setCards((c) => {
-      const next = { ...c }
-      const orphans = next[id] ?? []
-      delete next[id]
-      if (home && orphans.length) next[home] = [...(next[home] ?? []), ...orphans]
-      return next
-    })
-    zones.delete(id)
-    setColumns(rest)
-    setLog(home ? `колонку убрали, карточки уехали в «${rest[0].title}»` : 'колонку убрали')
+  const addWidget = (sectionId: string) => {
+    const n = nextId()
+    const id = `w-${n}`
+    setWidgets((w) => ({ ...w, [sectionId]: [...(w[sectionId] ?? []), { id, title: `Виджет ${n}`, hue: (n * 47) % 360 }] }))
   }
 
-  // items зависит ТОЛЬКО от набора колонок: перетаскивание карточки не должно
-  // трогать раскладку сетки, иначе блоки перерисуются посреди чужого жеста
-  const items = createMemo<Array<DumbGridItem>>(() =>
-    columns().map((col) => ({
-      id: col.id,
-      w: col.w,
-      h: col.h,
-      minW: 'quarter',
-      minH: 2,
-      content: () => <ColumnBody col={col} />,
-    })),
-  )
+  const removeWidget = (sectionId: string, id: string) => {
+    setWidgets((w) => ({ ...w, [sectionId]: (w[sectionId] ?? []).filter((x) => x.id !== id) }))
+    setInner((l) => ({ ...l, [sectionId]: (l[sectionId] ?? []).filter((s) => s.id !== id) }))
+  }
 
-  const ColumnBody = (p: { col: Column }) => {
-    const zone = zoneOf(p.col.id)
-    const list = () => cards()[p.col.id] ?? []
-    const active = () => group.activeList() === p.col.id && !!group.draggingId()
+  const addSection = () => {
+    const n = nextId()
+    const id = `sec-${n}`
+    setWidgets((w) => ({ ...w, [id]: [] }))
+    setInner((l) => ({ ...l, [id]: [] }))
+    setSections((list) => [...list, { id, title: `Секция ${n}` }])
+    setOuter((l) => [...l, { id, w: 6, h: 4 }])
+  }
+
+  const removeSection = (id: string) => {
+    setSections((list) => list.filter((s) => s.id !== id))
+    setOuter((l) => l.filter((s) => s.id !== id))
+    setWidgets((w) => { const next = { ...w }; delete next[id]; return next })
+    setInner((l) => { const next = { ...l }; delete next[id]; return next })
+  }
+
+  // Вложенная сетка секции. items выведены из списка виджетов и НЕ зависят от
+  // раскладки, поэтому перестановка внутри не пересобирает блоки снаружи.
+  const SectionBody = (p: { section: Section }) => {
+    const items = createMemo<Array<DumbGridItem>>(() =>
+      (widgets()[p.section.id] ?? []).map((w) => ({
+        id: w.id,
+        w: 3,
+        h: 1,
+        minW: 2,
+        content: () => (
+          <div class="widget" style={{ '--hue': String(w.hue) }}>
+            <span class="wtitle">{w.title}</span>
+            <span class="wval">{((w.hue * 137) % 900) + 100}</span>
+          </div>
+        ),
+      })),
+    )
 
     return (
-      <section class="col" classList={{ active: active() }}>
-        {/* ручка блока: за неё сетка двигает всю колонку */}
+      <section class="section">
+        {/* шапка — ручка внешней сетки: за неё двигается вся секция */}
         <header data-drag-handle>
           <span class="grip">⠿</span>
-          <strong>{p.col.title}</strong>
-          <span class="count">{list().length}</span>
+          <strong>{p.section.title}</strong>
+          <span class="count">{items().length}</span>
+          <button
+            class="add"
+            data-no-drag
+            type="button"
+            onClick={() => addWidget(p.section.id)}
+            title="Добавить виджет в секцию"
+          >
+            +
+          </button>
         </header>
 
-        <div class="cards" ref={zone.container}>
-          <For each={list()}>
-            {(c) => (
-              <article class="card" ref={zone.bind(c.id)}>
-                <button class="handle" data-drag-handle type="button" title="перетащить карточку">⠿</button>
-                <div class="body">
-                  <div class="title">{c.title}</div>
-                  <span
-                    class="tag"
-                    style={{
-                      background: `oklch(0.93 0.05 ${c.hue})`,
-                      color: `oklch(0.42 0.13 ${c.hue})`,
-                    }}
-                  >
-                    {c.tag}
-                  </span>
-                </div>
-              </article>
-            )}
-          </For>
-          <Show when={!list().length}>
-            <div class="empty">перетащи сюда</div>
-          </Show>
+        {/* ВЛОЖЕННАЯ сетка: свои колонки, свой шаг строки, своя раскладка */}
+        <div class="inner">
+          <DumbGrid
+            cols={6}
+            rowHeight={56}
+            gap={8}
+            editable={edit()}
+            items={items()}
+            layout={inner()[p.section.id] ?? []}
+            onLayout={(l) => setInner((all) => ({ ...all, [p.section.id]: l }))}
+            onRemove={(id) => removeWidget(p.section.id, id)}
+            blockStyle={{ cursor: 'default' }}
+          />
         </div>
       </section>
     )
   }
 
+  const outerItems = createMemo<Array<DumbGridItem>>(() =>
+    sections().map((s) => ({
+      id: s.id,
+      w: 6,
+      h: 4,
+      minW: 3,
+      minH: 2,
+      content: () => <SectionBody section={s} />,
+    })),
+  )
+
   return (
     <div class="bd-example">
-      <h3>DumbGrid × Kanban</h3>
+      <h3>Вложенные сетки</h3>
       <p class="note">
-        Блоки сетки здесь — <b>контейнеры</b>. Колонку двигаешь и ресайзишь как блок дашборда (за <b>⠿</b> в
-        её шапке), карточки внутри переносишь между колонками. Жесты не путаются: у блока есть ручка, а
-        карточки помечены <code>data-flip-id</code>, и сетка нажатия по ним пропускает. Выключи{' '}
-        <b>edit mode</b> — сетка застынет, а канбан останется живым.
+        Каждый блок внешней сетки — <b>сам DumbGrid</b>: секцию двигаешь и ресайзишь за её <b>⠿</b>,
+        виджеты внутри — за их собственные тела, в своей сетке из 6 колонок. Уровни не путаются: блок
+        вложенной сетки помечен <code>data-grid-block</code>, и внешняя сетка нажатия по нему пропускает.
+        Раскладки обоих уровней здесь контролируемые — это просто данные.
       </p>
 
       <div class="bar">
@@ -171,19 +171,19 @@ export default function BoardExample() {
           <input type="checkbox" checked={edit()} onChange={(e) => setEdit(e.currentTarget.checked)} />
           <b>edit mode</b>
         </label>
-        <button onClick={addColumn}>+ колонка</button>
-        <span class="log">{log()}</span>
+        <button onClick={addSection}>+ секция</button>
       </div>
 
       <DumbGrid
-        storageKey={STORAGE_KEY}
         cols={12}
-        rowHeight={92}
+        rowHeight={104}
         gap={12}
         editable={edit()}
-        items={items()}
-        onRemove={removeColumn}
-        labels={{ remove: 'Убрать колонку' }}
+        items={outerItems()}
+        layout={outer()}
+        onLayout={setOuter}
+        onRemove={removeSection}
+        labels={{ remove: 'Убрать секцию' }}
         blockStyle={{ cursor: 'default' }}
       />
 
@@ -198,31 +198,31 @@ export default function BoardExample() {
                               border-radius: 999px; background: #fff }
         .bd-example .bar button { font: inherit; padding: 4px 10px; border: 1px solid #cbd5e1;
                                   border-radius: 8px; background: #fff; cursor: pointer }
-        .bd-example .log { color: #64748b }
 
-        .bd-example .col { height: 100%; display: flex; flex-direction: column; min-width: 0;
-                           box-sizing: border-box; border-radius: 12px; border: 1px solid #e2e8f0;
-                           background: #f8fafc; transition: background .15s, border-color .15s }
-        .bd-example .col.active { border-color: #6366f1; background: #eef2ff }
-        .bd-example .col header { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-                                  cursor: grab; user-select: none; font-size: 13px;
-                                  border-bottom: 1px solid #e9eef5 }
-        .bd-example .col header:active { cursor: grabbing }
+        .bd-example .section { height: 100%; display: flex; flex-direction: column; min-width: 0;
+                               box-sizing: border-box; border-radius: 12px; border: 1px solid #e2e8f0;
+                               background: #f8fafc; overflow: hidden }
+        .bd-example .section header { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+                                      cursor: grab; user-select: none; font-size: 13px;
+                                      border-bottom: 1px solid #e9eef5; background: #fff }
+        .bd-example .section header:active { cursor: grabbing }
         .bd-example .grip { color: #94a3b8; line-height: 1 }
-        .bd-example .count { margin-left: auto; margin-right: 18px; font-size: 12px; color: #94a3b8 }
+        .bd-example .count { font-size: 12px; color: #94a3b8 }
+        .bd-example .add { margin-left: auto; margin-right: 18px; width: 20px; height: 20px;
+                           display: grid; place-items: center; padding: 0; font: inherit;
+                           border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;
+                           color: #475569; cursor: pointer; line-height: 1 }
 
-        .bd-example .cards { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px;
-                             padding: 8px; overflow-y: auto; scrollbar-gutter: stable }
-        .bd-example .empty { padding: 16px 8px; text-align: center; color: #cbd5e1; font-size: 12px }
+        .bd-example .inner { flex: 1; min-height: 0; padding: 8px; overflow: auto;
+                             scrollbar-gutter: stable }
 
-        .bd-example .card { display: flex; align-items: flex-start; gap: 8px; padding: 10px;
-                            border-radius: 10px; background: #fff; font-size: 13px;
-                            box-shadow: inset 0 0 0 1px #e2e8f0 }
-        .bd-example .card .handle { cursor: grab; border: none; background: none; padding: 0;
-                                    color: #94a3b8; font-size: 16px; line-height: 1; touch-action: none }
-        .bd-example .card .title { font-weight: 500 }
-        .bd-example .card .tag { display: inline-block; margin-top: 4px; padding: 1px 7px;
-                                 border-radius: 999px; font-size: 11px }
+        .bd-example .widget { height: 100%; box-sizing: border-box; display: flex;
+                              flex-direction: column; justify-content: center; gap: 2px;
+                              padding: 8px 10px; border-radius: 10px; background: #fff;
+                              box-shadow: inset 0 0 0 1px #e2e8f0;
+                              border-left: 3px solid oklch(0.7 0.13 var(--hue)) }
+        .bd-example .wtitle { font-size: 12px; color: #64748b }
+        .bd-example .wval { font-size: 17px; font-weight: 600 }
       `}</style>
     </div>
   )

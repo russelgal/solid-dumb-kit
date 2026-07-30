@@ -420,73 +420,89 @@ describe('DumbGrid.example — режим просмотра', () => {
   })
 })
 
-describe('Board.example — сетка, блоки которой сами контейнеры', () => {
+describe('Board.example — вложенные сетки', () => {
   const blocks = (host: HTMLElement) =>
     Array.from(host.querySelectorAll<HTMLElement>('div')).filter((el) => el.style.gridColumn)
   const editToggle = (host: HTMLElement) =>
     Array.from(host.querySelectorAll<HTMLInputElement>('input[type=checkbox]'))
       .find((i) => i.parentElement?.textContent?.includes('edit mode'))!
+  const button = (host: HTMLElement, label: string) =>
+    Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.trim() === label)!
 
-  it('колонки разложены сеткой, а карточки живут внутри блоков', () => {
+  it('блоки внешней сетки содержат сетки со своими блоками', () => {
     const host = mount(BoardExample)
-    expect(blocks(host).length).toBe(3)
-    expect(host.querySelectorAll('.card').length).toBe(6)
+    const sections = Array.from(host.querySelectorAll<HTMLElement>('.section'))
+    expect(sections.length).toBe(2)
 
-    // каждая карточка лежит ВНУТРИ блока сетки, а не рядом с ним
-    for (const card of Array.from(host.querySelectorAll<HTMLElement>('.card'))) {
-      expect(blocks(host).some((b) => b.contains(card))).toBe(true)
+    // 2 секции снаружи + 7 виджетов внутри
+    expect(blocks(host).length).toBe(9)
+    for (const w of Array.from(host.querySelectorAll<HTMLElement>('.widget'))) {
+      expect(sections.some((sec) => sec.contains(w))).toBe(true)
     }
   })
 
-  it('карточки помечены data-flip-id — по ней сетка пропускает чужой жест', () => {
+  it('у вложенной сетки свои колонки: виджет занимает 3 из 6, секция 6 из 12', () => {
     const host = mount(BoardExample)
-    const marked = Array.from(host.querySelectorAll('.card')).filter(
-      (el) => (el as HTMLElement).dataset.flipId,
-    )
-    expect(marked.length).toBe(6)
+    const outer = blocks(host).filter((el) => el.querySelector('.section'))
+    const innerBlocks = blocks(host).filter((el) => el.querySelector('.widget'))
+
+    expect(outer[0].style.gridColumn).toBe('1 / span 6')
+    expect(innerBlocks.some((el) => el.style.gridColumn.endsWith('span 3'))).toBe(true)
   })
 
-  it('нажатие по карточке не начинает драг блока', () => {
+  it('блоки помечены data-grid-block — по ней внешняя сетка пропускает чужой жест', () => {
     const host = mount(BoardExample)
-    const card = host.querySelector<HTMLElement>('.card')!
+    const marked = Array.from(host.querySelectorAll('[data-grid-block]'))
+    expect(marked.length).toBe(9)
+
+    // вложенный блок лежит внутри внешнего, и это разные блоки
+    const widget = host.querySelector<HTMLElement>('.widget')!.closest('[data-grid-block]')!
+    const section = widget.parentElement!.closest('[data-grid-block]')
+    expect(section).toBeTruthy()
+    expect(section).not.toBe(widget)
+  })
+
+  it('нажатие по вложенному блоку не начинает драг секции', () => {
+    const host = mount(BoardExample)
     const spy = vi.spyOn(window, 'addEventListener')
 
-    // тело карточки: не ручка карточки и не ручка блока
-    card.querySelector<HTMLElement>('.title')!
-      .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 91 }))
+    host.querySelector<HTMLElement>('.widget')!
+      .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 93 }))
 
     expect(spy).not.toHaveBeenCalledWith('pointermove', expect.any(Function))
     spy.mockRestore()
   })
 
-  it('добавление колонки даёт новый блок с пустой зоной', () => {
+  it('виджет добавляется в свою секцию, а не в соседнюю', () => {
     const host = mount(BoardExample)
-    const add = Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.includes('+ колонка'))!
+    const counts = () =>
+      Array.from(host.querySelectorAll<HTMLElement>('.section')).map((s) => s.querySelectorAll('.widget').length)
 
-    add.click()
-    expect(blocks(host).length).toBe(4)
-    expect(host.textContent).toContain('перетащи сюда')
+    const before = counts()
+    Array.from(host.querySelectorAll<HTMLButtonElement>('.add'))[0].click()
+
+    expect(counts()).toEqual([before[0] + 1, before[1]])
   })
 
-  it('удаление колонки не теряет карточки — они уезжают в первую', () => {
+  it('секция добавляется и удаляется вместе со своими виджетами', () => {
     const host = mount(BoardExample)
-    const before = host.querySelectorAll('.card').length
+    button(host, '+ секция').click()
+    expect(host.querySelectorAll('.section').length).toBe(3)
 
-    // убираем вторую колонку («В работе»), у неё есть карточки
-    const kill = Array.from(host.querySelectorAll<HTMLButtonElement>('[data-grid-remove]'))[1]
-    kill.click()
+    // ✕ секции — кнопка удаления внешнего блока (у виджетов свои, внутри)
+    const outerKill = Array.from(host.querySelectorAll<HTMLElement>('[data-grid-remove]'))
+      .filter((b) => b.closest('[data-grid-block]')?.querySelector('.section'))
+    outerKill[0].click()
 
-    expect(blocks(host).length).toBe(2)
-    expect(host.querySelectorAll('.card').length).toBe(before)
+    expect(host.querySelectorAll('.section').length).toBe(2)
   })
 
-  it('edit mode гасит сетку, но канбан внутри остаётся живым', () => {
+  it('edit mode гасит оба уровня разом', () => {
     const host = mount(BoardExample)
+    expect(host.querySelectorAll('[data-grid-resize]').length).toBe(9)
+
     editToggle(host).click()
-
     expect(host.querySelectorAll('[data-grid-resize]').length).toBe(0)
-    expect(host.querySelectorAll('[data-grid-remove]').length).toBe(0)
-    // карточки на месте и по-прежнему зарегистрированы в сортировщике
-    expect(host.querySelectorAll('.card[data-flip-id]').length).toBe(6)
+    expect(host.querySelectorAll('.widget').length).toBe(7)   // содержимое на месте
   })
 })

@@ -119,37 +119,29 @@ Without a handle, pointer-downs on `input`, `button`, `a`, `select`, `label`, `[
 
 \* by default animations respect `prefers-reduced-motion: reduce`; an explicit `animate={true}` overrides even that.
 
-## Blocks as containers
+## Nested grids
 
-A block can hold anything, including another kit gesture — a sortable list, or a kanban column from `createSortableGroup`. The two do not fight, because the kit separates them by two rules:
-
-- give the block a `[data-drag-handle]` (its header, say), so its body is not a drag surface;
-- sortable items are marked `data-flip-id`, and the grid **skips pointer-downs coming from them** — a card drag is the card's gesture, not the grid's.
+A block can be a grid itself. The outer grid lays out sections, each section runs its own `DumbGrid` with its own columns, row height and layout:
 
 ```tsx
-const group = createSortableGroup({ onEnd: moveCard })
-
-<DumbGrid items={columns().map((col) => ({
-  id: col.id, w: 'third', h: 4,
-  content: () => {
-    const zone = zoneOf(col.id)          // group.list(col.id, …), cached per column
-    return (
-      <section>
-        <header data-drag-handle>⠿ {col.title}</header>
-        <div ref={zone.container}>
-          <For each={cards()[col.id]}>
-            {(c) => <article ref={zone.bind(c.id)}>…</article>}
-          </For>
-        </div>
-      </section>
-    )
-  },
+<DumbGrid cols={12} rowHeight={104} items={sections().map((sec) => ({
+  id: sec.id, w: 6, h: 4,
+  content: () => (
+    <section>
+      <header data-drag-handle>⠿ {sec.title}</header>
+      <DumbGrid cols={6} rowHeight={56} items={widgetsOf(sec.id)} />
+    </section>
+  ),
 }))} />
 ```
 
-One thing to keep in mind: **`items` must not depend on the nested state**. Derive it from the list of blocks only (a `createMemo` over the columns), so moving a card does not rebuild the grid's items mid-gesture. Blocks are rendered by `items`, not by the computed layout, precisely so a drop never re-creates the DOM inside them — scroll positions, focus and nested refs survive.
+The levels do not fight over the pointer: every block carries `data-grid-block`, and a grid only takes the gesture when the **nearest** block under the pointer is its own. So a press on a nested widget belongs to the inner grid, and the section is dragged by its header.
 
-See `examples/Board.example.tsx` for the whole thing, plus adding and removing columns.
+The same rule covers a sortable inside a block (`createDumbSortable`, or a kanban column from `createSortableGroup`): those items are marked `data-flip-id`, which the grid skips as well.
+
+One thing to keep in mind: **`items` must not depend on the nested state**. Derive it from the list of blocks only (a `createMemo` over the sections), so moving something inside does not rebuild the outer items mid-gesture. Blocks are rendered from `items` rather than from the computed layout, precisely so a drop never re-creates the DOM inside them — scroll, focus and nested refs survive.
+
+See `examples/Board.example.tsx`: two levels, controlled layouts on both, plus adding and removing sections and widgets.
 
 ## Edit mode
 
