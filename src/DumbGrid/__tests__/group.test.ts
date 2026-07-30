@@ -69,7 +69,7 @@ const el = () => {
 
 // Две сетки бок о бок: A занимает 0–600 по X, B — 600–1200. Обе по 6 колонок
 // шириной 100px без зазоров, строка 100px — координаты читаются глазами.
-function setup(opts: { accepts?: (from: string) => boolean; splitBatches?: boolean; native?: boolean } = {}) {
+function setup(opts: { accepts?: (from: string) => boolean; splitBatches?: boolean } = {}) {
   const boxA = el()
   const boxB = el()
   const boxes = new Map<Element, Box>([
@@ -80,9 +80,7 @@ function setup(opts: { accepts?: (from: string) => boolean; splitBatches?: boole
 
   const onTransfer = vi.fn()
   const onReorderA = vi.fn()
-  // по умолчанию проверяем указательный путь (он же тач-фолбэк);
-  // нативный DnD включается отдельно — у него свой набор тестов ниже
-  const group = createGridGroupEngine({ onTransfer, animate: false, native: opts.native ?? false })
+  const group = createGridGroupEngine({ onTransfer, animate: false })
 
   const zoneA = group.grid('a', {
     blocks: () => [
@@ -128,7 +126,7 @@ describe('createGridGroupEngine — вне Solid', () => {
 
   it('блоки помечены, отписки работают', () => {
     stubObservers(new Map())
-    const group = createGridGroupEngine({ native: false })
+    const group = createGridGroupEngine({})
     const zone = group.grid('a', {
       blocks: () => [{ id: 'x', w: 1, h: 1 }],
       cols: () => 6, rowHeight: () => 50, gapX: () => 0, gapY: () => 0,
@@ -302,7 +300,7 @@ describe('перенос работает в обе стороны', () => {
     stubObservers(new Map([[boxA, { left: 0, top: 0, width: 600, height: 400 }]]))
 
     const onTransfer = vi.fn()
-    const group = createGridGroupEngine({ onTransfer, native: false })
+    const group = createGridGroupEngine({ onTransfer })
     const zoneA = group.grid('a', {
       blocks: () => [{ id: 'a1', w: 3, h: 1 }],
       cols: () => 6, rowHeight: () => 100, gapX: () => 0, gapY: () => 0,
@@ -324,148 +322,6 @@ describe('перенос работает в обе стороны', () => {
     up()
 
     expect(onTransfer).not.toHaveBeenCalled()
-    group.destroy()
-  })
-})
-
-
-/* ────────── нативный HTML5 drag-and-drop ────────── */
-
-const dt = () => new DataTransfer()
-const fire = (target: EventTarget, type: string, init: { clientX?: number; clientY?: number } = {}, transfer?: DataTransfer) => {
-  const ev = new DragEvent(type, { bubbles: true, cancelable: true })
-  // happy-dom не пробрасывает через конструктор ни dataTransfer, ни координаты
-  if (transfer && !ev.dataTransfer) Object.defineProperty(ev, 'dataTransfer', { value: transfer })
-  Object.defineProperty(ev, 'clientX', { value: init.clientX ?? 0 })
-  Object.defineProperty(ev, 'clientY', { value: init.clientY ?? 0 })
-  target.dispatchEvent(ev)
-  return ev
-}
-
-describe('нативный DnD — зону под указателем считает браузер', () => {
-  const nativeSetup = (opts: { accepts?: (from: string) => boolean } = {}) => setup({ ...opts, native: true })
-
-  it('блоки становятся перетаскиваемыми, отписка это снимает', () => {
-    const { group, a1 } = nativeSetup()
-    expect(a1.getAttribute('draggable')).toBe('true')
-    group.destroy()
-  })
-
-  it('мышиный pointerdown нативному переносу не мешает', () => {
-    const { group, a1 } = nativeSetup()
-    const spy = vi.spyOn(window, 'addEventListener')
-    a1.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 71, clientX: 10, clientY: 10 }))
-    // свой жест мышью не стартует — перенос ведёт браузер
-    expect(spy).not.toHaveBeenCalledWith('pointermove', expect.any(Function))
-    spy.mockRestore()
-    group.destroy()
-  })
-
-  it('палец по-прежнему ведёт наш жест: нативного DnD на тач нет', () => {
-    const { group, a1 } = nativeSetup()
-    const spy = vi.spyOn(window, 'addEventListener')
-    a1.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true, button: 0, pointerId: 72, pointerType: 'touch', clientX: 10, clientY: 10,
-    }))
-    expect(spy).toHaveBeenCalledWith('pointermove', expect.any(Function))
-    spy.mockRestore()
-    group.destroy()
-  })
-
-  it('перенос в чужую сетку: dragover решает зону, дроп отдаёт onTransfer', () => {
-    const { group, onTransfer, a1, boxB } = nativeSetup()
-    const transfer = dt()
-
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    expect(group.active()).toEqual({ grid: 'a', id: 'a1', kind: 'move' })
-
-    fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer)
-    expect(group.over()).toBe('b')
-    fire(boxB, 'drop', { clientX: 950, clientY: 50 }, transfer)
-
-    expect(onTransfer).toHaveBeenCalledWith(
-      { grid: 'a', id: 'a1', index: 0 },
-      expect.objectContaining({ grid: 'b', index: 1 }),
-    )
-    group.destroy()
-  })
-
-  it('в обе стороны одинаково — хиттест больше не наш', () => {
-    const back = nativeSetup()
-    const transfer = dt()
-
-    fire(back.b1, 'dragstart', { clientX: 650, clientY: 50 }, transfer)
-    fire(back.boxA, 'dragover', { clientX: 50, clientY: 50 }, transfer)
-    fire(back.boxA, 'drop', { clientX: 50, clientY: 50 }, transfer)
-
-    expect(back.onTransfer).toHaveBeenCalledWith(
-      expect.objectContaining({ grid: 'b', id: 'b1' }),
-      expect.objectContaining({ grid: 'a' }),
-    )
-    back.group.destroy()
-  })
-
-  it('сортировка внутри своей сетки идёт тем же dragover', () => {
-    const { group, onReorderA, onTransfer, a1, boxA } = nativeSetup()
-    const transfer = dt()
-
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    fire(boxA, 'dragover', { clientX: 470, clientY: 50 }, transfer)   // правее центра a2
-    fire(boxA, 'drop', { clientX: 470, clientY: 50 }, transfer)
-
-    expect(onTransfer).not.toHaveBeenCalled()
-    expect(onReorderA).toHaveBeenCalledWith(0, 1)
-    group.destroy()
-  })
-
-  it('dragover в непринимающей сетке дроп не разрешает', () => {
-    const { group, onTransfer, a1, boxB } = nativeSetup({ accepts: (from) => from !== 'a' })
-    const transfer = dt()
-
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    const over = fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer)
-
-    // без preventDefault браузер дроп не выполнит — это и есть отказ
-    expect(over.defaultPrevented).toBe(false)
-    expect(group.over()).toBe('a')
-
-    fire(boxB, 'drop', { clientX: 950, clientY: 50 }, transfer)
-    expect(onTransfer).not.toHaveBeenCalled()
-    group.destroy()
-  })
-
-  it('dragover помечен как принятый, иначе дропа не будет вовсе', () => {
-    const { group, a1, boxB } = nativeSetup()
-    const transfer = dt()
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    const over = fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer)
-    expect(over.defaultPrevented).toBe(true)
-    group.destroy()
-  })
-
-  it('dragend прибирает за собой', () => {
-    const { group, a1, boxB } = nativeSetup()
-    const transfer = dt()
-
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-    fire(boxB, 'dragover', { clientX: 950, clientY: 50 }, transfer)
-    expect(boxB.querySelector('[data-grid-preview]')).toBeTruthy()
-
-    fire(a1, 'dragend', {}, transfer)
-    expect(group.active()).toBeNull()
-    expect(group.over()).toBeNull()
-    expect(boxB.querySelector('[data-grid-preview]')).toBeNull()
-    expect(a1.style.opacity).toBe('')
-    group.destroy()
-  })
-
-  it('данные переноса кладутся в dataTransfer — блок понятен внешнему миру', () => {
-    const { group, a1 } = nativeSetup()
-    const transfer = dt()
-    fire(a1, 'dragstart', { clientX: 50, clientY: 50 }, transfer)
-
-    expect(transfer.getData('application/x-dumb-grid')).toBe(JSON.stringify({ grid: 'a', id: 'a1' }))
-    expect(transfer.effectAllowed).toBe('move')
     group.destroy()
   })
 })

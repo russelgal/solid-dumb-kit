@@ -31,20 +31,6 @@ export type GridTransferSource = { grid: string; id: string; index: number }
 
 export type GridGroupOptions = PressGateOptions & {
   animate?: boolean
-  /**
-   * Использовать нативный HTML5 drag-and-drop там, где он есть (по умолчанию да).
-   *
-   * Смысл размена: зону под указателем считает БРАУЗЕР — событие `dragover`
-   * приходит прямо на контейнер, и никакой самодельный хиттест по снятым
-   * прямоугольникам больше не решает, куда попал блок (именно он давал перекос
-   * «в одну сторону переносится, в другую нет»). Всё остальное остаётся нашим:
-   * арифметика раскладки, расступание соседей трансформом, рамка будущего места,
-   * снап ресайза.
-   *
-   * Тач-устройства HTML5 DnD не поддерживают вовсе, поэтому там по-прежнему
-   * работает наш указательный жест — он же и фолбэк, если API недоступно.
-   */
-  native?: boolean
   /** блок переехал в ДРУГУЮ сетку — обе раскладки правит потребитель */
   onTransfer?: (from: GridTransferSource, to: GridTransferTarget) => void
   /** идёт жест: имя сетки, блок и вид — для подсветки */
@@ -654,199 +640,6 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
   const gate = createPressGate(opts)
   const canStart = (zone: Zone) => !zone.opts.disabled?.() && !drag && !gate.pending()
 
-  /* ────────── нативный HTML5 drag-and-drop ────────── */
-
-  const nativeOn = () =>
-    opts.native !== false && typeof DataTransfer === 'function' && typeof DragEvent === 'function'
-
-  const MIME = 'application/x-dumb-grid'
-
-  /** состояние нативного жеста: тут нет кадров, всё считается по событиям */
-  type NativeDrag = {
-    fromZone: string
-    id: string
-    fromIndex: number
-    span: { w: number; h: number }
-    target: string | null
-    index: number
-    cell: { col: number; row: number }
-    blocked: boolean
-    snaps: Map<string, ZoneSnap>
-    preview: HTMLElement | null
-    previewZone: string | null
-    touched: Set<HTMLElement>
-    el: HTMLElement
-  }
-  let nd: NativeDrag | null = null
-
-  /**
-   * Снимок зоны для нативного пути. Прямоугольник контейнера читаем ОДИН раз на
-   * вход в зону: layout в этот момент чист (мы пишем только transform), а
-   * дальше в dragover компенсируем прокрутку арифметикой, как и везде в ките.
-   */
-  function nativeSnap(zone: Zone): ZoneSnap | null {
-    if (!zone.el) return null
-    const box = zone.el.getBoundingClientRect()
-    const scroller = scrollParent(zone.el, true)
-    const geom = measure(scroller)
-    const s0 = scrollOf(scroller)
-    const mode = zone.opts.mode?.() ?? 'flow'
-    const m = metricsOf(zone)
-    const blocks = zone.opts.blocks()
-    return {
-      name: zone.name, m, mode, blocks,
-      base: placeOf(blocks, mode, m.cols),
-      padLeft: zone.padLeft, padTop: zone.padTop,
-      boxTop: box.top, boxLeft: box.left, boxW: box.width, boxH: box.height,
-      boxWinX: window.scrollX, boxWinY: window.scrollY,
-      scroller, geom, sx0: s0.sx, sy0: s0.sy,
-    }
-  }
-
-  /** Тот же Drag-контракт, что у указательного пути — чтобы переиспользовать кадры. */
-  function asDrag(n: NativeDrag, x: number, y: number): Drag {
-    return {
-      kind: 'move', id: n.id, fromZone: n.fromZone, fromIndex: n.fromIndex,
-      pid: -1, el: n.el, startX: x, startY: y, lastX: x, lastY: y,
-      zones: n.snaps, target: n.target ?? n.fromZone, index: n.index,
-      cell: n.cell, blocked: n.blocked, span: n.span,
-      ghost: null, preview: n.preview, previewZone: n.previewZone,
-      touched: n.touched, raf: 0, ready: true, moved: true,
-    }
-  }
-
-  /** Перенести назад то, что кадр записал в свой Drag. */
-  function syncBack(n: NativeDrag, d: Drag) {
-    n.index = d.index
-    n.cell = d.cell
-    n.blocked = d.blocked
-    n.preview = d.preview
-    n.previewZone = d.previewZone
-  }
-
-  function nativeClear() {
-    if (!nd) return
-    for (const el of nd.touched) {
-      el.style.transition = ''
-      el.style.transform = ''
-      el.style.willChange = ''
-    }
-    nd.preview?.remove()
-    nd.el.style.opacity = ''
-    nd = null
-    setActive(null)
-    setOver(null)
-  }
-
-  function onDragStart(zone: Zone, id: string, el: HTMLElement, ev: DragEvent) {
-    if (!nativeOn() || !ev.dataTransfer) return
-    if (zone.opts.disabled?.() || drag) { ev.preventDefault(); return }
-    // ручка ресайза и вложенные жесты забирают событие себе
-    if (ev.target instanceof Element) {
-      if (ev.target.closest('[data-grid-resize]')) { ev.preventDefault(); return }
-      if (ev.target.closest('[data-flip-id]')) { ev.preventDefault(); return }
-      const nested = ev.target.closest('[data-grid-block]')
-      if (nested && nested !== el) { ev.preventDefault(); return }
-      const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
-      if (handle && !(ev.target instanceof Node && handle.contains(ev.target))) { ev.preventDefault(); return }
-    }
-    const blocks = zone.opts.blocks()
-    const fromIndex = blocks.findIndex(b => b.id === id)
-    if (fromIndex < 0 || blocks[fromIndex].locked) { ev.preventDefault(); return }
-
-    const snap = nativeSnap(zone)
-    const home = snap?.base.find(b => b.id === id)
-    if (!snap || !home) { ev.preventDefault(); return }
-
-    // Firefox не начнёт перенос без данных; заодно это делает блок понятным
-    // внешнему миру — его можно принять в другом окне
-    ev.dataTransfer.effectAllowed = 'move'
-    try { ev.dataTransfer.setData(MIME, JSON.stringify({ grid: zone.name, id })) } catch { /* noop */ }
-    try { ev.dataTransfer.setData('text/plain', id) } catch { /* noop */ }
-    // снимок для «летящей» копии делает браузер; где метода нет (или он
-    // капризничает, как в Safari), просто остаёмся с картинкой по умолчанию
-    try { ev.dataTransfer.setDragImage?.(el, ev.offsetX || 0, ev.offsetY || 0) } catch { /* noop */ }
-
-    nd = {
-      fromZone: zone.name, id, fromIndex,
-      span: { w: blocks[fromIndex].w, h: blocks[fromIndex].h },
-      target: zone.name, index: fromIndex,
-      cell: { col: home.col, row: home.row },
-      blocked: false,
-      snaps: new Map([[zone.name, snap]]),
-      preview: null, previewZone: null, touched: new Set(), el,
-    }
-    setActive({ grid: zone.name, id, kind: 'move' })
-    setOver(zone.name)
-    // приглушаем ПОСЛЕ кадра: иначе таким же попадёт и снимок для drag image
-    requestAnimationFrame(() => { if (nd) el.style.opacity = '0.4' })
-  }
-
-  function onDragOverZone(zone: Zone, ev: DragEvent) {
-    if (!nd || !zone.el) return
-    const accepts = zone.opts.accepts
-    if (zone.name !== nd.fromZone && accepts && !accepts(nd.fromZone)) return
-
-    // без preventDefault браузер не разрешит дроп
-    ev.preventDefault()
-    ev.stopPropagation()          // вложенная сетка ближе к указателю — её и слушаем
-    if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
-
-    let snap = nd.snaps.get(zone.name)
-    if (!snap) {
-      const fresh = nativeSnap(zone)
-      if (!fresh) return
-      nd.snaps.set(zone.name, (snap = fresh))
-    }
-    if (nd.target !== zone.name) {
-      nd.target = zone.name
-      for (const el of nd.touched) el.style.transform = ''     // прошлая зона расслабляется
-      setOver(zone.name)
-    }
-
-    const d = asDrag(nd, ev.clientX, ev.clientY)
-    const p = pointIn(snap, ev.clientX, ev.clientY)
-    if (zone.name === nd.fromZone) homeFrame(d, snap, p)
-    else guestFrame(d, snap, p)
-    syncBack(nd, d)
-  }
-
-  function onDropZone(zone: Zone, ev: DragEvent) {
-    if (!nd) return
-    // Отказ проверяем и здесь, а не только в dragover: без preventDefault там
-    // браузер дроп не доставит, но полагаться на это — значит держать правило
-    // приёма в обработчике, который к решению отношения не имеет.
-    const accepts = zone.opts.accepts
-    if (zone.name !== nd.fromZone && accepts && !accepts(nd.fromZone)) return
-    ev.preventDefault()
-    ev.stopPropagation()
-
-    const n = nd
-    const snap = n.snaps.get(n.fromZone)
-    const home = snap?.base.find(b => b.id === n.id)
-    const toZone = zone.name
-    const index = n.index
-    const cell = n.cell
-    const blocked = n.blocked
-    nativeClear()
-
-    if (toZone !== n.fromZone) {
-      if (blocked) return
-      opts.onTransfer?.(
-        { grid: n.fromZone, id: n.id, index: n.fromIndex },
-        { grid: toZone, index, x: cell.col, y: cell.row },
-      )
-      return
-    }
-    const zoneFrom = zones.get(n.fromZone)
-    if (snap?.mode === 'free') {
-      if (blocked || !home || (cell.col === home.col && cell.row === home.row)) return
-      zoneFrom?.opts.onMove?.(n.id, cell.col, cell.row)
-      return
-    }
-    if (index !== n.fromIndex) zoneFrom?.opts.onReorder?.(n.fromIndex, index)
-  }
-
   return {
     grid(name: string, zoneOpts: GridZoneOptions): GridZoneEngine {
       const zone: Zone = zones.get(name) ?? {
@@ -858,23 +651,6 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
       return {
         attachContainer(el: HTMLElement) {
           zone.el = el
-
-          // Зону под указателем определяет браузер: dragover приходит прямо
-          // сюда. Наш хиттест по снятым прямоугольникам остаётся только на
-          // тач-пути, где нативного DnD нет.
-          const over = (ev: DragEvent) => onDragOverZone(zone, ev)
-          const enter = (ev: DragEvent) => { if (nd) { ev.preventDefault(); ev.stopPropagation() } }
-          const leave = (ev: DragEvent) => {
-            // dragleave прилетает и при переходе на потомка — это не выход
-            if (!nd || (ev.relatedTarget instanceof Node && el.contains(ev.relatedTarget))) return
-            if (nd.target === zone.name) setOver(null)
-          }
-          const drop = (ev: DragEvent) => onDropZone(zone, ev)
-          el.addEventListener('dragenter', enter)
-          el.addEventListener('dragover', over)
-          el.addEventListener('dragleave', leave)
-          el.addEventListener('drop', drop)
-
           if (typeof ResizeObserver === 'function') {
             zone.ro = new ResizeObserver(entries => {
               const r = entries[entries.length - 1]?.contentRect
@@ -886,10 +662,6 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
             zone.ro.observe(el)
           }
           return () => {
-            el.removeEventListener('dragenter', enter)
-            el.removeEventListener('dragover', over)
-            el.removeEventListener('dragleave', leave)
-            el.removeEventListener('drop', drop)
             zone.ro?.disconnect()
             zone.ro = null
             if (zone.el === el) zone.el = null
@@ -899,18 +671,8 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
         attach(el: HTMLElement, id: string) {
           zone.els.set(id, el)
           el.dataset.gridBlock = id
-          if (nativeOn()) el.setAttribute('draggable', 'true')
-
-          const dragStart = (ev: DragEvent) => onDragStart(zone, id, el, ev)
-          const dragEnd = () => nativeClear()
-          el.addEventListener('dragstart', dragStart)
-          el.addEventListener('dragend', dragEnd)
-
           const down = (ev: PointerEvent) => {
             if (ev.button !== 0 || !canStart(zone)) return
-            // мышью работает нативный DnD — свой жест ей не мешаем;
-            // палец же нативного перетаскивания не умеет, там всё наше
-            if (nativeOn() && ev.pointerType !== 'touch') return
             if (!(ev.target instanceof Element)) return
             if (ev.target.closest('[data-grid-resize]')) return
             if (ev.target.closest('[data-flip-id]')) return
@@ -929,9 +691,6 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
           if (handle) handle.style.touchAction = 'none'
           return () => {
             el.removeEventListener('pointerdown', down)
-            el.removeEventListener('dragstart', dragStart)
-            el.removeEventListener('dragend', dragEnd)
-            el.removeAttribute('draggable')
             delete el.dataset.gridBlock
             if (zone.els.get(id) === el) zone.els.delete(id)
           }
@@ -957,7 +716,6 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
     destroy() {
       gate.cancel()
       cleanup()
-      nativeClear()
       for (const z of zones.values()) {
         z.ro?.disconnect()
         z.ro = null
