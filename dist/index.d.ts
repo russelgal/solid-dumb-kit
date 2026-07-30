@@ -707,7 +707,13 @@ type DumbGridProps = {
 declare function mergeLayout(saved: DumbGridLayout | null | undefined, items: Array<DumbGridItem>, cols: number, mode?: LayoutMode): DumbGridLayout;
 declare function DumbGrid(props: DumbGridProps): JSX.Element;
 
-/** блок глазами движка: важен только id, размеры — дело раскладки */
+/** что именно тащат: откуда, что и какого размера */
+type DndDragging = {
+    grid: string;
+    id: string;
+    w: number;
+    h: number;
+};
 type DndTransferSource = {
     grid: string;
     id: string;
@@ -720,17 +726,28 @@ type DndTransferTarget = {
 type DndGroupOptions = {
     /** блок переехал в ДРУГУЮ сетку — обе раскладки правит потребитель */
     onTransfer?: (from: DndTransferSource, to: DndTransferTarget) => void;
-    /** что тащат сейчас */
-    onActive?: (state: {
-        grid: string;
-        id: string;
-    } | null) => void;
+    /** что тащат сейчас (с размером — приёмник рисует по нему место) */
+    onActive?: (state: DndDragging | null) => void;
     /** над какой сеткой указатель */
     onOver?: (grid: string | null) => void;
+    /**
+     * Место вставки изменилось. Именно на это подписан компонент: он показывает
+     * будущую раскладку, а она меняется и когда сетка та же, и когда индекс
+     * сдвинулся на соседний блок.
+     */
+    onDropTarget?: (target: {
+        grid: string;
+        index: number;
+    } | null) => void;
 };
 type DndZoneOptions = {
     /** текущий порядок блоков */
     order: () => Array<string>;
+    /** размер блока — нужен приёмнику, чтобы показать место будущего гостя */
+    spanOf?: (id: string) => {
+        w: number;
+        h: number;
+    };
     /** жесты запрещены */
     disabled?: () => boolean;
     /** пускать ли к себе блок из сетки `from` (по умолчанию да) */
@@ -744,11 +761,8 @@ type DndZoneEngine = {
 };
 type DndEngine = {
     grid: (name: string, opts: DndZoneOptions) => DndZoneEngine;
-    /** что тащат: сетка и блок */
-    active: () => {
-        grid: string;
-        id: string;
-    } | null;
+    /** что тащат: сетка, блок и его размер */
+    active: () => DndDragging | null;
     /** сетка под указателем */
     over: () => string | null;
     /** куда встанет блок: сетка и индекс вставки (для подсветки) */
@@ -763,10 +777,7 @@ declare const DND_MIME = "application/x-dumb-grid";
 declare const dndSupported: () => boolean;
 declare function createGridDndEngine(opts?: DndGroupOptions): DndEngine;
 
-type DndActive = {
-    grid: string;
-    id: string;
-} | null;
+type DndActive = DndDragging | null;
 type DndDrop = {
     grid: string;
     index: number;

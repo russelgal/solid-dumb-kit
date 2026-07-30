@@ -3374,29 +3374,14 @@ function createGridDndEngine(opts = {}) {
     if (drag.toZone === zoneName && drag.toIndex === index) return;
     drag.toZone = zoneName;
     drag.toIndex = index;
-    clearMarks();
-    const zone = zones.get(zoneName);
-    if (!zone) return;
-    const order = zone.opts.order().filter((id) => !(zoneName === drag.fromZone && id === drag.id));
-    const beforeId = order[index];
-    const afterId = order[order.length - 1];
-    if (beforeId) zone.els.get(beforeId)?.setAttribute("data-drop-before", "");
-    else if (afterId) zone.els.get(afterId)?.setAttribute("data-drop-after", "");
-  }
-  function clearMarks() {
-    for (const zone of zones.values()) {
-      for (const el of zone.els.values()) {
-        el.removeAttribute("data-drop-before");
-        el.removeAttribute("data-drop-after");
-      }
-    }
+    opts.onDropTarget?.({ grid: zoneName, index });
   }
   function clearDrag() {
     if (!drag) return;
-    clearMarks();
     drag.el.style.opacity = "";
     drag = null;
     setOver(null);
+    opts.onDropTarget?.(null);
     opts.onActive?.(null);
   }
   function accepted(zone) {
@@ -3443,9 +3428,10 @@ function createGridDndEngine(opts = {}) {
       ev.dataTransfer.setData("text/plain", id);
     } catch {
     }
-    drag = { fromZone: zone.name, id, fromIndex: index, el, toZone: zone.name, toIndex: -1 };
+    const span = zone.opts.spanOf?.(id) ?? { w: 1, h: 1 };
+    drag = { fromZone: zone.name, id, fromIndex: index, el, span, toZone: zone.name, toIndex: -1 };
     setOver(zone.name);
-    opts.onActive?.({ grid: zone.name, id });
+    opts.onActive?.({ grid: zone.name, id, ...span });
     requestAnimationFrame(() => {
       if (drag) el.style.opacity = "0.4";
     });
@@ -3555,7 +3541,7 @@ function createGridDndEngine(opts = {}) {
         }
       };
     },
-    active: () => drag ? { grid: drag.fromZone, id: drag.id } : null,
+    active: () => drag ? { grid: drag.fromZone, id: drag.id, ...drag.span } : null,
     over: () => over,
     drop: () => drag && drag.toIndex >= 0 ? { grid: drag.toZone, index: drag.toIndex } : null,
     destroy() {
@@ -3574,13 +3560,15 @@ function createDumbGridDndGroup(opts = {}) {
     ...opts,
     onActive: (state) => {
       setActive(state);
-      setDrop(state ? engine.drop() : null);
       opts.onActive?.(state);
     },
     onOver: (name) => {
       setOver(name);
-      setDrop(engine.drop());
       opts.onOver?.(name);
+    },
+    onDropTarget: (target) => {
+      setDrop(target);
+      opts.onDropTarget?.(target);
     }
   });
   onCleanup(engine.destroy);
@@ -3604,7 +3592,8 @@ function createDumbGridDndGroup(opts = {}) {
 
 // src/DumbGridDnd/DumbGridDnd.tsx
 var _tmpl$7 = /* @__PURE__ */ template(`<div style=display:grid>`);
-var _tmpl$24 = /* @__PURE__ */ template(`<div style=position:relative;min-width:0;min-height:0;box-sizing:border-box>`);
+var _tmpl$24 = /* @__PURE__ */ template(`<div data-dnd-ghost aria-hidden=true style="pointer-events:none;box-sizing:border-box;border-radius:10px;background:rgba(59,130,246,.10);outline:2px dashed rgba(59,130,246,.85);outline-offset:-2px">`);
+var _tmpl$33 = /* @__PURE__ */ template(`<div style=position:relative;min-width:0;min-height:0;box-sizing:border-box>`);
 var DEFAULT_COLS2 = 12;
 var DEFAULT_ROW_H2 = 80;
 var DEFAULT_GAP2 = 12;
@@ -3617,19 +3606,64 @@ function DumbGridDnd(props) {
     w: resolveSpan(it.w, cols()),
     h: Math.max(1, Math.round(it.h ?? 1) || 1)
   })));
-  const placed = createMemo(() => packFlow(spans(), cols()));
-  const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])));
-  const rows = createMemo(() => rowCount(placed()));
-  const solo = props.group ? null : createDumbGridDndGroup();
-  const g = (props.group ?? solo).grid(props.name ?? "grid", {
+  const group = props.group ?? createDumbGridDndGroup();
+  const name = () => props.name ?? "grid";
+  const g = group.grid(name(), {
     order: () => props.items.map((it) => it.id),
+    spanOf: (id) => spans().find((s) => s.id === id) ?? {
+      w: 1,
+      h: 1
+    },
     disabled: () => props.disabled === true,
     onReorder: (from, to) => props.onReorder?.(from, to)
   });
+  const GHOST = "\0dnd-ghost";
+  const viewSpans = createMemo(() => {
+    const base = spans();
+    const drop = group.drop();
+    const dragging = group.active();
+    if (!drop || !dragging || drop.grid !== name()) return base;
+    if (dragging.grid === name()) {
+      const from = base.findIndex((s) => s.id === dragging.id);
+      if (from < 0) return base;
+      const rest = base.filter((_, i) => i !== from);
+      const at2 = Math.max(0, Math.min(rest.length, drop.index));
+      return [...rest.slice(0, at2), base[from], ...rest.slice(at2)];
+    }
+    const at = Math.max(0, Math.min(base.length, drop.index));
+    const ghost = {
+      id: GHOST,
+      w: Math.min(dragging.w, cols()),
+      h: dragging.h
+    };
+    return [...base.slice(0, at), ghost, ...base.slice(at)];
+  });
+  const placed = createMemo(() => packFlow(viewSpans(), cols()));
+  const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])));
+  const rows = createMemo(() => rowCount(placed()));
+  const ghostPos = () => posById().get(GHOST);
   return (() => {
     var _el$ = _tmpl$7();
     var _ref$ = g.container;
     typeof _ref$ === "function" ? use(_ref$, _el$) : g.container = _el$;
+    insert(_el$, createComponent(Show, {
+      get when() {
+        return ghostPos();
+      },
+      children: (p) => (() => {
+        var _el$2 = _tmpl$24();
+        effect((_p$) => {
+          var _v$3 = `${p().col + 1} / span ${p().w}`, _v$4 = `${p().row + 1} / span ${p().h}`;
+          _v$3 !== _p$.e && setStyleProperty(_el$2, "grid-column", _p$.e = _v$3);
+          _v$4 !== _p$.t && setStyleProperty(_el$2, "grid-row", _p$.t = _v$4);
+          return _p$;
+        }, {
+          e: void 0,
+          t: void 0
+        });
+        return _el$2;
+      })()
+    }), null);
     insert(_el$, createComponent(For, {
       get each() {
         return props.items;
@@ -3642,12 +3676,12 @@ function DumbGridDnd(props) {
             return pos();
           },
           children: (p) => (() => {
-            var _el$2 = _tmpl$24();
+            var _el$3 = _tmpl$33();
             var _ref$2 = props.disabled ? void 0 : g.bind(it.id);
-            typeof _ref$2 === "function" && use(_ref$2, _el$2);
-            insert(_el$2, () => it.content());
+            typeof _ref$2 === "function" && use(_ref$2, _el$3);
+            insert(_el$3, () => it.content());
             effect((_p$) => {
-              var _v$3 = props.blockClass, _v$4 = {
+              var _v$5 = props.blockClass, _v$6 = {
                 // позицию считаем мы, браузер её не домысливает
                 "grid-column": `${p().col + 1} / span ${p().w}`,
                 "grid-row": `${p().row + 1} / span ${p().h}`,
@@ -3655,18 +3689,18 @@ function DumbGridDnd(props) {
                 opacity: dragging() ? "0.4" : void 0,
                 ...props.blockStyle
               };
-              _v$3 !== _p$.e && className(_el$2, _p$.e = _v$3);
-              _p$.t = style(_el$2, _v$4, _p$.t);
+              _v$5 !== _p$.e && className(_el$3, _p$.e = _v$5);
+              _p$.t = style(_el$3, _v$6, _p$.t);
               return _p$;
             }, {
               e: void 0,
               t: void 0
             });
-            return _el$2;
+            return _el$3;
           })()
         });
       }
-    }));
+    }), null);
     effect((_p$) => {
       var _v$ = props.class, _v$2 = {
         "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
@@ -3687,7 +3721,7 @@ function DumbGridDnd(props) {
 }
 var _tmpl$8 = /* @__PURE__ */ template(`<span class="ml-auto shrink-0 flex items-center gap-1">`);
 var _tmpl$25 = /* @__PURE__ */ template(`<a><span></span><span>`);
-var _tmpl$33 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
+var _tmpl$34 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
 var _tmpl$43 = /* @__PURE__ */ template(`<ul class="pl-3 border-l border-base-200 ml-3">`);
 var _tmpl$53 = /* @__PURE__ */ template(`<li><div class="flex items-center">`);
 var _tmpl$63 = /* @__PURE__ */ template(`<span class="w-5 shrink-0">`);
@@ -3840,7 +3874,7 @@ function DumbTree(props) {
             return _tmpl$63();
           },
           get children() {
-            var _el$7 = _tmpl$33(), _el$8 = _el$7.firstChild;
+            var _el$7 = _tmpl$34(), _el$8 = _el$7.firstChild;
             _el$7.$$click = () => toggle(p.id);
             effect(() => className(_el$8, `size-4 ${isExpanded() ? icons().expanded : icons().collapsed}`));
             return _el$7;
@@ -4004,7 +4038,7 @@ function DumbTree(props) {
 delegateEvents(["click", "input"]);
 var _tmpl$13 = /* @__PURE__ */ template(`<span aria-hidden=true style=margin-left:4px>`);
 var _tmpl$26 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
-var _tmpl$34 = /* @__PURE__ */ template(`<tfoot>`);
+var _tmpl$35 = /* @__PURE__ */ template(`<tfoot>`);
 var _tmpl$44 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
 var _tmpl$54 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
 var _tmpl$64 = /* @__PURE__ */ template(`<th style=width:1%>`);
@@ -4272,7 +4306,7 @@ function DumbTable(props) {
             return props.footer;
           },
           get children() {
-            var _el$8 = _tmpl$34();
+            var _el$8 = _tmpl$35();
             insert(_el$8, () => props.footer);
             return _el$8;
           }
@@ -4304,7 +4338,7 @@ function DumbTable(props) {
 delegateEvents(["click"]);
 var _tmpl$14 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px>`);
 var _tmpl$27 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px;flex-wrap:wrap><button>\xAB</button><button>\xBB`);
-var _tmpl$35 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
+var _tmpl$36 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
 var _tmpl$45 = /* @__PURE__ */ template(`<button>`);
 var _tmpl$55 = /* @__PURE__ */ template(`<span style="padding:3px 4px;opacity:.4">\u2026`);
 function buildPageNumbers(current, total) {
@@ -4344,7 +4378,7 @@ function DumbPagination(props) {
     "font-weight": active ? "700" : "400"
   });
   return (() => {
-    var _el$ = _tmpl$35(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
+    var _el$ = _tmpl$36(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
     insert(_el$3, summary);
     insert(_el$2, createComponent(Show, {
       get when() {

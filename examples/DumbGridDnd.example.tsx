@@ -1,8 +1,6 @@
 // DumbGridDnd — сетка, где перенос ведёт нативный drag-and-drop браузера.
 //
 // Порядок блоков держит пример: компонент только сообщает, что куда переехало.
-// Место вставки рисуется CSS по атрибутам data-drop-before / data-drop-after,
-// которые движок вешает на соседа.
 //
 // Тач не поддерживается — HTML5 DnD там не существует; для пальца есть вкладка
 // DumbGrid со своим указательным жестом.
@@ -79,7 +77,6 @@ export default function DumbGridDndExample() {
           sides[p.side].set((l) => move(l, from, to > from ? to - 1 : to))
           setLog(`${p.side}: ${from} → ${to}`)
         }}
-        blockClass="cell"
       />
     </section>
   )
@@ -89,8 +86,8 @@ export default function DumbGridDndExample() {
       <h3>DumbGridDnd — нативный drag-and-drop</h3>
       <p class="note">
         Перенос ведёт <b>браузер</b>: над какой доской и над каким блоком курсор — говорят его же
-        события, поэтому считать здесь почти нечего. Место вставки видно по полосе у соседа. Порядок
-        держит пример, компонент лишь сообщает <code>onReorder</code> и <code>onTransfer</code>.{' '}
+        события, поэтому считать здесь почти нечего. Порядок держит пример, компонент лишь
+        сообщает <code>onReorder</code> и <code>onTransfer</code>.{' '}
         <b>Тач не поддерживается</b> — HTML5 DnD там не существует.
       </p>
 
@@ -115,15 +112,6 @@ export default function DumbGridDndExample() {
         .dnd-example .board header { display: flex; gap: 8px; align-items: center;
                                      padding: 2px 4px 8px; font-size: 13px }
         .dnd-example .count { color: #94a3b8; font-size: 12px }
-
-        /* место вставки: полоса у того соседа, которого движок пометил */
-        .dnd-example .cell { position: relative }
-        .dnd-example .cell[data-drop-before]::before,
-        .dnd-example .cell[data-drop-after]::after {
-          content: ''; position: absolute; top: 0; bottom: 0; width: 3px;
-          background: #6366f1; border-radius: 2px }
-        .dnd-example .cell[data-drop-before]::before { left: -6px }
-        .dnd-example .cell[data-drop-after]::after { right: -6px }
 
         .dnd-example .widget { height: 100%; box-sizing: border-box; display: flex; flex-direction: column;
                                justify-content: center; gap: 2px; padding: 8px 10px; border-radius: 10px;

@@ -3297,29 +3297,14 @@ function createGridDndEngine(opts = {}) {
     if (drag.toZone === zoneName && drag.toIndex === index) return;
     drag.toZone = zoneName;
     drag.toIndex = index;
-    clearMarks();
-    const zone = zones.get(zoneName);
-    if (!zone) return;
-    const order = zone.opts.order().filter((id) => !(zoneName === drag.fromZone && id === drag.id));
-    const beforeId = order[index];
-    const afterId = order[order.length - 1];
-    if (beforeId) zone.els.get(beforeId)?.setAttribute("data-drop-before", "");
-    else if (afterId) zone.els.get(afterId)?.setAttribute("data-drop-after", "");
-  }
-  function clearMarks() {
-    for (const zone of zones.values()) {
-      for (const el of zone.els.values()) {
-        el.removeAttribute("data-drop-before");
-        el.removeAttribute("data-drop-after");
-      }
-    }
+    opts.onDropTarget?.({ grid: zoneName, index });
   }
   function clearDrag() {
     if (!drag) return;
-    clearMarks();
     drag.el.style.opacity = "";
     drag = null;
     setOver(null);
+    opts.onDropTarget?.(null);
     opts.onActive?.(null);
   }
   function accepted(zone) {
@@ -3366,9 +3351,10 @@ function createGridDndEngine(opts = {}) {
       ev.dataTransfer.setData("text/plain", id);
     } catch {
     }
-    drag = { fromZone: zone.name, id, fromIndex: index, el, toZone: zone.name, toIndex: -1 };
+    const span = zone.opts.spanOf?.(id) ?? { w: 1, h: 1 };
+    drag = { fromZone: zone.name, id, fromIndex: index, el, span, toZone: zone.name, toIndex: -1 };
     setOver(zone.name);
-    opts.onActive?.({ grid: zone.name, id });
+    opts.onActive?.({ grid: zone.name, id, ...span });
     requestAnimationFrame(() => {
       if (drag) el.style.opacity = "0.4";
     });
@@ -3478,7 +3464,7 @@ function createGridDndEngine(opts = {}) {
         }
       };
     },
-    active: () => drag ? { grid: drag.fromZone, id: drag.id } : null,
+    active: () => drag ? { grid: drag.fromZone, id: drag.id, ...drag.span } : null,
     over: () => over,
     drop: () => drag && drag.toIndex >= 0 ? { grid: drag.toZone, index: drag.toIndex } : null,
     destroy() {
@@ -3497,13 +3483,15 @@ function createDumbGridDndGroup(opts = {}) {
     ...opts,
     onActive: (state) => {
       setActive(state);
-      setDrop(state ? engine.drop() : null);
       opts.onActive?.(state);
     },
     onOver: (name) => {
       setOver(name);
-      setDrop(engine.drop());
       opts.onOver?.(name);
+    },
+    onDropTarget: (target) => {
+      setDrop(target);
+      opts.onDropTarget?.(target);
     }
   });
   onCleanup4(engine.destroy);
@@ -3540,15 +3528,35 @@ function DumbGridDnd(props) {
       h: Math.max(1, Math.round(it.h ?? 1) || 1)
     }))
   );
-  const placed = createMemo2(() => packFlow(spans(), cols()));
-  const posById = createMemo2(() => new Map(placed().map((p) => [p.id, p])));
-  const rows = createMemo2(() => rowCount(placed()));
-  const solo = props.group ? null : createDumbGridDndGroup();
-  const g = (props.group ?? solo).grid(props.name ?? "grid", {
+  const group = props.group ?? createDumbGridDndGroup();
+  const name = () => props.name ?? "grid";
+  const g = group.grid(name(), {
     order: () => props.items.map((it) => it.id),
+    spanOf: (id) => spans().find((s) => s.id === id) ?? { w: 1, h: 1 },
     disabled: () => props.disabled === true,
     onReorder: (from, to) => props.onReorder?.(from, to)
   });
+  const GHOST = "\0dnd-ghost";
+  const viewSpans = createMemo2(() => {
+    const base = spans();
+    const drop = group.drop();
+    const dragging = group.active();
+    if (!drop || !dragging || drop.grid !== name()) return base;
+    if (dragging.grid === name()) {
+      const from = base.findIndex((s) => s.id === dragging.id);
+      if (from < 0) return base;
+      const rest = base.filter((_, i) => i !== from);
+      const at2 = Math.max(0, Math.min(rest.length, drop.index));
+      return [...rest.slice(0, at2), base[from], ...rest.slice(at2)];
+    }
+    const at = Math.max(0, Math.min(base.length, drop.index));
+    const ghost = { id: GHOST, w: Math.min(dragging.w, cols()), h: dragging.h };
+    return [...base.slice(0, at), ghost, ...base.slice(at)];
+  });
+  const placed = createMemo2(() => packFlow(viewSpans(), cols()));
+  const posById = createMemo2(() => new Map(placed().map((p) => [p.id, p])));
+  const rows = createMemo2(() => rowCount(placed()));
+  const ghostPos = () => posById().get(GHOST);
   return <div
     ref={g.container}
     class={props.class}
@@ -3561,6 +3569,26 @@ function DumbGridDnd(props) {
       ...props.style
     }}
   >
+      {
+    /* место будущего гостя: контур ровно того размера, каким блок сюда сядет */
+  }
+      <Show3 when={ghostPos()}>
+        {(p) => <div
+    data-dnd-ghost
+    aria-hidden="true"
+    style={{
+      "grid-column": `${p().col + 1} / span ${p().w}`,
+      "grid-row": `${p().row + 1} / span ${p().h}`,
+      "pointer-events": "none",
+      "box-sizing": "border-box",
+      "border-radius": "10px",
+      background: "rgba(59,130,246,.10)",
+      outline: "2px dashed rgba(59,130,246,.85)",
+      "outline-offset": "-2px"
+    }}
+  />}
+      </Show3>
+
       <For4 each={props.items}>
         {(it) => {
     const pos = () => posById().get(it.id);

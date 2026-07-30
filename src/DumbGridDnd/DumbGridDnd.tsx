@@ -7,6 +7,11 @@ import { packFlow, resolveSpan, rowCount, type SpanValue } from '../DumbGrid/gri
 // Отдельный компонент, а не режим `DumbGrid`: механики жеста разные, и сводить
 // их в один код — то, чем уже ломали рабочее. Общая только математика раскладки.
 //
+// Пока идёт жест, сетка показывает БУДУЩИЙ результат: блоки расступаются, а на
+// месте перетаскиваемого — он сам (приглушённый) либо, если он гость из другой
+// сетки, контур его размера. Это и есть «видно, куда встанет»: не полоска рядом,
+// а настоящая раскладка. Анимации нет — перестановка мгновенная.
+//
 // Состояния здесь нет вовсе: порядок блоков — это порядок `items`, и правит его
 // потребитель по `onReorder` / `onTransfer`. Так первая версия остаётся честной
 // и маленькой; персист, свободный режим и ресайз живут в `DumbGrid` и появятся
@@ -59,16 +64,47 @@ export function DumbGridDnd(props: DumbGridDndProps) {
       h: Math.max(1, Math.round(it.h ?? 1) || 1),
     })),
   )
-  const placed = createMemo(() => packFlow(spans(), cols()))
-  const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])))
-  const rows = createMemo(() => rowCount(placed()))
 
-  const solo = props.group ? null : createDumbGridDndGroup()
-  const g = (props.group ?? solo!).grid(props.name ?? 'grid', {
+  const group = props.group ?? createDumbGridDndGroup()
+  const name = () => props.name ?? 'grid'
+  const g = group.grid(name(), {
     order: () => props.items.map((it) => it.id),
+    spanOf: (id) => spans().find((s) => s.id === id) ?? { w: 1, h: 1 },
     disabled: () => props.disabled === true,
     onReorder: (from, to) => props.onReorder?.(from, to),
   })
+
+  /** id контура, который стоит на месте будущего гостя */
+  const GHOST = '\u0000dnd-ghost'
+
+  /**
+   * Порядок, который показываем прямо сейчас. Пока жеста нет — обычный; во время
+   * жеста — с блоком на его будущем месте. Гость из чужой сетки появляется здесь
+   * контуром своего размера, поэтому соседи расступаются точно так же, как после
+   * дропа.
+   */
+  const viewSpans = createMemo(() => {
+    const base = spans()
+    const drop = group.drop()
+    const dragging = group.active()
+    if (!drop || !dragging || drop.grid !== name()) return base
+
+    if (dragging.grid === name()) {
+      const from = base.findIndex((s) => s.id === dragging.id)
+      if (from < 0) return base
+      const rest = base.filter((_, i) => i !== from)
+      const at = Math.max(0, Math.min(rest.length, drop.index))
+      return [...rest.slice(0, at), base[from], ...rest.slice(at)]
+    }
+    const at = Math.max(0, Math.min(base.length, drop.index))
+    const ghost = { id: GHOST, w: Math.min(dragging.w, cols()), h: dragging.h }
+    return [...base.slice(0, at), ghost, ...base.slice(at)]
+  })
+
+  const placed = createMemo(() => packFlow(viewSpans(), cols()))
+  const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])))
+  const rows = createMemo(() => rowCount(placed()))
+  const ghostPos = () => posById().get(GHOST)
 
   return (
     <div
@@ -83,6 +119,26 @@ export function DumbGridDnd(props: DumbGridDndProps) {
         ...props.style,
       }}
     >
+      {/* место будущего гостя: контур ровно того размера, каким блок сюда сядет */}
+      <Show when={ghostPos()}>
+        {(p) => (
+          <div
+            data-dnd-ghost
+            aria-hidden="true"
+            style={{
+              'grid-column': `${p().col + 1} / span ${p().w}`,
+              'grid-row': `${p().row + 1} / span ${p().h}`,
+              'pointer-events': 'none',
+              'box-sizing': 'border-box',
+              'border-radius': '10px',
+              background: 'rgba(59,130,246,.10)',
+              outline: '2px dashed rgba(59,130,246,.85)',
+              'outline-offset': '-2px',
+            }}
+          />
+        )}
+      </Show>
+
       <For each={props.items}>
         {(it) => {
           const pos = () => posById().get(it.id)

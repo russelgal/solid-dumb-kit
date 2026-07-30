@@ -9,6 +9,10 @@
 //     прямоугольник, снятый при входе в этот блок (`dragenter`), а не поток
 //     координат.
 //
+// Рисовать движок ничего не берётся: он считает место вставки и отдаёт его через
+// `drop()`, а что показать — дело раскладки. Компонент на этом строит превью:
+// блоки расступаются по-настоящему, и видно ровно то, что получится на дропе.
+//
 // Ни снимков всех зон, ни компенсации прокрутки, ни хиттеста по кэшу — нечего
 // компенсировать, когда цель приносит событие сама.
 //
@@ -16,22 +20,31 @@
 // для пальца есть `DumbGrid`), свободного режима и ресайза. Это сетка-поток:
 // блоки идут по порядку, перенос меняет порядок.
 
-/** блок глазами движка: важен только id, размеры — дело раскладки */
+/** что именно тащат: откуда, что и какого размера */
+export type DndDragging = { grid: string; id: string; w: number; h: number }
 export type DndTransferSource = { grid: string; id: string; index: number }
 export type DndTransferTarget = { grid: string; index: number }
 
 export type DndGroupOptions = {
   /** блок переехал в ДРУГУЮ сетку — обе раскладки правит потребитель */
   onTransfer?: (from: DndTransferSource, to: DndTransferTarget) => void
-  /** что тащат сейчас */
-  onActive?: (state: { grid: string; id: string } | null) => void
+  /** что тащат сейчас (с размером — приёмник рисует по нему место) */
+  onActive?: (state: DndDragging | null) => void
   /** над какой сеткой указатель */
   onOver?: (grid: string | null) => void
+  /**
+   * Место вставки изменилось. Именно на это подписан компонент: он показывает
+   * будущую раскладку, а она меняется и когда сетка та же, и когда индекс
+   * сдвинулся на соседний блок.
+   */
+  onDropTarget?: (target: { grid: string; index: number } | null) => void
 }
 
 export type DndZoneOptions = {
   /** текущий порядок блоков */
   order: () => Array<string>
+  /** размер блока — нужен приёмнику, чтобы показать место будущего гостя */
+  spanOf?: (id: string) => { w: number; h: number }
   /** жесты запрещены */
   disabled?: () => boolean
   /** пускать ли к себе блок из сетки `from` (по умолчанию да) */
@@ -47,8 +60,8 @@ export type DndZoneEngine = {
 
 export type DndEngine = {
   grid: (name: string, opts: DndZoneOptions) => DndZoneEngine
-  /** что тащат: сетка и блок */
-  active: () => { grid: string; id: string } | null
+  /** что тащат: сетка, блок и его размер */
+  active: () => DndDragging | null
   /** сетка под указателем */
   over: () => string | null
   /** куда встанет блок: сетка и индекс вставки (для подсветки) */
@@ -74,6 +87,8 @@ type Drag = {
   id: string
   fromIndex: number
   el: HTMLElement
+  /** размер блока: приёмник показывает по нему место гостя */
+  span: { w: number; h: number }
   /** сетка и место вставки, куда блок сядет при дропе прямо сейчас */
   toZone: string
   /** −1 = места ещё не выбрали (ни одного dragover не было) */
@@ -91,39 +106,21 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
     opts.onOver?.(name)
   }
 
-  /** Куда сядет блок: помечаем соседа, чтобы потребитель нарисовал место вставки. */
+  /** Запомнить, куда сядет блок при дропе прямо сейчас. */
   function markDrop(zoneName: string, index: number) {
     if (!drag) return
     if (drag.toZone === zoneName && drag.toIndex === index) return
     drag.toZone = zoneName
     drag.toIndex = index
-    clearMarks()
-
-    const zone = zones.get(zoneName)
-    if (!zone) return
-    const order = zone.opts.order().filter(id => !(zoneName === drag!.fromZone && id === drag!.id))
-    // метку вешаем на соседа: «встану перед этим» либо «после последнего»
-    const beforeId = order[index]
-    const afterId = order[order.length - 1]
-    if (beforeId) zone.els.get(beforeId)?.setAttribute('data-drop-before', '')
-    else if (afterId) zone.els.get(afterId)?.setAttribute('data-drop-after', '')
-  }
-
-  function clearMarks() {
-    for (const zone of zones.values()) {
-      for (const el of zone.els.values()) {
-        el.removeAttribute('data-drop-before')
-        el.removeAttribute('data-drop-after')
-      }
-    }
+    opts.onDropTarget?.({ grid: zoneName, index })
   }
 
   function clearDrag() {
     if (!drag) return
-    clearMarks()
     drag.el.style.opacity = ''
     drag = null
     setOver(null)
+    opts.onDropTarget?.(null)
     opts.onActive?.(null)
   }
 
@@ -157,9 +154,10 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
 
     // toIndex начинается с −1, а не с fromIndex: иначе первое же вычисленное
     // место совпало бы с «текущим», и метка соседа не нарисовалась бы
-    drag = { fromZone: zone.name, id, fromIndex: index, el, toZone: zone.name, toIndex: -1 }
+    const span = zone.opts.spanOf?.(id) ?? { w: 1, h: 1 }
+    drag = { fromZone: zone.name, id, fromIndex: index, el, span, toZone: zone.name, toIndex: -1 }
     setOver(zone.name)
-    opts.onActive?.({ grid: zone.name, id })
+    opts.onActive?.({ grid: zone.name, id, ...span })
     // приглушаем ПОСЛЕ кадра: иначе таким же уедет и снимок для картинки переноса
     requestAnimationFrame(() => { if (drag) el.style.opacity = '0.4' })
   }
@@ -282,7 +280,7 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
       }
     },
 
-    active: () => (drag ? { grid: drag.fromZone, id: drag.id } : null),
+    active: () => (drag ? { grid: drag.fromZone, id: drag.id, ...drag.span } : null),
     over: () => over,
     drop: () => (drag && drag.toIndex >= 0 ? { grid: drag.toZone, index: drag.toIndex } : null),
     destroy() {

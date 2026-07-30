@@ -84,7 +84,7 @@ describe('место вставки — по половине соседнего
     const transfer = dt()
 
     fire(a1, 'dragstart', 10, transfer)
-    expect(engine.active()).toEqual({ grid: 'a', id: 'a1' })
+    expect(engine.active()).toEqual({ grid: 'a', id: 'a1', w: 1, h: 1 })
 
     fire(a2, 'dragenter', 180, transfer)
     fire(a2, 'dragover', 180, transfer)          // a2: 100–200, центр 150
@@ -136,23 +136,6 @@ describe('место вставки — по половине соседнего
     engine.destroy()
   })
 
-  it('сосед помечен атрибутом — по нему рисуется место вставки', () => {
-    const { engine, a1, a2 } = setup()
-    const transfer = dt()
-
-    fire(a1, 'dragstart', 10, transfer)
-    fire(a2, 'dragenter', 120, transfer)
-    fire(a2, 'dragover', 120, transfer)          // левее центра a2
-    expect(a2.hasAttribute('data-drop-before')).toBe(true)
-
-    fire(a2, 'dragover', 180, transfer)          // правее центра
-    expect(a2.hasAttribute('data-drop-before')).toBe(false)
-    expect(a2.hasAttribute('data-drop-after')).toBe(true)
-
-    fire(a1, 'dragend', 0, transfer)
-    expect(a2.hasAttribute('data-drop-after')).toBe(false)
-    engine.destroy()
-  })
 })
 
 describe('перенос между сетками', () => {
@@ -272,7 +255,38 @@ describe('старт и уборка', () => {
     expect(engine.active()).toBeNull()
     expect(engine.over()).toBeNull()
     expect(a1.style.opacity).toBe('')
-    expect(document.querySelectorAll('[data-drop-before],[data-drop-after]').length).toBe(0)
+    expect(engine.drop()).toBeNull()
+    engine.destroy()
+  })
+})
+
+describe('размер перетаскиваемого — по нему приёмник рисует место', () => {
+  it('active отдаёт размер блока, а не только id', () => {
+    const engine = createGridDndEngine({})
+    const zone = engine.grid('a', {
+      order: () => ['wide'],
+      spanOf: () => ({ w: 6, h: 2 }),
+    })
+    const block = el()
+    zone.attachContainer(el())
+    zone.attach(block, 'wide')
+
+    fire(block, 'dragstart', 10, dt())
+    expect(engine.active()).toEqual({ grid: 'a', id: 'wide', w: 6, h: 2 })
+
+    fire(block, 'dragend', 0, dt())
+    expect(engine.active()).toBeNull()
+    engine.destroy()
+  })
+
+  it('без spanOf размер считается единичным — раскладка не ломается', () => {
+    const engine = createGridDndEngine({})
+    const zone = engine.grid('a', { order: () => ['x'] })
+    const block = el()
+    zone.attach(block, 'x')
+
+    fire(block, 'dragstart', 10, dt())
+    expect(engine.active()).toEqual({ grid: 'a', id: 'x', w: 1, h: 1 })
     engine.destroy()
   })
 })

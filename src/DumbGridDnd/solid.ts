@@ -1,9 +1,9 @@
 // Solid-обёртка: отписки движка на onCleanup, состояние жеста в сигналах.
 
 import { createSignal, onCleanup } from 'solid-js'
-import { createGridDndEngine, type DndGroupOptions, type DndZoneOptions } from './dndCore'
+import { createGridDndEngine, type DndDragging, type DndGroupOptions, type DndZoneOptions } from './dndCore'
 
-export type DndActive = { grid: string; id: string } | null
+export type DndActive = DndDragging | null
 export type DndDrop = { grid: string; index: number } | null
 
 export type DumbGridDndHandle = {
@@ -32,16 +32,9 @@ export function createDumbGridDndGroup(opts: DndGroupOptions = {}): DumbGridDndG
 
   const engine = createGridDndEngine({
     ...opts,
-    onActive: (state) => {
-      setActive(state)
-      setDrop(state ? engine.drop() : null)
-      opts.onActive?.(state)
-    },
-    onOver: (name) => {
-      setOver(name)
-      setDrop(engine.drop())
-      opts.onOver?.(name)
-    },
+    onActive: (state) => { setActive(state); opts.onActive?.(state) },
+    onOver: (name) => { setOver(name); opts.onOver?.(name) },
+    onDropTarget: (target) => { setDrop(target); opts.onDropTarget?.(target) },
   })
   onCleanup(engine.destroy)
 
