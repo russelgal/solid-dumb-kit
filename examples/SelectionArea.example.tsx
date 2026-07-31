@@ -3,7 +3,7 @@
 // overflow at all (the page scrolls). The engine handles both — in the second
 // case the band is clamped to the container and auto-scroll drives the window.
 import { createSignal, For, type JSX } from 'solid-js'
-import { SelectionArea } from 'solid-dumb-kit'
+import { SelectionArea } from '@solid-dumb-kit/selection'
 
 const ICONS = ['🗂️', '🖼️', '🎵', '🎬', '📄', '📦', '🧩', '🗒️']
 const files = (n: number, prefix: string) =>

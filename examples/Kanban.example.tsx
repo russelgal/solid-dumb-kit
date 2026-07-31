@@ -3,7 +3,7 @@
 // колонки не схлопываются и высота не скачет. За курсором летит клон в top layer
 // (Popover API) — его не режет overflow, так что колонки могут скроллиться.
 import { createSignal, For, Show } from 'solid-js'
-import { createSortableGroup } from 'solid-dumb-kit'
+import { createSortableGroup } from '@solid-dumb-kit/sortable'
 
 type Card = { id: string; title: string; tag: string; hue: number }
 

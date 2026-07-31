@@ -1,0 +1,46 @@
+{
+  "name": "@solid-dumb-kit/table",
+  "version": "0.4.0",
+  "description": "Таблица на TanStack: сортировка, драг строк, пагинатор",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/russelgal/solid-dumb-kit",
+    "directory": "packages/table"
+  },
+  "homepage": "https://github.com/russelgal/solid-dumb-kit#readme",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "solid-dumb-kit-source": "./src/index.tsx",
+      "solid": "./dist/index.jsx",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@solid-dumb-kit/sortable": "workspace:^",
+    "@solid-dumb-kit/shared": "workspace:^",
+    "@tanstack/solid-table": "^8.21.3"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.8.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,43 +1,41 @@
 {
   "name": "solid-dumb-kit",
-  "version": "0.4.0",
-  "description": "SolidJS UI components: SelectionArea, ResizableGrid and more",
+  "private": true,
+  "description": "SolidJS UI kit: sortable, selection, grids, table, tree — one package per feature",
   "type": "module",
-  "files": [
-    "dist",
-    "src",
-    "!src/**/__tests__/**"
-  ],
-  "sideEffects": false,
-  "publishConfig": {
-    "access": "public"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/russelgal/solid-dumb-kit"
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "pnpm -r --filter './packages/*' run build",
+    "dev": "pnpm -r --parallel --filter './packages/*' run dev",
     "demo": "vite playground",
     "demo:build": "vite build playground",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "version": "changeset version && pnpm i --no-frozen-lockfile && git add .",
+    "release": "pnpm build && changeset publish"
   },
   "packageManager": "pnpm@10.30.1",
   "engines": {
     "node": ">=20",
     "pnpm": ">=10"
   },
-  "peerDependencies": {
-    "solid-js": "^1.8.0"
-  },
-  "dependencies": {
-    "@atlaskit/pragmatic-drag-and-drop": "^2.0.1",
-    "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "^3.0.0",
-    "@solid-primitives/storage": "4.3.4",
-    "@tanstack/solid-table": "^8.21.3",
-    "fflate": "^0.8.3",
-    "slug": "^11.0.1",
-    "valibot": "^1.2.0"
-  },
   "devDependencies": {
+    "@changesets/cli": "^2.29.4",
+    "@solid-dumb-kit/grid": "workspace:*",
+    "@solid-dumb-kit/grid-dnd": "workspace:*",
+    "@solid-dumb-kit/odata-1c": "workspace:*",
+    "@solid-dumb-kit/resizable-grid": "workspace:*",
+    "@solid-dumb-kit/selection": "workspace:*",
+    "@solid-dumb-kit/shared": "workspace:*",
+    "@solid-dumb-kit/sortable": "workspace:*",
+    "@solid-dumb-kit/sortable-dnd": "workspace:*",
+    "@solid-dumb-kit/table": "workspace:*",
+    "@solid-dumb-kit/tree": "workspace:*",
+    "@solid-dumb-kit/utils": "workspace:*",
     "@types/slug": "^5.0.9",
     "happy-dom": "^20.11.1",
     "playwright": "^1.62.1",
@@ -48,30 +46,5 @@
     "vite": "^8.1.5",
     "vite-plugin-solid": "^2.11.13",
     "vitest": "^4.1.10"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/russelgal/solid-dumb-kit"
-  },
-  "keywords": [
-    "solidjs",
-    "solid",
-    "ui",
-    "components",
-    "selection-area",
-    "resizable-grid"
-  ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "browser": {},
-  "exports": {
-    "solid": "./dist/index.jsx",
-    "import": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
-  "typesVersions": {}
+  }
 }

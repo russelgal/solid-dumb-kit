@@ -30,7 +30,7 @@
 //
 // Бросить ветку внутрь самой себя нельзя — её щели и строки исключаются из целей.
 import { createSignal, onCleanup, onMount, For, Show } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from 'solid-dumb-kit'
+import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
 
 type Node = { id: string; label: string; kind: string }
 

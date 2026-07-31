@@ -5,7 +5,7 @@
 // it ships a ~60-line shim below that fakes just the classes DumbTree touches —
 // delete it in a real app.
 import { createSignal, For } from 'solid-js'
-import { DumbTree, type DumbTreeNode } from 'solid-dumb-kit'
+import { DumbTree, type DumbTreeNode } from '@solid-dumb-kit/tree'
 
 // ── the shim: daisyUI-ish classes + emoji icons, so the demo stands alone ──
 const SHIM = `

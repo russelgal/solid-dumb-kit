@@ -9,10 +9,6 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "declaration": true,
-    "declarationDir": "dist",
-    "outDir": "dist",
-    "rootDir": "src"
-  },
-  "include": ["src"]
+    "declaration": true
+  }
 }

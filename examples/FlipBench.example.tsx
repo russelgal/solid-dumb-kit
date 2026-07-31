@@ -14,7 +14,7 @@
 // Разница видна прямо в цифрах на панели: сколько замеров и сколько миллисекунд
 // стоила ОДНА перекладка. Умножь на частоту `dragover` — это и есть цена.
 import { createSignal, createEffect, onCleanup, onMount, For } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from 'solid-dumb-kit'
+import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
 
 const N = 200
 const CARDS = Array.from({ length: N }, (_, i) => i)

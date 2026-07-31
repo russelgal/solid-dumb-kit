@@ -1,11 +1,7 @@
 // utils — a live playground for the framework-free helpers:
 // fmt (ru-RU numbers/dates/sizes), genSlug, imgproxyUrl and extractImagesFromZip.
 import { createSignal, For, Show, onCleanup } from 'solid-js'
-import {
-  Rub0, Rub2, Rub4, Rub0R, RubR2, fmtNum, fmtPrice,
-  fmtDate, fmtDateTime, fmtDateTimeShort, fmtTime, fmtDateMonth, timeAgo, fmtSize,
-  genSlug, extractImagesFromZip, imgproxyUrl, configureImgproxy,
-} from 'solid-dumb-kit'
+import { Rub0, Rub2, Rub4, Rub0R, RubR2, fmtNum, fmtPrice, fmtDate, fmtDateTime, fmtDateTimeShort, fmtTime, fmtDateMonth, timeAgo, fmtSize, genSlug, extractImagesFromZip, imgproxyUrl, configureImgproxy } from '@solid-dumb-kit/utils'
 
 function Row(props: { call: string; value: string }) {
   return (

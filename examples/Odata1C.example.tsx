@@ -5,7 +5,7 @@
 // The request panel on the right only fires when you press the button — nothing
 // touches the network on mount (the smoke test mounts this file too).
 import { createSignal, For, Show } from 'solid-js'
-import { createOdataClient, odataString, toBase64, OdataError } from 'solid-dumb-kit'
+import { createOdataClient, odataString, toBase64, OdataError } from '@solid-dumb-kit/odata-1c'
 
 /** Готовые запросы: показывают приёмы, ради которых клиент и написан */
 const PRESETS = [

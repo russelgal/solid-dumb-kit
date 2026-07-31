@@ -1,19 +1,14 @@
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
-import { fileURLToPath } from 'node:url'
 
-// Live demo built from source: the examples/ import 'solid-dumb-kit', we alias that
-// to ../src so vite-plugin-solid compiles the components (the lib's runtime deps —
-// @viselect/vanilla, @solid-primitives/storage, valibot — come via the file:.. dep).
-const src = (p: string) => fileURLToPath(new URL(p, import.meta.url))
-
+// Витрина собирается из ИСХОДНИКОВ пакетов, а не из их `dist`: условие
+// `solid-dumb-kit-source` выбирает в `exports` ветку с `src`, поэтому правка в
+// любом пакете видна в демо сразу, без пересборки и без алиасов.
 export default defineConfig({
   base: '/solid-dumb-kit/', // project Pages: https://<user>.github.io/solid-dumb-kit/
   plugins: [solid()],
   resolve: {
-    alias: [
-      { find: /^solid-dumb-kit$/, replacement: src('../src/index.tsx') },
-    ],
+    conditions: ['solid-dumb-kit-source', 'development', 'browser'],
   },
-  server: { fs: { allow: ['..'] } }, // examples/ live outside playground root
+  server: { fs: { allow: ['..'] } }, // examples/ живут вне корня playground
 })

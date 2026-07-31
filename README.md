@@ -21,19 +21,33 @@ Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 ## Install
 
-**Not on npm yet** — install straight from GitHub. The repo ships both `src/` and a prebuilt `dist/`, so nothing needs building on your side:
+The kit ships as one package per component, each with its own version. Install only what you need: `@solid-dumb-kit/table` won't drag in `@atlaskit/pragmatic-drag-and-drop`, and `@solid-dumb-kit/sortable` has no runtime deps at all.
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit
+pnpm add @solid-dumb-kit/table
 # peer dep:
 pnpm add solid-js
 ```
 
-Pin a tag for reproducible installs:
+Packages update **one at a time** — that's the whole point of the split:
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit#v0.4.0
+pnpm up @solid-dumb-kit/table
 ```
+
+| package | what's inside | pulls in |
+| --- | --- | --- |
+| `@solid-dumb-kit/shared` | FLIP, autoscroll, viewport, gesture rules | — |
+| `@solid-dumb-kit/sortable` | `DumbSortable` — list and grid, pointer-driven | — |
+| `@solid-dumb-kit/selection` | `SelectionArea` — marquee selection | — |
+| `@solid-dumb-kit/grid` | `DumbGrid` — dashboard grid | `@solid-primitives/storage`, `valibot` |
+| `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — same grid on HTML5 DnD | `@atlaskit/pragmatic-drag-and-drop` |
+| `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — sorting on HTML5 DnD | `@atlaskit/pragmatic-drag-and-drop` |
+| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — resizable panels | `@solid-primitives/storage`, `valibot` |
+| `@solid-dumb-kit/tree` | `DumbTree` — tree and flat list | `@solid-primitives/storage` |
+| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
+| `@solid-dumb-kit/odata-1c` | 1C OData client — no Solid needed | — |
+| `@solid-dumb-kit/utils` | format, slug, zip, imgproxy | `fflate`, `slug` |
 
 ## Quick start
 

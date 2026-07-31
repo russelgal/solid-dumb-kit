@@ -5,7 +5,7 @@
 // Тач не поддерживается — HTML5 DnD там не существует; для пальца есть вкладка
 // DumbGrid со своим указательным жестом.
 import { createSignal, For } from 'solid-js'
-import { createDumbGridDndGroup, DumbGridDnd, type DumbGridDndItem } from 'solid-dumb-kit'
+import { createDumbGridDndGroup, DumbGridDnd, type DumbGridDndItem } from '@solid-dumb-kit/grid-dnd'
 
 type Widget = { id: string; title: string; hue: number; w: number; h: number }
 

@@ -9,7 +9,7 @@
 // только если ближайший блок под указателем — её собственный. Секцию тянут за
 // шапку, виджет — за его тело.
 import { createMemo, createSignal, For } from 'solid-js'
-import { createDumbGridGroup, DumbGrid, type DumbGridItem, type DumbGridLayout } from 'solid-dumb-kit'
+import { createDumbGridGroup, DumbGrid, type DumbGridItem, type DumbGridLayout } from '@solid-dumb-kit/grid'
 
 type Widget = { id: string; title: string; hue: number }
 type Section = { id: string; title: string }

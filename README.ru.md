@@ -21,19 +21,33 @@
 
 ## Установка
 
-**В npm пока не публиковали** — ставится прямо с GitHub. В репозитории лежат и `src/`, и собранный `dist/`, поэтому собирать у себя ничего не нужно:
+Кит разбит на пакеты — по одному на компонент, у каждого своя версия. Ставь только те, что нужны: `@solid-dumb-kit/table` не потянет за собой `@atlaskit/pragmatic-drag-and-drop`, а `@solid-dumb-kit/sortable` не тянет вообще ничего.
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit
+pnpm add @solid-dumb-kit/table
 # peer-зависимость:
 pnpm add solid-js
 ```
 
-Нужна воспроизводимая установка — прибей к тегу:
+Обновляются пакеты **по отдельности** — ради этого разбивка и делалась:
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit#v0.4.0
+pnpm up @solid-dumb-kit/table
 ```
+
+| пакет | что внутри | тянет за собой |
+| --- | --- | --- |
+| `@solid-dumb-kit/shared` | FLIP, автопрокрутка, вьюпорт, правила жестов | — |
+| `@solid-dumb-kit/sortable` | `DumbSortable` — список и сетка на указателе | — |
+| `@solid-dumb-kit/selection` | `SelectionArea` — выделение рамкой | — |
+| `@solid-dumb-kit/grid` | `DumbGrid` — дашборд-сетка | `@solid-primitives/storage`, `valibot` |
+| `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — та же сетка на HTML5 DnD | `@atlaskit/pragmatic-drag-and-drop` |
+| `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — сортировка на HTML5 DnD | `@atlaskit/pragmatic-drag-and-drop` |
+| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — панели с ресайзом | `@solid-primitives/storage`, `valibot` |
+| `@solid-dumb-kit/tree` | `DumbTree` — дерево и плоский список | `@solid-primitives/storage` |
+| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
+| `@solid-dumb-kit/odata-1c` | клиент OData 1С — без Solid | — |
+| `@solid-dumb-kit/utils` | формат, slug, zip, imgproxy | `fflate`, `slug` |
 
 ## Быстрый старт
 

@@ -1,0 +1,37 @@
+{
+  "name": "@solid-dumb-kit/odata-1c",
+  "version": "0.4.0",
+  "description": "Клиент стандартного интерфейса OData 1С — без Solid и без зависимостей",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/russelgal/solid-dumb-kit",
+    "directory": "packages/odata-1c"
+  },
+  "homepage": "https://github.com/russelgal/solid-dumb-kit#readme",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "solid-dumb-kit-source": "./src/index.ts",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -2,7 +2,7 @@
 // and a 100-tile grid (drag the whole tile). The kit needs no CSS — everything
 // in the <style> block below is just this example's looks.
 import { createSignal, For } from 'solid-js'
-import { DumbSortable } from 'solid-dumb-kit'
+import { DumbSortable } from '@solid-dumb-kit/sortable'
 
 type Row = { id: string; label: string }
 const rows = (n: number): Row[] =>

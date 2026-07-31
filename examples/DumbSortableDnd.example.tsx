@@ -6,7 +6,7 @@
 //
 // Тач не поддерживается: HTML5 DnD там не существует. Для пальца — DumbSortable.
 import { createSignal, For } from 'solid-js'
-import { DumbSortableDnd } from 'solid-dumb-kit'
+import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
 
 type Row = { id: string; label: string; size: number }
 

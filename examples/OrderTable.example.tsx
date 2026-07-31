@@ -18,7 +18,7 @@
 // побочный эффект: анимируется не только драг, но и СОРТИРОВКА по колонке —
 // строки разъезжаются по новым местам, и видно, куда именно уехала каждая.
 import { createSignal, onCleanup, onMount, For } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from 'solid-dumb-kit'
+import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
 
 type Row = { id: string; name: string; status: string; sum: number; date: string }
 

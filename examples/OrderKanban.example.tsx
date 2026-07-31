@@ -14,7 +14,7 @@
 // `top + k * step`, а состав колонок на эти три числа не влияет: убрали карточку
 // из колонки — места остались на прежних координатах, просто последнее опустело.
 import { createSignal, onCleanup, onMount, For } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from 'solid-dumb-kit'
+import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
 
 type Card = { id: string; text: string; tag: string }
 

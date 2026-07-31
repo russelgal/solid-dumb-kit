@@ -1,0 +1,46 @@
+{
+  "name": "@solid-dumb-kit/grid-dnd",
+  "version": "0.4.0",
+  "description": "Та же сетка на нативном HTML5 drag-and-drop",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/russelgal/solid-dumb-kit",
+    "directory": "packages/grid-dnd"
+  },
+  "homepage": "https://github.com/russelgal/solid-dumb-kit#readme",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "solid-dumb-kit-source": "./src/index.tsx",
+      "solid": "./dist/index.jsx",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@solid-dumb-kit/grid": "workspace:^",
+    "@solid-dumb-kit/shared": "workspace:^",
+    "@atlaskit/pragmatic-drag-and-drop": "^2.0.1"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.8.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

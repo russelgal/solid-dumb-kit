@@ -19,7 +19,7 @@
 // только пересчитываются на изменение ширины. В момент перекладки не читается
 // ничего: смещение — это разница двух известных мест.
 import { createSignal, createEffect, onCleanup, onMount, For, Show } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from 'solid-dumb-kit'
+import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
 
 const HUE = (i: number) => `oklch(0.75 0.12 ${(i * 41) % 360})`
 
@@ -152,7 +152,7 @@ function Deck(props: DeckProps) {
    * закончиться раньше этого тика, отложенный вызов включает её уже ПОСЛЕ
    * уборки. Элемент так и остаётся приглушённым. Флаг это отсекает.
    */
-  let gesture: string | null = null
+  let gesture: number | null = null
 
   const onDragStart = (ev: DragEvent) => {
     const i = cardOf(ev)

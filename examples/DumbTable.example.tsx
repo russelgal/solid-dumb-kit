@@ -1,7 +1,9 @@
 // DumbTable — bring-your-own-columns table on @tanstack/solid-table:
 // click a header to sort, drag rows by the ⠿ handle, paginate.
 import { createSignal, createMemo } from 'solid-js'
-import { DumbTable, DumbPagination, SelectionArea, fmtPrice, fmtNum, type DumbColumn } from 'solid-dumb-kit'
+import { SelectionArea } from '@solid-dumb-kit/selection'
+import { DumbTable, DumbPagination, type DumbColumn } from '@solid-dumb-kit/table'
+import { fmtPrice, fmtNum } from '@solid-dumb-kit/utils'
 
 type Product = {
   id: string

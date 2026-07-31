@@ -2,7 +2,7 @@
 // Drag the gaps between panels; sizes persist to localStorage (reload to see).
 // NOTE: the grid fills its parent — give the PARENT a height.
 import { For } from 'solid-js'
-import { ResizableGrid } from 'solid-dumb-kit'
+import { ResizableGrid } from '@solid-dumb-kit/resizable-grid'
 
 // цвета приходят пропсами — единственное, что остаётся инлайном
 const Panel = (p: { title: string; bg?: string; fg?: string; children?: any }) => (
