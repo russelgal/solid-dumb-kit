@@ -92,8 +92,8 @@ export default function SelectionAreaExample() {
       />
 
       <style>{`
-        .sa-example { padding: 16px; max-width: 900px; margin: 0 auto; color: #0f172a }
-        .sa-example .intro { margin: 0 0 16px; font-size: 13px; color: #64748b; max-width: 76ch }
+        .sa-example { padding: 16px 20px; color: #0f172a }
+        .sa-example .intro { margin: 0 0 16px; font-size: 13px; color: #64748b }
 
         .board { margin-bottom: 28px }
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap }

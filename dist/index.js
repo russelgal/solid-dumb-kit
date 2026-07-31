@@ -2,6 +2,7 @@ import { delegateEvents, use, insert, effect, className, style, createComponent,
 import { onCleanup, onMount, createSignal, For, Show, createMemo } from 'solid-js';
 import { makePersisted } from '@solid-primitives/storage';
 import * as v from 'valibot';
+import { draggable, dropTargetForElements, monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { createSolidTable, getSortedRowModel, getCoreRowModel, flexRender } from '@tanstack/solid-table';
 import slug from 'slug';
 
@@ -3357,184 +3358,549 @@ function DumbGrid(props) {
 }
 delegateEvents(["click"]);
 
+// src/shared/autoScroll.ts
+var SCROLLABLE = /(auto|scroll|overlay)/;
+var MAX_STEP = 18;
+function createAutoScroller() {
+  let levels = [];
+  let x = 0;
+  let y = 0;
+  let raf = 0;
+  let live = false;
+  let echo = 0;
+  const onNativeDrag = (ev) => {
+    if (!ev.clientX && !ev.clientY) return;
+    x = ev.clientX;
+    y = ev.clientY;
+    wake();
+  };
+  const onScroll = (ev) => {
+    if (echo > 0) {
+      echo = 0;
+      return;
+    }
+    const t = ev.target;
+    for (const level of levels) {
+      if (level.el ? t === level.el : t === document || t === document.documentElement) {
+        level.pos = level.el ? level.el.scrollTop : window.scrollY;
+        return;
+      }
+    }
+  };
+  function step() {
+    for (const level of levels) {
+      if (x < level.left - EDGE || x > level.right + EDGE) continue;
+      const speed = autoScrollSpeed({
+        pointerY: y,
+        viewTop: level.top,
+        clientH: level.bottom - level.top,
+        scrollY: level.pos,
+        scrollMax: level.max
+      });
+      if (!speed) continue;
+      const capped = Math.max(-MAX_STEP, Math.min(MAX_STEP, speed));
+      const next = Math.max(0, Math.min(level.max, level.pos + capped));
+      if (next === level.pos) continue;
+      level.pos = next;
+      echo++;
+      if (level.el) level.el.scrollTop = next;
+      else window.scrollTo(window.scrollX, next);
+      return true;
+    }
+    return false;
+  }
+  function frame() {
+    if (!live) return;
+    if (!step()) {
+      raf = 0;
+      return;
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  function wake() {
+    if (live && !raf) raf = requestAnimationFrame(frame);
+  }
+  return {
+    start(el) {
+      levels = [];
+      let node = el;
+      while (node && node !== document.body && node !== document.documentElement) {
+        const style = getComputedStyle(node);
+        if (SCROLLABLE.test(style.overflowY) || SCROLLABLE.test(style.overflowX)) {
+          const r = node.getBoundingClientRect();
+          levels.push({
+            el: node,
+            top: r.top,
+            bottom: r.bottom,
+            left: r.left,
+            right: r.right,
+            max: node.scrollHeight - node.clientHeight,
+            pos: node.scrollTop
+          });
+        }
+        node = node.parentElement;
+      }
+      levels.push({
+        el: null,
+        top: 0,
+        bottom: window.innerHeight,
+        left: 0,
+        right: window.innerWidth,
+        max: (document.scrollingElement?.scrollHeight ?? 0) - window.innerHeight,
+        pos: window.scrollY
+      });
+      live = true;
+      document.addEventListener("drag", onNativeDrag, true);
+      document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+      wake();
+    },
+    move(nextX, nextY) {
+      x = nextX;
+      y = nextY;
+      wake();
+    },
+    stop() {
+      live = false;
+      echo = 0;
+      document.removeEventListener("drag", onNativeDrag, true);
+      document.removeEventListener("scroll", onScroll, true);
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      levels = [];
+    }
+  };
+}
+
+// src/shared/flip.ts
+var DUR = 380;
+var EASE = "cubic-bezier(.2,.8,.2,1)";
+var C = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 };
+var curve = (a, b, t) => {
+  const u = 1 - t;
+  return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t;
+};
+function progress(p) {
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  let t = p;
+  for (let i = 0; i < 4; i++) {
+    const x = curve(C.x1, C.x2, t) - p;
+    const u = 1 - t;
+    const d = 3 * u * u * C.x1 + 6 * u * t * (C.x2 - C.x1) + 3 * t * t * (1 - C.x2);
+    if (Math.abs(d) < 1e-6) break;
+    t -= x / d;
+  }
+  return curve(C.y1, C.y2, Math.max(0, Math.min(1, t)));
+}
+function createFlip(animate) {
+  const live = /* @__PURE__ */ new Map();
+  function at(cur) {
+    if (!cur) return { x: 0, y: 0 };
+    if (!cur.anim) return { x: cur.toX, y: cur.toY };
+    const e = progress(Number(cur.anim.currentTime ?? 0) / DUR);
+    return {
+      x: cur.fromX + (cur.toX - cur.fromX) * e,
+      y: cur.fromY + (cur.toY - cur.fromY) * e
+    };
+  }
+  function release(el, anim) {
+    anim.finished.then(() => {
+      if (live.get(el)?.anim !== anim) return;
+      anim.cancel();
+      live.delete(el);
+    }).catch(() => {
+    });
+  }
+  return {
+    nudge(el, dx, dy) {
+      const cur = live.get(el);
+      const now = at(cur);
+      cur?.anim?.cancel();
+      const fromX = now.x + dx;
+      const fromY = now.y + dy;
+      if (!animate || !fromX && !fromY) {
+        el.style.transform = "";
+        live.delete(el);
+        return;
+      }
+      const anim = el.animate(
+        [
+          { transform: `translate(${fromX}px,${fromY}px)` },
+          { transform: "translate(0px,0px)" }
+        ],
+        { duration: DUR, easing: EASE, fill: "forwards" }
+      );
+      live.set(el, { anim, fromX, fromY, toX: 0, toY: 0 });
+      release(el, anim);
+    },
+    to(el, dx, dy) {
+      const cur = live.get(el);
+      const atX = cur ? cur.toX : 0;
+      const atY = cur ? cur.toY : 0;
+      if (atX === dx && atY === dy) return;
+      if (!animate) {
+        el.style.transform = dx || dy ? `translate(${dx}px,${dy}px)` : "";
+        if (dx || dy)
+          live.set(el, {
+            anim: null,
+            fromX: dx,
+            fromY: dy,
+            toX: dx,
+            toY: dy
+          });
+        else live.delete(el);
+        return;
+      }
+      const now = at(cur);
+      const fromX = now.x;
+      const fromY = now.y;
+      cur?.anim?.cancel();
+      const anim = el.animate(
+        [
+          { transform: `translate(${fromX}px,${fromY}px)` },
+          { transform: `translate(${dx}px,${dy}px)` }
+        ],
+        { duration: DUR, easing: EASE, fill: "forwards" }
+      );
+      live.set(el, { anim, fromX, fromY, toX: dx, toY: dy });
+      if (!dx && !dy) release(el, anim);
+    },
+    clear() {
+      for (const [el, st] of live) {
+        st.anim?.cancel();
+        el.style.transform = "";
+      }
+      live.clear();
+    }
+  };
+}
+
 // src/DumbGridDnd/dndCore.ts
-var DND_MIME = "application/x-dumb-grid";
-var dndSupported = () => typeof DataTransfer === "function" && typeof DragEvent === "function";
+function insertIndexReading(args) {
+  const { base, dragId, m, x, y } = args;
+  let k = 0;
+  for (const p of base) {
+    if (p.id === dragId) continue;
+    const r = cellRect(p, m);
+    if (p.w >= m.cols) {
+      if (y > r.y + r.height / 2) k++;
+      continue;
+    }
+    if (y > r.y + r.height) k++;
+    else if (y >= r.y && x > r.x + r.width / 2) k++;
+  }
+  return k;
+}
+function planDrop(args) {
+  const { spans, m, x, y, drag } = args;
+  const home = drag.fromIndex !== null;
+  const layout = packFlow(spans, m.cols);
+  const base = args.base ?? layout;
+  const index = insertIndexReading({ base, dragId: drag.id, m, x, y });
+  let next;
+  if (home) {
+    next = packFlow(reorder(spans, drag.fromIndex, index), m.cols);
+  } else {
+    const merged = spans.slice();
+    merged.splice(index, 0, { id: drag.id, w: Math.min(drag.w, m.cols), h: drag.h });
+    next = packFlow(merged, m.cols);
+  }
+  const me = next.find((b) => b.id === drag.id);
+  return {
+    index,
+    next,
+    // сдвиги считаем от НАСТОЯЩЕЙ укладки: transform у блоков абсолютный,
+    // а не накопительный — иначе они уезжали бы дважды
+    moves: moveDeltas({ base: layout, next, m, skipId: drag.id }),
+    rect: me ? cellRect(me, m) : null
+  };
+}
+var SLIDE5 = "transform .18s cubic-bezier(.2,.8,.2,1)";
+var PREVIEW_BG3 = "rgba(59,130,246,.10)";
+var PREVIEW_LINE3 = "2px dashed rgba(59,130,246,.85)";
 function createGridDndEngine(opts = {}) {
   const zones = /* @__PURE__ */ new Map();
   let drag = null;
   let over = null;
+  let stopMonitor = null;
+  const boxes = /* @__PURE__ */ new Map();
+  const scroller = createAutoScroller();
   const setOver = (name) => {
     if (over === name) return;
     over = name;
     opts.onOver?.(name);
   };
-  function markDrop(zoneName, index) {
-    if (!drag) return;
-    if (drag.toZone === zoneName && drag.toIndex === index) return;
-    drag.toZone = zoneName;
-    drag.toIndex = index;
-    opts.onDropTarget?.({ grid: zoneName, index });
+  const metricsOf = (z) => {
+    const cols = Math.max(1, Math.floor(z.opts.cols()));
+    const gapX = z.opts.gapX();
+    return { cols, colW: colWidth(z.contentW, cols, gapX), rowH: z.opts.rowHeight(), gapX, gapY: z.opts.gapY() };
+  };
+  function snapshotZones(cb) {
+    const targets = [];
+    for (const z of zones.values()) if (z.el) targets.push(z.el);
+    if (!targets.length || typeof IntersectionObserver !== "function") {
+      cb();
+      return;
+    }
+    let batches = 0;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const name = e.target.dataset.dndZone;
+        if (name) boxes.set(name, { left: e.boundingClientRect.left, top: e.boundingClientRect.top });
+      }
+      batches++;
+      if (boxes.size < targets.length && batches < 4) return;
+      io.disconnect();
+      cb();
+    });
+    for (const t of targets) io.observe(t);
   }
-  function clearDrag() {
+  function snapOf(zone) {
+    const box = zone.el ? boxes.get(zone.name) : null;
+    if (!zone.el || !box) return null;
+    const m = metricsOf(zone);
+    const spans = zone.opts.order().map((id) => ({ id, ...zone.opts.spanOf(id) }));
+    return {
+      zone,
+      m,
+      base: packFlow(spans, m.cols),
+      left: box.left + zone.padLeft,
+      top: box.top + zone.padTop,
+      winX: window.scrollX,
+      winY: window.scrollY
+    };
+  }
+  function pointIn(s, x, y) {
+    return {
+      x: x - (s.left - (window.scrollX - s.winX)),
+      y: y - (s.top - (window.scrollY - s.winY))
+    };
+  }
+  const snapFor = (d, zone) => {
+    let s = d.snaps.get(zone.name);
+    if (!s) {
+      const fresh = snapOf(zone);
+      if (!fresh) return null;
+      d.snaps.set(zone.name, s = fresh);
+    }
+    return s;
+  };
+  function slide(d, zone, moves) {
+    for (const mv of moves) {
+      const el = zone.els.get(mv.id);
+      if (!el || el === d.el) continue;
+      d.touched.add(el);
+      d.flip.to(el, mv.dx, mv.dy);
+    }
+  }
+  function calm(d) {
+    for (const el of d.touched) d.flip.to(el, 0, 0);
+    d.touched.clear();
+  }
+  function unarm(d) {
+    d.flip.clear();
+    d.touched.clear();
+  }
+  function showPreview(d, zone, rect) {
+    if (!zone.el) return;
+    if (d.preview && d.previewZone !== zone.name) {
+      d.preview.remove();
+      d.preview = null;
+    }
+    if (!d.preview) {
+      const box = document.createElement("div");
+      box.dataset.dndGhost = "";
+      box.setAttribute("aria-hidden", "true");
+      box.style.cssText = [
+        "position:absolute",
+        "left:0",
+        "top:0",
+        "pointer-events:none",
+        "box-sizing:border-box",
+        "border-radius:10px",
+        "z-index:5",
+        `background:${PREVIEW_BG3}`,
+        `outline:${PREVIEW_LINE3}`,
+        "outline-offset:-2px"
+      ].join(";");
+      if (shouldAnimate(opts.animate)) box.style.transition = SLIDE5;
+      zone.el.appendChild(box);
+      d.preview = box;
+      d.previewZone = zone.name;
+    }
+    d.preview.style.width = `${rect.width}px`;
+    d.preview.style.height = `${rect.height}px`;
+    d.preview.style.transform = `translate(${rect.x}px,${rect.y}px)`;
+  }
+  function update(d, zone, x, y) {
+    if (!boxes.size) return;
+    const s = snapFor(d, zone);
+    if (!s) return;
+    const home = zone.name === d.fromZone;
+    const p = pointIn(s, x, y);
+    const plan = planDrop({
+      spans: zone.opts.order().map((id) => ({ id, ...zone.opts.spanOf(id) })),
+      base: d.toZone === zone.name ? d.view : void 0,
+      m: s.m,
+      x: p.x,
+      y: p.y,
+      drag: { id: d.id, ...d.span, fromIndex: home ? d.fromIndex : null }
+    });
+    const k = plan.index;
+    if (zone.name === d.toZone && k === d.toIndex) return;
+    if (zone.name !== d.toZone) calm(d);
+    d.toZone = zone.name;
+    d.toIndex = k;
+    d.view = plan.next;
+    slide(d, zone, plan.moves);
+    if (plan.rect) showPreview(d, zone, plan.rect);
+    opts.onRows?.(zone.name, rowCount(plan.next));
+  }
+  function endDrag() {
     if (!drag) return;
-    drag.el.style.opacity = "";
+    scroller.stop();
+    const d = drag;
+    for (const name of d.snaps.keys()) opts.onRows?.(name, 0);
+    unarm(d);
+    d.preview?.remove();
+    d.el.style.opacity = "";
     drag = null;
     setOver(null);
-    opts.onDropTarget?.(null);
     opts.onActive?.(null);
   }
-  function accepted(zone) {
-    if (!drag) return false;
-    if (zone.name === drag.fromZone) return true;
-    return !zone.opts.accepts || zone.opts.accepts(drag.fromZone);
-  }
-  function onDragStart(zone, id, el, ev) {
-    if (!ev.dataTransfer || zone.opts.disabled?.()) {
-      ev.preventDefault();
-      return;
-    }
-    if (ev.target instanceof Element) {
-      if (ev.target.closest("[data-grid-resize]")) {
-        ev.preventDefault();
-        return;
+  function ensureMonitor() {
+    if (stopMonitor) return;
+    stopMonitor = monitorForElements({
+      canMonitor: ({ source }) => Boolean(source.data?.dumbGridId),
+      onDrag({ location }) {
+        if (!drag) return;
+        scroller.move(location.current.input.clientX, location.current.input.clientY);
+        for (const target of location.current.dropTargets) {
+          const name = target.data?.dumbGridZone;
+          const zone = typeof name === "string" ? zones.get(name) : null;
+          if (!zone) continue;
+          setOver(zone.name);
+          update(drag, zone, location.current.input.clientX, location.current.input.clientY);
+          return;
+        }
+        setOver(null);
+      },
+      onDrop({ location }) {
+        const d = drag;
+        if (!d) return;
+        const dropped = location.current.dropTargets.some(
+          (t) => t.data?.dumbGridZone === d.toZone
+        );
+        const { toZone, toIndex, fromZone, fromIndex, id } = d;
+        endDrag();
+        if (!dropped || toIndex < 0) return;
+        if (toZone !== fromZone) {
+          opts.onTransfer?.({ grid: fromZone, id, index: fromIndex }, { grid: toZone, index: toIndex });
+          return;
+        }
+        if (toIndex !== fromIndex) zones.get(fromZone)?.opts.onReorder?.(fromIndex, toIndex);
       }
-      if (ev.target.closest("[data-flip-id]")) {
-        ev.preventDefault();
-        return;
-      }
-      const nested = ev.target.closest("[data-dnd-block]");
-      if (nested && nested !== el) {
-        ev.preventDefault();
-        return;
-      }
-      const handle = el.querySelector("[data-drag-handle]");
-      if (handle && !handle.contains(ev.target)) {
-        ev.preventDefault();
-        return;
-      }
-    }
-    const index = zone.opts.order().indexOf(id);
-    if (index < 0) {
-      ev.preventDefault();
-      return;
-    }
-    ev.dataTransfer.effectAllowed = "move";
-    try {
-      ev.dataTransfer.setData(DND_MIME, JSON.stringify({ grid: zone.name, id }));
-    } catch {
-    }
-    try {
-      ev.dataTransfer.setData("text/plain", id);
-    } catch {
-    }
-    const span = zone.opts.spanOf?.(id) ?? { w: 1, h: 1 };
-    drag = { fromZone: zone.name, id, fromIndex: index, el, span, toZone: zone.name, toIndex: -1 };
-    setOver(zone.name);
-    opts.onActive?.({ grid: zone.name, id, ...span });
-    requestAnimationFrame(() => {
-      if (drag) el.style.opacity = "0.4";
     });
-  }
-  function onBlockOver(zone, id, el, ev, rect) {
-    if (!drag || !accepted(zone) || !rect) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-    const order = zone.opts.order().filter((x) => !(zone.name === drag.fromZone && x === drag.id));
-    const at = order.indexOf(id);
-    if (at < 0) return;
-    const after = ev.clientX > rect.left + rect.width / 2;
-    markDrop(zone.name, after ? at + 1 : at);
-    setOver(zone.name);
-  }
-  function onZoneOver(zone, ev) {
-    if (!drag || !accepted(zone)) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-    setOver(zone.name);
-    const order = zone.opts.order().filter((id) => !(zone.name === drag.fromZone && id === drag.id));
-    markDrop(zone.name, order.length);
-  }
-  function onZoneDrop(zone, ev) {
-    if (!drag || !accepted(zone)) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    const d = drag;
-    const to = { zone: d.toZone, index: d.toIndex };
-    clearDrag();
-    if (to.index < 0) return;
-    if (to.zone !== d.fromZone) {
-      opts.onTransfer?.({ grid: d.fromZone, id: d.id, index: d.fromIndex }, { grid: to.zone, index: to.index });
-      return;
-    }
-    if (to.index !== d.fromIndex) zones.get(d.fromZone)?.opts.onReorder?.(d.fromIndex, to.index);
   }
   return {
     grid(name, zoneOpts) {
-      const zone = zones.get(name) ?? { name, el: null, els: /* @__PURE__ */ new Map(), opts: zoneOpts };
+      const zone = zones.get(name) ?? {
+        name,
+        el: null,
+        els: /* @__PURE__ */ new Map(),
+        opts: zoneOpts,
+        ro: null,
+        contentW: 0,
+        padLeft: 0,
+        padTop: 0
+      };
       zone.opts = zoneOpts;
       zones.set(name, zone);
+      ensureMonitor();
       return {
         attachContainer(el) {
           zone.el = el;
-          const onEnter = (ev) => {
-            if (drag && accepted(zone)) {
-              ev.preventDefault();
-              ev.stopPropagation();
+          el.dataset.dndZone = zone.name;
+          const stop = dropTargetForElements({
+            element: el,
+            // данные статичны: считать что-то в getData значило бы считать это
+            // на каждое движение — место мы вычисляем сами и по снимку
+            getData: () => ({ dumbGridZone: zone.name }),
+            canDrop: ({ source }) => {
+              const from = source.data?.dumbGridZone;
+              if (typeof from !== "string") return false;
+              if (from === zone.name) return true;
+              return !zone.opts.accepts || zone.opts.accepts(from);
             }
-          };
-          const onOver = (ev) => onZoneOver(zone, ev);
-          const onLeave = (ev) => {
-            if (!drag || ev.relatedTarget instanceof Node && el.contains(ev.relatedTarget)) return;
-            if (over === zone.name) setOver(null);
-          };
-          const onDrop = (ev) => onZoneDrop(zone, ev);
-          el.addEventListener("dragenter", onEnter);
-          el.addEventListener("dragover", onOver);
-          el.addEventListener("dragleave", onLeave);
-          el.addEventListener("drop", onDrop);
+          });
+          let ro = null;
+          if (typeof ResizeObserver === "function") {
+            ro = new ResizeObserver((entries) => {
+              const r = entries[entries.length - 1]?.contentRect;
+              if (!r) return;
+              zone.contentW = r.width;
+              zone.padLeft = r.left;
+              zone.padTop = r.top;
+            });
+            ro.observe(el);
+            zone.ro = ro;
+          }
           return () => {
-            el.removeEventListener("dragenter", onEnter);
-            el.removeEventListener("dragover", onOver);
-            el.removeEventListener("dragleave", onLeave);
-            el.removeEventListener("drop", onDrop);
+            stop();
+            ro?.disconnect();
+            delete el.dataset.dndZone;
+            if (zone.ro === ro) zone.ro = null;
             if (zone.el === el) zone.el = null;
           };
         },
         attach(el, id) {
           zone.els.set(id, el);
           el.dataset.dndBlock = id;
-          el.setAttribute("draggable", "true");
-          let rect = null;
-          const onStart = (ev) => onDragStart(zone, id, el, ev);
-          const onEnd = () => clearDrag();
-          const onEnter = () => {
-            rect = el.getBoundingClientRect();
-          };
-          const onOver = (ev) => {
-            if (!rect) rect = el.getBoundingClientRect();
-            onBlockOver(zone, id, el, ev, rect);
-          };
-          const onLeave = () => {
-            rect = null;
-          };
-          const onDrop = (ev) => onZoneDrop(zone, ev);
-          el.addEventListener("dragstart", onStart);
-          el.addEventListener("dragend", onEnd);
-          el.addEventListener("dragenter", onEnter);
-          el.addEventListener("dragover", onOver);
-          el.addEventListener("dragleave", onLeave);
-          el.addEventListener("drop", onDrop);
+          const stop = draggable({
+            element: el,
+            canDrag: () => {
+              if (zone.opts.disabled?.()) return false;
+              return zone.opts.order().includes(id);
+            },
+            getInitialData: () => ({ dumbGridZone: zone.name, dumbGridId: id }),
+            onDragStart() {
+              const index = zone.opts.order().indexOf(id);
+              if (index < 0) return;
+              const span = zone.opts.spanOf(id);
+              boxes.clear();
+              drag = {
+                fromZone: zone.name,
+                id,
+                fromIndex: index,
+                el,
+                span,
+                toZone: zone.name,
+                toIndex: index,
+                snaps: /* @__PURE__ */ new Map(),
+                view: [],
+                touched: /* @__PURE__ */ new Set(),
+                flip: createFlip(shouldAnimate(opts.animate)),
+                preview: null,
+                previewZone: null
+              };
+              setOver(zone.name);
+              opts.onActive?.({ grid: zone.name, id, ...span });
+              el.style.opacity = "0.4";
+              scroller.start(zone.el ?? el);
+              snapshotZones(() => {
+                if (!drag || drag.id !== id) return;
+                const snap = snapOf(zone);
+                if (!snap) return;
+                drag.snaps.set(zone.name, snap);
+                drag.view = snap.base;
+              });
+            }
+            // ЗДЕСЬ убирать за собой нельзя: этот обработчик срабатывает раньше
+            // монитора, а тому ещё нужно прочитать, куда блок сел. Всё вместе —
+            // и уборку, и коммит — делает монитор.
+          });
           return () => {
-            el.removeEventListener("dragstart", onStart);
-            el.removeEventListener("dragend", onEnd);
-            el.removeEventListener("dragenter", onEnter);
-            el.removeEventListener("dragover", onOver);
-            el.removeEventListener("dragleave", onLeave);
-            el.removeEventListener("drop", onDrop);
-            el.removeAttribute("draggable");
+            stop();
             delete el.dataset.dndBlock;
             if (zone.els.get(id) === el) zone.els.delete(id);
           };
@@ -3543,19 +3909,28 @@ function createGridDndEngine(opts = {}) {
     },
     active: () => drag ? { grid: drag.fromZone, id: drag.id, ...drag.span } : null,
     over: () => over,
-    drop: () => drag && drag.toIndex >= 0 ? { grid: drag.toZone, index: drag.toIndex } : null,
     destroy() {
-      clearDrag();
+      endDrag();
+      stopMonitor?.();
+      stopMonitor = null;
+      for (const z of zones.values()) {
+        z.ro?.disconnect();
+        z.ro = null;
+        z.els.clear();
+        z.el = null;
+      }
       zones.clear();
     }
   };
 }
+var dndSupported = () => typeof DataTransfer === "function" && typeof DragEvent === "function";
+var DND_MIME = "application/x-dumb-grid";
 
 // src/DumbGridDnd/solid.ts
 function createDumbGridDndGroup(opts = {}) {
   const [active, setActive] = createSignal(null);
   const [over, setOver] = createSignal(null);
-  const [drop, setDrop] = createSignal(null);
+  const [rows, setRows] = createSignal({});
   const engine = createGridDndEngine({
     ...opts,
     onActive: (state) => {
@@ -3566,9 +3941,9 @@ function createDumbGridDndGroup(opts = {}) {
       setOver(name);
       opts.onOver?.(name);
     },
-    onDropTarget: (target) => {
-      setDrop(target);
-      opts.onDropTarget?.(target);
+    onRows: (grid, n) => {
+      setRows((prev) => prev[grid] === n ? prev : { ...prev, [grid]: n });
+      opts.onRows?.(grid, n);
     }
   });
   onCleanup(engine.destroy);
@@ -3586,14 +3961,13 @@ function createDumbGridDndGroup(opts = {}) {
     },
     active,
     over,
-    drop
+    rows: (grid) => rows()[grid] ?? 0
   };
 }
 
 // src/DumbGridDnd/DumbGridDnd.tsx
-var _tmpl$7 = /* @__PURE__ */ template(`<div style=display:grid>`);
-var _tmpl$24 = /* @__PURE__ */ template(`<div data-dnd-ghost aria-hidden=true style="pointer-events:none;box-sizing:border-box;border-radius:10px;background:rgba(59,130,246,.10);outline:2px dashed rgba(59,130,246,.85);outline-offset:-2px">`);
-var _tmpl$33 = /* @__PURE__ */ template(`<div style=position:relative;min-width:0;min-height:0;box-sizing:border-box>`);
+var _tmpl$7 = /* @__PURE__ */ template(`<div style="display:grid;position:relative;transition:min-height .15s ease">`);
+var _tmpl$24 = /* @__PURE__ */ template(`<div style=position:relative;min-width:0;min-height:0;box-sizing:border-box>`);
 var DEFAULT_COLS2 = 12;
 var DEFAULT_ROW_H2 = 80;
 var DEFAULT_GAP2 = 12;
@@ -3614,99 +3988,67 @@ function DumbGridDnd(props) {
       w: 1,
       h: 1
     },
+    // метрики нужны движку, чтобы считать место вставки арифметикой,
+    // а не по тому, какой блок сейчас под курсором
+    cols,
+    rowHeight: rowH,
+    gapX: gap,
+    gapY: gap,
     disabled: () => props.disabled === true,
     onReorder: (from, to) => props.onReorder?.(from, to)
   });
-  const GHOST = "\0dnd-ghost";
-  const viewSpans = createMemo(() => {
-    const base = spans();
-    const drop = group.drop();
-    const dragging = group.active();
-    if (!drop || !dragging || drop.grid !== name()) return base;
-    if (dragging.grid === name()) {
-      const from = base.findIndex((s) => s.id === dragging.id);
-      if (from < 0) return base;
-      const rest = base.filter((_, i) => i !== from);
-      const at2 = Math.max(0, Math.min(rest.length, drop.index));
-      return [...rest.slice(0, at2), base[from], ...rest.slice(at2)];
-    }
-    const at = Math.max(0, Math.min(base.length, drop.index));
-    const ghost = {
-      id: GHOST,
-      w: Math.min(dragging.w, cols()),
-      h: dragging.h
-    };
-    return [...base.slice(0, at), ghost, ...base.slice(at)];
-  });
-  const placed = createMemo(() => packFlow(viewSpans(), cols()));
+  const placed = createMemo(() => packFlow(spans(), cols()));
   const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])));
   const rows = createMemo(() => rowCount(placed()));
-  const ghostPos = () => posById().get(GHOST);
+  const liveRows = () => {
+    const base = Math.max(rows(), group.rows(name()));
+    const a = group.active();
+    const mine = a && (a.grid === name() || group.over() === name());
+    return mine ? base + 1 : base;
+  };
   return (() => {
     var _el$ = _tmpl$7();
     var _ref$ = g.container;
     typeof _ref$ === "function" ? use(_ref$, _el$) : g.container = _el$;
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return ghostPos();
-      },
-      children: (p) => (() => {
-        var _el$2 = _tmpl$24();
-        effect((_p$) => {
-          var _v$3 = `${p().col + 1} / span ${p().w}`, _v$4 = `${p().row + 1} / span ${p().h}`;
-          _v$3 !== _p$.e && setStyleProperty(_el$2, "grid-column", _p$.e = _v$3);
-          _v$4 !== _p$.t && setStyleProperty(_el$2, "grid-row", _p$.t = _v$4);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0
-        });
-        return _el$2;
-      })()
-    }), null);
     insert(_el$, createComponent(For, {
       get each() {
         return props.items;
       },
       children: (it) => {
         const pos = () => posById().get(it.id);
-        const dragging = () => g.active() === it.id;
-        return createComponent(Show, {
-          get when() {
-            return pos();
-          },
-          children: (p) => (() => {
-            var _el$3 = _tmpl$33();
-            var _ref$2 = props.disabled ? void 0 : g.bind(it.id);
-            typeof _ref$2 === "function" && use(_ref$2, _el$3);
-            insert(_el$3, () => it.content());
-            effect((_p$) => {
-              var _v$5 = props.blockClass, _v$6 = {
-                // позицию считаем мы, браузер её не домысливает
-                "grid-column": `${p().col + 1} / span ${p().w}`,
-                "grid-row": `${p().row + 1} / span ${p().h}`,
-                cursor: props.disabled ? "default" : "grab",
-                opacity: dragging() ? "0.4" : void 0,
-                ...props.blockStyle
-              };
-              _v$5 !== _p$.e && className(_el$3, _p$.e = _v$5);
-              _p$.t = style(_el$3, _v$6, _p$.t);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0
-            });
-            return _el$3;
-          })()
-        });
+        return (() => {
+          var _el$2 = _tmpl$24();
+          var _ref$2 = props.disabled ? void 0 : g.bind(it.id);
+          typeof _ref$2 === "function" && use(_ref$2, _el$2);
+          insert(_el$2, () => it.content());
+          effect((_p$) => {
+            var _v$3 = props.blockClass, _v$4 = {
+              // позицию считаем мы, браузер её не домысливает
+              "grid-column": `${(pos()?.col ?? 0) + 1} / span ${pos()?.w ?? 1}`,
+              "grid-row": `${(pos()?.row ?? 0) + 1} / span ${pos()?.h ?? 1}`,
+              cursor: props.disabled ? "default" : "grab",
+              ...props.blockStyle
+            };
+            _v$3 !== _p$.e && className(_el$2, _p$.e = _v$3);
+            _p$.t = style(_el$2, _v$4, _p$.t);
+            return _p$;
+          }, {
+            e: void 0,
+            t: void 0
+          });
+          return _el$2;
+        })();
       }
-    }), null);
+    }));
     effect((_p$) => {
       var _v$ = props.class, _v$2 = {
         "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
         "grid-auto-rows": `${rowH()}px`,
         gap: `${gap()}px`,
-        "min-height": `${rows() * rowH() + Math.max(0, rows() - 1) * gap()}px`,
+        "min-height": `${(() => {
+          const n = liveRows();
+          return n * rowH() + Math.max(0, n - 1) * gap();
+        })()}px`,
         ...props.style
       };
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
@@ -3719,15 +4061,305 @@ function DumbGridDnd(props) {
     return _el$;
   })();
 }
-var _tmpl$8 = /* @__PURE__ */ template(`<span class="ml-auto shrink-0 flex items-center gap-1">`);
+function createSortDndEngine(opts) {
+  const els = /* @__PURE__ */ new Map();
+  let container = null;
+  let drag = null;
+  let stopMonitor = null;
+  let pressed = null;
+  const remember = (ev) => {
+    pressed = ev.target;
+  };
+  if (typeof document !== "undefined") {
+    document.addEventListener("pointerdown", remember, { capture: true, passive: true });
+  }
+  const scroller = createAutoScroller();
+  let flip = null;
+  function measure2(d) {
+    const targets = [];
+    for (const id of d.ids) {
+      const el = els.get(id);
+      if (el) targets.push(el);
+    }
+    if (!targets.length || typeof IntersectionObserver !== "function") return;
+    const rects = /* @__PURE__ */ new Map();
+    let batches = 0;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const id = e.target.dataset.sortDndId;
+        if (id) rects.set(id, e.boundingClientRect);
+      }
+      batches++;
+      if (rects.size < targets.length && batches < 4) return;
+      io.disconnect();
+      if (drag !== d) return;
+      const list = d.ids.map((id) => rects.get(id));
+      d.slots = list.map((r) => r ? { left: r.left, top: r.top } : { left: 0, top: 0 });
+      let gap = 0;
+      for (let i = 1; i < list.length; i++) {
+        const a = list[i - 1];
+        const b = list[i];
+        if (!a || !b || b.top <= a.top) continue;
+        gap = Math.max(0, b.top - (a.top + a.height));
+        break;
+      }
+      d.steps = list.map((r) => r ? r.height + gap : 0);
+      d.ready = true;
+      if (d.k !== d.from) place(d);
+    });
+    for (const t of targets) io.observe(t);
+  }
+  const idAt = (d, i) => d.ids[i < d.from ? i : i + 1];
+  const slotAt = (i, k) => i < k ? i : i + 1;
+  function shiftOf(d, i) {
+    const was = slotAt(i, d.from);
+    const now = slotAt(i, d.k);
+    if (was === now) return { dx: 0, dy: 0 };
+    if (d.grid) {
+      const a = d.slots[was];
+      const b = d.slots[now];
+      return a && b ? { dx: b.left - a.left, dy: b.top - a.top } : { dx: 0, dy: 0 };
+    }
+    return { dx: 0, dy: (now - was) * (d.steps[d.from] ?? 0) };
+  }
+  function shiftOfDrag(d) {
+    if (d.grid) {
+      const a = d.slots[d.from];
+      const b = d.slots[d.k];
+      return a && b ? { dx: b.left - a.left, dy: b.top - a.top } : { dx: 0, dy: 0 };
+    }
+    let dy = 0;
+    if (d.k > d.from) for (let i = d.from; i < d.k; i++) dy += d.steps[i + 1] ?? 0;
+    else for (let i = d.k; i < d.from; i++) dy -= d.steps[i] ?? 0;
+    return { dx: 0, dy };
+  }
+  function place(d) {
+    if (!d.ready) return;
+    const lo = Math.min(d.from, d.k);
+    const hi = Math.max(d.from, d.k);
+    const next = /* @__PURE__ */ new Set();
+    const self = shiftOfDrag(d);
+    flip?.to(d.el, self.dx, self.dy);
+    for (let i = lo; i < hi; i++) {
+      const id = idAt(d, i);
+      const el = els.get(id);
+      if (!el) continue;
+      const { dx, dy } = shiftOf(d, i);
+      if (!dx && !dy) continue;
+      flip?.to(el, dx, dy);
+      next.add(id);
+    }
+    for (const id of d.moved) {
+      if (next.has(id)) continue;
+      const el = els.get(id);
+      if (el) flip?.to(el, 0, 0);
+    }
+    d.moved = next;
+  }
+  function hover(targets) {
+    const d = drag;
+    if (!d) return;
+    for (const t of targets) {
+      const id = t.data?.sortDndId;
+      if (!id) continue;
+      if (id === d.id) return;
+      const idx = d.ids.indexOf(id);
+      if (idx < 0) return;
+      const rest = idx < d.from ? idx : idx - 1;
+      const to = rest >= d.k ? rest + 1 : rest;
+      if (to === d.k) return;
+      d.k = to;
+      place(d);
+      return;
+    }
+  }
+  function endDrag(commit) {
+    if (!drag) return;
+    const el = drag.el;
+    drag = null;
+    scroller.stop();
+    opts.onActive?.(null);
+    if (!commit) {
+      flip?.clear();
+      flip = null;
+      el.style.opacity = "";
+      return;
+    }
+    commit();
+    requestAnimationFrame(() => {
+      flip?.clear();
+      flip = null;
+      el.style.opacity = "";
+    });
+  }
+  function ensureMonitor() {
+    if (stopMonitor) return;
+    stopMonitor = monitorForElements({
+      canMonitor: ({ source }) => Boolean(source.data?.sortDndId),
+      onDrag({ location }) {
+        if (!drag) return;
+        scroller.move(location.current.input.clientX, location.current.input.clientY);
+      },
+      // смена цели — единственный момент, когда место вообще может измениться
+      onDropTargetChange({ location }) {
+        hover(location.current.dropTargets);
+      },
+      onDrop({ location }) {
+        const d = drag;
+        if (!d) return;
+        const inside = location.current.dropTargets.some(
+          (t) => t.data?.sortDndList || t.data?.sortDndId
+        );
+        const { from, k } = d;
+        const moved = inside && k !== from;
+        endDrag(moved ? () => opts.onEnd?.(from, k) : void 0);
+      }
+    });
+  }
+  return {
+    attachContainer(el) {
+      ensureMonitor();
+      const stop = dropTargetForElements({
+        element: el,
+        getData: () => ({ sortDndList: true }),
+        canDrop: ({ source }) => Boolean(source.data?.sortDndId)
+      });
+      container = el;
+      return () => {
+        stop();
+        if (container === el) container = null;
+      };
+    },
+    attach(el, id) {
+      els.set(id, el);
+      el.dataset.sortDndId = id;
+      ensureMonitor();
+      const stopDrop = dropTargetForElements({
+        element: el,
+        getData: () => ({ sortDndId: id }),
+        canDrop: ({ source }) => Boolean(source.data?.sortDndId)
+      });
+      const stopDrag = draggable({
+        element: el,
+        canDrag: () => {
+          if (opts.disabled?.()) return false;
+          const handle = el.querySelector("[data-drag-handle]");
+          if (!handle) return true;
+          return Boolean(pressed && handle.contains(pressed));
+        },
+        getInitialData: () => ({ sortDndId: id }),
+        // Картинку переноса не трогаем: нативная и так снимается с самой строки
+        // и держится за точку захвата.
+        onDragStart() {
+          const ids = opts.order();
+          const from = ids.indexOf(id);
+          if (from < 0) return;
+          drag = {
+            id,
+            el,
+            ids,
+            from,
+            k: from,
+            steps: [],
+            slots: [],
+            moved: /* @__PURE__ */ new Set(),
+            grid: opts.axis?.() === "grid",
+            ready: false
+          };
+          opts.onActive?.(id);
+          el.style.opacity = "0.35";
+          flip = createFlip(shouldAnimate(opts.animate));
+          scroller.start(container ?? el);
+          measure2(drag);
+        }
+      });
+      return () => {
+        stopDrag();
+        stopDrop();
+        delete el.dataset.sortDndId;
+        if (els.get(id) === el) els.delete(id);
+      };
+    },
+    active: () => drag?.id ?? null,
+    destroy() {
+      endDrag();
+      stopMonitor?.();
+      stopMonitor = null;
+      if (typeof document !== "undefined") {
+        document.removeEventListener("pointerdown", remember, true);
+      }
+      els.clear();
+    }
+  };
+}
+
+// src/DumbSortableDnd/solid.ts
+function createDumbSortableDnd(opts) {
+  const [active, setActive] = createSignal(null);
+  const engine = createSortDndEngine({
+    ...opts,
+    onActive: (id) => {
+      setActive(id);
+      opts.onActive?.(id);
+    }
+  });
+  onCleanup(engine.destroy);
+  return {
+    container: (el) => onCleanup(engine.attachContainer(el)),
+    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
+    active
+  };
+}
+
+// src/DumbSortableDnd/DumbSortableDnd.tsx
+var _tmpl$8 = /* @__PURE__ */ template(`<div>`);
+function DumbSortableDnd(props) {
+  const s = createDumbSortableDnd({
+    order: () => props.items.map(props.id),
+    axis: () => props.axis ?? "y",
+    disabled: () => props.disabled === true,
+    animate: props.animate,
+    onEnd: (from, to) => {
+      const next = props.items.slice();
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      props.setItems(next);
+    }
+  });
+  return (() => {
+    var _el$ = _tmpl$8();
+    var _ref$ = s.container;
+    typeof _ref$ === "function" ? use(_ref$, _el$) : s.container = _el$;
+    insert(_el$, createComponent(For, {
+      get each() {
+        return props.items;
+      },
+      children: (item, i) => {
+        const el = props.children(item, i);
+        if (el instanceof HTMLElement) s.bind(props.id(item))(el);
+        return el;
+      }
+    }));
+    effect((_p$) => {
+      var _v$ = props.class, _v$2 = props.style;
+      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
+      _p$.t = style(_el$, _v$2, _p$.t);
+      return _p$;
+    }, {
+      e: void 0,
+      t: void 0
+    });
+    return _el$;
+  })();
+}
+var _tmpl$9 = /* @__PURE__ */ template(`<span class="ml-auto shrink-0 flex items-center gap-1">`);
 var _tmpl$25 = /* @__PURE__ */ template(`<a><span></span><span>`);
-var _tmpl$34 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
+var _tmpl$33 = /* @__PURE__ */ template(`<button class="btn btn-ghost btn-xs btn-square"><span>`);
 var _tmpl$43 = /* @__PURE__ */ template(`<ul class="pl-3 border-l border-base-200 ml-3">`);
 var _tmpl$53 = /* @__PURE__ */ template(`<li><div class="flex items-center">`);
 var _tmpl$63 = /* @__PURE__ */ template(`<span class="w-5 shrink-0">`);
 var _tmpl$72 = /* @__PURE__ */ template(`<div class="text-xs opacity-50 mb-2 px-1">`);
 var _tmpl$82 = /* @__PURE__ */ template(`<label class="input input-sm input-bordered flex items-center gap-2 mb-2 w-full"><span></span><input class=grow>`);
-var _tmpl$9 = /* @__PURE__ */ template(`<div class="join mb-2 w-full"><button><span></span></button><button><span>`);
+var _tmpl$92 = /* @__PURE__ */ template(`<div class="join mb-2 w-full"><button><span></span></button><button><span>`);
 var _tmpl$0 = /* @__PURE__ */ template(`<ul class="bg-base-100 rounded-box shadow w-full text-sm p-2 max-h-[80vh] overflow-auto">`);
 var _tmpl$1 = /* @__PURE__ */ template(`<aside>`);
 var _tmpl$10 = /* @__PURE__ */ template(`<span class="loading loading-spinner">`);
@@ -3836,7 +4468,7 @@ function DumbTree(props) {
         return props.rowExtra;
       },
       get children() {
-        var _el$4 = _tmpl$8();
+        var _el$4 = _tmpl$9();
         insert(_el$4, () => props.rowExtra(p.node));
         return _el$4;
       }
@@ -3874,7 +4506,7 @@ function DumbTree(props) {
             return _tmpl$63();
           },
           get children() {
-            var _el$7 = _tmpl$34(), _el$8 = _el$7.firstChild;
+            var _el$7 = _tmpl$33(), _el$8 = _el$7.firstChild;
             _el$7.$$click = () => toggle(p.id);
             effect(() => className(_el$8, `size-4 ${isExpanded() ? icons().expanded : icons().collapsed}`));
             return _el$7;
@@ -3948,7 +4580,7 @@ function DumbTree(props) {
         return !props.hideSort;
       },
       get children() {
-        var _el$14 = _tmpl$9(), _el$15 = _el$14.firstChild, _el$16 = _el$15.firstChild, _el$17 = _el$15.nextSibling, _el$18 = _el$17.firstChild;
+        var _el$14 = _tmpl$92(), _el$15 = _el$14.firstChild, _el$16 = _el$15.firstChild, _el$17 = _el$15.nextSibling, _el$18 = _el$17.firstChild;
         _el$15.$$click = () => setSort("index");
         insert(_el$15, () => labels().sortIndex, null);
         _el$17.$$click = () => setSort("name");
@@ -4038,13 +4670,13 @@ function DumbTree(props) {
 delegateEvents(["click", "input"]);
 var _tmpl$13 = /* @__PURE__ */ template(`<span aria-hidden=true style=margin-left:4px>`);
 var _tmpl$26 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
-var _tmpl$35 = /* @__PURE__ */ template(`<tfoot>`);
+var _tmpl$34 = /* @__PURE__ */ template(`<tfoot>`);
 var _tmpl$44 = /* @__PURE__ */ template(`<table style=width:100%;border-collapse:collapse><thead></thead><tbody>`);
 var _tmpl$54 = /* @__PURE__ */ template(`<div style="transition:opacity .15s">`);
 var _tmpl$64 = /* @__PURE__ */ template(`<th style=width:1%>`);
 var _tmpl$73 = /* @__PURE__ */ template(`<tr>`);
 var _tmpl$83 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
-var _tmpl$92 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
+var _tmpl$93 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
 var _tmpl$02 = /* @__PURE__ */ template(`<td style="padding:6px 8px">`);
 var withViewTransition = (on, fn) => {
   const doc = document;
@@ -4231,7 +4863,7 @@ function DumbTable(props) {
                   return memo(() => !!props.onReorder)() && withHandle();
                 },
                 get children() {
-                  var _el$11 = _tmpl$92(), _el$12 = _el$11.firstChild;
+                  var _el$11 = _tmpl$93(), _el$12 = _el$11.firstChild;
                   _el$11.$$click = (e) => e.stopPropagation();
                   insert(_el$12, () => props.handle ?? "\u283F");
                   effect((_p$) => {
@@ -4306,7 +4938,7 @@ function DumbTable(props) {
             return props.footer;
           },
           get children() {
-            var _el$8 = _tmpl$35();
+            var _el$8 = _tmpl$34();
             insert(_el$8, () => props.footer);
             return _el$8;
           }
@@ -4338,7 +4970,7 @@ function DumbTable(props) {
 delegateEvents(["click"]);
 var _tmpl$14 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px>`);
 var _tmpl$27 = /* @__PURE__ */ template(`<div style=display:flex;gap:4px;flex-wrap:wrap><button>\xAB</button><button>\xBB`);
-var _tmpl$36 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
+var _tmpl$35 = /* @__PURE__ */ template(`<div style=display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap><div style=display:flex;align-items:center;gap:8px><span style=opacity:.7;font-size:13px>`);
 var _tmpl$45 = /* @__PURE__ */ template(`<button>`);
 var _tmpl$55 = /* @__PURE__ */ template(`<span style="padding:3px 4px;opacity:.4">\u2026`);
 function buildPageNumbers(current, total) {
@@ -4378,7 +5010,7 @@ function DumbPagination(props) {
     "font-weight": active ? "700" : "400"
   });
   return (() => {
-    var _el$ = _tmpl$36(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
+    var _el$ = _tmpl$35(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
     insert(_el$3, summary);
     insert(_el$2, createComponent(Show, {
       get when() {
@@ -4801,4 +5433,4 @@ function imgproxyUrl(src, opts = {}) {
   return `${base}/insecure/${processing}/${base64url(resolveSource(src))}${ext}`;
 }
 
-export { DND_MIME, DumbGrid, DumbGridDnd, DumbPagination, DumbSortable, DumbTable, DumbTree, OdataClient, OdataError, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbGridDndGroup, createDumbGridGroup, createDumbSortable, createGridDndEngine, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortableGroup, dndSupported, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };
+export { DND_MIME, DumbGrid, DumbGridDnd, DumbPagination, DumbSortable, DumbSortableDnd, DumbTable, DumbTree, OdataClient, OdataError, ResizableGrid, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, buildPageNumbers, cellRect, colWidth, configureImgproxy, createAutoScroller, createDumbGrid, createDumbGridDndGroup, createDumbGridGroup, createDumbSortable, createDumbSortableDnd, createFlip, createGridDndEngine, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortDndEngine, createSortableGroup, dndSupported, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, planDrop, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };

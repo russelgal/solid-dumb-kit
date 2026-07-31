@@ -78,8 +78,8 @@ export {
   type DumbGridDndGroupHandle,
   type DumbGridDndHandle,
   type DndActive,
-  type DndDrop,
   createGridDndEngine,
+  planDrop,
   dndSupported,
   DND_MIME,
   type DndEngine,
@@ -89,6 +89,21 @@ export {
   type DndTransferSource,
   type DndTransferTarget,
 } from './DumbGridDnd'
+export {
+  DumbSortableDnd,
+  type DumbSortableDndProps,
+  createDumbSortableDnd,
+  type DumbSortableDndHandle,
+  createSortDndEngine,
+  type SortDndEngine,
+  type SortDndOptions,
+} from './DumbSortableDnd'
+export {
+  createFlip,
+  type Flip,
+  createAutoScroller,
+  type AutoScroller,
+} from './shared'
 export {
   DumbTree,
   type DumbTreeProps,

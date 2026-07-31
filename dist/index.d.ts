@@ -707,7 +707,6 @@ type DumbGridProps = {
 declare function mergeLayout(saved: DumbGridLayout | null | undefined, items: Array<DumbGridItem>, cols: number, mode?: LayoutMode): DumbGridLayout;
 declare function DumbGrid(props: DumbGridProps): JSX.Element;
 
-/** что именно тащат: откуда, что и какого размера */
 type DndDragging = {
     grid: string;
     id: string;
@@ -724,36 +723,80 @@ type DndTransferTarget = {
     index: number;
 };
 type DndGroupOptions = {
+    /** анимировать расступание; по умолчанию да, но не при prefers-reduced-motion */
+    animate?: boolean;
     /** блок переехал в ДРУГУЮ сетку — обе раскладки правит потребитель */
     onTransfer?: (from: DndTransferSource, to: DndTransferTarget) => void;
-    /** что тащат сейчас (с размером — приёмник рисует по нему место) */
+    /** что тащат сейчас */
     onActive?: (state: DndDragging | null) => void;
     /** над какой сеткой указатель */
     onOver?: (grid: string | null) => void;
     /**
-     * Место вставки изменилось. Именно на это подписан компонент: он показывает
-     * будущую раскладку, а она меняется и когда сетка та же, и когда индекс
-     * сдвинулся на соседний блок.
+     * Сколько строк займёт сетка, если бросить блок прямо сейчас.
+     *
+     * Без этого контейнер остаётся прежней высоты: соседи разъезжаются
+     * трансформом, а трансформ высоту не меняет. Нижние блоки тогда вылезают за
+     * край — и, что хуже, курсор над ними оказывается ВНЕ зоны приёма, так что
+     * дроп туда просто не проходит.
      */
-    onDropTarget?: (target: {
-        grid: string;
-        index: number;
-    } | null) => void;
+    onRows?: (grid: string, rows: number) => void;
 };
 type DndZoneOptions = {
-    /** текущий порядок блоков */
     order: () => Array<string>;
-    /** размер блока — нужен приёмнику, чтобы показать место будущего гостя */
-    spanOf?: (id: string) => {
+    spanOf: (id: string) => {
         w: number;
         h: number;
     };
-    /** жесты запрещены */
+    cols: () => number;
+    rowHeight: () => number;
+    gapX: () => number;
+    gapY: () => number;
     disabled?: () => boolean;
-    /** пускать ли к себе блок из сетки `from` (по умолчанию да) */
     accepts?: (from: string) => boolean;
-    /** перестановка внутри этой сетки */
     onReorder?: (from: number, to: number) => void;
+};
+/**
+ * Куда встанет блок и как для этого разъезжаются соседи — вся решающая часть,
+ * без DOM и событий. Вынесена наружу, чтобы проверяться тестами напрямую:
+ * жест руками не воспроизвести, а вот арифметику — сколько угодно.
+ */
+declare function planDrop(args: {
+    /** порядок и размеры блоков сетки-приёмника */
+    spans: Array<{
+        id: string;
+        w: number;
+        h: number;
+    }>;
+    /**
+     * Раскладка, по которой считать пороги, — та, что сейчас видна. Не задана —
+     * берём укладку самих spans (первый заход в сетку).
+     */
+    base?: Array<Placed>;
+    m: Metrics;
+    /** указатель в координатах контента сетки */
+    x: number;
+    y: number;
+    /** блок гостя: id, размер и индекс, если он из ЭТОЙ же сетки */
+    drag: {
+        id: string;
+        w: number;
+        h: number;
+        fromIndex: number | null;
+    };
+}): {
+    index: number;
+    next: Array<Placed>;
+    moves: Array<{
+        id: string;
+        dx: number;
+        dy: number;
+    }>;
+    rect: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    } | null;
 };
 type DndZoneEngine = {
     attachContainer: (el: HTMLElement) => () => void;
@@ -761,27 +804,17 @@ type DndZoneEngine = {
 };
 type DndEngine = {
     grid: (name: string, opts: DndZoneOptions) => DndZoneEngine;
-    /** что тащат: сетка, блок и его размер */
     active: () => DndDragging | null;
-    /** сетка под указателем */
     over: () => string | null;
-    /** куда встанет блок: сетка и индекс вставки (для подсветки) */
-    drop: () => {
-        grid: string;
-        index: number;
-    } | null;
     destroy: () => void;
 };
-/** формат данных переноса: по нему блок узнаёт и чужой приёмник */
-declare const DND_MIME = "application/x-dumb-grid";
-declare const dndSupported: () => boolean;
 declare function createGridDndEngine(opts?: DndGroupOptions): DndEngine;
+/** Есть ли нативный DnD вообще (на тач-устройствах его нет). */
+declare const dndSupported: () => boolean;
+/** формат данных переноса — Pragmatic кладёт свои, этот остаётся для совместимости */
+declare const DND_MIME = "application/x-dumb-grid";
 
 type DndActive = DndDragging | null;
-type DndDrop = {
-    grid: string;
-    index: number;
-} | null;
 type DumbGridDndHandle = {
     /** ref на контейнер сетки */
     container: (el: HTMLElement) => void;
@@ -796,8 +829,8 @@ type DumbGridDndGroupHandle = {
     active: () => DndActive;
     /** сетка под указателем — для подсветки приёмника */
     over: () => string | null;
-    /** куда встанет блок прямо сейчас */
-    drop: () => DndDrop;
+    /** сколько строк займёт сетка, если бросить блок сейчас (0 — жеста нет) */
+    rows: (grid: string) => number;
 };
 declare function createDumbGridDndGroup(opts?: DndGroupOptions): DumbGridDndGroupHandle;
 
@@ -828,6 +861,81 @@ type DumbGridDndProps = {
     blockStyle?: JSX.CSSProperties;
 };
 declare function DumbGridDnd(props: DumbGridDndProps): JSX.Element;
+
+type DumbSortableDndProps<T> = {
+    items: Array<T>;
+    /** позвать с новым порядком (на дропе) */
+    setItems: (next: Array<T>) => void;
+    /** стабильный id элемента */
+    id: (item: T) => string;
+    /** `y` — вертикальный список (по умолчанию), `grid` — сетка плиток */
+    axis?: 'y' | 'grid';
+    disabled?: boolean;
+    /** анимировать расступание; по умолчанию да, но не при prefers-reduced-motion */
+    animate?: boolean;
+    class?: string;
+    style?: JSX.CSSProperties;
+    /** ВЕРНИ один корневой элемент — компонент привяжется прямо к нему */
+    children: (item: T, index: () => number) => JSX.Element;
+};
+declare function DumbSortableDnd<T>(props: DumbSortableDndProps<T>): JSX.Element;
+
+type SortDndOptions = {
+    /** текущий порядок id — совпадает с порядком данных */
+    order: () => Array<string>;
+    /** `y` — вертикальный список (по умолчанию), `grid` — двумерная сетка плиток */
+    axis?: () => 'y' | 'grid';
+    /** перетаскивание запрещено */
+    disabled?: () => boolean;
+    /** анимировать расступание; по умолчанию да, но не при prefers-reduced-motion */
+    animate?: boolean;
+    /** на дропе: переставить из fromIndex в toIndex (индексы в order()) */
+    onEnd?: (fromIndex: number, toIndex: number) => void;
+    /** id строки, которую тащат (null — жеста нет) */
+    onActive?: (id: string | null) => void;
+};
+type SortDndEngine = {
+    /** ref на контейнер списка */
+    attachContainer: (el: HTMLElement) => () => void;
+    /** ref на строку; ручка — дочка с [data-drag-handle] */
+    attach: (el: HTMLElement, id: string) => () => void;
+    active: () => string | null;
+    destroy: () => void;
+};
+declare function createSortDndEngine(opts: SortDndOptions): SortDndEngine;
+
+type DumbSortableDndHandle = {
+    /** ref на контейнер списка */
+    container: (el: HTMLElement) => void;
+    /** ref на строку (ручка — дочка с [data-drag-handle]) */
+    bind: (id: string) => (el: HTMLElement) => void;
+    /** id строки, которую тащат */
+    active: () => string | null;
+};
+declare function createDumbSortableDnd(opts: SortDndOptions): DumbSortableDndHandle;
+
+type Flip = {
+    /** отправить элемент на смещение (dx, dy) от его места в потоке */
+    to: (el: HTMLElement, dx: number, dy: number) => void;
+    /**
+     * Элемент УЖЕ переехал (переставили DOM, сменили `order`, изменилась
+     * раскладка) — доиграть переезд: стартовать со смещения (dx, dy), то есть со
+     * старого места, и приехать в ноль. Классический FLIP: Invert + Play.
+     */
+    nudge: (el: HTMLElement, dx: number, dy: number) => void;
+    /** снять всё разом — на завершении жеста */
+    clear: () => void;
+};
+declare function createFlip(animate: boolean): Flip;
+
+type AutoScroller = {
+    /** снять цепочку прокручиваемых уровней от элемента вверх (на старте жеста) */
+    start: (el: HTMLElement) => void;
+    /** последняя известная позиция курсора */
+    move: (x: number, y: number) => void;
+    stop: () => void;
+};
+declare function createAutoScroller(): AutoScroller;
 
 type DumbTreeNode = {
     id: number | string;
@@ -1177,4 +1285,4 @@ declare function configureImgproxy(c: ImgproxyConfig): void;
  */
 declare function imgproxyUrl(src: string, opts?: ImgproxyOps): string;
 
-export { DND_MIME, type DndActive, type DndDrop, type DndEngine, type DndGroupOptions, type DndTransferSource, type DndTransferTarget, type DndZoneEngine, type DndZoneOptions, type DumbColumn, DumbGrid, type DumbGridBlock, DumbGridDnd, type DumbGridDndGroupHandle, type DumbGridDndHandle, type DumbGridDndItem, type DumbGridDndProps, type DumbGridGroupHandle, type DumbGridHandle, type DumbGridItem, type DumbGridLayout, type DumbGridOptions, type DumbGridProps, DumbPagination, type DumbPaginationProps, DumbSortable, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type FlowMode, type FreeSpan, type GridActive, type GridEngine, type GridGroupActive, type GridGroupEngine, type GridGroupOptions, type GridPanel, type GridSpan, type GridTransferSource, type GridTransferTarget, type GridZoneEngine, type GridZoneOptions, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, type LayoutMode, type Metrics, OdataClient, type OdataClientOptions, OdataError, type OdataListResponse, type Placed, type Rect, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, type SpanLimits, type SpanPreset, type SpanValue, buildPageNumbers, cellRect, colWidth, configureImgproxy, createDumbGrid, createDumbGridDndGroup, createDumbGridGroup, createDumbSortable, createGridDndEngine, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortableGroup, dndSupported, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };
+export { type AutoScroller, DND_MIME, type DndActive, type DndEngine, type DndGroupOptions, type DndTransferSource, type DndTransferTarget, type DndZoneEngine, type DndZoneOptions, type DumbColumn, DumbGrid, type DumbGridBlock, DumbGridDnd, type DumbGridDndGroupHandle, type DumbGridDndHandle, type DumbGridDndItem, type DumbGridDndProps, type DumbGridGroupHandle, type DumbGridHandle, type DumbGridItem, type DumbGridLayout, type DumbGridOptions, type DumbGridProps, DumbPagination, type DumbPaginationProps, DumbSortable, DumbSortableDnd, type DumbSortableDndHandle, type DumbSortableDndProps, type DumbSortableHandle, type DumbSortableOptions, type DumbSortableProps, DumbTable, type DumbTableProps, DumbTree, type DumbTreeIcons, type DumbTreeLabels, type DumbTreeNode, type DumbTreeProps, type Flip, type FlowMode, type FreeSpan, type GridActive, type GridEngine, type GridGroupActive, type GridGroupEngine, type GridGroupOptions, type GridPanel, type GridSpan, type GridTransferSource, type GridTransferTarget, type GridZoneEngine, type GridZoneOptions, type ImgFit, type ImgFormat, type ImgGravity, type ImgproxyConfig, type ImgproxyOps, type IntersectMode, type LayoutMode, type Metrics, OdataClient, type OdataClientOptions, OdataError, type OdataListResponse, type Placed, type Rect, ResizableGrid, type ResizableGridProps, Rub0, Rub0R, Rub2, Rub4, RubR2, SelectionArea, type SelectionAreaProps, type SelectionCoreOptions, type SortDndEngine, type SortDndOptions, type SortableGroupHandle, type SortableGroupOptions, type SortableListHandle, type SortableListOptions, type SpanLimits, type SpanPreset, type SpanValue, buildPageNumbers, cellRect, colWidth, configureImgproxy, createAutoScroller, createDumbGrid, createDumbGridDndGroup, createDumbGridGroup, createDumbSortable, createDumbSortableDnd, createFlip, createGridDndEngine, createGridEngine, createGridGroupEngine, createOdataClient, createSelectionArea, createSortDndEngine, createSortableGroup, dndSupported, extractImagesFromZip, firstFreeCell, fitSpan, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, insertIndex, mergeLayout, moveDeltas, odataString, overlaps, packFlow, placeFree, planDrop, pointToCell, resolveSpan, rowCount, snapSpan, spanSize, timeAgo, toBase64 };

@@ -177,8 +177,8 @@ export default function KanbanExample() {
       </div>
 
       <style>{`
-        .kb-example { padding: 16px; max-width: 1100px; margin: 0 auto; color: #0f172a }
-        .kb-example .intro { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 76ch }
+        .kb-example { padding: 16px 20px; color: #0f172a }
+        .kb-example .intro { margin: 0 0 8px; font-size: 13px; color: #64748b }
 
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
                    font-size: 13px; min-height: 20px }

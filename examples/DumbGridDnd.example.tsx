@@ -99,9 +99,9 @@ export default function DumbGridDndExample() {
       </div>
 
       <style>{`
-        .dnd-example { padding: 16px; max-width: 1000px; margin: 0 auto; color: #0f172a }
+        .dnd-example { padding: 16px 20px; color: #0f172a }
         .dnd-example h3 { margin: 0 0 4px }
-        .dnd-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b; max-width: 84ch }
+        .dnd-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
         .dnd-example .bar { margin: 0 0 12px; font-size: 13px; min-height: 18px }
         .dnd-example .log { color: #64748b }
 

@@ -219,8 +219,8 @@ export default function DumbTableExample() {
       </div>
 
       <style>{`
-        .dt-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a }
-        .dt-example .intro { margin: 0 0 12px; font-size: 13px; color: #64748b; max-width: 72ch }
+        .dt-example { padding: 16px 20px; color: #0f172a }
+        .dt-example .intro { margin: 0 0 12px; font-size: 13px; color: #64748b }
 
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
                    font-size: 13px; min-height: 20px; flex-wrap: wrap }

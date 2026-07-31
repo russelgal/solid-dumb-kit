@@ -218,9 +218,9 @@ export default function BoardExample() {
       />
 
       <style>{`
-        .bd-example { padding: 16px; max-width: 1100px; margin: 0 auto; color: #0f172a }
+        .bd-example { padding: 16px 20px; color: #0f172a }
         .bd-example h3 { margin: 0 0 4px }
-        .bd-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b; max-width: 82ch }
+        .bd-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
         .bd-example .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
                            margin: 0 0 12px; font-size: 13px }
         .bd-example .switch { display: inline-flex; gap: 6px; align-items: center;

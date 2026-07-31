@@ -7,10 +7,10 @@ import { packFlow, resolveSpan, rowCount, type SpanValue } from '../DumbGrid/gri
 // Отдельный компонент, а не режим `DumbGrid`: механики жеста разные, и сводить
 // их в один код — то, чем уже ломали рабочее. Общая только математика раскладки.
 //
-// Пока идёт жест, сетка показывает БУДУЩИЙ результат: блоки расступаются, а на
-// месте перетаскиваемого — он сам (приглушённый) либо, если он гость из другой
-// сетки, контур его размера. Это и есть «видно, куда встанет»: не полоска рядом,
-// а настоящая раскладка. Анимации нет — перестановка мгновенная.
+// Раскладку рисует компонент, а всё, что происходит во время жеста, — движок:
+// соседи расступаются трансформом (FLIP), на будущем месте стоит контур. DOM при
+// этом не переставляется вовсе, поэтому под курсором ничего не скачет и моргать
+// нечему — блоки просто едут.
 //
 // Состояния здесь нет вовсе: порядок блоков — это порядок `items`, и правит его
 // потребитель по `onReorder` / `onTransfer`. Так первая версия остаётся честной
@@ -70,41 +70,44 @@ export function DumbGridDnd(props: DumbGridDndProps) {
   const g = group.grid(name(), {
     order: () => props.items.map((it) => it.id),
     spanOf: (id) => spans().find((s) => s.id === id) ?? { w: 1, h: 1 },
+    // метрики нужны движку, чтобы считать место вставки арифметикой,
+    // а не по тому, какой блок сейчас под курсором
+    cols,
+    rowHeight: rowH,
+    gapX: gap,
+    gapY: gap,
     disabled: () => props.disabled === true,
     onReorder: (from, to) => props.onReorder?.(from, to),
   })
 
-  /** id контура, который стоит на месте будущего гостя */
-  const GHOST = '\u0000dnd-ghost'
-
-  /**
-   * Порядок, который показываем прямо сейчас. Пока жеста нет — обычный; во время
-   * жеста — с блоком на его будущем месте. Гость из чужой сетки появляется здесь
-   * контуром своего размера, поэтому соседи расступаются точно так же, как после
-   * дропа.
-   */
-  const viewSpans = createMemo(() => {
-    const base = spans()
-    const drop = group.drop()
-    const dragging = group.active()
-    if (!drop || !dragging || drop.grid !== name()) return base
-
-    if (dragging.grid === name()) {
-      const from = base.findIndex((s) => s.id === dragging.id)
-      if (from < 0) return base
-      const rest = base.filter((_, i) => i !== from)
-      const at = Math.max(0, Math.min(rest.length, drop.index))
-      return [...rest.slice(0, at), base[from], ...rest.slice(at)]
-    }
-    const at = Math.max(0, Math.min(base.length, drop.index))
-    const ghost = { id: GHOST, w: Math.min(dragging.w, cols()), h: dragging.h }
-    return [...base.slice(0, at), ghost, ...base.slice(at)]
-  })
-
-  const placed = createMemo(() => packFlow(viewSpans(), cols()))
+  // Раскладка ОДНА и та же весь жест: превью движок показывает трансформом,
+  // поэтому пересчитывать её на каждое движение не нужно.
+  const placed = createMemo(() => packFlow(spans(), cols()))
   const posById = createMemo(() => new Map(placed().map((p) => [p.id, p])))
   const rows = createMemo(() => rowCount(placed()))
-  const ghostPos = () => posById().get(GHOST)
+
+  /**
+   * Высоту во время жеста диктует движок: он один знает, какой станет раскладка,
+   * если бросить блок прямо сейчас. Сами позиции блоков при этом не трогаем —
+   * они едут трансформом, а перестановка под курсором вернула бы дребезг.
+   *
+   * Нужно это не только для вида: пока контейнер прежней высоты, разъехавшиеся
+   * блоки торчат за его краем, и курсор над ними оказывается вне зоны приёма —
+   * дроп туда не проходит.
+   */
+  const liveRows = () => {
+    const base = Math.max(rows(), group.rows(name()))
+    // Лишняя строка снизу нужна затем, что под последним блоком иначе сразу
+    // кончается контейнер, а с ним и зона приёма: уронить блок «в конец» некуда,
+    // курсор там уже вне цели.
+    //
+    // Но держим её только там, где ронять и правда собираются — у сетки-источника
+    // и у той, над которой курсор. Иначе на каждый чужой жест дёргаются все сетки
+    // группы разом, и это заметно шумит.
+    const a = group.active()
+    const mine = a && (a.grid === name() || group.over() === name())
+    return mine ? base + 1 : base
+  }
 
   return (
     <div
@@ -112,60 +115,43 @@ export function DumbGridDnd(props: DumbGridDndProps) {
       class={props.class}
       style={{
         display: 'grid',
+        // контур будущего места движок кладёт сюда абсолютом — без этого он
+        // считался бы от body и улетал в угол страницы
+        position: 'relative',
         'grid-template-columns': `repeat(${cols()}, minmax(0, 1fr))`,
         'grid-auto-rows': `${rowH()}px`,
         gap: `${gap()}px`,
-        'min-height': `${rows() * rowH() + Math.max(0, rows() - 1) * gap()}px`,
+        'min-height': `${(() => {
+          const n = liveRows()
+          return n * rowH() + Math.max(0, n - 1) * gap()
+        })()}px`,
+        // высота меняется на входе гостя — плавно, чтобы не прыгало
+        transition: 'min-height .15s ease',
         ...props.style,
       }}
     >
-      {/* место будущего гостя: контур ровно того размера, каким блок сюда сядет */}
-      <Show when={ghostPos()}>
-        {(p) => (
-          <div
-            data-dnd-ghost
-            aria-hidden="true"
-            style={{
-              'grid-column': `${p().col + 1} / span ${p().w}`,
-              'grid-row': `${p().row + 1} / span ${p().h}`,
-              'pointer-events': 'none',
-              'box-sizing': 'border-box',
-              'border-radius': '10px',
-              background: 'rgba(59,130,246,.10)',
-              outline: '2px dashed rgba(59,130,246,.85)',
-              'outline-offset': '-2px',
-            }}
-          />
-        )}
-      </Show>
-
       <For each={props.items}>
         {(it) => {
           const pos = () => posById().get(it.id)
           const dragging = () => g.active() === it.id
           return (
-            <Show when={pos()}>
-              {(p) => (
-                <div
-                  ref={props.disabled ? undefined : g.bind(it.id)}
-                  class={props.blockClass}
-                  style={{
-                    // позицию считаем мы, браузер её не домысливает
-                    'grid-column': `${p().col + 1} / span ${p().w}`,
-                    'grid-row': `${p().row + 1} / span ${p().h}`,
-                    position: 'relative',
-                    'min-width': '0',
-                    'min-height': '0',
-                    'box-sizing': 'border-box',
-                    cursor: props.disabled ? 'default' : 'grab',
-                    opacity: dragging() ? '0.4' : undefined,
-                    ...props.blockStyle,
-                  }}
-                >
-                  {it.content()}
-                </div>
-              )}
-            </Show>
+            <div
+              ref={props.disabled ? undefined : g.bind(it.id)}
+              class={props.blockClass}
+              style={{
+                // позицию считаем мы, браузер её не домысливает
+                'grid-column': `${(pos()?.col ?? 0) + 1} / span ${pos()?.w ?? 1}`,
+                'grid-row': `${(pos()?.row ?? 0) + 1} / span ${pos()?.h ?? 1}`,
+                position: 'relative',
+                'min-width': '0',
+                'min-height': '0',
+                'box-sizing': 'border-box',
+                cursor: props.disabled ? 'default' : 'grab',
+                ...props.blockStyle,
+              }}
+            >
+              {it.content()}
+            </div>
           )
         }}
       </For>

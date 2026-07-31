@@ -10,12 +10,12 @@ export {
   type DumbGridDndGroupHandle,
   type DumbGridDndHandle,
   type DndActive,
-  type DndDrop,
 } from './solid'
 
 // Движок без привязки к фреймворку
 export {
   createGridDndEngine,
+  planDrop,
   dndSupported,
   DND_MIME,
   type DndEngine,

@@ -4,7 +4,6 @@ import { createSignal, onCleanup } from 'solid-js'
 import { createGridDndEngine, type DndDragging, type DndGroupOptions, type DndZoneOptions } from './dndCore'
 
 export type DndActive = DndDragging | null
-export type DndDrop = { grid: string; index: number } | null
 
 export type DumbGridDndHandle = {
   /** ref на контейнер сетки */
@@ -21,20 +20,22 @@ export type DumbGridDndGroupHandle = {
   active: () => DndActive
   /** сетка под указателем — для подсветки приёмника */
   over: () => string | null
-  /** куда встанет блок прямо сейчас */
-  drop: () => DndDrop
+  /** сколько строк займёт сетка, если бросить блок сейчас (0 — жеста нет) */
+  rows: (grid: string) => number
 }
 
 export function createDumbGridDndGroup(opts: DndGroupOptions = {}): DumbGridDndGroupHandle {
   const [active, setActive] = createSignal<DndActive>(null)
   const [over, setOver] = createSignal<string | null>(null)
-  const [drop, setDrop] = createSignal<DndDrop>(null)
-
+  const [rows, setRows] = createSignal<Record<string, number>>({})
   const engine = createGridDndEngine({
     ...opts,
     onActive: (state) => { setActive(state); opts.onActive?.(state) },
     onOver: (name) => { setOver(name); opts.onOver?.(name) },
-    onDropTarget: (target) => { setDrop(target); opts.onDropTarget?.(target) },
+    onRows: (grid, n) => {
+      setRows((prev) => (prev[grid] === n ? prev : { ...prev, [grid]: n }))
+      opts.onRows?.(grid, n)
+    },
   })
   onCleanup(engine.destroy)
 
@@ -52,6 +53,6 @@ export function createDumbGridDndGroup(opts: DndGroupOptions = {}): DumbGridDndG
     },
     active,
     over,
-    drop,
+    rows: (grid) => rows()[grid] ?? 0,
   }
 }

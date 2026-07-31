@@ -163,8 +163,8 @@ export default function DumbTreeExample() {
       </div>
 
       <style>{`
-        .tree-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a }
-        .tree-example .intro { margin: 0 0 16px; font-size: 13px; color: #64748b; max-width: 68ch }
+        .tree-example { padding: 16px 20px; color: #0f172a }
+        .tree-example .intro { margin: 0 0 16px; font-size: 13px; color: #64748b }
         .tree-example .cols { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap }
         .tree-example h3 { margin: 0 0 8px; font-size: 14px }
         .tree-example .side { flex: 1; min-width: 240px }

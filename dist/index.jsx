@@ -3275,189 +3275,561 @@ function DumbGrid(props) {
 }
 
 // src/DumbGridDnd/DumbGridDnd.tsx
-import { createMemo as createMemo2, For as For4, Show as Show3 } from "solid-js";
+import { createMemo as createMemo2, For as For4 } from "solid-js";
 
 // src/DumbGridDnd/solid.ts
 import { createSignal as createSignal4, onCleanup as onCleanup4 } from "solid-js";
 
 // src/DumbGridDnd/dndCore.ts
-var DND_MIME = "application/x-dumb-grid";
-var dndSupported = () => typeof DataTransfer === "function" && typeof DragEvent === "function";
+import {
+  draggable,
+  dropTargetForElements,
+  monitorForElements
+} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+
+// src/shared/autoScroll.ts
+var SCROLLABLE = /(auto|scroll|overlay)/;
+var MAX_STEP = 18;
+function createAutoScroller() {
+  let levels = [];
+  let x = 0;
+  let y = 0;
+  let raf = 0;
+  let live = false;
+  let echo = 0;
+  const onNativeDrag = (ev) => {
+    if (!ev.clientX && !ev.clientY) return;
+    x = ev.clientX;
+    y = ev.clientY;
+    wake();
+  };
+  const onScroll = (ev) => {
+    if (echo > 0) {
+      echo = 0;
+      return;
+    }
+    const t = ev.target;
+    for (const level of levels) {
+      if (level.el ? t === level.el : t === document || t === document.documentElement) {
+        level.pos = level.el ? level.el.scrollTop : window.scrollY;
+        return;
+      }
+    }
+  };
+  function step() {
+    for (const level of levels) {
+      if (x < level.left - EDGE || x > level.right + EDGE) continue;
+      const speed = autoScrollSpeed({
+        pointerY: y,
+        viewTop: level.top,
+        clientH: level.bottom - level.top,
+        scrollY: level.pos,
+        scrollMax: level.max
+      });
+      if (!speed) continue;
+      const capped = Math.max(-MAX_STEP, Math.min(MAX_STEP, speed));
+      const next = Math.max(0, Math.min(level.max, level.pos + capped));
+      if (next === level.pos) continue;
+      level.pos = next;
+      echo++;
+      if (level.el) level.el.scrollTop = next;
+      else window.scrollTo(window.scrollX, next);
+      return true;
+    }
+    return false;
+  }
+  function frame() {
+    if (!live) return;
+    if (!step()) {
+      raf = 0;
+      return;
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  function wake() {
+    if (live && !raf) raf = requestAnimationFrame(frame);
+  }
+  return {
+    start(el) {
+      levels = [];
+      let node = el;
+      while (node && node !== document.body && node !== document.documentElement) {
+        const style = getComputedStyle(node);
+        if (SCROLLABLE.test(style.overflowY) || SCROLLABLE.test(style.overflowX)) {
+          const r = node.getBoundingClientRect();
+          levels.push({
+            el: node,
+            top: r.top,
+            bottom: r.bottom,
+            left: r.left,
+            right: r.right,
+            max: node.scrollHeight - node.clientHeight,
+            pos: node.scrollTop
+          });
+        }
+        node = node.parentElement;
+      }
+      levels.push({
+        el: null,
+        top: 0,
+        bottom: window.innerHeight,
+        left: 0,
+        right: window.innerWidth,
+        max: (document.scrollingElement?.scrollHeight ?? 0) - window.innerHeight,
+        pos: window.scrollY
+      });
+      live = true;
+      document.addEventListener("drag", onNativeDrag, true);
+      document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+      wake();
+    },
+    move(nextX, nextY) {
+      x = nextX;
+      y = nextY;
+      wake();
+    },
+    stop() {
+      live = false;
+      echo = 0;
+      document.removeEventListener("drag", onNativeDrag, true);
+      document.removeEventListener("scroll", onScroll, true);
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      levels = [];
+    }
+  };
+}
+
+// src/shared/flip.ts
+var DUR = 380;
+var EASE = "cubic-bezier(.2,.8,.2,1)";
+var C = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 };
+var curve = (a, b, t) => {
+  const u = 1 - t;
+  return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t;
+};
+function progress(p) {
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  let t = p;
+  for (let i = 0; i < 4; i++) {
+    const x = curve(C.x1, C.x2, t) - p;
+    const u = 1 - t;
+    const d = 3 * u * u * C.x1 + 6 * u * t * (C.x2 - C.x1) + 3 * t * t * (1 - C.x2);
+    if (Math.abs(d) < 1e-6) break;
+    t -= x / d;
+  }
+  return curve(C.y1, C.y2, Math.max(0, Math.min(1, t)));
+}
+function createFlip(animate) {
+  const live = /* @__PURE__ */ new Map();
+  function at(cur) {
+    if (!cur) return { x: 0, y: 0 };
+    if (!cur.anim) return { x: cur.toX, y: cur.toY };
+    const e = progress(Number(cur.anim.currentTime ?? 0) / DUR);
+    return {
+      x: cur.fromX + (cur.toX - cur.fromX) * e,
+      y: cur.fromY + (cur.toY - cur.fromY) * e
+    };
+  }
+  function release(el, anim) {
+    anim.finished.then(() => {
+      if (live.get(el)?.anim !== anim) return;
+      anim.cancel();
+      live.delete(el);
+    }).catch(() => {
+    });
+  }
+  return {
+    nudge(el, dx, dy) {
+      const cur = live.get(el);
+      const now = at(cur);
+      cur?.anim?.cancel();
+      const fromX = now.x + dx;
+      const fromY = now.y + dy;
+      if (!animate || !fromX && !fromY) {
+        el.style.transform = "";
+        live.delete(el);
+        return;
+      }
+      const anim = el.animate(
+        [
+          { transform: `translate(${fromX}px,${fromY}px)` },
+          { transform: "translate(0px,0px)" }
+        ],
+        { duration: DUR, easing: EASE, fill: "forwards" }
+      );
+      live.set(el, { anim, fromX, fromY, toX: 0, toY: 0 });
+      release(el, anim);
+    },
+    to(el, dx, dy) {
+      const cur = live.get(el);
+      const atX = cur ? cur.toX : 0;
+      const atY = cur ? cur.toY : 0;
+      if (atX === dx && atY === dy) return;
+      if (!animate) {
+        el.style.transform = dx || dy ? `translate(${dx}px,${dy}px)` : "";
+        if (dx || dy)
+          live.set(el, {
+            anim: null,
+            fromX: dx,
+            fromY: dy,
+            toX: dx,
+            toY: dy
+          });
+        else live.delete(el);
+        return;
+      }
+      const now = at(cur);
+      const fromX = now.x;
+      const fromY = now.y;
+      cur?.anim?.cancel();
+      const anim = el.animate(
+        [
+          { transform: `translate(${fromX}px,${fromY}px)` },
+          { transform: `translate(${dx}px,${dy}px)` }
+        ],
+        { duration: DUR, easing: EASE, fill: "forwards" }
+      );
+      live.set(el, { anim, fromX, fromY, toX: dx, toY: dy });
+      if (!dx && !dy) release(el, anim);
+    },
+    clear() {
+      for (const [el, st] of live) {
+        st.anim?.cancel();
+        el.style.transform = "";
+      }
+      live.clear();
+    }
+  };
+}
+
+// src/DumbGridDnd/dndCore.ts
+function insertIndexReading(args) {
+  const { base, dragId, m, x, y } = args;
+  let k = 0;
+  for (const p of base) {
+    if (p.id === dragId) continue;
+    const r = cellRect(p, m);
+    if (p.w >= m.cols) {
+      if (y > r.y + r.height / 2) k++;
+      continue;
+    }
+    if (y > r.y + r.height) k++;
+    else if (y >= r.y && x > r.x + r.width / 2) k++;
+  }
+  return k;
+}
+function planDrop(args) {
+  const { spans, m, x, y, drag } = args;
+  const home = drag.fromIndex !== null;
+  const layout = packFlow(spans, m.cols);
+  const base = args.base ?? layout;
+  const index = insertIndexReading({ base, dragId: drag.id, m, x, y });
+  let next;
+  if (home) {
+    next = packFlow(reorder(spans, drag.fromIndex, index), m.cols);
+  } else {
+    const merged = spans.slice();
+    merged.splice(index, 0, { id: drag.id, w: Math.min(drag.w, m.cols), h: drag.h });
+    next = packFlow(merged, m.cols);
+  }
+  const me = next.find((b) => b.id === drag.id);
+  return {
+    index,
+    next,
+    // сдвиги считаем от НАСТОЯЩЕЙ укладки: transform у блоков абсолютный,
+    // а не накопительный — иначе они уезжали бы дважды
+    moves: moveDeltas({ base: layout, next, m, skipId: drag.id }),
+    rect: me ? cellRect(me, m) : null
+  };
+}
+var SLIDE5 = "transform .18s cubic-bezier(.2,.8,.2,1)";
+var PREVIEW_BG3 = "rgba(59,130,246,.10)";
+var PREVIEW_LINE3 = "2px dashed rgba(59,130,246,.85)";
 function createGridDndEngine(opts = {}) {
   const zones = /* @__PURE__ */ new Map();
   let drag = null;
   let over = null;
+  let stopMonitor = null;
+  const boxes = /* @__PURE__ */ new Map();
+  const scroller = createAutoScroller();
   const setOver = (name) => {
     if (over === name) return;
     over = name;
     opts.onOver?.(name);
   };
-  function markDrop(zoneName, index) {
-    if (!drag) return;
-    if (drag.toZone === zoneName && drag.toIndex === index) return;
-    drag.toZone = zoneName;
-    drag.toIndex = index;
-    opts.onDropTarget?.({ grid: zoneName, index });
+  const metricsOf = (z) => {
+    const cols = Math.max(1, Math.floor(z.opts.cols()));
+    const gapX = z.opts.gapX();
+    return { cols, colW: colWidth(z.contentW, cols, gapX), rowH: z.opts.rowHeight(), gapX, gapY: z.opts.gapY() };
+  };
+  function snapshotZones(cb) {
+    const targets = [];
+    for (const z of zones.values()) if (z.el) targets.push(z.el);
+    if (!targets.length || typeof IntersectionObserver !== "function") {
+      cb();
+      return;
+    }
+    let batches = 0;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const name = e.target.dataset.dndZone;
+        if (name) boxes.set(name, { left: e.boundingClientRect.left, top: e.boundingClientRect.top });
+      }
+      batches++;
+      if (boxes.size < targets.length && batches < 4) return;
+      io.disconnect();
+      cb();
+    });
+    for (const t of targets) io.observe(t);
   }
-  function clearDrag() {
+  function snapOf(zone) {
+    const box = zone.el ? boxes.get(zone.name) : null;
+    if (!zone.el || !box) return null;
+    const m = metricsOf(zone);
+    const spans = zone.opts.order().map((id) => ({ id, ...zone.opts.spanOf(id) }));
+    return {
+      zone,
+      m,
+      base: packFlow(spans, m.cols),
+      left: box.left + zone.padLeft,
+      top: box.top + zone.padTop,
+      winX: window.scrollX,
+      winY: window.scrollY
+    };
+  }
+  function pointIn(s, x, y) {
+    return {
+      x: x - (s.left - (window.scrollX - s.winX)),
+      y: y - (s.top - (window.scrollY - s.winY))
+    };
+  }
+  const snapFor = (d, zone) => {
+    let s = d.snaps.get(zone.name);
+    if (!s) {
+      const fresh = snapOf(zone);
+      if (!fresh) return null;
+      d.snaps.set(zone.name, s = fresh);
+    }
+    return s;
+  };
+  function slide(d, zone, moves) {
+    for (const mv of moves) {
+      const el = zone.els.get(mv.id);
+      if (!el || el === d.el) continue;
+      d.touched.add(el);
+      d.flip.to(el, mv.dx, mv.dy);
+    }
+  }
+  function calm(d) {
+    for (const el of d.touched) d.flip.to(el, 0, 0);
+    d.touched.clear();
+  }
+  function unarm(d) {
+    d.flip.clear();
+    d.touched.clear();
+  }
+  function showPreview(d, zone, rect) {
+    if (!zone.el) return;
+    if (d.preview && d.previewZone !== zone.name) {
+      d.preview.remove();
+      d.preview = null;
+    }
+    if (!d.preview) {
+      const box = document.createElement("div");
+      box.dataset.dndGhost = "";
+      box.setAttribute("aria-hidden", "true");
+      box.style.cssText = [
+        "position:absolute",
+        "left:0",
+        "top:0",
+        "pointer-events:none",
+        "box-sizing:border-box",
+        "border-radius:10px",
+        "z-index:5",
+        `background:${PREVIEW_BG3}`,
+        `outline:${PREVIEW_LINE3}`,
+        "outline-offset:-2px"
+      ].join(";");
+      if (shouldAnimate(opts.animate)) box.style.transition = SLIDE5;
+      zone.el.appendChild(box);
+      d.preview = box;
+      d.previewZone = zone.name;
+    }
+    d.preview.style.width = `${rect.width}px`;
+    d.preview.style.height = `${rect.height}px`;
+    d.preview.style.transform = `translate(${rect.x}px,${rect.y}px)`;
+  }
+  function update(d, zone, x, y) {
+    if (!boxes.size) return;
+    const s = snapFor(d, zone);
+    if (!s) return;
+    const home = zone.name === d.fromZone;
+    const p = pointIn(s, x, y);
+    const plan = planDrop({
+      spans: zone.opts.order().map((id) => ({ id, ...zone.opts.spanOf(id) })),
+      base: d.toZone === zone.name ? d.view : void 0,
+      m: s.m,
+      x: p.x,
+      y: p.y,
+      drag: { id: d.id, ...d.span, fromIndex: home ? d.fromIndex : null }
+    });
+    const k = plan.index;
+    if (zone.name === d.toZone && k === d.toIndex) return;
+    if (zone.name !== d.toZone) calm(d);
+    d.toZone = zone.name;
+    d.toIndex = k;
+    d.view = plan.next;
+    slide(d, zone, plan.moves);
+    if (plan.rect) showPreview(d, zone, plan.rect);
+    opts.onRows?.(zone.name, rowCount(plan.next));
+  }
+  function endDrag() {
     if (!drag) return;
-    drag.el.style.opacity = "";
+    scroller.stop();
+    const d = drag;
+    for (const name of d.snaps.keys()) opts.onRows?.(name, 0);
+    unarm(d);
+    d.preview?.remove();
+    d.el.style.opacity = "";
     drag = null;
     setOver(null);
-    opts.onDropTarget?.(null);
     opts.onActive?.(null);
   }
-  function accepted(zone) {
-    if (!drag) return false;
-    if (zone.name === drag.fromZone) return true;
-    return !zone.opts.accepts || zone.opts.accepts(drag.fromZone);
-  }
-  function onDragStart(zone, id, el, ev) {
-    if (!ev.dataTransfer || zone.opts.disabled?.()) {
-      ev.preventDefault();
-      return;
-    }
-    if (ev.target instanceof Element) {
-      if (ev.target.closest("[data-grid-resize]")) {
-        ev.preventDefault();
-        return;
+  function ensureMonitor() {
+    if (stopMonitor) return;
+    stopMonitor = monitorForElements({
+      canMonitor: ({ source }) => Boolean(source.data?.dumbGridId),
+      onDrag({ location }) {
+        if (!drag) return;
+        scroller.move(location.current.input.clientX, location.current.input.clientY);
+        for (const target of location.current.dropTargets) {
+          const name = target.data?.dumbGridZone;
+          const zone = typeof name === "string" ? zones.get(name) : null;
+          if (!zone) continue;
+          setOver(zone.name);
+          update(drag, zone, location.current.input.clientX, location.current.input.clientY);
+          return;
+        }
+        setOver(null);
+      },
+      onDrop({ location }) {
+        const d = drag;
+        if (!d) return;
+        const dropped = location.current.dropTargets.some(
+          (t) => t.data?.dumbGridZone === d.toZone
+        );
+        const { toZone, toIndex, fromZone, fromIndex, id } = d;
+        endDrag();
+        if (!dropped || toIndex < 0) return;
+        if (toZone !== fromZone) {
+          opts.onTransfer?.({ grid: fromZone, id, index: fromIndex }, { grid: toZone, index: toIndex });
+          return;
+        }
+        if (toIndex !== fromIndex) zones.get(fromZone)?.opts.onReorder?.(fromIndex, toIndex);
       }
-      if (ev.target.closest("[data-flip-id]")) {
-        ev.preventDefault();
-        return;
-      }
-      const nested = ev.target.closest("[data-dnd-block]");
-      if (nested && nested !== el) {
-        ev.preventDefault();
-        return;
-      }
-      const handle = el.querySelector("[data-drag-handle]");
-      if (handle && !handle.contains(ev.target)) {
-        ev.preventDefault();
-        return;
-      }
-    }
-    const index = zone.opts.order().indexOf(id);
-    if (index < 0) {
-      ev.preventDefault();
-      return;
-    }
-    ev.dataTransfer.effectAllowed = "move";
-    try {
-      ev.dataTransfer.setData(DND_MIME, JSON.stringify({ grid: zone.name, id }));
-    } catch {
-    }
-    try {
-      ev.dataTransfer.setData("text/plain", id);
-    } catch {
-    }
-    const span = zone.opts.spanOf?.(id) ?? { w: 1, h: 1 };
-    drag = { fromZone: zone.name, id, fromIndex: index, el, span, toZone: zone.name, toIndex: -1 };
-    setOver(zone.name);
-    opts.onActive?.({ grid: zone.name, id, ...span });
-    requestAnimationFrame(() => {
-      if (drag) el.style.opacity = "0.4";
     });
-  }
-  function onBlockOver(zone, id, el, ev, rect) {
-    if (!drag || !accepted(zone) || !rect) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-    const order = zone.opts.order().filter((x) => !(zone.name === drag.fromZone && x === drag.id));
-    const at = order.indexOf(id);
-    if (at < 0) return;
-    const after = ev.clientX > rect.left + rect.width / 2;
-    markDrop(zone.name, after ? at + 1 : at);
-    setOver(zone.name);
-  }
-  function onZoneOver(zone, ev) {
-    if (!drag || !accepted(zone)) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-    setOver(zone.name);
-    const order = zone.opts.order().filter((id) => !(zone.name === drag.fromZone && id === drag.id));
-    markDrop(zone.name, order.length);
-  }
-  function onZoneDrop(zone, ev) {
-    if (!drag || !accepted(zone)) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    const d = drag;
-    const to = { zone: d.toZone, index: d.toIndex };
-    clearDrag();
-    if (to.index < 0) return;
-    if (to.zone !== d.fromZone) {
-      opts.onTransfer?.({ grid: d.fromZone, id: d.id, index: d.fromIndex }, { grid: to.zone, index: to.index });
-      return;
-    }
-    if (to.index !== d.fromIndex) zones.get(d.fromZone)?.opts.onReorder?.(d.fromIndex, to.index);
   }
   return {
     grid(name, zoneOpts) {
-      const zone = zones.get(name) ?? { name, el: null, els: /* @__PURE__ */ new Map(), opts: zoneOpts };
+      const zone = zones.get(name) ?? {
+        name,
+        el: null,
+        els: /* @__PURE__ */ new Map(),
+        opts: zoneOpts,
+        ro: null,
+        contentW: 0,
+        padLeft: 0,
+        padTop: 0
+      };
       zone.opts = zoneOpts;
       zones.set(name, zone);
+      ensureMonitor();
       return {
         attachContainer(el) {
           zone.el = el;
-          const onEnter = (ev) => {
-            if (drag && accepted(zone)) {
-              ev.preventDefault();
-              ev.stopPropagation();
+          el.dataset.dndZone = zone.name;
+          const stop = dropTargetForElements({
+            element: el,
+            // данные статичны: считать что-то в getData значило бы считать это
+            // на каждое движение — место мы вычисляем сами и по снимку
+            getData: () => ({ dumbGridZone: zone.name }),
+            canDrop: ({ source }) => {
+              const from = source.data?.dumbGridZone;
+              if (typeof from !== "string") return false;
+              if (from === zone.name) return true;
+              return !zone.opts.accepts || zone.opts.accepts(from);
             }
-          };
-          const onOver = (ev) => onZoneOver(zone, ev);
-          const onLeave = (ev) => {
-            if (!drag || ev.relatedTarget instanceof Node && el.contains(ev.relatedTarget)) return;
-            if (over === zone.name) setOver(null);
-          };
-          const onDrop = (ev) => onZoneDrop(zone, ev);
-          el.addEventListener("dragenter", onEnter);
-          el.addEventListener("dragover", onOver);
-          el.addEventListener("dragleave", onLeave);
-          el.addEventListener("drop", onDrop);
+          });
+          let ro = null;
+          if (typeof ResizeObserver === "function") {
+            ro = new ResizeObserver((entries) => {
+              const r = entries[entries.length - 1]?.contentRect;
+              if (!r) return;
+              zone.contentW = r.width;
+              zone.padLeft = r.left;
+              zone.padTop = r.top;
+            });
+            ro.observe(el);
+            zone.ro = ro;
+          }
           return () => {
-            el.removeEventListener("dragenter", onEnter);
-            el.removeEventListener("dragover", onOver);
-            el.removeEventListener("dragleave", onLeave);
-            el.removeEventListener("drop", onDrop);
+            stop();
+            ro?.disconnect();
+            delete el.dataset.dndZone;
+            if (zone.ro === ro) zone.ro = null;
             if (zone.el === el) zone.el = null;
           };
         },
         attach(el, id) {
           zone.els.set(id, el);
           el.dataset.dndBlock = id;
-          el.setAttribute("draggable", "true");
-          let rect = null;
-          const onStart = (ev) => onDragStart(zone, id, el, ev);
-          const onEnd = () => clearDrag();
-          const onEnter = () => {
-            rect = el.getBoundingClientRect();
-          };
-          const onOver = (ev) => {
-            if (!rect) rect = el.getBoundingClientRect();
-            onBlockOver(zone, id, el, ev, rect);
-          };
-          const onLeave = () => {
-            rect = null;
-          };
-          const onDrop = (ev) => onZoneDrop(zone, ev);
-          el.addEventListener("dragstart", onStart);
-          el.addEventListener("dragend", onEnd);
-          el.addEventListener("dragenter", onEnter);
-          el.addEventListener("dragover", onOver);
-          el.addEventListener("dragleave", onLeave);
-          el.addEventListener("drop", onDrop);
+          const stop = draggable({
+            element: el,
+            canDrag: () => {
+              if (zone.opts.disabled?.()) return false;
+              return zone.opts.order().includes(id);
+            },
+            getInitialData: () => ({ dumbGridZone: zone.name, dumbGridId: id }),
+            onDragStart() {
+              const index = zone.opts.order().indexOf(id);
+              if (index < 0) return;
+              const span = zone.opts.spanOf(id);
+              boxes.clear();
+              drag = {
+                fromZone: zone.name,
+                id,
+                fromIndex: index,
+                el,
+                span,
+                toZone: zone.name,
+                toIndex: index,
+                snaps: /* @__PURE__ */ new Map(),
+                view: [],
+                touched: /* @__PURE__ */ new Set(),
+                flip: createFlip(shouldAnimate(opts.animate)),
+                preview: null,
+                previewZone: null
+              };
+              setOver(zone.name);
+              opts.onActive?.({ grid: zone.name, id, ...span });
+              el.style.opacity = "0.4";
+              scroller.start(zone.el ?? el);
+              snapshotZones(() => {
+                if (!drag || drag.id !== id) return;
+                const snap = snapOf(zone);
+                if (!snap) return;
+                drag.snaps.set(zone.name, snap);
+                drag.view = snap.base;
+              });
+            }
+            // ЗДЕСЬ убирать за собой нельзя: этот обработчик срабатывает раньше
+            // монитора, а тому ещё нужно прочитать, куда блок сел. Всё вместе —
+            // и уборку, и коммит — делает монитор.
+          });
           return () => {
-            el.removeEventListener("dragstart", onStart);
-            el.removeEventListener("dragend", onEnd);
-            el.removeEventListener("dragenter", onEnter);
-            el.removeEventListener("dragover", onOver);
-            el.removeEventListener("dragleave", onLeave);
-            el.removeEventListener("drop", onDrop);
-            el.removeAttribute("draggable");
+            stop();
             delete el.dataset.dndBlock;
             if (zone.els.get(id) === el) zone.els.delete(id);
           };
@@ -3466,19 +3838,28 @@ function createGridDndEngine(opts = {}) {
     },
     active: () => drag ? { grid: drag.fromZone, id: drag.id, ...drag.span } : null,
     over: () => over,
-    drop: () => drag && drag.toIndex >= 0 ? { grid: drag.toZone, index: drag.toIndex } : null,
     destroy() {
-      clearDrag();
+      endDrag();
+      stopMonitor?.();
+      stopMonitor = null;
+      for (const z of zones.values()) {
+        z.ro?.disconnect();
+        z.ro = null;
+        z.els.clear();
+        z.el = null;
+      }
       zones.clear();
     }
   };
 }
+var dndSupported = () => typeof DataTransfer === "function" && typeof DragEvent === "function";
+var DND_MIME = "application/x-dumb-grid";
 
 // src/DumbGridDnd/solid.ts
 function createDumbGridDndGroup(opts = {}) {
   const [active, setActive] = createSignal4(null);
   const [over, setOver] = createSignal4(null);
-  const [drop, setDrop] = createSignal4(null);
+  const [rows, setRows] = createSignal4({});
   const engine = createGridDndEngine({
     ...opts,
     onActive: (state) => {
@@ -3489,9 +3870,9 @@ function createDumbGridDndGroup(opts = {}) {
       setOver(name);
       opts.onOver?.(name);
     },
-    onDropTarget: (target) => {
-      setDrop(target);
-      opts.onDropTarget?.(target);
+    onRows: (grid, n) => {
+      setRows((prev) => prev[grid] === n ? prev : { ...prev, [grid]: n });
+      opts.onRows?.(grid, n);
     }
   });
   onCleanup4(engine.destroy);
@@ -3509,7 +3890,7 @@ function createDumbGridDndGroup(opts = {}) {
     },
     active,
     over,
-    drop
+    rows: (grid) => rows()[grid] ?? 0
   };
 }
 
@@ -3533,93 +3914,358 @@ function DumbGridDnd(props) {
   const g = group.grid(name(), {
     order: () => props.items.map((it) => it.id),
     spanOf: (id) => spans().find((s) => s.id === id) ?? { w: 1, h: 1 },
+    // метрики нужны движку, чтобы считать место вставки арифметикой,
+    // а не по тому, какой блок сейчас под курсором
+    cols,
+    rowHeight: rowH,
+    gapX: gap,
+    gapY: gap,
     disabled: () => props.disabled === true,
     onReorder: (from, to) => props.onReorder?.(from, to)
   });
-  const GHOST = "\0dnd-ghost";
-  const viewSpans = createMemo2(() => {
-    const base = spans();
-    const drop = group.drop();
-    const dragging = group.active();
-    if (!drop || !dragging || drop.grid !== name()) return base;
-    if (dragging.grid === name()) {
-      const from = base.findIndex((s) => s.id === dragging.id);
-      if (from < 0) return base;
-      const rest = base.filter((_, i) => i !== from);
-      const at2 = Math.max(0, Math.min(rest.length, drop.index));
-      return [...rest.slice(0, at2), base[from], ...rest.slice(at2)];
-    }
-    const at = Math.max(0, Math.min(base.length, drop.index));
-    const ghost = { id: GHOST, w: Math.min(dragging.w, cols()), h: dragging.h };
-    return [...base.slice(0, at), ghost, ...base.slice(at)];
-  });
-  const placed = createMemo2(() => packFlow(viewSpans(), cols()));
+  const placed = createMemo2(() => packFlow(spans(), cols()));
   const posById = createMemo2(() => new Map(placed().map((p) => [p.id, p])));
   const rows = createMemo2(() => rowCount(placed()));
-  const ghostPos = () => posById().get(GHOST);
+  const liveRows = () => {
+    const base = Math.max(rows(), group.rows(name()));
+    const a = group.active();
+    const mine = a && (a.grid === name() || group.over() === name());
+    return mine ? base + 1 : base;
+  };
   return <div
     ref={g.container}
     class={props.class}
     style={{
       display: "grid",
+      // контур будущего места движок кладёт сюда абсолютом — без этого он
+      // считался бы от body и улетал в угол страницы
+      position: "relative",
       "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
       "grid-auto-rows": `${rowH()}px`,
       gap: `${gap()}px`,
-      "min-height": `${rows() * rowH() + Math.max(0, rows() - 1) * gap()}px`,
+      "min-height": `${(() => {
+        const n = liveRows();
+        return n * rowH() + Math.max(0, n - 1) * gap();
+      })()}px`,
+      // высота меняется на входе гостя — плавно, чтобы не прыгало
+      transition: "min-height .15s ease",
       ...props.style
     }}
   >
-      {
-    /* место будущего гостя: контур ровно того размера, каким блок сюда сядет */
-  }
-      <Show3 when={ghostPos()}>
-        {(p) => <div
-    data-dnd-ghost
-    aria-hidden="true"
-    style={{
-      "grid-column": `${p().col + 1} / span ${p().w}`,
-      "grid-row": `${p().row + 1} / span ${p().h}`,
-      "pointer-events": "none",
-      "box-sizing": "border-box",
-      "border-radius": "10px",
-      background: "rgba(59,130,246,.10)",
-      outline: "2px dashed rgba(59,130,246,.85)",
-      "outline-offset": "-2px"
-    }}
-  />}
-      </Show3>
-
       <For4 each={props.items}>
         {(it) => {
     const pos = () => posById().get(it.id);
     const dragging = () => g.active() === it.id;
-    return <Show3 when={pos()}>
-              {(p) => <div
+    return <div
       ref={props.disabled ? void 0 : g.bind(it.id)}
       class={props.blockClass}
       style={{
         // позицию считаем мы, браузер её не домысливает
-        "grid-column": `${p().col + 1} / span ${p().w}`,
-        "grid-row": `${p().row + 1} / span ${p().h}`,
+        "grid-column": `${(pos()?.col ?? 0) + 1} / span ${pos()?.w ?? 1}`,
+        "grid-row": `${(pos()?.row ?? 0) + 1} / span ${pos()?.h ?? 1}`,
         position: "relative",
         "min-width": "0",
         "min-height": "0",
         "box-sizing": "border-box",
         cursor: props.disabled ? "default" : "grab",
-        opacity: dragging() ? "0.4" : void 0,
         ...props.blockStyle
       }}
     >
-                  {it.content()}
-                </div>}
-            </Show3>;
+              {it.content()}
+            </div>;
   }}
       </For4>
     </div>;
 }
 
+// src/DumbSortableDnd/DumbSortableDnd.tsx
+import { For as For5 } from "solid-js";
+
+// src/DumbSortableDnd/solid.ts
+import { createSignal as createSignal5, onCleanup as onCleanup5 } from "solid-js";
+
+// src/DumbSortableDnd/sortDndCore.ts
+import {
+  draggable as draggable2,
+  dropTargetForElements as dropTargetForElements2,
+  monitorForElements as monitorForElements2
+} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+function createSortDndEngine(opts) {
+  const els = /* @__PURE__ */ new Map();
+  let container = null;
+  let drag = null;
+  let stopMonitor = null;
+  let pressed = null;
+  const remember = (ev) => {
+    pressed = ev.target;
+  };
+  if (typeof document !== "undefined") {
+    document.addEventListener("pointerdown", remember, { capture: true, passive: true });
+  }
+  const scroller = createAutoScroller();
+  let flip = null;
+  function measure2(d) {
+    const targets = [];
+    for (const id of d.ids) {
+      const el = els.get(id);
+      if (el) targets.push(el);
+    }
+    if (!targets.length || typeof IntersectionObserver !== "function") return;
+    const rects = /* @__PURE__ */ new Map();
+    let batches = 0;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const id = e.target.dataset.sortDndId;
+        if (id) rects.set(id, e.boundingClientRect);
+      }
+      batches++;
+      if (rects.size < targets.length && batches < 4) return;
+      io.disconnect();
+      if (drag !== d) return;
+      const list = d.ids.map((id) => rects.get(id));
+      d.slots = list.map((r) => r ? { left: r.left, top: r.top } : { left: 0, top: 0 });
+      let gap = 0;
+      for (let i = 1; i < list.length; i++) {
+        const a = list[i - 1];
+        const b = list[i];
+        if (!a || !b || b.top <= a.top) continue;
+        gap = Math.max(0, b.top - (a.top + a.height));
+        break;
+      }
+      d.steps = list.map((r) => r ? r.height + gap : 0);
+      d.ready = true;
+      if (d.k !== d.from) place(d);
+    });
+    for (const t of targets) io.observe(t);
+  }
+  const idAt = (d, i) => d.ids[i < d.from ? i : i + 1];
+  const slotAt = (i, k) => i < k ? i : i + 1;
+  function shiftOf(d, i) {
+    const was = slotAt(i, d.from);
+    const now = slotAt(i, d.k);
+    if (was === now) return { dx: 0, dy: 0 };
+    if (d.grid) {
+      const a = d.slots[was];
+      const b = d.slots[now];
+      return a && b ? { dx: b.left - a.left, dy: b.top - a.top } : { dx: 0, dy: 0 };
+    }
+    return { dx: 0, dy: (now - was) * (d.steps[d.from] ?? 0) };
+  }
+  function shiftOfDrag(d) {
+    if (d.grid) {
+      const a = d.slots[d.from];
+      const b = d.slots[d.k];
+      return a && b ? { dx: b.left - a.left, dy: b.top - a.top } : { dx: 0, dy: 0 };
+    }
+    let dy = 0;
+    if (d.k > d.from) for (let i = d.from; i < d.k; i++) dy += d.steps[i + 1] ?? 0;
+    else for (let i = d.k; i < d.from; i++) dy -= d.steps[i] ?? 0;
+    return { dx: 0, dy };
+  }
+  function place(d) {
+    if (!d.ready) return;
+    const lo = Math.min(d.from, d.k);
+    const hi = Math.max(d.from, d.k);
+    const next = /* @__PURE__ */ new Set();
+    const self = shiftOfDrag(d);
+    flip?.to(d.el, self.dx, self.dy);
+    for (let i = lo; i < hi; i++) {
+      const id = idAt(d, i);
+      const el = els.get(id);
+      if (!el) continue;
+      const { dx, dy } = shiftOf(d, i);
+      if (!dx && !dy) continue;
+      flip?.to(el, dx, dy);
+      next.add(id);
+    }
+    for (const id of d.moved) {
+      if (next.has(id)) continue;
+      const el = els.get(id);
+      if (el) flip?.to(el, 0, 0);
+    }
+    d.moved = next;
+  }
+  function hover(targets) {
+    const d = drag;
+    if (!d) return;
+    for (const t of targets) {
+      const id = t.data?.sortDndId;
+      if (!id) continue;
+      if (id === d.id) return;
+      const idx = d.ids.indexOf(id);
+      if (idx < 0) return;
+      const rest = idx < d.from ? idx : idx - 1;
+      const to = rest >= d.k ? rest + 1 : rest;
+      if (to === d.k) return;
+      d.k = to;
+      place(d);
+      return;
+    }
+  }
+  function endDrag(commit) {
+    if (!drag) return;
+    const el = drag.el;
+    drag = null;
+    scroller.stop();
+    opts.onActive?.(null);
+    if (!commit) {
+      flip?.clear();
+      flip = null;
+      el.style.opacity = "";
+      return;
+    }
+    commit();
+    requestAnimationFrame(() => {
+      flip?.clear();
+      flip = null;
+      el.style.opacity = "";
+    });
+  }
+  function ensureMonitor() {
+    if (stopMonitor) return;
+    stopMonitor = monitorForElements2({
+      canMonitor: ({ source }) => Boolean(source.data?.sortDndId),
+      onDrag({ location }) {
+        if (!drag) return;
+        scroller.move(location.current.input.clientX, location.current.input.clientY);
+      },
+      // смена цели — единственный момент, когда место вообще может измениться
+      onDropTargetChange({ location }) {
+        hover(location.current.dropTargets);
+      },
+      onDrop({ location }) {
+        const d = drag;
+        if (!d) return;
+        const inside = location.current.dropTargets.some(
+          (t) => t.data?.sortDndList || t.data?.sortDndId
+        );
+        const { from, k } = d;
+        const moved = inside && k !== from;
+        endDrag(moved ? () => opts.onEnd?.(from, k) : void 0);
+      }
+    });
+  }
+  return {
+    attachContainer(el) {
+      ensureMonitor();
+      const stop = dropTargetForElements2({
+        element: el,
+        getData: () => ({ sortDndList: true }),
+        canDrop: ({ source }) => Boolean(source.data?.sortDndId)
+      });
+      container = el;
+      return () => {
+        stop();
+        if (container === el) container = null;
+      };
+    },
+    attach(el, id) {
+      els.set(id, el);
+      el.dataset.sortDndId = id;
+      ensureMonitor();
+      const stopDrop = dropTargetForElements2({
+        element: el,
+        getData: () => ({ sortDndId: id }),
+        canDrop: ({ source }) => Boolean(source.data?.sortDndId)
+      });
+      const stopDrag = draggable2({
+        element: el,
+        canDrag: () => {
+          if (opts.disabled?.()) return false;
+          const handle = el.querySelector("[data-drag-handle]");
+          if (!handle) return true;
+          return Boolean(pressed && handle.contains(pressed));
+        },
+        getInitialData: () => ({ sortDndId: id }),
+        // Картинку переноса не трогаем: нативная и так снимается с самой строки
+        // и держится за точку захвата.
+        onDragStart() {
+          const ids = opts.order();
+          const from = ids.indexOf(id);
+          if (from < 0) return;
+          drag = {
+            id,
+            el,
+            ids,
+            from,
+            k: from,
+            steps: [],
+            slots: [],
+            moved: /* @__PURE__ */ new Set(),
+            grid: opts.axis?.() === "grid",
+            ready: false
+          };
+          opts.onActive?.(id);
+          el.style.opacity = "0.35";
+          flip = createFlip(shouldAnimate(opts.animate));
+          scroller.start(container ?? el);
+          measure2(drag);
+        }
+      });
+      return () => {
+        stopDrag();
+        stopDrop();
+        delete el.dataset.sortDndId;
+        if (els.get(id) === el) els.delete(id);
+      };
+    },
+    active: () => drag?.id ?? null,
+    destroy() {
+      endDrag();
+      stopMonitor?.();
+      stopMonitor = null;
+      if (typeof document !== "undefined") {
+        document.removeEventListener("pointerdown", remember, true);
+      }
+      els.clear();
+    }
+  };
+}
+
+// src/DumbSortableDnd/solid.ts
+function createDumbSortableDnd(opts) {
+  const [active, setActive] = createSignal5(null);
+  const engine = createSortDndEngine({
+    ...opts,
+    onActive: (id) => {
+      setActive(id);
+      opts.onActive?.(id);
+    }
+  });
+  onCleanup5(engine.destroy);
+  return {
+    container: (el) => onCleanup5(engine.attachContainer(el)),
+    bind: (id) => (el) => onCleanup5(engine.attach(el, id)),
+    active
+  };
+}
+
+// src/DumbSortableDnd/DumbSortableDnd.tsx
+function DumbSortableDnd(props) {
+  const s = createDumbSortableDnd({
+    order: () => props.items.map(props.id),
+    axis: () => props.axis ?? "y",
+    disabled: () => props.disabled === true,
+    animate: props.animate,
+    onEnd: (from, to) => {
+      const next = props.items.slice();
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      props.setItems(next);
+    }
+  });
+  return <div ref={s.container} class={props.class} style={props.style}>
+      <For5 each={props.items}>
+        {(item, i) => {
+    const el = props.children(item, i);
+    if (el instanceof HTMLElement) s.bind(props.id(item))(el);
+    return el;
+  }}
+      </For5>
+    </div>;
+}
+
 // src/DumbTree/DumbTree.tsx
-import { createMemo as createMemo3, createSignal as createSignal5, For as For5, Show as Show4 } from "solid-js";
+import { createMemo as createMemo3, createSignal as createSignal6, For as For6, Show as Show4 } from "solid-js";
 import { makePersisted as makePersisted3 } from "@solid-primitives/storage";
 function fuzzy(q, text) {
   if (!q) return true;
@@ -3643,14 +4289,14 @@ function DumbTree(props) {
   const icons = () => props.icons;
   const labels = () => ({ ...DEFAULT_LABELS, ...props.labels });
   const activeId = () => props.activeId?.();
-  const [q, setQ] = createSignal5("");
+  const [q, setQ] = createSignal6("");
   const key = props.storageKey ?? "dumb-tree";
-  const [expanded, setExpanded] = makePersisted3(createSignal5(/* @__PURE__ */ new Set()), {
+  const [expanded, setExpanded] = makePersisted3(createSignal6(/* @__PURE__ */ new Set()), {
     name: `${key}:expanded`,
     serialize: (s) => JSON.stringify([...s]),
     deserialize: (str) => new Set(JSON.parse(str))
   });
-  const [sort, setSort] = makePersisted3(createSignal5("index"), {
+  const [sort, setSort] = makePersisted3(createSignal6("index"), {
     name: `${key}:sort`,
     serialize: (vv) => vv,
     deserialize: (s) => s === "name" ? "name" : "index"
@@ -3742,7 +4388,7 @@ function DumbTree(props) {
           </div>
           <Show4 when={isExpanded() && kids().length}>
             <ul class="pl-3 border-l border-base-200 ml-3">
-              <For5 each={kids()}>{(k) => <Node2 id={k.id} />}</For5>
+              <For6 each={kids()}>{(k) => <Node2 id={k.id} />}</For6>
             </ul>
           </Show4>
         </li>
@@ -3782,9 +4428,9 @@ function DumbTree(props) {
         <ul class="bg-base-100 rounded-box shadow w-full text-sm p-2 max-h-[80vh] overflow-auto">
           <Show4
     when={props.flat}
-    fallback={<For5 each={childrenOf().get(rootId()) ?? []}>{(n) => <Node2 id={n.id} />}</For5>}
+    fallback={<For6 each={childrenOf().get(rootId()) ?? []}>{(n) => <Node2 id={n.id} />}</For6>}
   >
-            <For5 each={flatList()}>
+            <For6 each={flatList()}>
               {(n) => <li ref={props.sortable ? fs.bind(String(n.id)) : void 0} class="flex items-center">
                   <Show4 when={props.sortable}>
                     <button data-drag-handle type="button" class="cursor-grab text-base-content/30 hover:text-base-content shrink-0" title="Перетащить">
@@ -3793,7 +4439,7 @@ function DumbTree(props) {
                   </Show4>
                   <RowLink node={n} icon={icons().leaf} />
                 </li>}
-            </For5>
+            </For6>
           </Show4>
         </ul>
       </Show4>
@@ -3801,7 +4447,7 @@ function DumbTree(props) {
 }
 
 // src/DumbTable/DumbTable.tsx
-import { For as For6, Show as Show5, createSignal as createSignal6, createMemo as createMemo4 } from "solid-js";
+import { For as For7, Show as Show5, createSignal as createSignal7, createMemo as createMemo4 } from "solid-js";
 import {
   createSolidTable,
   flexRender,
@@ -3819,7 +4465,7 @@ function SortMark(props) {
     </span>;
 }
 function DumbTable(props) {
-  const [localSort, setLocalSort] = createSignal6([]);
+  const [localSort, setLocalSort] = createSignal7([]);
   const serverMode = () => !!props.onSort;
   const sorting = () => serverMode() ? props.sort ? [{ id: props.sort, desc: props.order === "desc" }] : [] : localSort();
   const defs = () => props.columns.map((c) => ({
@@ -3894,12 +4540,12 @@ function DumbTable(props) {
     style={{ width: "100%", "border-collapse": "collapse" }}
   >
           <thead class={props.headClass}>
-            <For6 each={table.getHeaderGroups()}>
+            <For7 each={table.getHeaderGroups()}>
               {(hg) => <tr>
                   <Show5 when={props.onReorder && withHandle()}>
                     <th style={{ width: "1%" }} />
                   </Show5>
-                  <For6 each={hg.headers}>
+                  <For7 each={hg.headers}>
                     {(header) => {
     const c = () => colOf(header.column.columnDef);
     const canSort = () => header.column.getCanSort();
@@ -3920,16 +4566,16 @@ function DumbTable(props) {
                           </Show5>
                         </th>;
   }}
-                  </For6>
+                  </For7>
                 </tr>}
-            </For6>
+            </For7>
           </thead>
 
           <tbody>
             <Show5 when={props.spacerTop}>
               <tr aria-hidden="true" style={{ height: `${props.spacerTop}px` }} />
             </Show5>
-            <For6 each={visibleRows()}>
+            <For7 each={visibleRows()}>
               {(original) => {
     const row = () => rowOf(original);
     return <tr
@@ -3958,7 +4604,7 @@ function DumbTable(props) {
                       </span>
                     </td>
                   </Show5>
-                  <For6 each={row().getVisibleCells()}>
+                  <For7 each={row().getVisibleCells()}>
                     {(cell) => {
       const c = () => colOf(cell.column.columnDef);
       return <td
@@ -3969,10 +4615,10 @@ function DumbTable(props) {
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>;
     }}
-                  </For6>
+                  </For7>
                 </tr>;
   }}
-            </For6>
+            </For7>
             <Show5 when={props.spacerBottom}>
               <tr aria-hidden="true" style={{ height: `${props.spacerBottom}px` }} />
             </Show5>
@@ -3987,7 +4633,7 @@ function DumbTable(props) {
 }
 
 // src/DumbTable/DumbPagination.tsx
-import { For as For7, Show as Show6 } from "solid-js";
+import { For as For8, Show as Show6 } from "solid-js";
 function buildPageNumbers(current, total) {
   if (total <= 10) return Array.from({ length: total }, (_, i) => i + 1);
   const pages = [1];
@@ -4032,7 +4678,7 @@ function DumbPagination(props) {
         <span style={{ opacity: ".7", "font-size": "13px" }}>{summary()}</span>
         <Show6 when={props.pageSizes?.length && props.onPageSizeChange}>
           <div style={{ display: "flex", gap: "4px" }}>
-            <For7 each={props.pageSizes}>
+            <For8 each={props.pageSizes}>
               {(size) => <button
     class={`${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`.trim() || void 0}
     style={btn(props.pageSize === size, false)}
@@ -4040,7 +4686,7 @@ function DumbPagination(props) {
   >
                   {size}
                 </button>}
-            </For7>
+            </For8>
           </div>
         </Show6>
       </div>
@@ -4055,7 +4701,7 @@ function DumbPagination(props) {
   >
             «
           </button>
-          <For7 each={buildPageNumbers(props.page, pages())}>
+          <For8 each={buildPageNumbers(props.page, pages())}>
             {(p) => <Show6 when={p !== "\u2026"} fallback={<span style={{ padding: "3px 4px", opacity: ".4" }}>…</span>}>
                 <button
     class={`${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`.trim() || void 0}
@@ -4065,7 +4711,7 @@ function DumbPagination(props) {
                   {p}
                 </button>
               </Show6>}
-          </For7>
+          </For8>
           <button
     class={props.buttonClass}
     style={btn(false, props.page >= pages())}
@@ -4419,6 +5065,7 @@ export {
   DumbGridDnd,
   DumbPagination,
   DumbSortable,
+  DumbSortableDnd,
   DumbTable,
   DumbTree,
   OdataClient,
@@ -4434,15 +5081,19 @@ export {
   cellRect,
   colWidth,
   configureImgproxy,
+  createAutoScroller,
   createDumbGrid,
   createDumbGridDndGroup,
   createDumbGridGroup,
   createDumbSortable,
+  createDumbSortableDnd,
+  createFlip,
   createGridDndEngine,
   createGridEngine,
   createGridGroupEngine,
   createOdataClient,
   createSelectionArea,
+  createSortDndEngine,
   createSortableGroup,
   dndSupported,
   extractImagesFromZip,
@@ -4465,6 +5116,7 @@ export {
   overlaps,
   packFlow,
   placeFree,
+  planDrop,
   pointToCell,
   resolveSpan,
   rowCount,

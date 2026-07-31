@@ -51,7 +51,7 @@ export default function ResizableGridExample() {
       </div>
 
       <style>{`
-        .rg-example { padding: 16px; max-width: 980px; margin: 0 auto }
+        .rg-example { padding: 16px 20px }
         .rg-example h3 { margin: 0 0 4px }
         .rg-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
         .rg-example .frame { height: 70vh; border: 1px solid #e2e8f0;

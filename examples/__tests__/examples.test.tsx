@@ -13,6 +13,14 @@ import DumbGridDndExample from '../DumbGridDnd.example'
 import KanbanExample from '../Kanban.example'
 import UtilsExample from '../utils.example'
 import Odata1CExample from '../Odata1C.example'
+import DumbSortableDndExample from '../DumbSortableDnd.example'
+import CssOrderExample from '../CssOrder.example'
+import RawDndExample from '../RawDnd.example'
+import FlipBenchExample from '../FlipBench.example'
+import OrderKanbanExample from '../OrderKanban.example'
+import OrderBoardExample from '../OrderBoard.example'
+import OrderTableExample from '../OrderTable.example'
+import OrderTreeExample from '../OrderTree.example'
 
 const mounted: Array<() => void> = []
 afterEach(() => { mounted.splice(0).forEach((dispose) => dispose()) })
@@ -33,6 +41,14 @@ const EXAMPLES = [
   ['DumbGrid', DumbGridExample],
   ['Board', BoardExample],
   ['DumbGridDnd', DumbGridDndExample],
+  ['DumbSortableDnd', DumbSortableDndExample],
+  ['CssOrder', CssOrderExample],
+  ['RawDnd', RawDndExample],
+  ['FlipBench', FlipBenchExample],
+  ['OrderKanban', OrderKanbanExample],
+  ['OrderBoard', OrderBoardExample],
+  ['OrderTable', OrderTableExample],
+  ['OrderTree', OrderTreeExample],
   ['Kanban', KanbanExample],
   ['utils', UtilsExample],
   ['Odata1C', Odata1CExample],
@@ -534,63 +550,32 @@ describe('DumbGridDnd.example — нативная сетка', () => {
   })
 })
 
-describe('DumbGridDnd.example — видно, куда встанет блок', () => {
+describe('DumbGridDnd.example — нативная сетка', () => {
   const cells = (host: HTMLElement) =>
-    Array.from(host.querySelectorAll<HTMLElement>('div')).filter((el) => el.style.gridColumn)
-  const cellOf = (host: HTMLElement, title: string) =>
-    Array.from(host.querySelectorAll<HTMLElement>('.widget'))
-      .find((w) => w.textContent?.includes(title))!
-      .closest<HTMLElement>('[data-dnd-block]')!
+    Array.from(host.querySelectorAll<HTMLElement>('[data-dnd-block]'))
 
-  const dnd = (target: EventTarget, type: string, x = 0, transfer?: DataTransfer) => {
-    const ev = new DragEvent(type, { bubbles: true, cancelable: true })
-    if (transfer && !ev.dataTransfer) Object.defineProperty(ev, 'dataTransfer', { value: transfer })
-    Object.defineProperty(ev, 'clientX', { value: x })
-    Object.defineProperty(ev, 'clientY', { value: 40 })
-    target.dispatchEvent(ev)
-    return ev
-  }
-
-  it('во время жеста соседи расступаются: блок показан на будущем месте', () => {
+  it('две доски, блоки зарегистрированы в движке', () => {
     const host = mount(DumbGridDndExample)
-    const moved = cellOf(host, 'Возвраты')          // последний блок левой доски
-    const first = cellOf(host, 'Выручка')
-    expect(moved.style.gridRow).toBe('4 / span 1')  // до жеста — четвёртая строка
-
-    const transfer = new DataTransfer()
-    dnd(moved, 'dragstart', 10, transfer)
-    dnd(first, 'dragenter', 5, transfer)
-    dnd(first, 'dragover', 5, transfer)             // встаём сразу за «Выручкой»
-
-    // «Выручка» занимает строки 1–2, значит гость показан третьей строкой,
-    // а бывшие соседи съехали ниже — это и есть будущая раскладка
-    expect(moved.style.gridRow).toBe('3 / span 1')
-    expect(first.style.gridRow).toBe('1 / span 2')
-    expect(cellOf(host, 'Средний чек').style.gridRow).toBe('4 / span 1')
-
-    dnd(moved, 'dragend', 0, transfer)
-    expect(moved.style.gridRow).toBe('4 / span 1')  // жест отменён — всё вернулось
-    expect(cellOf(host, 'Средний чек').style.gridRow).toBe('3 / span 1')
+    expect(host.querySelectorAll('.board').length).toBe(2)
+    expect(cells(host).length).toBe(6)
   })
 
-  it('гость из другой доски показан контуром своего размера', () => {
+  it('раскладку считаем мы: широкий блок занимает 6 колонок из 6', () => {
     const host = mount(DumbGridDndExample)
-    const guest = cellOf(host, 'Выручка')           // 6 колонок × 2 строки
-    const target = cellOf(host, 'Склад')            // блок правой доски
+    const first = cells(host)[0]
+    expect(first.style.gridColumn).toBe('1 / span 6')
+    expect(first.style.gridRow).toBe('1 / span 2')
+  })
 
-    const transfer = new DataTransfer()
-    dnd(guest, 'dragstart', 10, transfer)
-    dnd(target, 'dragenter', 5, transfer)
-    dnd(target, 'dragover', 5, transfer)
-
-    // контур ровно того размера, каким блок сюда сядет: 6 колонок × 2 строки,
-    // и стоит он за «Складом», а не поверх него
-    const ghost = host.querySelector<HTMLElement>('[data-dnd-ghost]')!
-    expect(ghost).toBeTruthy()
-    expect(ghost.style.gridColumn).toBe('1 / span 6')
-    expect(ghost.style.gridRow).toBe('3 / span 2')
-
-    dnd(guest, 'dragend', 0, transfer)
+  it('до жеста ни контура, ни сдвигов', () => {
+    const host = mount(DumbGridDndExample)
     expect(host.querySelector('[data-dnd-ghost]')).toBeNull()
+    expect(cells(host).every((c) => !c.style.transform)).toBe(true)
+  })
+
+  it('указательная витрина рядом не изменилась', () => {
+    const host = mount(DumbGridExample)
+    expect(host.querySelectorAll('[data-dnd-block]').length).toBe(0)
+    expect(host.querySelectorAll('[data-grid-block]').length).toBe(7)
   })
 })

@@ -111,7 +111,7 @@ export default function DumbSortableExample() {
       <Promo />
 
       <style>{`
-        .ds-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a;
+        .ds-example { padding: 16px 20px; color: #0f172a;
                       display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap }
         .ds-example .demos { flex: 1; min-width: 320px; display: grid; gap: 28px }
 

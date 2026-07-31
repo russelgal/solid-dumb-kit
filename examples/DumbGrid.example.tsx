@@ -5,6 +5,7 @@
 // Nothing here measures a single element: column width comes from a
 // ResizeObserver on the container, everything else is arithmetic.
 import { createSignal, For, Show } from 'solid-js'
+import { Bar, Switch, Check, Pick, Btn } from './_controls'
 import { DumbGrid, type DumbGridItem } from 'solid-dumb-kit'
 
 const STORAGE_KEY = 'example:dumb-grid'
@@ -122,46 +123,41 @@ export default function DumbGridExample() {
         plain grid — no handles, no buttons, no listeners on the blocks.
       </p>
 
-      <div class="bar">
-        <label class="switch">
-          <input type="checkbox" checked={edit()} onChange={(e) => setEdit(e.currentTarget.checked)} />
-          <b>edit mode</b>
-        </label>
-        <label>
-          mode
-          <select value={mode()} onChange={(e) => setMode(e.currentTarget.value as Mode)}>
-            <option value="flow">flow — order, holes stay</option>
-            <option value="dense">dense — holes get filled</option>
-            <option value="free">free — put it anywhere</option>
-          </select>
-        </label>
-        <label>
-          grid lines
-          <select
-            value={String(showGrid())}
-            onChange={(e) => {
-              const v = e.currentTarget.value
-              setShowGrid(v === 'drag' ? 'drag' : v === 'true')
-            }}
-          >
-            <option value="drag">while dragging</option>
-            <option value="true">always</option>
-            <option value="false">never</option>
-          </select>
-        </label>
-        <label>
-          columns
-          <select value={cols()} onChange={(e) => setCols(Number(e.currentTarget.value))}>
-            <For each={[4, 6, 8, 12]}>{(n) => <option value={n}>{n}</option>}</For>
-          </select>
-        </label>
-        <label><input type="checkbox" checked={animate()} onChange={(e) => setAnimate(e.currentTarget.checked)} /> animate</label>
-        <label><input type="checkbox" checked={resizable()} onChange={(e) => setResizable(e.currentTarget.checked)} /> resizable</label>
+      <Bar>
+        <Switch checked={edit()} onChange={setEdit}>edit mode</Switch>
+        <Pick
+          label="mode"
+          value={mode()}
+          options={[
+            { value: 'flow', label: 'flow — order, holes stay' },
+            { value: 'dense', label: 'dense — holes get filled' },
+            { value: 'free', label: 'free — put it anywhere' },
+          ]}
+          onChange={(v) => setMode(v as Mode)}
+        />
+        <Pick
+          label="grid lines"
+          value={String(showGrid())}
+          options={[
+            { value: 'drag', label: 'while dragging' },
+            { value: 'true', label: 'always' },
+            { value: 'false', label: 'never' },
+          ]}
+          onChange={(v) => setShowGrid(v === 'drag' ? 'drag' : v === 'true')}
+        />
+        <Pick
+          label="columns"
+          value={cols()}
+          options={[4, 6, 8, 12].map((n) => ({ value: n }))}
+          onChange={(v) => setCols(Number(v))}
+        />
+        <Check checked={animate()} onChange={setAnimate}>animate</Check>
+        <Check checked={resizable()} onChange={setResizable}>resizable</Check>
         <For each={NEW_BLOCK}>
-          {(p) => <button onClick={() => addBlock(p.w, p.h)}>{p.label}</button>}
+          {(p) => <Btn onClick={() => addBlock(p.w, p.h)}>{p.label}</Btn>}
         </For>
-        <button onClick={reset}>Reset layout</button>
-      </div>
+        <Btn onClick={reset}>Reset layout</Btn>
+      </Bar>
 
       {/* keyed по nonce+режиму: смена значения пересоздаёт компонент. Нужно и для
           кнопки Reset (перечитать уже пустой стор), и для переключения режима —
@@ -185,19 +181,11 @@ export default function DumbGridExample() {
       </Show>
 
       <style>{`
-        .dg-example { padding: 16px; max-width: 1100px; margin: 0 auto }
+        .dg-example { padding: 16px 20px }
         .dg-example h3 { margin: 0 0 4px }
         .dg-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
-        .dg-example .bar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
-                           margin: 0 0 12px; font-size: 13px; color: #334155 }
-        .dg-example .bar label { display: inline-flex; gap: 6px; align-items: center }
-        .dg-example .switch { padding: 4px 10px; border: 1px solid #cbd5e1;
-                              border-radius: 999px; background: #fff }
         .dg-example [data-grid-remove] { border-radius: 8px }
         .dg-example [data-grid-remove]:hover { opacity: 1 !important; color: #ef4444 }
-        .dg-example .bar select, .dg-example .bar button {
-          font: inherit; padding: 4px 8px; border: 1px solid #cbd5e1;
-          border-radius: 8px; background: #fff; cursor: pointer }
 
         .dg-example .card { height: 100%; display: flex; flex-direction: column;
                             box-sizing: border-box; overflow: hidden;

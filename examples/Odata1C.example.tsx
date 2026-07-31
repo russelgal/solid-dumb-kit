@@ -222,7 +222,7 @@ export default function Odata1CExample() {
       </section>
 
       <style>{`
-        .od-example { padding: 16px; max-width: 1040px; margin: 0 auto; color: #0f172a;
+        .od-example { padding: 16px 20px; color: #0f172a;
                       display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) }
         .od-example .card { padding: 14px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff }
         .od-example .card.wide { grid-column: 1 / -1 }
