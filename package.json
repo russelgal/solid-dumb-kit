@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "version": "changeset version && pnpm i --no-frozen-lockfile && git add .",
-    "release": "pnpm build && changeset publish"
+    "release": "pnpm build && changeset tag"
   },
   "packageManager": "pnpm@10.30.1",
   "engines": {

@@ -77,9 +77,6 @@ importers:
 
   packages/grid:
     dependencies:
-      '@solid-dumb-kit/shared':
-        specifier: workspace:^
-        version: link:../shared
       '@solid-primitives/storage':
         specifier: 4.3.4
         version: 4.3.4(solid-js@1.9.14)
@@ -89,29 +86,31 @@ importers:
       valibot:
         specifier: ^1.2.0
         version: 1.4.2(typescript@6.0.3)
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/grid-dnd:
     dependencies:
       '@atlaskit/pragmatic-drag-and-drop':
         specifier: ^2.0.1
         version: 2.0.1
-      '@solid-dumb-kit/grid':
-        specifier: workspace:^
-        version: link:../grid
-      '@solid-dumb-kit/shared':
-        specifier: workspace:^
-        version: link:../shared
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/grid':
+        specifier: workspace:*
+        version: link:../grid
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/odata-1c: {}
 
   packages/resizable-grid:
     dependencies:
-      '@solid-dumb-kit/shared':
-        specifier: workspace:^
-        version: link:../shared
       '@solid-primitives/storage':
         specifier: 4.3.4
         version: 4.3.4(solid-js@1.9.14)
@@ -121,15 +120,20 @@ importers:
       valibot:
         specifier: ^1.2.0
         version: 1.4.2(typescript@6.0.3)
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/selection:
     dependencies:
-      '@solid-dumb-kit/shared':
-        specifier: workspace:^
-        version: link:../shared
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/shared:
     dependencies:
@@ -139,51 +143,55 @@ importers:
 
   packages/sortable:
     dependencies:
-      '@solid-dumb-kit/shared':
-        specifier: workspace:^
-        version: link:../shared
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/sortable-dnd:
     dependencies:
       '@atlaskit/pragmatic-drag-and-drop':
         specifier: ^2.0.1
         version: 2.0.1
-      '@solid-dumb-kit/shared':
-        specifier: workspace:^
-        version: link:../shared
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/table:
     dependencies:
-      '@solid-dumb-kit/shared':
-        specifier: workspace:^
-        version: link:../shared
-      '@solid-dumb-kit/sortable':
-        specifier: workspace:^
-        version: link:../sortable
       '@tanstack/solid-table':
         specifier: ^8.21.3
         version: 8.21.3(solid-js@1.9.14)
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@solid-dumb-kit/sortable':
+        specifier: workspace:*
+        version: link:../sortable
 
   packages/tree:
     dependencies:
-      '@solid-dumb-kit/sortable':
-        specifier: workspace:^
-        version: link:../sortable
       '@solid-primitives/storage':
         specifier: 4.3.4
         version: 4.3.4(solid-js@1.9.14)
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/sortable':
+        specifier: workspace:*
+        version: link:../sortable
 
   packages/utils:
     dependencies:

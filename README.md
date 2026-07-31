@@ -21,19 +21,21 @@ Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 ## Install
 
-The kit ships as one package per component, each with its own version. Install only what you need: `@solid-dumb-kit/table` won't drag in `@atlaskit/pragmatic-drag-and-drop`, and `@solid-dumb-kit/sortable` has no runtime deps at all.
+The kit ships as one package per component, each with its own version and its own tag. Install only what you need: `@solid-dumb-kit/table` won't drag in `@atlaskit/pragmatic-drag-and-drop`, and `@solid-dumb-kit/sortable` has no runtime deps at all.
+
+**Not on npm yet** — packages install straight from GitHub, as a subdirectory of the repo:
 
 ```bash
-pnpm add @solid-dumb-kit/table
+pnpm add "github:russelgal/solid-dumb-kit#@solid-dumb-kit/table@0.5.0&path:/packages/table"
 # peer dep:
 pnpm add solid-js
 ```
 
-Packages update **one at a time** — that's the whole point of the split:
+The `&path:/packages/<name>` tail picks the package, `#<tag>` pins the version. A prebuilt `dist/` is committed, so nothing needs building on your side.
 
-```bash
-pnpm up @solid-dumb-kit/table
-```
+Packages update **one at a time** — that's the whole point of the split: bump one tag, the rest stay put.
+
+Links between packages are compiled into the build rather than declared as dependencies: `workspace:` specifiers don't resolve over a git install. The cost is 0.1–5 KB gzip per package, and it buys the ability to install them separately.
 
 | package | what's inside | pulls in |
 | --- | --- | --- |

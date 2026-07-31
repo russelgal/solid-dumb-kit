@@ -33,8 +33,6 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@solid-dumb-kit/grid": "workspace:^",
-    "@solid-dumb-kit/shared": "workspace:^",
     "@atlaskit/pragmatic-drag-and-drop": "^2.0.1"
   },
   "peerDependencies": {
@@ -42,5 +40,9 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@solid-dumb-kit/grid": "workspace:*",
+    "@solid-dumb-kit/shared": "workspace:*"
   }
 }

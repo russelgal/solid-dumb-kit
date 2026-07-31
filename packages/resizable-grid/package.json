@@ -33,7 +33,6 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@solid-dumb-kit/shared": "workspace:^",
     "@solid-primitives/storage": "4.3.4",
     "valibot": "^1.2.0"
   },
@@ -42,5 +41,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@solid-dumb-kit/shared": "workspace:*"
   }
 }

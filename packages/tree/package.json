@@ -33,7 +33,6 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@solid-dumb-kit/sortable": "workspace:^",
     "@solid-primitives/storage": "4.3.4"
   },
   "peerDependencies": {
@@ -41,5 +40,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@solid-dumb-kit/sortable": "workspace:*"
   }
 }
