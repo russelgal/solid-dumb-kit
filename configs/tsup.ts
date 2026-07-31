@@ -1,9 +1,13 @@
-// Общий конфиг сборки: у каждого пакета `tsup.config.ts` в две строки.
+// Общий конфиг сборки — ОДИН на все пакеты, как `scripts/build.ts` у
+// solid-primitives. Пакеты зовут его через `tsup --config ../../configs/tsup.ts`
+// и своих конфигов не держат: одиннадцать копий одного файла разъезжаются
+// молча — правишь в одном месте, а девять пакетов ещё месяц собираются
+// по-старому, и узнаёшь об этом по странному багу у потребителя.
 //
-// Вынесено сюда не ради красоты. Одиннадцать копий одного конфига разъезжаются
-// молча: правишь в одном месте, а девять пакетов ещё месяц собираются по-старому,
-// и понимаешь это по странному багу у потребителя, а не по ошибке сборки.
+// Единственное, чем пакеты отличались, — расширение входа; оно определяется
+// само, по наличию файла.
 
+import { existsSync } from 'node:fs'
 import { defineConfig } from 'tsup'
 import * as preset from 'tsup-preset-solid'
 
@@ -14,31 +18,28 @@ import * as preset from 'tsup-preset-solid'
  * код, который на сервере не исполнить. Пакетам без компонентов (`shared`,
  * `utils`, `odata-1c`) хватает `.ts`.
  */
-export function solidPackage(entry = 'src/index.tsx') {
-  return defineConfig(config => {
-    const watching = !!config.watch
+const entry = () => (existsSync('src/index.tsx') ? 'src/index.tsx' : 'src/index.ts')
 
-    const parsed = preset.parsePresetOptions(
-      { entries: [{ entry }], drop_console: true, cjs: false },
-      watching,
-    )
+export default defineConfig(config => {
+  const parsed = preset.parsePresetOptions(
+    { entries: [{ entry: entry() }], drop_console: true, cjs: false },
+    !!config.watch,
+  )
 
-    // preset.writePackageJson() здесь НЕ зовём: пресет поднимает два инстанса
-    // tsup параллельно, и запись package.json на лету ловится вторым инстансом в
-    // момент усечения файла — он не видит dependencies, external становится
-    // пустым, и все зависимости инлайнятся в бандл. Симптом плавающий, сборка
-    // ломается «через раз». Поля exports в манифестах прописаны руками и так.
-    // Соседние пакеты кита ВКОМПИЛИРОВЫВАЕМ, а не оставляем внешними. Причина
-    // не в размере: пакеты ставятся подкаталогом git-репозитория, а `workspace:`
-    // при такой установке не резолвится вовсе — pnpm ищет воркспейс у
-    // потребителя и падает с ERR_PNPM_WORKSPACE_PKG_NOT_FOUND. Объявить их
-    // git-ссылками можно, но тогда версии внутренних связей пришлось бы
-    // подтягивать руками на каждый релиз.
-    //
-    // Цена — 0.1–5 КБ gzip на пакет (tsup вырезает неиспользуемое). Две копии
-    // общего кода друг другу не мешают: в `shared` и `sortable` нет состояния на
-    // уровне модуля, только фабрики.
-    const opts = preset.generateTsupOptions(parsed)
-    return opts.map((o) => ({ ...o, noExternal: [/^@solid-dumb-kit\//] }))
-  })
-}
+  // preset.writePackageJson() здесь НЕ зовём: пресет поднимает два инстанса tsup
+  // параллельно, и запись package.json на лету ловится вторым инстансом в момент
+  // усечения файла — он не видит dependencies, external становится пустым, и все
+  // зависимости инлайнятся в бандл. Симптом плавающий, сборка ломается «через
+  // раз». Поля exports в манифестах прописаны руками и так.
+  const opts = preset.generateTsupOptions(parsed)
+
+  // Соседние пакеты кита ВКОМПИЛИРОВЫВАЕМ, а не оставляем внешними. Причина не в
+  // размере: пакеты ставятся подкаталогом git-репозитория, а `workspace:` при
+  // такой установке не резолвится вовсе — pnpm ищет воркспейс у потребителя и
+  // падает с ERR_PNPM_WORKSPACE_PKG_NOT_FOUND.
+  //
+  // Цена — 0.1–5 КБ gzip на пакет (tsup вырезает неиспользуемое). Две копии
+  // общего кода друг другу не мешают: в `shared` и `sortable` нет состояния на
+  // уровне модуля, только фабрики.
+  return opts.map((o) => ({ ...o, noExternal: [/^@solid-dumb-kit\//] }))
+})

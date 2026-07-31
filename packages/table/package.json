@@ -29,8 +29,8 @@
     }
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch"
+    "build": "tsup --config ../../configs/tsup.ts",
+    "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "dependencies": {
     "@tanstack/solid-table": "^8.21.3"

@@ -28,8 +28,8 @@
     }
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch"
+    "build": "tsup --config ../../configs/tsup.ts",
+    "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "peerDependencies": {
     "solid-js": "^1.8.0"
