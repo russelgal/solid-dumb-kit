@@ -32,7 +32,7 @@ pnpm add solid-js
 Нужна воспроизводимая установка — прибей к тегу:
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit#v0.3.0
+pnpm add github:russelgal/solid-dumb-kit#v0.4.0
 ```
 
 ## Быстрый старт

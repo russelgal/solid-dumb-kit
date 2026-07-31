@@ -32,7 +32,7 @@ pnpm add solid-js
 Pin a tag for reproducible installs:
 
 ```bash
-pnpm add github:russelgal/solid-dumb-kit#v0.3.0
+pnpm add github:russelgal/solid-dumb-kit#v0.4.0
 ```
 
 ## Quick start
