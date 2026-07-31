@@ -26,12 +26,12 @@ The kit ships as one package per component, each with its own version and its ow
 **Not on npm yet** — packages install straight from GitHub, as a subdirectory of the repo:
 
 ```bash
-pnpm add "github:russelgal/solid-dumb-kit#@solid-dumb-kit/table@0.5.0&path:/packages/table"
+pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 # peer dep:
 pnpm add solid-js
 ```
 
-The `&path:/packages/<name>` tail picks the package, `#<tag>` pins the version. A prebuilt `dist/` is committed, so nothing needs building on your side.
+The `&path:/packages/<name>` tail picks the package, `#<tag>` pins the version — tags are short, named after the folder: `table@0.5.0`, `grid-dnd@0.5.0`. A prebuilt `dist/` is committed, so nothing needs building on your side.
 
 Packages update **one at a time** — that's the whole point of the split: bump one tag, the rest stay put.
 
