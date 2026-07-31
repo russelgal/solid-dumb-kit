@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/sortable",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Сортировка списка и сетки указателем: ноль forced reflow за жест",
   "license": "MIT",
   "type": "module",

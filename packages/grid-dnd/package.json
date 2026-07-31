@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/grid-dnd",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Та же сетка на нативном HTML5 drag-and-drop",
   "license": "MIT",
   "type": "module",

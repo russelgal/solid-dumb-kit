@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/table",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Таблица на TanStack: сортировка, драг строк, пагинатор",
   "license": "MIT",
   "type": "module",
