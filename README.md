@@ -26,14 +26,24 @@ The kit ships as one package per component, each with its own version and its ow
 **Not on npm yet** — packages install straight from GitHub, as a subdirectory of the repo:
 
 ```bash
-pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
+pnpm add "github:russelgal/solid-dumb-kit#path:/packages/table"
 # peer dep:
 pnpm add solid-js
 ```
 
-The `&path:/packages/<name>` tail picks the package, `#<tag>` pins the version — tags are short, named after the folder: `table@0.5.0`, `grid-dnd@0.5.0`. A prebuilt `dist/` is committed, so nothing needs building on your side.
+The `#path:/packages/<name>` tail is all you need — it picks the package. Pinning a version is optional: pnpm records the resolved commit in the lockfile, so installs stay reproducible. A prebuilt `dist/` is committed, so nothing needs building on your side.
 
-Packages update **one at a time** — that's the whole point of the split: bump one tag, the rest stay put.
+Packages update **one at a time** — that's the whole point of the split:
+
+```bash
+pnpm up @solid-dumb-kit/table
+```
+
+Want a hard pin, add a tag; they're short, named after the folder:
+
+```bash
+pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
+```
 
 Links between packages are compiled into the build rather than declared as dependencies: `workspace:` specifiers don't resolve over a git install. The cost is 0.1–5 KB gzip per package, and it buys the ability to install them separately.
 
