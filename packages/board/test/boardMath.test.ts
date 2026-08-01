@@ -1,35 +1,11 @@
-// Арифметика доски: живой жест тестами не проверить, а вот «куда встанет блок»
-// и «как лягут секции разной ширины» проверяется без DOM вообще.
+// Арифметика доски: живой жест тестами не проверить, а вот «как лягут секции
+// разной ширины» проверяется без DOM вообще.
+//
+// Блоки ВНУТРИ секции считает `packFlow` из сетки — он и покрыт тестами там,
+// вместе с ужиманием по `minW`.
 
 import { describe, it, expect } from 'vitest'
-import { moveAt, panelFlow, rowsFor, slotAt, type ZoneGeom } from '../src/boardMath'
-
-const geom = (cols: number): ZoneGeom => ({ left: 100, top: 200, stepX: 50, stepY: 40, cols })
-
-describe('slotAt — место в сетке секции', () => {
-  it('первое место совпадает с началом отсчёта', () => {
-    expect(slotAt(geom(3), 0)).toEqual({ left: 100, top: 200 })
-  })
-
-  it('в пределах строки двигается только по X', () => {
-    expect(slotAt(geom(3), 2)).toEqual({ left: 200, top: 200 })
-  })
-
-  it('за краем строки переносится на следующую', () => {
-    expect(slotAt(geom(3), 3)).toEqual({ left: 100, top: 240 })
-    expect(slotAt(geom(3), 4)).toEqual({ left: 150, top: 240 })
-  })
-
-  it('без снимка возвращает null, а не мусор — до замера жест просто не двигает', () => {
-    expect(slotAt(undefined, 0)).toBeNull()
-  })
-})
-
-describe('rowsFor — сколько строк занимают блоки', () => {
-  it('делится нацело', () => expect(rowsFor(6, 3)).toBe(2))
-  it('остаток занимает целую строку', () => expect(rowsFor(7, 3)).toBe(3))
-  it('пустая секция всё равно строка — иначе ей некуда ронять', () => expect(rowsFor(0, 3)).toBe(1))
-})
+import { moveAt, panelFlow } from '../src/boardMath'
 
 describe('panelFlow — поток секций разной ширины', () => {
   const opts = { cols: 12, colW: 100, gap: 10, origin: { left: 0, top: 0 } }

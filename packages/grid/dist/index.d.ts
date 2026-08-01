@@ -70,8 +70,15 @@ declare function spanSize(n: number, unit: number, gap: number): number;
  * Результат отдаётся блокам как ЯВНЫЕ `grid-column-start`/`grid-row-start`, а не
  * как auto-flow: браузер тогда не «домысливает» раскладку, и наша арифметика для
  * FLIP гарантированно описывает то, что нарисовано.
+ *
+ * У блока может быть `minW` — ширина, до которой он согласен ужаться, чтобы
+ * влезть в остаток строки вместо переноса вниз. Фактическая ширина при этом
+ * НИГДЕ не хранится: она заново выводится из раскладки, поэтому на просторном
+ * месте блок сам разворачивается обратно до желаемой.
  */
-declare function packFlow(items: Array<GridSpan>, cols: number, mode?: FlowMode): Array<Placed>;
+declare function packFlow(items: Array<GridSpan & {
+    minW?: number;
+}>, cols: number, mode?: FlowMode): Array<Placed>;
 /**
  * Свободная раскладка: блок стоит там, где ему сказано (`x`/`y`), а не там, куда
  * его вынес поток. Это режим «двигай куда хочешь, в том числе вниз, в пустоту» —
@@ -488,6 +495,33 @@ type DumbGridProps = {
  * теряет новые блоки.
  */
 declare function mergeLayout(saved: DumbGridLayout | null | undefined, items: Array<DumbGridItem>, cols: number, mode?: LayoutMode): DumbGridLayout;
+/**
+ * Разметка сетки — двумя CSS-градиентами на одном элементе-подложке.
+ *
+ * Ширина колонки НЕ меряется из JS: это `calc((100% - зазоры) / cols)`, браузер
+ * считает её сам, поэтому линии верны с первого кадра и при любом ресайзе окна.
+ *
+ * Грабля, из-за которой вертикальных линий сначала не было видно: проценты в
+ * стопах градиента считаются от размера ТАЙЛА (`background-size`), а не от
+ * ширины элемента. Поэтому тайлить по X нельзя — рисуем все границы колонок
+ * явными стопами на всю ширину (`background-size: 100%`), и тогда `100%` внутри
+ * calc означает именно ширину подложки. По Y тайлить можно: там всё в px.
+ */
+declare function gridLinesBackground(args: {
+    cols: number;
+    gapX: number;
+    rowH: number;
+    gapY: number;
+    /**
+     * Толщина линии, px. Не задана — линия во весь зазор (так подложка читается
+     * как «здесь дырка между блоками»). Доска просит волосяную: ей нужна
+     * разметка ячеек, а не заливка промежутков.
+     */
+    line?: number;
+}): {
+    image: string;
+    size: string;
+};
 declare function DumbGrid(props: DumbGridProps): JSX.Element;
 
-export { DumbGrid, type DumbGridBlock, type DumbGridGroupHandle, type DumbGridHandle, type DumbGridItem, type DumbGridLayout, type DumbGridOptions, type DumbGridProps, type FlowMode, type FreeSpan, type GridActive, type GridEngine, type GridGroupActive, type GridGroupEngine, type GridGroupOptions, type GridSpan, type GridTransferSource, type GridTransferTarget, type GridZoneEngine, type GridZoneOptions, type LayoutMode, type Metrics, type Placed, type Rect, type SpanLimits, type SpanPreset, type SpanValue, cellRect, colWidth, createDumbGrid, createDumbGridGroup, createGridEngine, createGridGroupEngine, firstFreeCell, fitSpan, insertIndex, mergeLayout, moveDeltas, overlaps, packFlow, placeFree, pointToCell, reorder, resolveSpan, rowCount, snapSpan, spanSize };
+export { DumbGrid, type DumbGridBlock, type DumbGridGroupHandle, type DumbGridHandle, type DumbGridItem, type DumbGridLayout, type DumbGridOptions, type DumbGridProps, type FlowMode, type FreeSpan, type GridActive, type GridEngine, type GridGroupActive, type GridGroupEngine, type GridGroupOptions, type GridSpan, type GridTransferSource, type GridTransferTarget, type GridZoneEngine, type GridZoneOptions, type LayoutMode, type Metrics, type Placed, type Rect, type SpanLimits, type SpanPreset, type SpanValue, cellRect, colWidth, createDumbGrid, createDumbGridGroup, createGridEngine, createGridGroupEngine, firstFreeCell, fitSpan, gridLinesBackground, insertIndex, mergeLayout, moveDeltas, overlaps, packFlow, placeFree, pointToCell, reorder, resolveSpan, rowCount, snapSpan, spanSize };

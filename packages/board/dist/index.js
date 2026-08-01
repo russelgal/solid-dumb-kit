@@ -228,8 +228,8 @@ function createAutoScroller() {
       levels = [];
       let node = el;
       while (node && node !== document.body && node !== document.documentElement) {
-        const style = getComputedStyle(node);
-        if (SCROLLABLE.test(style.overflowY) || SCROLLABLE.test(style.overflowX)) {
+        const style2 = getComputedStyle(node);
+        if (SCROLLABLE.test(style2.overflowY) || SCROLLABLE.test(style2.overflowX)) {
           const r = node.getBoundingClientRect();
           levels.push({
             el: node,
@@ -274,15 +274,159 @@ function createAutoScroller() {
   };
 }
 
-// src/boardMath.ts
-function slotAt(g, k) {
-  if (!g) return null;
+// ../grid/dist/index.js
+function clamp(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, n));
+}
+function createOccupancy() {
+  const busy = /* @__PURE__ */ new Map();
+  const free = (col, row, w, h) => {
+    for (let r = row; r < row + h; r++) {
+      const set = busy.get(r);
+      if (!set) continue;
+      for (let k = col; k < col + w; k++) if (set.has(k)) return false;
+    }
+    return true;
+  };
   return {
-    left: g.left + k % g.cols * g.stepX,
-    top: g.top + Math.floor(k / g.cols) * g.stepY
+    free,
+    take(col, row, w, h) {
+      for (let r = row; r < row + h; r++) {
+        let set = busy.get(r);
+        if (!set) busy.set(r, set = /* @__PURE__ */ new Set());
+        for (let k = col; k < col + w; k++) set.add(k);
+      }
+    },
+    /** первое свободное место от (col,row): вправо до края, потом строкой ниже */
+    findFrom(col, row, w, h, cols) {
+      let c = col;
+      let r = row;
+      for (; ; ) {
+        if (c + w > cols) {
+          c = 0;
+          r++;
+          continue;
+        }
+        if (free(c, r, w, h)) return { col: c, row: r };
+        c++;
+      }
+    }
   };
 }
-var rowsFor = (count, cols) => Math.max(1, Math.ceil(count / Math.max(1, cols)));
+var PRESETS = {
+  full: [1, 1],
+  half: [1, 2],
+  third: [1, 3],
+  quarter: [1, 4],
+  "two-thirds": [2, 3],
+  "three-quarters": [3, 4]
+};
+function resolveSpan(value, cols) {
+  const c = Math.max(1, Math.floor(cols));
+  if (value === void 0) return 1;
+  if (typeof value === "number") return clamp(Math.round(value) || 1, 1, c);
+  const named = PRESETS[value];
+  const frac = named ?? (/^\d+\/\d+$/.test(value) ? value.split("/").map(Number) : null);
+  if (!frac) return 1;
+  const [num, den] = frac;
+  if (!den || !Number.isFinite(num)) return 1;
+  return clamp(Math.floor(c * num / den), 1, c);
+}
+function colWidth(contentW, cols, gapX) {
+  const c = Math.max(1, Math.floor(cols));
+  return Math.max(0, (contentW - gapX * (c - 1)) / c);
+}
+function spanSize(n, unit, gap) {
+  return n * unit + (n - 1) * gap;
+}
+function packFlow(items, cols, mode = "flow") {
+  const c = Math.max(1, Math.floor(cols));
+  const grid = createOccupancy();
+  const out = [];
+  let curCol = 0;
+  let curRow = 0;
+  for (const it of items) {
+    const want = clamp(Math.round(it.w) || 1, 1, c);
+    const h = Math.max(1, Math.round(it.h) || 1);
+    const fromCol = mode === "dense" ? 0 : curCol;
+    const fromRow = mode === "dense" ? 0 : curRow;
+    const min = clamp(Math.round(it.minW ?? want) || 1, 1, want);
+    let best = null;
+    for (let w2 = want; w2 >= min; w2--) {
+      const spot = grid.findFrom(fromCol, fromRow, w2, h, c);
+      if (!best || spot.row < best.row || spot.row === best.row && spot.col < best.col) {
+        best = { col: spot.col, row: spot.row, w: w2 };
+      }
+      if (best.row === fromRow && best.col === fromCol) break;
+    }
+    const { col, row, w } = best;
+    grid.take(col, row, w, h);
+    out.push({ id: it.id, w, h, col, row });
+    curCol = col + w;
+    curRow = row;
+    if (curCol >= c) {
+      curCol = 0;
+      curRow = row + 1;
+    }
+  }
+  return out;
+}
+function rowCount(placed) {
+  let n = 0;
+  for (const p of placed) n = Math.max(n, p.row + p.h);
+  return n;
+}
+function cellRect(p, m) {
+  return {
+    x: p.col * (m.colW + m.gapX),
+    y: p.row * (m.rowH + m.gapY),
+    width: spanSize(p.w, m.colW, m.gapX),
+    height: spanSize(p.h, m.rowH, m.gapY)
+  };
+}
+function snapSpan(args) {
+  const { start, dx, dy, m, limits } = args;
+  const stepX = m.colW + m.gapX;
+  const stepY = m.rowH + m.gapY;
+  const lim = limits ?? {};
+  const w = stepX > 0 ? Math.round((spanSize(start.w, m.colW, m.gapX) + dx + m.gapX) / stepX) : start.w;
+  const h = stepY > 0 ? Math.round((spanSize(start.h, m.rowH, m.gapY) + dy + m.gapY) / stepY) : start.h;
+  return {
+    w: clamp(w, Math.max(1, lim.minW ?? 1), Math.min(m.cols, lim.maxW ?? m.cols)),
+    h: clamp(h, Math.max(1, lim.minH ?? 1), lim.maxH ?? Number.MAX_SAFE_INTEGER)
+  };
+}
+var GRID_LINE = "rgba(100,116,139,.28)";
+function gridLinesBackground(args) {
+  const {
+    cols,
+    gapX,
+    rowH,
+    gapY,
+    line
+  } = args;
+  const col = `calc((100% - ${(cols - 1) * gapX}px) / ${cols})`;
+  const stepX = `calc(${col} + ${gapX}px)`;
+  const lineW = Math.max(1, line);
+  const lineH = Math.max(1, line);
+  const stops = ["transparent 0"];
+  for (let i = 1; i < cols; i++) {
+    const at = `calc(${stepX} * ${i} - ${gapX}px)`;
+    const to = `calc(${stepX} * ${i} - ${gapX}px + ${lineW}px)`;
+    stops.push(`transparent ${at}`, `${GRID_LINE} ${at}`, `${GRID_LINE} ${to}`, `transparent ${to}`);
+  }
+  stops.push("transparent 100%");
+  const stepY = rowH + gapY;
+  return {
+    image: [`linear-gradient(to right, ${stops.join(", ")})`, `linear-gradient(to bottom, transparent 0, transparent ${stepY - lineH}px, ${GRID_LINE} ${stepY - lineH}px, ${GRID_LINE} ${stepY}px)`].join(", "),
+    // вертикальные линии — на всю ширину (тайлить нельзя, см. выше),
+    // горизонтальные — тайлом в одну строку
+    size: `100% 100%, 100% ${stepY}px`
+  };
+}
+delegateEvents(["click"]);
+
+// src/boardMath.ts
 function panelFlow(order, opts) {
   const { cols, colW, gap, origin } = opts;
   const step = colW + gap;
@@ -316,11 +460,14 @@ var _tmpl$2 = /* @__PURE__ */ template(`<span class=dumb-board-grip>\u283F`);
 var _tmpl$3 = /* @__PURE__ */ template(`<span class=dumb-board-sub>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<span class=dumb-board-actions>`);
 var _tmpl$5 = /* @__PURE__ */ template(`<h4 class=dumb-board-head data-board-handle><span class=dumb-board-title></span><span class=dumb-board-count>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<div class=dumb-board-grip-x data-axis=x>`);
-var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-board-grip-y data-axis=y>`);
-var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-board-grip-xy data-axis=xy>`);
-var _tmpl$9 = /* @__PURE__ */ template(`<section class=dumb-board-panel><div class=dumb-board-zone>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<div class=dumb-board-block>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<div class=dumb-board-lines aria-hidden=true>`);
+var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-board-grip-x data-axis=x>`);
+var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-board-grip-y data-axis=y>`);
+var _tmpl$9 = /* @__PURE__ */ template(`<div class=dumb-board-grip-xy data-axis=xy>`);
+var _tmpl$0 = /* @__PURE__ */ template(`<section class=dumb-board-panel><div class=dumb-board-zone>`);
+var _tmpl$1 = /* @__PURE__ */ template(`<span class=dumb-board-block-grip>`);
+var _tmpl$10 = /* @__PURE__ */ template(`<div class=dumb-board-block>`);
+var _tmpl$11 = /* @__PURE__ */ template(`<div class=dumb-board-frame aria-hidden=true>`);
 var CSS = `
           .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
                         grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
@@ -329,20 +476,61 @@ var CSS = `
           .dumb-board-head { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
                              font: inherit; font-size: 13px; cursor: grab; user-select: none }
           .dumb-board-head:active { cursor: grabbing }
-          .dumb-board-grip { color: #cbd5e1 }
+          /* \u0432\u0441\u0451, \u0447\u0442\u043E \u0447\u0438\u0442\u0430\u044E\u0442 \u0438\u043B\u0438 \u0445\u0432\u0430\u0442\u0430\u044E\u0442, \u2014 \u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442\u043D\u043E\u0435: \u0431\u043B\u0451\u043A\u043B\u0430\u044F \u0440\u0443\u0447\u043A\u0430 \u0438 \u0441\u0435\u0440\u044B\u0439 \u043F\u043E
+             \u0441\u0435\u0440\u043E\u043C\u0443 \u043D\u0435 \u0447\u0438\u0442\u0430\u044E\u0442\u0441\u044F \u043D\u0438 \u043D\u0430 \u043F\u0440\u043E\u0435\u043A\u0442\u043E\u0440\u0435, \u043D\u0438 \u043F\u0440\u0438 \u044F\u0440\u043A\u043E\u043C \u0441\u0432\u0435\u0442\u0435 */
+          .dumb-board-grip { color: #64748b }
           .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
-          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .65 }
+          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .85 }
           .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                              background: rgb(0 0 0 / .06) }
+                              background: rgb(0 0 0 / .1) }
           .dumb-board-actions { margin-left: auto; display: flex; gap: 4px }
-          /* \u0441\u0435\u0442\u043A\u0430 \u0431\u043B\u043E\u043A\u043E\u0432: \u0441\u044E\u0434\u0430 \u0438 \u0441\u043C\u043E\u0442\u0440\u0438\u0442 order */
-          .dumb-board-zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
-                             overflow-y: auto; scrollbar-gutter: stable;
-                             grid-template-columns: repeat(var(--dumb-board-inner), 1fr) }
-          /* \u0431\u043B\u043E\u043A \u041D\u0415 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u0442\u0441\u044F \u043D\u0430 \u0432\u044B\u0441\u043E\u0442\u0443 \u0441\u0442\u0440\u043E\u043A\u0438: \u0438\u043D\u0430\u0447\u0435 \u0443 \u0432\u0441\u0435\u0445 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435
-             \u0437\u0430\u043C\u0435\u0440\u044F\u0435\u0442\u0441\u044F \u043E\u0434\u043D\u0430 \u0438 \u0442\u0430 \u0436\u0435 \u0432\u044B\u0441\u043E\u0442\u0430, \u0438 \u043F\u0435\u0440\u0435\u0435\u0445\u0430\u0432\u0448\u0438\u0439 \u0432 \u0434\u0440\u0443\u0433\u0443\u044E \u0441\u0442\u0440\u043E\u043A\u0443
-             \u0441\u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044F \u043D\u0435 \u043F\u043E \u0441\u0432\u043E\u0435\u0439 */
-          .dumb-board-block { align-self: start; min-width: 0 }
+          /* \u0441\u0435\u0442\u043A\u0430 \u0431\u043B\u043E\u043A\u043E\u0432: \u044F\u0447\u0435\u0439\u043A\u0438 \u0444\u0438\u043A\u0441\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u043E\u0433\u043E \u0448\u0430\u0433\u0430, \u043C\u0435\u0441\u0442\u0430 \u0437\u0430\u0434\u0430\u044E\u0442\u0441\u044F \u044F\u0432\u043D\u043E */
+          /* overflow-x \u0438\u043C\u0435\u043D\u043D\u043E clip, \u0430 \u043D\u0435 visible: \u0440\u044F\u0434\u043E\u043C \u0441 overflow-y: auto
+             visible \u0432\u044B\u0447\u0438\u0441\u043B\u044F\u0435\u0442\u0441\u044F \u0432 auto, \u0438 FLIP, \u0432\u044B\u043D\u043E\u0441\u044F \u0431\u043B\u043E\u043A \u0437\u0430 \u043F\u0440\u0430\u0432\u044B\u0439 \u043A\u0440\u0430\u0439,
+             \u0437\u0430\u0436\u0438\u0433\u0430\u0435\u0442 \u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u0443\u044E \u043F\u043E\u043B\u043E\u0441\u0443 \u043D\u0430 \u0432\u0440\u0435\u043C\u044F \u0430\u043D\u0438\u043C\u0430\u0446\u0438\u0438. clip \u0442\u0430\u043A\u043E\u0433\u043E \u043D\u0435
+             \u0434\u0435\u043B\u0430\u0435\u0442 \u0438 \u043D\u0435 \u043C\u0435\u0448\u0430\u0435\u0442 \u0432\u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u043E\u0441\u0438 \u043F\u0440\u043E\u043A\u0440\u0443\u0447\u0438\u0432\u0430\u0442\u044C\u0441\u044F */
+          .dumb-board-zone { position: relative; display: grid; gap: var(--dumb-board-zone-gap);
+                             align-content: start; overflow-x: clip; overflow-y: auto;
+                             scrollbar-gutter: stable;
+                             grid-template-columns: repeat(var(--dumb-board-inner), minmax(0, 1fr));
+                             grid-auto-rows: var(--dumb-board-row) }
+          /* \u041F\u043E\u0434\u043B\u043E\u0436\u043A\u0430 \u0441 \u043B\u0438\u043D\u0438\u044F\u043C\u0438: \u043D\u0435 \u0443\u0447\u0430\u0441\u0442\u0432\u0443\u0435\u0442 \u0432 \u0441\u0435\u0442\u043A\u0435 (absolute), \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u043D\u0435
+             \u0437\u0430\u043D\u0438\u043C\u0430\u0435\u0442 \u044F\u0447\u0435\u0435\u043A \u0438 \u043D\u0435 \u0440\u0430\u0441\u0442\u0430\u043B\u043A\u0438\u0432\u0430\u0435\u0442 \u0431\u043B\u043E\u043A\u0438.
+
+             padding: inherit \u0438 background-*: content-box \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u044B \u2014 \u0441\u0435\u0442\u043A\u0430
+             \u043D\u0430\u0447\u0438\u043D\u0430\u0435\u0442\u0441\u044F \u041F\u041E\u0421\u041B\u0415 padding \u0437\u043E\u043D\u044B, \u0430 absolute-\u0441\u043B\u043E\u0439 \u043E\u0442\u0441\u0447\u0438\u0442\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043E\u0442
+             padding-box. \u0411\u0435\u0437 \u044D\u0442\u043E\u0433\u043E \u043B\u0438\u043D\u0438\u0438 \u0441\u044A\u0435\u0437\u0436\u0430\u044E\u0442 \u0440\u043E\u0432\u043D\u043E \u043D\u0430 padding. */
+          .dumb-board-lines { position: absolute; inset: 0; pointer-events: none; z-index: 0;
+                              padding: inherit; box-sizing: border-box;
+                              background-origin: content-box; background-clip: content-box;
+                              background-repeat: no-repeat, repeat;
+                              transition: opacity .15s ease;
+                              /* \u0421\u0412\u041E\u0419 \u0421\u041B\u041E\u0419 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u0435\u043D: \u043F\u043E\u0434\u043B\u043E\u0436\u043A\u0430 \u0440\u0430\u0437\u043C\u0435\u0440\u043E\u043C \u0432\u043E \u0432\u0441\u044E
+                                 \u0437\u043E\u043D\u0443 \u0438 \u0441 \u0434\u0432\u0443\u043C\u044F \u0433\u0440\u0430\u0434\u0438\u0435\u043D\u0442\u0430\u043C\u0438, \u0430 \u0433\u0430\u0441\u0438\u0442\u0441\u044F \u0447\u0435\u0440\u0435\u0437
+                                 opacity. \u0411\u0435\u0437 \u0441\u043B\u043E\u044F \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u043F\u0435\u0440\u0435\u0440\u0438\u0441\u043E\u0432\u044B\u0432\u0430\u0435\u0442 \u044D\u0442\u0438
+                                 \u0433\u0440\u0430\u0434\u0438\u0435\u043D\u0442\u044B \u043A\u0430\u0436\u0434\u044B\u0439 \u043A\u0430\u0434\u0440 \u0430\u043D\u0438\u043C\u0430\u0446\u0438\u0438 \u2014 \u043D\u0430 \u0437\u0430\u043C\u0435\u0440\u0435 \u044D\u0442\u043E
+                                 \u0434\u0432\u0435 \u0442\u0440\u0435\u0442\u0438 \u0432\u0441\u0435\u0445 \u043F\u0435\u0440\u0435\u043A\u0440\u0430\u0441\u043E\u043A \u0437\u0430 \u0436\u0435\u0441\u0442. */
+                              will-change: opacity }
+          /* \u0440\u0430\u043C\u043A\u0430 \u0431\u0443\u0434\u0443\u0449\u0435\u0433\u043E \u0440\u0430\u0437\u043C\u0435\u0440\u0430: \u0421\u0410\u041C\u0410 grid item, \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u0432\u0441\u0442\u0430\u0451\u0442 \u0432 \u044F\u0447\u0435\u0439\u043A\u0438 \u0431\u0435\u0437
+             \u043F\u0438\u043A\u0441\u0435\u043B\u044C\u043D\u043E\u0439 \u0430\u0440\u0438\u0444\u043C\u0435\u0442\u0438\u043A\u0438 \u2014 \u0438 \u043D\u0435 \u043C\u0435\u0448\u0430\u0435\u0442 \u0431\u043B\u043E\u043A\u0430\u043C, \u0443 \u043A\u043E\u0442\u043E\u0440\u044B\u0445 \u043C\u0435\u0441\u0442\u0430 \u044F\u0432\u043D\u044B\u0435 */
+          .dumb-board-frame { pointer-events: none; z-index: 3; border-radius: 10px;
+                              border: 2px dashed rgba(59,130,246,.9);
+                              background: rgba(59,130,246,.08) }
+          /* \u0440\u0443\u0447\u043A\u0430 \u0440\u0435\u0441\u0430\u0439\u0437\u0430 \u0431\u043B\u043E\u043A\u0430 \u2014 \u0442\u043E\u0442 \u0436\u0435 \u0443\u0433\u043E\u043B\u043E\u043A, \u0447\u0442\u043E \u0443 \u0441\u0435\u043A\u0446\u0438\u0438: \u0434\u0432\u0435 \u043B\u0438\u043D\u0438\u0438 \u0441\u043E
+             \u0441\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u0438\u0435\u043C. \u0420\u0438\u0441\u0443\u0435\u043C \u0441\u0430\u043C\u0438, \u0430 \u043D\u0435 Tailwind'\u043E\u043C: \u043A\u0438\u0442 \u0441\u0430\u043C\u043E\u0434\u043E\u0441\u0442\u0430\u0442\u043E\u0447\u0435\u043D */
+          .dumb-board-block-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
+                                   cursor: nwse-resize; touch-action: none; z-index: 2 }
+          /* \u0446\u0432\u0435\u0442 \u041A\u041E\u041D\u0422\u0420\u0410\u0421\u0422\u041D\u042B\u0419: \u0440\u0443\u0447\u043A\u0430 \u2014 \u043E\u0440\u0433\u0430\u043D \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F, \u0435\u0451 \u043D\u0430\u0434\u043E \u0432\u0438\u0434\u0435\u0442\u044C, \u0430 \u043D\u0435
+             \u0443\u0433\u0430\u0434\u044B\u0432\u0430\u0442\u044C. \u041F\u0435\u0440\u0435\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043F\u0435\u0440\u0435\u043C\u0435\u043D\u043D\u043E\u0439, \u043D\u043E \u0431\u043B\u0451\u043A\u043B\u044B\u0439 \u0434\u0435\u0444\u043E\u043B\u0442 \u043D\u0435\u0434\u043E\u043F\u0443\u0441\u0442\u0438\u043C */
+          .dumb-board-block-grip::after { content: ''; position: absolute; right: 4px; bottom: 4px;
+                                          width: 9px; height: 9px;
+                                          border-right: 2px solid var(--dumb-board-grip, #475569);
+                                          border-bottom: 2px solid var(--dumb-board-grip, #475569);
+                                          border-bottom-right-radius: 3px }
+          .dumb-board-block-grip:hover::after { border-color: var(--dumb-board-grip-hover, #1e293b) }
+          /* \u0431\u043B\u043E\u043A \u0437\u0430\u043D\u0438\u043C\u0430\u0435\u0442 \u0421\u0412\u041E\u0418 \u044F\u0447\u0435\u0439\u043A\u0438 \u0446\u0435\u043B\u0438\u043A\u043E\u043C \u2014 \u0432\u044B\u0441\u043E\u0442\u0430 \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442 \u0438\u0437 \u0441\u0435\u0442\u043A\u0438, \u0430 \u043D\u0435
+             \u0438\u0437 \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u0433\u043E, \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u043C\u0435\u0440\u0438\u0442\u044C \u0435\u0451 \u043D\u0435 \u043D\u0443\u0436\u043D\u043E \u0432\u043E\u0432\u0441\u0435 */
+          .dumb-board-block { min-width: 0; min-height: 0; position: relative; z-index: 1 }
           .dumb-board-block.held { opacity: .35 }
           .dumb-board-grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
                                cursor: col-resize; touch-action: none }
@@ -356,19 +544,36 @@ function DumbBoard(props) {
   const cols = () => props.cols ?? 12;
   const gap = () => props.gap ?? 14;
   const rowH = () => props.rowHeight ?? 76;
+  const zoneGap = () => props.zoneGap ?? 8;
   const minSpan = () => props.minSpan ?? 3;
   const editable = () => props.editable !== false;
   const resizable = () => props.resizable !== false;
+  const showGrid = () => props.showGrid ?? "drag";
+  const gridVisible = () => showGrid() === true || showGrid() === "drag" && !!held();
   const spanOf = (s) => Math.max(1, Math.min(cols(), s.span ?? Math.floor(cols() / 2)));
   const colsIn = (s) => Math.max(1, s.cols ?? 3);
   const sectionById = (id) => props.sections.find((s) => s.id === id);
   const itemsOf = (id) => sectionById(id)?.items ?? [];
   const sectionOf = (blockId) => props.sections.find((s) => s.items.some((it) => props.id(it) === blockId));
   const spanOfBlock = (item, s) => {
-    const want = Math.max(1, Math.round(props.blockSpan?.(item) ?? 1));
     const sec = s ?? sectionOf(props.id(item));
-    return Math.min(want, sec ? colsIn(sec) : want);
+    const n = sec ? colsIn(sec) : 1;
+    return resolveSpan(props.blockSpan?.(item), n);
   };
+  const limitsOf = (item, s) => {
+    const lim = props.blockLimits?.(item);
+    if (!lim) return {};
+    const n = colsIn(s ?? sectionOf(props.id(item)) ?? {
+      cols: 1
+    });
+    return {
+      minW: lim.minW === void 0 ? void 0 : resolveSpan(lim.minW, n),
+      maxW: lim.maxW === void 0 ? void 0 : resolveSpan(lim.maxW, n),
+      minH: lim.minH,
+      maxH: lim.maxH
+    };
+  };
+  const rowsOfBlock = (item) => Math.max(1, Math.round(props.blockRows?.(item) ?? 1));
   const stableSections = createStableOrder((s) => s.id);
   const stableItems = createStableOrder(props.id);
   const renderOrder = () => stableSections.sort(props.sections).map((s) => s.id);
@@ -391,14 +596,15 @@ function DumbBoard(props) {
   const zoneEls = /* @__PURE__ */ new Map();
   const panelEls = /* @__PURE__ */ new Map();
   let wrapEl;
-  let geom = {};
-  let blockH = {};
+  let zoneAt = {};
   let panelH = {};
   let wrapAt = {
     left: 0,
     top: 0
   };
   let colW = 0;
+  const zoneW = {};
+  const zonePad = {};
   let flip = createFlip(true);
   createEffect(() => {
     flip = createFlip(shouldAnimate(props.animate));
@@ -406,7 +612,7 @@ function DumbBoard(props) {
   const scroller = createAutoScroller();
   onCleanup(() => scroller.stop());
   function measure() {
-    const targets = [...blockEls.values(), ...zoneEls.values(), ...panelEls.values(), wrapEl].filter(Boolean);
+    const targets = [...zoneEls.values(), ...panelEls.values(), wrapEl].filter(Boolean);
     if (!targets.length || typeof IntersectionObserver !== "function") return;
     const rects = /* @__PURE__ */ new Map();
     let batches = 0;
@@ -416,46 +622,14 @@ function DumbBoard(props) {
       if (rects.size < targets.length && batches < 4) return;
       io.disconnect();
       const next = {};
-      const nextH = {};
       for (const s of props.sections) {
-        const n = colsIn(s);
-        const own = itemsOf(s.id).map((it, k) => ({
-          k,
-          id: props.id(it),
-          span: spanOfBlock(it),
-          r: rects.get(blockEls.get(props.id(it)))
-        })).filter((x) => Boolean(x.r));
-        const zoneRect = rects.get(zoneEls.get(s.id));
-        for (const o of own) nextH[o.id] = o.r.height;
-        if (!own.length) {
-          if (zoneRect) next[s.id] = {
-            left: zoneRect.left + 10,
-            top: zoneRect.top + 10,
-            colW: 96,
-            gap: 8,
-            cols: n
-          };
-          continue;
-        }
-        const a = own[0];
-        let gap2 = 8;
-        for (const o of own) {
-          if (o.r.top === a.r.top && o.r.left > a.r.left) {
-            gap2 = o.r.left - (a.r.left + a.r.width);
-            break;
-          }
-        }
-        const colW2 = (a.r.width - (a.span - 1) * gap2) / a.span;
-        next[s.id] = {
-          left: a.r.left,
-          top: a.r.top,
-          colW: colW2,
-          gap: gap2,
-          cols: n
+        const r = rects.get(zoneEls.get(s.id));
+        if (r) next[s.id] = {
+          left: r.left,
+          top: r.top
         };
       }
-      geom = next;
-      blockH = nextH;
+      zoneAt = next;
       for (const s of props.sections) {
         const r = rects.get(panelEls.get(s.id));
         if (r) panelH[s.id] = r.height;
@@ -476,15 +650,28 @@ function DumbBoard(props) {
     }
     Promise.allSettled(anims.map((a) => a.finished)).then(() => measure());
   }
+  const sizes = typeof ResizeObserver === "function" ? new ResizeObserver((entries) => {
+    for (const e of entries) {
+      if (e.target === wrapEl) {
+        colW = colWidth(e.contentRect.width, cols(), gap());
+        continue;
+      }
+      const id = e.target.dataset.boardZone;
+      if (!id) continue;
+      zoneW[id] = e.contentRect.width;
+      zonePad[id] = {
+        left: e.contentRect.left,
+        top: e.contentRect.top
+      };
+    }
+  }) : null;
+  onCleanup(() => sizes?.disconnect());
   onMount(() => {
     measure();
-    if (typeof ResizeObserver !== "function") return;
+    if (!sizes) return;
+    sizes.observe(wrapEl);
     let firstCall = true;
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        if (e.target !== wrapEl) continue;
-        colW = (e.contentRect.width - gap() * (cols() - 1)) / cols();
-      }
+    const ro = new ResizeObserver(() => {
       if (firstCall) {
         firstCall = false;
         return;
@@ -494,23 +681,62 @@ function DumbBoard(props) {
     ro.observe(wrapEl);
     onCleanup(() => ro.disconnect());
   });
-  const blockPlaces = (sectionId) => {
-    const g = geom[sectionId];
-    if (!g) return {};
-    const boxes = itemsOf(sectionId).map((it) => ({
-      id: props.id(it),
-      span: spanOfBlock(it),
-      height: blockH[props.id(it)] ?? 0
-    }));
-    return panelFlow(boxes, {
-      cols: g.cols,
-      colW: g.colW,
-      gap: g.gap,
-      origin: {
-        left: g.left,
-        top: g.top
-      }
+  const cellsOf = createMemo(() => {
+    const out = /* @__PURE__ */ new Map();
+    for (const s of props.sections) {
+      out.set(s.id, packFlow(s.items.map((it) => ({
+        id: props.id(it),
+        w: spanOfBlock(it, s),
+        h: rowsOfBlock(it),
+        minW: limitsOf(it, s).minW
+      })), colsIn(s)));
+    }
+    return out;
+  });
+  const placedIn = (sectionId) => cellsOf().get(sectionId) ?? [];
+  const rowsUsed = (sectionId) => rowCount(placedIn(sectionId));
+  const cellOf = (sectionId, blockId) => placedIn(sectionId).find((p) => p.id === blockId);
+  const linesOf = (s) => {
+    const bg = gridLinesBackground({
+      cols: colsIn(s),
+      gapX: zoneGap(),
+      rowH: rowH(),
+      gapY: zoneGap(),
+      line: 1
     });
+    return {
+      "background-image": bg.image,
+      "background-size": bg.size
+    };
+  };
+  const metricsOf = (s) => ({
+    cols: colsIn(s),
+    colW: colWidth(zoneW[s.id] ?? 0, colsIn(s), zoneGap()),
+    rowH: rowH(),
+    gapX: zoneGap(),
+    gapY: zoneGap()
+  });
+  const blockPlaces = (sectionId) => {
+    const s = sectionById(sectionId);
+    const origin = zoneAt[sectionId];
+    if (!s || !origin) return {};
+    const m = metricsOf(s);
+    const el = zoneEls.get(sectionId);
+    const pad = zonePad[sectionId] ?? {
+      left: 0,
+      top: 0
+    };
+    const left = origin.left + pad.left - (el?.scrollLeft ?? 0);
+    const top = origin.top + pad.top - (el?.scrollTop ?? 0);
+    const out = {};
+    for (const p of placedIn(sectionId)) {
+      const r = cellRect(p, m);
+      out[p.id] = {
+        left: left + r.x,
+        top: top + r.y
+      };
+    }
+    return out;
   };
   const snapshotPlaces = () => {
     const out = /* @__PURE__ */ new Map();
@@ -605,6 +831,7 @@ function DumbBoard(props) {
   }
   let sizingFrom = null;
   const onGripDown = (ev) => {
+    if (ev.button !== 0) return;
     const grip = ev.target?.closest?.("[data-board-resize]");
     if (!grip || !editable() || !resizable()) return;
     const s = sectionById(grip.dataset.boardResize);
@@ -618,19 +845,23 @@ function DumbBoard(props) {
       y: ev.clientY,
       span: spanOf(s),
       // высота «по содержимому» — берём фактическую, чтобы тянуть с того же места
-      rows: s.rows || rowsFor(itemsOf(s.id).length, colsIn(s))
+      rows: s.rows || rowsUsed(s.id)
     };
     setSizing(s.id);
   };
   const onGripMove = (ev) => {
     const d = sizingFrom;
     if (!d || !colW) return;
+    if (!(ev.buttons & 1)) {
+      onGripUp();
+      return;
+    }
     const s = sectionById(d.id);
     if (!s) return;
     let span = spanOf(s);
     let rows = s.rows ?? d.rows;
     if (d.axis !== "y") span = Math.max(minSpan(), Math.min(cols(), d.span + Math.round((ev.clientX - d.x) / colW)));
-    if (d.axis !== "x") rows = Math.max(1, d.rows + Math.round((ev.clientY - d.y) / rowH()));
+    if (d.axis !== "x") rows = Math.max(1, d.rows + Math.round((ev.clientY - d.y) / (rowH() + zoneGap())));
     if (span === spanOf(s) && rows === (s.rows ?? d.rows)) return;
     props.setSections(props.sections.map((x) => x.id === d.id ? {
       ...x,
@@ -648,6 +879,82 @@ function DumbBoard(props) {
     setSizing(null);
     measureWhenStill();
   };
+  let blockSizingFrom = null;
+  const [blockFrame, setBlockFrame] = createSignal(null);
+  const onBlockGripDown = (ev) => {
+    if (ev.button !== 0) return;
+    const grip = ev.target?.closest?.("[data-board-block-resize]");
+    if (!grip || !editable() || !props.onBlockResize) return;
+    const id = grip.dataset.boardBlockResize;
+    const section = sectionOf(id);
+    const at = section && cellOf(section.id, id);
+    if (!section || !at) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    grip.setPointerCapture(ev.pointerId);
+    const item = section.items.find((it) => props.id(it) === id);
+    blockSizingFrom = {
+      id,
+      sectionId: section.id,
+      x: ev.clientX,
+      y: ev.clientY,
+      w: spanOfBlock(item, section),
+      h: at.h
+    };
+    setBlockFrame({
+      sectionId: section.id,
+      id,
+      w: blockSizingFrom.w,
+      h: blockSizingFrom.h
+    });
+  };
+  const onBlockGripMove = (ev) => {
+    const d = blockSizingFrom;
+    if (!d) return;
+    if (!(ev.buttons & 1)) {
+      onBlockGripUp();
+      return;
+    }
+    const s = sectionById(d.sectionId);
+    const item = s?.items.find((it) => props.id(it) === d.id);
+    if (!s || !item) return;
+    const next = snapSpan({
+      start: {
+        w: d.w,
+        h: d.h
+      },
+      dx: ev.clientX - d.x,
+      dy: ev.clientY - d.y,
+      m: metricsOf(s),
+      limits: limitsOf(item, s)
+    });
+    const now = blockFrame();
+    if (now && now.w === next.w && now.h === next.h) return;
+    setBlockFrame({
+      sectionId: d.sectionId,
+      id: d.id,
+      w: next.w,
+      h: next.h
+    });
+  };
+  const onBlockGripUp = () => {
+    const d = blockSizingFrom;
+    const frame = blockFrame();
+    blockSizingFrom = null;
+    setBlockFrame(null);
+    if (!d || !frame) return;
+    const s = sectionById(d.sectionId);
+    const item = s?.items.find((it) => props.id(it) === d.id);
+    if (!item) return;
+    if (frame.w === d.w && frame.h === d.h) return;
+    const was = snapshotPlaces();
+    props.onBlockResize?.(item, {
+      w: frame.w,
+      h: frame.h
+    });
+    playBlocks(was);
+    measureWhenStill();
+  };
   const closestOf = (ev, sel) => ev.target?.closest?.(sel);
   let pressed = null;
   let gesture = null;
@@ -655,6 +962,10 @@ function DumbBoard(props) {
   let lastY = -1;
   const onDragStart = (ev) => {
     if (!editable()) {
+      ev.preventDefault();
+      return;
+    }
+    if (pressed?.closest?.("[data-board-block-resize]")) {
       ev.preventDefault();
       return;
     }
@@ -746,12 +1057,22 @@ function DumbBoard(props) {
     _el$.addEventListener("dragend", finish);
     _el$.addEventListener("dragover", onDragOver);
     _el$.addEventListener("dragstart", onDragStart);
-    _el$.addEventListener("pointercancel", onGripUp);
-    _el$.$$pointerup = onGripUp;
-    _el$.$$pointermove = onGripMove;
+    _el$.addEventListener("pointercancel", () => {
+      onGripUp();
+      onBlockGripUp();
+    });
+    _el$.$$pointerup = (ev) => {
+      onGripUp();
+      onBlockGripUp();
+    };
+    _el$.$$pointermove = (ev) => {
+      onGripMove(ev);
+      onBlockGripMove(ev);
+    };
     _el$.$$pointerdown = (ev) => {
       pressed = ev.target;
       onGripDown(ev);
+      onBlockGripDown(ev);
     };
     use((el) => {
       wrapEl = el;
@@ -763,7 +1084,7 @@ function DumbBoard(props) {
       children: (sid) => {
         const s = () => sectionById(sid);
         return (() => {
-          var _el$3 = _tmpl$9(), _el$0 = _el$3.firstChild;
+          var _el$3 = _tmpl$0(), _el$0 = _el$3.firstChild;
           use((el) => panelEls.set(sid, el), _el$3);
           setAttribute(_el$3, "data-board-section", sid);
           insert(_el$3, createComponent(Show, {
@@ -806,47 +1127,99 @@ function DumbBoard(props) {
               return _el$4;
             }
           }), _el$0);
-          use((el) => zoneEls.set(sid, el), _el$0);
+          use((el) => {
+            zoneEls.set(sid, el);
+            sizes?.observe(el);
+          }, _el$0);
           setAttribute(_el$0, "data-board-zone", sid);
+          insert(_el$0, createComponent(Show, {
+            get when() {
+              return memo(() => !!editable())() && showGrid() !== false;
+            },
+            get children() {
+              var _el$1 = _tmpl$6();
+              effect((_$p) => style(_el$1, {
+                ...linesOf(s()),
+                opacity: gridVisible() ? "1" : "0"
+              }, _$p));
+              return _el$1;
+            }
+          }), null);
           insert(_el$0, createComponent(For, {
             get each() {
               return renderItemsOf(sid);
             },
-            children: (item) => (() => {
-              var _el$12 = _tmpl$0();
-              use((el) => blockEls.set(props.id(item), el), _el$12);
-              insert(_el$12, () => props.children(item, s()));
-              effect((_p$) => {
-                var _v$1 = !!(held() === props.id(item)), _v$10 = props.id(item), _v$11 = editable(), _v$12 = {
-                  order: String(placeOf(item)),
-                  ...spanOfBlock(item, s()) > 1 ? {
-                    "grid-column": `span ${spanOfBlock(item, s())}`
-                  } : {}
-                };
-                _v$1 !== _p$.e && _el$12.classList.toggle("held", _p$.e = _v$1);
-                _v$10 !== _p$.t && setAttribute(_el$12, "data-board-block", _p$.t = _v$10);
-                _v$11 !== _p$.a && setAttribute(_el$12, "draggable", _p$.a = _v$11);
-                _p$.o = style(_el$12, _v$12, _p$.o);
-                return _p$;
-              }, {
-                e: void 0,
-                t: void 0,
-                a: void 0,
-                o: void 0
-              });
-              return _el$12;
-            })()
-          }));
+            children: (item) => {
+              const at = () => cellOf(sid, props.id(item));
+              return (() => {
+                var _el$13 = _tmpl$10();
+                use((el) => blockEls.set(props.id(item), el), _el$13);
+                insert(_el$13, () => props.children(item, s()), null);
+                insert(_el$13, createComponent(Show, {
+                  get when() {
+                    return memo(() => !!editable())() && props.onBlockResize;
+                  },
+                  get children() {
+                    var _el$14 = _tmpl$1();
+                    setAttribute(_el$14, "draggable", false);
+                    effect((_p$) => {
+                      var _v$12 = props.id(item), _v$13 = props.labels?.resizeBlock ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440";
+                      _v$12 !== _p$.e && setAttribute(_el$14, "data-board-block-resize", _p$.e = _v$12);
+                      _v$13 !== _p$.t && setAttribute(_el$14, "title", _p$.t = _v$13);
+                      return _p$;
+                    }, {
+                      e: void 0,
+                      t: void 0
+                    });
+                    return _el$14;
+                  }
+                }), null);
+                effect((_p$) => {
+                  var _v$14 = !!(held() === props.id(item)), _v$15 = props.id(item), _v$16 = editable(), _v$17 = `${(at()?.col ?? 0) + 1} / span ${at()?.w ?? 1}`, _v$18 = `${(at()?.row ?? 0) + 1} / span ${at()?.h ?? 1}`;
+                  _v$14 !== _p$.e && _el$13.classList.toggle("held", _p$.e = _v$14);
+                  _v$15 !== _p$.t && setAttribute(_el$13, "data-board-block", _p$.t = _v$15);
+                  _v$16 !== _p$.a && setAttribute(_el$13, "draggable", _p$.a = _v$16);
+                  _v$17 !== _p$.o && setStyleProperty(_el$13, "grid-column", _p$.o = _v$17);
+                  _v$18 !== _p$.i && setStyleProperty(_el$13, "grid-row", _p$.i = _v$18);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0,
+                  a: void 0,
+                  o: void 0,
+                  i: void 0
+                });
+                return _el$13;
+              })();
+            }
+          }), null);
+          insert(_el$0, createComponent(Show, {
+            get when() {
+              return memo(() => blockFrame()?.sectionId === sid)() ? blockFrame() : null;
+            },
+            children: (f) => {
+              const at = () => cellOf(sid, f().id);
+              return (() => {
+                var _el$15 = _tmpl$11();
+                effect((_p$) => {
+                  var _v$19 = `${(at()?.col ?? 0) + 1} / span ${f().w}`, _v$20 = `${(at()?.row ?? 0) + 1} / span ${f().h}`;
+                  _v$19 !== _p$.e && setStyleProperty(_el$15, "grid-column", _p$.e = _v$19);
+                  _v$20 !== _p$.t && setStyleProperty(_el$15, "grid-row", _p$.t = _v$20);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0
+                });
+                return _el$15;
+              })();
+            }
+          }), null);
           insert(_el$3, createComponent(Show, {
             get when() {
               return memo(() => !!editable())() && resizable();
             },
             get children() {
               return [(() => {
-                var _el$1 = _tmpl$6();
-                setAttribute(_el$1, "data-board-resize", sid);
-                return _el$1;
-              })(), (() => {
                 var _el$10 = _tmpl$7();
                 setAttribute(_el$10, "data-board-resize", sid);
                 return _el$10;
@@ -854,22 +1227,24 @@ function DumbBoard(props) {
                 var _el$11 = _tmpl$8();
                 setAttribute(_el$11, "data-board-resize", sid);
                 return _el$11;
+              })(), (() => {
+                var _el$12 = _tmpl$9();
+                setAttribute(_el$12, "data-board-resize", sid);
+                return _el$12;
               })()];
             }
           }), null);
           effect((_p$) => {
-            var _v$5 = !!(heldSection() === sid), _v$6 = !!(sizing() === sid), _v$7 = editable(), _v$8 = `span ${spanOf(s())}`, _v$9 = String(showOrder(sid)), _v$0 = {
-              "--dumb-board-inner": String(colsIn(s())),
-              ...s().rows ? {
-                height: `${s().rows * rowH() + 12}px`
-              } : {}
-            };
+            var _v$5 = !!(heldSection() === sid), _v$6 = !!(sizing() === sid), _v$7 = editable(), _v$8 = `span ${spanOf(s())}`, _v$9 = String(showOrder(sid)), _v$0 = String(colsIn(s())), _v$1 = `${rowH()}px`, _v$10 = `${zoneGap()}px`, _v$11 = `${spanSize(s().rows || rowsUsed(sid) + 1, rowH(), zoneGap())}px`;
             _v$5 !== _p$.e && _el$3.classList.toggle("held", _p$.e = _v$5);
             _v$6 !== _p$.t && _el$3.classList.toggle("sizing", _p$.t = _v$6);
             _v$7 !== _p$.a && setAttribute(_el$3, "draggable", _p$.a = _v$7);
             _v$8 !== _p$.o && setStyleProperty(_el$3, "grid-column", _p$.o = _v$8);
             _v$9 !== _p$.i && setStyleProperty(_el$3, "order", _p$.i = _v$9);
-            _p$.n = style(_el$0, _v$0, _p$.n);
+            _v$0 !== _p$.n && setStyleProperty(_el$0, "--dumb-board-inner", _p$.n = _v$0);
+            _v$1 !== _p$.s && setStyleProperty(_el$0, "--dumb-board-row", _p$.s = _v$1);
+            _v$10 !== _p$.h && setStyleProperty(_el$0, "--dumb-board-zone-gap", _p$.h = _v$10);
+            _v$11 !== _p$.r && setStyleProperty(_el$0, "height", _p$.r = _v$11);
             return _p$;
           }, {
             e: void 0,
@@ -877,7 +1252,10 @@ function DumbBoard(props) {
             a: void 0,
             o: void 0,
             i: void 0,
-            n: void 0
+            n: void 0,
+            s: void 0,
+            h: void 0,
+            r: void 0
           });
           return _el$3;
         })();
@@ -901,4 +1279,4 @@ function DumbBoard(props) {
 }
 delegateEvents(["pointerdown", "pointermove", "pointerup", "dblclick"]);
 
-export { DumbBoard, moveAt, panelFlow, rowsFor, slotAt };
+export { DumbBoard, moveAt, panelFlow };

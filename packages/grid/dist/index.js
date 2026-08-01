@@ -77,9 +77,20 @@ function packFlow(items, cols, mode = "flow") {
   let curCol = 0;
   let curRow = 0;
   for (const it of items) {
-    const w = clamp(Math.round(it.w) || 1, 1, c);
+    const want = clamp(Math.round(it.w) || 1, 1, c);
     const h = Math.max(1, Math.round(it.h) || 1);
-    const { col, row } = grid.findFrom(mode === "dense" ? 0 : curCol, mode === "dense" ? 0 : curRow, w, h, c);
+    const fromCol = mode === "dense" ? 0 : curCol;
+    const fromRow = mode === "dense" ? 0 : curRow;
+    const min = clamp(Math.round(it.minW ?? want) || 1, 1, want);
+    let best = null;
+    for (let w2 = want; w2 >= min; w2--) {
+      const spot = grid.findFrom(fromCol, fromRow, w2, h, c);
+      if (!best || spot.row < best.row || spot.row === best.row && spot.col < best.col) {
+        best = { col: spot.col, row: spot.row, w: w2 };
+      }
+      if (best.row === fromRow && best.col === fromCol) break;
+    }
+    const { col, row, w } = best;
     grid.take(col, row, w, h);
     out.push({ id: it.id, w, h, col, row });
     curCol = col + w;
@@ -1488,12 +1499,13 @@ function gridLinesBackground(args) {
     cols,
     gapX,
     rowH,
-    gapY
+    gapY,
+    line
   } = args;
   const col = `calc((100% - ${(cols - 1) * gapX}px) / ${cols})`;
   const stepX = `calc(${col} + ${gapX}px)`;
-  const lineW = Math.max(1, gapX);
-  const lineH = Math.max(1, gapY);
+  const lineW = Math.max(1, line ?? gapX);
+  const lineH = Math.max(1, line ?? gapY);
   const stops = ["transparent 0"];
   for (let i = 1; i < cols; i++) {
     const at = `calc(${stepX} * ${i} - ${gapX}px)`;
@@ -1770,4 +1782,4 @@ function DumbGrid(props) {
 }
 delegateEvents(["click"]);
 
-export { DumbGrid, cellRect, colWidth, createDumbGrid, createDumbGridGroup, createGridEngine, createGridGroupEngine, firstFreeCell, fitSpan, insertIndex, mergeLayout, moveDeltas, overlaps, packFlow, placeFree, pointToCell, reorder, resolveSpan, rowCount, snapSpan, spanSize };
+export { DumbGrid, cellRect, colWidth, createDumbGrid, createDumbGridGroup, createGridEngine, createGridGroupEngine, firstFreeCell, fitSpan, gridLinesBackground, insertIndex, mergeLayout, moveDeltas, overlaps, packFlow, placeFree, pointToCell, reorder, resolveSpan, rowCount, snapSpan, spanSize };

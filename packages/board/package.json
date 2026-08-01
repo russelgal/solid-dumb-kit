@@ -33,6 +33,7 @@
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "devDependencies": {
+    "@solid-dumb-kit/grid": "workspace:*",
     "@solid-dumb-kit/shared": "workspace:*"
   },
   "peerDependencies": {
@@ -42,6 +43,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@solid-dumb-kit/grid": "workspace:^",
     "@solid-dumb-kit/shared": "workspace:^"
   }
 }

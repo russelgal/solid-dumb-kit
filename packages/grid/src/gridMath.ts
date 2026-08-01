@@ -154,8 +154,17 @@ export function spanSize(n: number, unit: number, gap: number): number {
  * Результат отдаётся блокам как ЯВНЫЕ `grid-column-start`/`grid-row-start`, а не
  * как auto-flow: браузер тогда не «домысливает» раскладку, и наша арифметика для
  * FLIP гарантированно описывает то, что нарисовано.
+ *
+ * У блока может быть `minW` — ширина, до которой он согласен ужаться, чтобы
+ * влезть в остаток строки вместо переноса вниз. Фактическая ширина при этом
+ * НИГДЕ не хранится: она заново выводится из раскладки, поэтому на просторном
+ * месте блок сам разворачивается обратно до желаемой.
  */
-export function packFlow(items: Array<GridSpan>, cols: number, mode: FlowMode = 'flow'): Array<Placed> {
+export function packFlow(
+  items: Array<GridSpan & { minW?: number }>,
+  cols: number,
+  mode: FlowMode = 'flow',
+): Array<Placed> {
   const c = Math.max(1, Math.floor(cols))
   const grid = createOccupancy()
 
@@ -164,11 +173,29 @@ export function packFlow(items: Array<GridSpan>, cols: number, mode: FlowMode = 
   let curRow = 0
 
   for (const it of items) {
-    const w = clamp(Math.round(it.w) || 1, 1, c)
+    const want = clamp(Math.round(it.w) || 1, 1, c)
     const h = Math.max(1, Math.round(it.h) || 1)
     // dense ищет с самого начала, поэтому затыкает дырки, оставленные широкими
     // блоками; flow идёт от курсора и назад не возвращается (как CSS без dense)
-    const { col, row } = grid.findFrom(mode === 'dense' ? 0 : curCol, mode === 'dense' ? 0 : curRow, w, h, c)
+    const fromCol = mode === 'dense' ? 0 : curCol
+    const fromRow = mode === 'dense' ? 0 : curRow
+
+    // Блок с `minW` согласен встать УЖЕ желаемого, лишь бы не улетать вниз:
+    // перебираем ширины от желаемой к минимальной и берём ту, что встаёт раньше
+    // всех. Без `minW` перебор вырождается в один проход — прежнее поведение.
+    const min = clamp(Math.round(it.minW ?? want) || 1, 1, want)
+    let best: { col: number; row: number; w: number } | null = null
+    for (let w = want; w >= min; w--) {
+      const spot = grid.findFrom(fromCol, fromRow, w, h, c)
+      // раньше — это выше, а на той же строке левее; при равном месте
+      // выигрывает первый проверенный, то есть самый широкий
+      if (!best || spot.row < best.row || (spot.row === best.row && spot.col < best.col)) {
+        best = { col: spot.col, row: spot.row, w }
+      }
+      if (best.row === fromRow && best.col === fromCol) break   // раньше уже не встанет
+    }
+
+    const { col, row, w } = best!
     grid.take(col, row, w, h)
     out.push({ id: it.id, w, h, col, row })
     curCol = col + w

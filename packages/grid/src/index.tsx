@@ -1,6 +1,8 @@
 export {
   DumbGrid,
   mergeLayout,
+  // разметку сетки рисует и доска: линии считаются через calc, без замеров
+  gridLinesBackground,
   type DumbGridProps,
   type DumbGridItem,
   type DumbGridLayout,

@@ -61,7 +61,7 @@ export default function DumbSortableDndExample() {
   return (
     <div class="p-5">
       <h3 class="text-lg font-semibold">DumbSortableDnd — нативный drag-and-drop</h3>
-      <p class="mt-1 mb-3 max-w-4xl text-sm text-base-content/80">
+      <p class="mt-1 mb-3 max-w-4xl text-sm text-base-content">
         <b>300 строк и 200 плиток.</b> Место вставки мы не считаем: зона приёма висит на каждом
         элементе, и хиттест делает браузер — даром и всегда верно, хоть после автопрокрутки на три
         тысячи пикселей. <b>DOM за жест не меняется вовсе:</b> разметка стоит в неизменном порядке,
@@ -71,11 +71,11 @@ export default function DumbSortableDndExample() {
         <b>DumbSortable</b>.
       </p>
 
-      <div class="mb-3 min-h-6 text-sm text-base-content/70">{log()}</div>
+      <div class="mb-3 min-h-6 text-sm text-base-content">{log()}</div>
 
       <div class="grid items-start gap-5 lg:grid-cols-2">
         <section class="min-w-0">
-          <h4 class="mb-2 text-sm font-medium text-base-content/70">Список — 300 строк</h4>
+          <h4 class="mb-2 text-sm font-medium text-base-content">Список — 300 строк</h4>
 
           <DumbSortableDnd
             class="sd-list"
@@ -93,7 +93,7 @@ export default function DumbSortableDndExample() {
                 </button>
                 <div class="min-w-0 flex-1">
                   <div class="sd-title text-sm font-medium">{row.label}</div>
-                  <div class="text-xs text-base-content/50">
+                  <div class="text-xs text-base-content">
                     {row.tall ? 'двойная высота' : 'обычная строка'}
                   </div>
                 </div>
@@ -104,8 +104,8 @@ export default function DumbSortableDndExample() {
         </section>
 
         <section class="min-w-0">
-          <h4 class="mb-2 text-sm font-medium text-base-content/70">Сетка плиток — 200</h4>
-          <p class="mb-2 text-sm text-base-content/80">
+          <h4 class="mb-2 text-sm font-medium text-base-content">Сетка плиток — 200</h4>
+          <p class="mb-2 text-sm text-base-content">
             Тот же движок с <code class="kbd kbd-sm">axis="grid"</code>: плитка едет на место той,
             над которой курсор, а соседи сдвигаются на одну позицию — с переносом на другую строку,
             когда упираются в край. Тут плитку тащат целиком, без ручки.

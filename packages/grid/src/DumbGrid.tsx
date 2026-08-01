@@ -258,13 +258,19 @@ export function gridLinesBackground(args: {
   gapX: number
   rowH: number
   gapY: number
+  /**
+   * Толщина линии, px. Не задана — линия во весь зазор (так подложка читается
+   * как «здесь дырка между блоками»). Доска просит волосяную: ей нужна
+   * разметка ячеек, а не заливка промежутков.
+   */
+  line?: number
 }): { image: string; size: string } {
-  const { cols, gapX, rowH, gapY } = args
+  const { cols, gapX, rowH, gapY, line } = args
   const col = `calc((100% - ${(cols - 1) * gapX}px) / ${cols})`
   const stepX = `calc(${col} + ${gapX}px)`
   // при нулевом зазоре зазора нет — рисуем волосяную линию в 1px
-  const lineW = Math.max(1, gapX)
-  const lineH = Math.max(1, gapY)
+  const lineW = Math.max(1, line ?? gapX)
+  const lineH = Math.max(1, line ?? gapY)
 
   // границы колонок: перед каждой колонкой, кроме первой
   const stops: Array<string> = ['transparent 0']

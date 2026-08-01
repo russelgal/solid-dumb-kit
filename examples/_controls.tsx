@@ -95,5 +95,5 @@ export function Btn(props: { onClick: () => void; children: JSX.Element }) {
 
 /** Приписка справа — обычно счётчик или подсказка. */
 export function Note(props: { children: JSX.Element }) {
-  return <span class="text-base-content/70">{props.children}</span>
+  return <span class="text-base-content">{props.children}</span>
 }

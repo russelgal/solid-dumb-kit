@@ -1,14 +1,26 @@
 // Доска: секции с блоками. Блоки переставляются внутри секции и переносятся
 // между секциями, сами секции переставляются и меняют размер.
 //
-// Три вещи, из которых складывается вся механика:
+// Внутри секции блоки живут на СЕТКЕ ЯЧЕЕК: размер блока целый (w колонок зоны
+// × h строк), шаг строки фиксирован (`rowHeight`). Отсюда всё остальное:
 //
-// 1. ВНУТРИ секции DOM не трогается — двигается только CSS `order`. Порядок
-//    блоков в разметке всегда исходный, а браузер раскладывает по `order`.
-// 2. Перенос в соседнюю секцию без перестановки DOM невозможен: `order` живёт
-//    внутри одного контейнера. Это единственное место, где DOM меняется.
+// 1. ВНУТРИ секции DOM не трогается — место задаётся явными
+//    `grid-column-start`/`grid-row-start`, посчитанными `packFlow`. Явными, а не
+//    авто-потоком, по той же причине, что и в DumbGrid: иначе браузер домысливает
+//    раскладку и она расходится с арифметикой FLIP.
+// 2. Перенос в соседнюю секцию без перестановки DOM невозможен — блок живёт
+//    внутри своего контейнера. Это единственное место, где DOM меняется.
 // 3. Оба случая доигрывает FLIP, и ему всё равно, что именно произошло, — он
 //    знает только «стартуй отсюда, приезжай в ноль».
+//
+// Целые размеры дают две вещи даром: позиции блоков — арифметика (снимок
+// блоков через IntersectionObserver не нужен вовсе, наблюдаем только зоны и
+// секции), а разметка сетки рисуется теми же линиями, что в DumbGrid.
+//
+// Блок, не влезающий в остаток строки, не обязан уезжать вниз: `minW` из
+// `blockLimits` говорит, до какой ширины он согласен ужаться. Ужатая ширина
+// НИГДЕ не хранится — она заново выводится из раскладки, поэтому на просторном
+// месте блок сам разворачивается обратно.
 //
 // Жест блоков и секций — нативный drag-and-drop: зону под курсором определяет
 // браузер. Ресайз — НАПРОТИВ, указательные события: перенос отвечает на вопрос
@@ -19,7 +31,24 @@
 
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount, type JSX } from 'solid-js'
 import { createAutoScroller, createFlip, createStableOrder, injectStyle, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
-import { moveAt, panelFlow, rowsFor, type PanelBox, type Slot, type ZoneFlow } from './boardMath'
+// математика сетки общая с DumbGrid — своей у доски только поток секций
+import {
+  cellRect, colWidth, gridLinesBackground, packFlow, resolveSpan, rowCount, snapSpan, spanSize,
+  type Metrics, type Placed, type SpanLimits, type SpanValue,
+} from '@solid-dumb-kit/grid'
+import { moveAt, panelFlow, type PanelBox, type Slot } from './boardMath'
+
+/**
+ * Пределы размера блока в ячейках. Ширины принимают долю (`'half'`, `'2/5'`) —
+ * она разрешается по числу колонок ЗОНЫ, высоты только числами: строк у зоны
+ * столько, сколько потребуется.
+ */
+export type BlockLimits = {
+  minW?: SpanValue
+  maxW?: SpanValue
+  minH?: number
+  maxH?: number
+}
 
 export type BoardSection<T = unknown> = {
   id: string
@@ -59,20 +88,41 @@ export type DumbBoardProps<T> = {
   onSectionResize?: (id: string, size: { span: number; rows: number }) => void
 
   /**
-   * Сколько колонок зоны занимает блок; по умолчанию одну. Высоту не
-   * спрашиваем — её задаёт содержимое, доска её замеряет (тем же снимком через
-   * `IntersectionObserver`, что и список в `sortable-dnd`).
+   * Сколько колонок зоны занимает блок; по умолчанию одну. Кроме числа
+   * принимается доля (`'half'`, `'1/3'`) — она разрешается по числу колонок зоны.
    */
-  blockSpan?: (item: T) => number
+  blockSpan?: (item: T) => SpanValue
+  /**
+   * Пределы размера блока в ячейках. `minW` работает дважды: до неё блок
+   * согласен ужаться, чтобы влезть в остаток строки вместо переезда вниз, и
+   * ниже неё его не пустит ресайз. Ужатая ширина не хранится нигде — на
+   * свободном месте блок сам вернётся к `blockSpan`.
+   */
+  blockLimits?: (item: T) => BlockLimits
+  /** высота блока в строках сетки зоны; по умолчанию одна */
+  blockRows?: (item: T) => number
+  /**
+   * Блок сменил размер — сохрани его у себя. Пока проп не задан, у блоков нет
+   * ни ручки, ни жеста: размер живёт в твоих данных, и менять его без спроса
+   * доска не станет.
+   */
+  onBlockResize?: (item: T, size: { w: number; h: number }) => void
 
   /** колонок у самой доски; по умолчанию 12 */
   cols?: number
-  /** зазор сетки, px; по умолчанию 14 */
+  /** зазор сетки доски, px; по умолчанию 14 */
   gap?: number
-  /** шаг строки внутри секции, px — им меряется высота при ресайзе; по умолчанию 76 */
+  /** шаг строки внутри секции, px — он же высота ячейки зоны; по умолчанию 76 */
   rowHeight?: number
+  /** зазор сетки ВНУТРИ секции, px; по умолчанию 8 */
+  zoneGap?: number
   /** минимальная ширина секции в колонках; по умолчанию 3 */
   minSpan?: number
+  /**
+   * Показывать разметку сетки внутри секций: `true` — всегда, `'drag'` — только
+   * пока тащат блок (по умолчанию), `false` — никогда.
+   */
+  showGrid?: boolean | 'drag'
 
   /** правка: без неё нет ни жестов, ни ручек, ни единого слушателя на блоках */
   editable?: boolean
@@ -81,6 +131,8 @@ export type DumbBoardProps<T> = {
   /** разрешить ресайз секций; по умолчанию да */
   resizable?: boolean
 
+  /** подписи для доступности — заголовки ручек */
+  labels?: { resizeBlock?: string }
   /** свои кнопки в правой части шапки секции */
   sectionActions?: (section: BoardSection<T>) => JSX.Element
   class?: string
@@ -102,20 +154,61 @@ const CSS = `
           .dumb-board-head { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
                              font: inherit; font-size: 13px; cursor: grab; user-select: none }
           .dumb-board-head:active { cursor: grabbing }
-          .dumb-board-grip { color: #cbd5e1 }
+          /* всё, что читают или хватают, — контрастное: блёклая ручка и серый по
+             серому не читаются ни на проекторе, ни при ярком свете */
+          .dumb-board-grip { color: #64748b }
           .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
-          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .65 }
+          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .85 }
           .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                              background: rgb(0 0 0 / .06) }
+                              background: rgb(0 0 0 / .1) }
           .dumb-board-actions { margin-left: auto; display: flex; gap: 4px }
-          /* сетка блоков: сюда и смотрит order */
-          .dumb-board-zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
-                             overflow-y: auto; scrollbar-gutter: stable;
-                             grid-template-columns: repeat(var(--dumb-board-inner), 1fr) }
-          /* блок НЕ растягивается на высоту строки: иначе у всех в строке
-             замеряется одна и та же высота, и переехавший в другую строку
-             считается не по своей */
-          .dumb-board-block { align-self: start; min-width: 0 }
+          /* сетка блоков: ячейки фиксированного шага, места задаются явно */
+          /* overflow-x именно clip, а не visible: рядом с overflow-y: auto
+             visible вычисляется в auto, и FLIP, вынося блок за правый край,
+             зажигает горизонтальную полосу на время анимации. clip такого не
+             делает и не мешает вертикальной оси прокручиваться */
+          .dumb-board-zone { position: relative; display: grid; gap: var(--dumb-board-zone-gap);
+                             align-content: start; overflow-x: clip; overflow-y: auto;
+                             scrollbar-gutter: stable;
+                             grid-template-columns: repeat(var(--dumb-board-inner), minmax(0, 1fr));
+                             grid-auto-rows: var(--dumb-board-row) }
+          /* Подложка с линиями: не участвует в сетке (absolute), поэтому не
+             занимает ячеек и не расталкивает блоки.
+
+             padding: inherit и background-*: content-box обязательны — сетка
+             начинается ПОСЛЕ padding зоны, а absolute-слой отсчитывается от
+             padding-box. Без этого линии съезжают ровно на padding. */
+          .dumb-board-lines { position: absolute; inset: 0; pointer-events: none; z-index: 0;
+                              padding: inherit; box-sizing: border-box;
+                              background-origin: content-box; background-clip: content-box;
+                              background-repeat: no-repeat, repeat;
+                              transition: opacity .15s ease;
+                              /* СВОЙ СЛОЙ обязателен: подложка размером во всю
+                                 зону и с двумя градиентами, а гасится через
+                                 opacity. Без слоя браузер перерисовывает эти
+                                 градиенты каждый кадр анимации — на замере это
+                                 две трети всех перекрасок за жест. */
+                              will-change: opacity }
+          /* рамка будущего размера: САМА grid item, поэтому встаёт в ячейки без
+             пиксельной арифметики — и не мешает блокам, у которых места явные */
+          .dumb-board-frame { pointer-events: none; z-index: 3; border-radius: 10px;
+                              border: 2px dashed rgba(59,130,246,.9);
+                              background: rgba(59,130,246,.08) }
+          /* ручка ресайза блока — тот же уголок, что у секции: две линии со
+             скруглением. Рисуем сами, а не Tailwind'ом: кит самодостаточен */
+          .dumb-board-block-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
+                                   cursor: nwse-resize; touch-action: none; z-index: 2 }
+          /* цвет КОНТРАСТНЫЙ: ручка — орган управления, её надо видеть, а не
+             угадывать. Перекрывается переменной, но блёклый дефолт недопустим */
+          .dumb-board-block-grip::after { content: ''; position: absolute; right: 4px; bottom: 4px;
+                                          width: 9px; height: 9px;
+                                          border-right: 2px solid var(--dumb-board-grip, #475569);
+                                          border-bottom: 2px solid var(--dumb-board-grip, #475569);
+                                          border-bottom-right-radius: 3px }
+          .dumb-board-block-grip:hover::after { border-color: var(--dumb-board-grip-hover, #1e293b) }
+          /* блок занимает СВОИ ячейки целиком — высота приходит из сетки, а не
+             из содержимого, поэтому мерить её не нужно вовсе */
+          .dumb-board-block { min-width: 0; min-height: 0; position: relative; z-index: 1 }
           .dumb-board-block.held { opacity: .35 }
           .dumb-board-grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
                                cursor: col-resize; touch-action: none }
@@ -131,9 +224,12 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   const cols = () => props.cols ?? 12
   const gap = () => props.gap ?? 14
   const rowH = () => props.rowHeight ?? 76
+  const zoneGap = () => props.zoneGap ?? 8
   const minSpan = () => props.minSpan ?? 3
   const editable = () => props.editable !== false
   const resizable = () => props.resizable !== false
+  const showGrid = () => props.showGrid ?? 'drag'
+  const gridVisible = () => showGrid() === true || (showGrid() === 'drag' && !!held())
 
   const spanOf = (s: BoardSection<T>) => Math.max(1, Math.min(cols(), s.span ?? Math.floor(cols() / 2)))
   const colsIn = (s: BoardSection<T>) => Math.max(1, s.cols ?? 3)
@@ -143,12 +239,29 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   /** в какой секции лежит блок */
   const sectionOf = (blockId: string) =>
     props.sections.find((s) => s.items.some((it) => props.id(it) === blockId))
-  /** сколько колонок ЗОНЫ занимает блок — зажимаем шириной самой зоны */
+  /** сколько колонок ЗОНЫ занимает блок — доли разрешаются по её ширине */
   const spanOfBlock = (item: T, s?: BoardSection<T>) => {
-    const want = Math.max(1, Math.round(props.blockSpan?.(item) ?? 1))
     const sec = s ?? sectionOf(props.id(item))
-    return Math.min(want, sec ? colsIn(sec) : want)
+    const n = sec ? colsIn(sec) : 1
+    return resolveSpan(props.blockSpan?.(item), n)
   }
+  /**
+   * Пределы в ЧИСЛАХ: доли разрешаются по колонкам зоны здесь, на границе, —
+   * дальше внутрь идут только числа, как и в математике сетки.
+   */
+  const limitsOf = (item: T, s?: BoardSection<T>): SpanLimits => {
+    const lim = props.blockLimits?.(item)
+    if (!lim) return {}
+    const n = colsIn(s ?? sectionOf(props.id(item)) ?? ({ cols: 1 } as BoardSection<T>))
+    return {
+      minW: lim.minW === undefined ? undefined : resolveSpan(lim.minW, n),
+      maxW: lim.maxW === undefined ? undefined : resolveSpan(lim.maxW, n),
+      minH: lim.minH,
+      maxH: lim.maxH,
+    }
+  }
+  /** высота блока в строках зоны */
+  const rowsOfBlock = (item: T) => Math.max(1, Math.round(props.blockRows?.(item) ?? 1))
   /**
    * Порядок РЕНДЕРА, а не показа. `<For>` по нему не пересоздаёт узлы при
    * перестановке — сортировка по id не зависит от того, как секции показаны, —
@@ -202,14 +315,23 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   const panelEls = new Map<string, HTMLElement>()
   let wrapEl!: HTMLElement
 
-  /** геометрия секций — снимается разом, НЕ во время жеста */
-  let geom: Record<string, ZoneFlow> = {}
-  /** высота каждого блока: строка тем выше, чем выше самый высокий в ней */
-  let blockH: Record<string, number> = {}
+  /**
+   * Где начинается контент зоны — снимается разом, НЕ во время жеста. Размеры
+   * блоков отсюда пропали: они целые, и позиция считается арифметикой.
+   */
+  let zoneAt: Record<string, Slot> = {}
   let panelH: Record<string, number> = {}
   let wrapAt: Slot = { left: 0, top: 0 }
   /** ширина колонки доски: приходит из ResizeObserver, а не из замера */
   let colW = 0
+  /** ширина КОНТЕНТА каждой зоны — тоже из ResizeObserver */
+  const zoneW: Record<string, number> = {}
+  /**
+   * Отступ контента зоны от её угла: `IntersectionObserver` отдаёт border-box, а
+   * сетка начинается после padding. Берётся из `contentRect` того же
+   * ResizeObserver — своих замеров опять не нужно.
+   */
+  const zonePad: Record<string, Slot> = {}
 
   let flip: Flip = createFlip(true)
   createEffect(() => { flip = createFlip(shouldAnimate(props.animate)) })
@@ -222,7 +344,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
    * считаются off-main-thread, forced layout не случается даже на сотне блоков.
    */
   function measure() {
-    const targets = [...blockEls.values(), ...zoneEls.values(), ...panelEls.values(), wrapEl].filter(Boolean)
+    const targets = [...zoneEls.values(), ...panelEls.values(), wrapEl].filter(Boolean)
     if (!targets.length || typeof IntersectionObserver !== 'function') return
 
     const rects = new Map<Element, DOMRectReadOnly>()
@@ -235,34 +357,14 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
       if (rects.size < targets.length && batches < 4) return
       io.disconnect()
 
-      const next: Record<string, ZoneFlow> = {}
-      const nextH: Record<string, number> = {}
+      // От зоны нужен только её угол: где внутри неё лежит блок, считает
+      // `packFlow`, а ширину колонки даёт ResizeObserver.
+      const next: Record<string, Slot> = {}
       for (const s of props.sections) {
-        const n = colsIn(s)
-        const own = itemsOf(s.id)
-          .map((it, k) => ({ k, id: props.id(it), span: spanOfBlock(it), r: rects.get(blockEls.get(props.id(it))!) }))
-          .filter((x): x is { k: number; id: string; span: number; r: DOMRectReadOnly } => Boolean(x.r))
-        const zoneRect = rects.get(zoneEls.get(s.id)!)
-
-        for (const o of own) nextH[o.id] = o.r.height
-
-        if (!own.length) {
-          if (zoneRect) next[s.id] = { left: zoneRect.left + 10, top: zoneRect.top + 10, colW: 96, gap: 8, cols: n }
-          continue
-        }
-        // Первый блок стоит в левом верхнем углу зоны — он и есть начало
-        // координат. Зазор снимаем по паре соседей из одной строки, ширину
-        // колонки выводим из ширины блока и того, сколько колонок он занимает.
-        const a = own[0]
-        let gap = 8
-        for (const o of own) {
-          if (o.r.top === a.r.top && o.r.left > a.r.left) { gap = o.r.left - (a.r.left + a.r.width); break }
-        }
-        const colW = (a.r.width - (a.span - 1) * gap) / a.span
-        next[s.id] = { left: a.r.left, top: a.r.top, colW, gap, cols: n }
+        const r = rects.get(zoneEls.get(s.id)!)
+        if (r) next[s.id] = { left: r.left, top: r.top }
       }
-      geom = next
-      blockH = nextH
+      zoneAt = next
 
       // у секций запоминаем только ВЫСОТЫ: позиции считает `panelFlow`, потому
       // что секции разной ширины и перестановка перекладывает всю сетку
@@ -292,16 +394,37 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     Promise.allSettled(anims.map((a) => a.finished)).then(() => measure())
   }
 
+  /**
+   * Ширины — из ResizeObserver, а не из замеров: доски (шаг колонки при ресайзе
+   * секций) и каждой зоны (шаг ячейки внутри неё).
+   *
+   * Зоны наблюдаем по ref'у, а не списком в `onMount`: секции появляются и
+   * исчезают, а ref срабатывает ровно тогда, когда элемент есть.
+   */
+  const sizes = typeof ResizeObserver === 'function'
+    ? new ResizeObserver((entries) => {
+        for (const e of entries) {
+          if (e.target === wrapEl) {
+            colW = colWidth(e.contentRect.width, cols(), gap())
+            continue
+          }
+          const id = (e.target as HTMLElement).dataset.boardZone
+          if (!id) continue
+          zoneW[id] = e.contentRect.width
+          zonePad[id] = { left: e.contentRect.left, top: e.contentRect.top }
+        }
+      })
+    : null
+  onCleanup(() => sizes?.disconnect())
+
   onMount(() => {
     measure()
-    if (typeof ResizeObserver !== 'function') return
+    if (!sizes) return
+    sizes.observe(wrapEl)
+    // положение зон меняется от собственной ширины доски — пересняться нужно
+    // после того, как браузер разложил новую ширину
     let firstCall = true
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        if (e.target !== wrapEl) continue
-        // ширина колонки — из ResizeObserver, это не forced layout
-        colW = (e.contentRect.width - gap() * (cols() - 1)) / cols()
-      }
+    const ro = new ResizeObserver(() => {
       if (firstCall) { firstCall = false; return }
       measure()
     })
@@ -312,20 +435,75 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   /* ────────── перенос блоков ────────── */
 
   /**
-   * Куда лягут блоки секции при её нынешнем составе. Считается потоком, а не
-   * шагом сетки: блоки бывают разной ширины и высоты, и место k зависит от
-   * того, кто стоит перед ним. Ровно та же задача, что у секций, — и та же
-   * функция.
+   * Раскладка блоков секции в ЯЧЕЙКАХ. Считается, а не снимается: размеры целые,
+   * поэтому место каждого блока — чистая арифметика от порядка массива.
+   *
+   * Это же место потом попадает в разметку явными `grid-column`/`grid-row`, так
+   * что нарисованное браузером и посчитанное здесь совпадают по определению.
+   */
+  const cellsOf = createMemo(() => {
+    const out = new Map<string, Array<Placed>>()
+    for (const s of props.sections) {
+      out.set(s.id, packFlow(
+        s.items.map((it) => ({
+          id: props.id(it),
+          w: spanOfBlock(it, s),
+          h: rowsOfBlock(it),
+          minW: limitsOf(it, s).minW,
+        })),
+        colsIn(s),
+      ))
+    }
+    return out
+  })
+  const placedIn = (sectionId: string) => cellsOf().get(sectionId) ?? []
+  /** сколько строк заняла секция — под неё же считается высота зоны */
+  const rowsUsed = (sectionId: string) => rowCount(placedIn(sectionId))
+  /** ячейка конкретного блока: колонка, строка и ФАКТИЧЕСКАЯ ширина (с ужиманием) */
+  const cellOf = (sectionId: string, blockId: string): Placed | undefined =>
+    placedIn(sectionId).find((p) => p.id === blockId)
+
+  /**
+   * Линии разметки. Ширину колонки здесь НЕ подставляем из JS — она внутри
+   * `calc`, поэтому линии верны с первого кадра и на любом ресайзе.
+   */
+  const linesOf = (s: BoardSection<T>) => {
+    const bg = gridLinesBackground({
+      cols: colsIn(s), gapX: zoneGap(), rowH: rowH(), gapY: zoneGap(), line: 1,
+    })
+    return { 'background-image': bg.image, 'background-size': bg.size }
+  }
+
+  /** метрики зоны в px: шаг ячейки известен, ширина колонки — из ResizeObserver */
+  const metricsOf = (s: BoardSection<T>): Metrics => ({
+    cols: colsIn(s),
+    colW: colWidth(zoneW[s.id] ?? 0, colsIn(s), zoneGap()),
+    rowH: rowH(),
+    gapX: zoneGap(),
+    gapY: zoneGap(),
+  })
+
+  /**
+   * Где блоки лежат на экране. Нужно только FLIP'у, поэтому считается из тех же
+   * ячеек: угол зоны плюс прямоугольник ячейки. `scrollTop` читать можно — это
+   * не forced layout, в отличие от размеров.
    */
   const blockPlaces = (sectionId: string): Record<string, Slot> => {
-    const g = geom[sectionId]
-    if (!g) return {}
-    const boxes: Array<PanelBox> = itemsOf(sectionId).map((it) => ({
-      id: props.id(it),
-      span: spanOfBlock(it),
-      height: blockH[props.id(it)] ?? 0,
-    }))
-    return panelFlow(boxes, { cols: g.cols, colW: g.colW, gap: g.gap, origin: { left: g.left, top: g.top } })
+    const s = sectionById(sectionId)
+    const origin = zoneAt[sectionId]
+    if (!s || !origin) return {}
+    const m = metricsOf(s)
+    const el = zoneEls.get(sectionId)
+    const pad = zonePad[sectionId] ?? { left: 0, top: 0 }
+    const left = origin.left + pad.left - (el?.scrollLeft ?? 0)
+    const top = origin.top + pad.top - (el?.scrollTop ?? 0)
+
+    const out: Record<string, Slot> = {}
+    for (const p of placedIn(sectionId)) {
+      const r = cellRect(p, m)
+      out[p.id] = { left: left + r.x, top: top + r.y }
+    }
+    return out
   }
 
   /** снимок «кто где лежал» до изменения — по нему считаются смещения FLIP */
@@ -431,6 +609,9 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   let sizingFrom: Sizing | null = null
 
   const onGripDown = (ev: PointerEvent) => {
+    // только основная кнопка: правой зовут контекстное меню, средней — автоскролл,
+    // и жест, начатый ими, некому закончить (`pointerup` придёт от другой кнопки)
+    if (ev.button !== 0) return
     const grip = (ev.target as HTMLElement | null)?.closest?.('[data-board-resize]') as HTMLElement | null
     if (!grip || !editable() || !resizable()) return
     const s = sectionById(grip.dataset.boardResize!)
@@ -442,7 +623,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
       x: ev.clientX, y: ev.clientY,
       span: spanOf(s),
       // высота «по содержимому» — берём фактическую, чтобы тянуть с того же места
-      rows: s.rows || rowsFor(itemsOf(s.id).length, colsIn(s)),
+      rows: s.rows || rowsUsed(s.id),
     }
     setSizing(s.id)
   }
@@ -450,6 +631,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   const onGripMove = (ev: PointerEvent) => {
     const d = sizingFrom
     if (!d || !colW) return
+    if (!(ev.buttons & 1)) { onGripUp(); return }   // кнопку отпустили мимо нас
     const s = sectionById(d.id)
     if (!s) return
     // считаем в колонках и строках, а не в пикселях: пока снап не сменился,
@@ -457,7 +639,9 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     let span = spanOf(s)
     let rows = s.rows ?? d.rows
     if (d.axis !== 'y') span = Math.max(minSpan(), Math.min(cols(), d.span + Math.round((ev.clientX - d.x) / colW)))
-    if (d.axis !== 'x') rows = Math.max(1, d.rows + Math.round((ev.clientY - d.y) / rowH()))
+    // шаг по вертикали — ячейка ВМЕСТЕ с зазором, иначе тянешь на строку, а
+    // прибавляется полторы
+    if (d.axis !== 'x') rows = Math.max(1, d.rows + Math.round((ev.clientY - d.y) / (rowH() + zoneGap())))
     if (span === spanOf(s) && rows === (s.rows ?? d.rows)) return
     props.setSections(props.sections.map((x) => (x.id === d.id ? { ...x, span, rows } : x)))
     props.onSectionResize?.(d.id, { span, rows })
@@ -468,6 +652,78 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     sizingFrom = null
     setSizing(null)
     measureWhenStill()   // размер изменился — места блоков внутри другие
+  }
+
+  /* ────────── ресайз блоков: рамка-превью, а не живой размер ────────── */
+
+  /**
+   * Пока тянут, меняется только РАМКА. Менять размер самого блока покадрово
+   * нельзя: каждая смена снапа перекладывает всю зону и запускает пачку FLIP —
+   * та же причина, по которой так сделано в DumbGrid.
+   *
+   * Размер живёт в данных потребителя, поэтому доска не применяет его сама:
+   * на отпускании зовётся `onBlockResize`, а дальше решает он.
+   */
+  type BlockSizing = { id: string; sectionId: string; x: number; y: number; w: number; h: number }
+  let blockSizingFrom: BlockSizing | null = null
+  const [blockFrame, setBlockFrame] = createSignal<{ sectionId: string; id: string; w: number; h: number } | null>(null)
+
+  const onBlockGripDown = (ev: PointerEvent) => {
+    if (ev.button !== 0) return    // только основная кнопка, как и у секций
+    const grip = (ev.target as HTMLElement | null)?.closest?.('[data-board-block-resize]') as HTMLElement | null
+    if (!grip || !editable() || !props.onBlockResize) return
+    const id = grip.dataset.boardBlockResize!
+    const section = sectionOf(id)
+    const at = section && cellOf(section.id, id)
+    if (!section || !at) return
+    ev.preventDefault()
+    ev.stopPropagation()
+    grip.setPointerCapture(ev.pointerId)
+    // стартуем от ЖЕЛАЕМОЙ ширины, а не от ужатой: иначе блок, втиснутый в
+    // остаток строки, при первом же движении «прыгал» бы от неё
+    const item = section.items.find((it) => props.id(it) === id)!
+    blockSizingFrom = {
+      id, sectionId: section.id, x: ev.clientX, y: ev.clientY,
+      w: spanOfBlock(item, section), h: at.h,
+    }
+    setBlockFrame({ sectionId: section.id, id, w: blockSizingFrom.w, h: blockSizingFrom.h })
+  }
+
+  const onBlockGripMove = (ev: PointerEvent) => {
+    const d = blockSizingFrom
+    if (!d) return
+    // кнопку отпустили мимо нас (за окном, поверх чужого слоя) — заканчиваем
+    // сами, иначе рамка осталась бы висеть до следующего клика
+    if (!(ev.buttons & 1)) { onBlockGripUp(); return }
+    const s = sectionById(d.sectionId)
+    const item = s?.items.find((it) => props.id(it) === d.id)
+    if (!s || !item) return
+    const next = snapSpan({
+      start: { w: d.w, h: d.h },
+      dx: ev.clientX - d.x,
+      dy: ev.clientY - d.y,
+      m: metricsOf(s),
+      limits: limitsOf(item, s),
+    })
+    const now = blockFrame()
+    if (now && now.w === next.w && now.h === next.h) return   // снап не сменился
+    setBlockFrame({ sectionId: d.sectionId, id: d.id, w: next.w, h: next.h })
+  }
+
+  const onBlockGripUp = () => {
+    const d = blockSizingFrom
+    const frame = blockFrame()
+    blockSizingFrom = null
+    setBlockFrame(null)
+    if (!d || !frame) return
+    const s = sectionById(d.sectionId)
+    const item = s?.items.find((it) => props.id(it) === d.id)
+    if (!item) return
+    if (frame.w === d.w && frame.h === d.h) return   // ничего не изменилось
+    const was = snapshotPlaces()
+    props.onBlockResize?.(item, { w: frame.w, h: frame.h })
+    playBlocks(was)      // соседи разъезжаются под новый размер
+    measureWhenStill()
   }
 
   /* ────────── жест: делегированные слушатели на всей доске ────────── */
@@ -484,6 +740,9 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
 
   const onDragStart = (ev: DragEvent) => {
     if (!editable()) { ev.preventDefault(); return }
+    // с ручки ресайза драг не начинается: `draggable={false}` на ней сам по себе
+    // жест не отменяет — блок-предок всё равно перетаскиваемый
+    if (pressed?.closest?.('[data-board-block-resize]')) { ev.preventDefault(); return }
     setHeld(null)
     setHeldSection(null)
 
@@ -582,10 +841,10 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     <div
       class={props.class}
       style={props.style}
-      onPointerDown={(ev) => { pressed = ev.target as Element | null; onGripDown(ev) }}
-      onPointerMove={onGripMove}
-      onPointerUp={onGripUp}
-      onPointerCancel={onGripUp}
+      onPointerDown={(ev) => { pressed = ev.target as Element | null; onGripDown(ev); onBlockGripDown(ev) }}
+      onPointerMove={(ev) => { onGripMove(ev); onBlockGripMove(ev) }}
+      onPointerUp={(ev) => { onGripUp(); onBlockGripUp() }}
+      onPointerCancel={() => { onGripUp(); onBlockGripUp() }}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={finish}
@@ -629,34 +888,81 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
               <div
                 class="dumb-board-zone"
                 data-board-zone={sid}
-                ref={(el) => zoneEls.set(sid, el)}
+                ref={(el) => { zoneEls.set(sid, el); sizes?.observe(el) }}
                 style={{
                   '--dumb-board-inner': String(colsIn(s())),
-                  ...(s().rows ? { height: `${s().rows! * rowH() + 12}px` } : {}),
+                  '--dumb-board-row': `${rowH()}px`,
+                  '--dumb-board-zone-gap': `${zoneGap()}px`,
+                  // высота: заданная секцией либо по числу занятых строк. Строка
+                  // про запас — чтобы блоку было куда переезжать вниз
+                  height: `${spanSize(s().rows || rowsUsed(sid) + 1, rowH(), zoneGap())}px`,
                 }}
               >
+                <Show when={editable() && showGrid() !== false}>
+                  <div
+                    class="dumb-board-lines"
+                    aria-hidden="true"
+                    style={{
+                      ...linesOf(s()),
+                      opacity: gridVisible() ? '1' : '0',
+                    }}
+                  />
+                </Show>
+
                 {/* Итерируем сами элементы, а не их id: иначе содержимое пришлось
                     бы искать в массиве прямо в разметке, и оно зависело бы от
                     всего массива — любая правка пересоздавала бы ВСЕ блоки. */}
                 <For each={renderItemsOf(sid)}>
-                  {(item) => (
-                    <div
-                      class="dumb-board-block"
-                      classList={{ held: held() === props.id(item) }}
-                      data-board-block={props.id(item)}
-                      draggable={editable()}
-                      ref={(el) => blockEls.set(props.id(item), el)}
-                      style={{
-                        order: String(placeOf(item)),
-                        ...(spanOfBlock(item, s()) > 1
-                          ? { 'grid-column': `span ${spanOfBlock(item, s())}` }
-                          : {}),
-                      }}
-                    >
-                      {props.children(item, s())}
-                    </div>
-                  )}
+                  {(item) => {
+                    const at = () => cellOf(sid, props.id(item))
+                    return (
+                      <div
+                        class="dumb-board-block"
+                        classList={{ held: held() === props.id(item) }}
+                        data-board-block={props.id(item)}
+                        draggable={editable()}
+                        ref={(el) => blockEls.set(props.id(item), el)}
+                        style={{
+                          // место ЯВНОЕ: браузер ничего не домысливает, поэтому
+                          // нарисованное совпадает с посчитанным для FLIP
+                          'grid-column': `${(at()?.col ?? 0) + 1} / span ${at()?.w ?? 1}`,
+                          'grid-row': `${(at()?.row ?? 0) + 1} / span ${at()?.h ?? 1}`,
+                        }}
+                      >
+                        {props.children(item, s())}
+
+                        <Show when={editable() && props.onBlockResize}>
+                          <span
+                            class="dumb-board-block-grip"
+                            data-board-block-resize={props.id(item)}
+                            // нативный драг не должен стартовать с ручки:
+                            // жест ресайза указательный и живёт сам по себе
+                            draggable={false}
+                            title={props.labels?.resizeBlock ?? 'Потяни, чтобы изменить размер'}
+                          />
+                        </Show>
+                      </div>
+                    )
+                  }}
                 </For>
+
+                {/* Рамка будущего размера — тоже grid item: браузер сам ставит
+                    её в нужные ячейки, а перекрытие блока сетке не мешает. */}
+                <Show when={blockFrame()?.sectionId === sid ? blockFrame() : null}>
+                  {(f) => {
+                    const at = () => cellOf(sid, f().id)
+                    return (
+                      <div
+                        class="dumb-board-frame"
+                        aria-hidden="true"
+                        style={{
+                          'grid-column': `${(at()?.col ?? 0) + 1} / span ${f().w}`,
+                          'grid-row': `${(at()?.row ?? 0) + 1} / span ${f().h}`,
+                        }}
+                      />
+                    )
+                  }}
+                </Show>
               </div>
 
               <Show when={editable() && resizable()}>

@@ -89,13 +89,15 @@ importers:
 
   packages/board:
     dependencies:
+      '@solid-dumb-kit/grid':
+        specifier: workspace:^
+        version: link:../grid
+      '@solid-dumb-kit/shared':
+        specifier: workspace:^
+        version: link:../shared
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
-    devDependencies:
-      '@solid-dumb-kit/shared':
-        specifier: workspace:*
-        version: link:../shared
 
   packages/grid:
     dependencies:
