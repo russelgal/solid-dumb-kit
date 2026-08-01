@@ -1,5 +1,6 @@
 import { JSX } from 'solid-js';
 import { Placed, Metrics, SpanValue } from '@solid-dumb-kit/grid';
+export { GridSpan, SpanPreset, SpanValue } from '@solid-dumb-kit/grid';
 
 type DndDragging = {
     grid: string;
