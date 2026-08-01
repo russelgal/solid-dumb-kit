@@ -34,13 +34,20 @@
 // Везде РАЗНИЦЫ, а не абсолютные координаты, поэтому прокрутка — колесом,
 // автоскроллом, чем угодно — на расчёт не влияет.
 //
+// Библиотеки под этим нет вообще — только события браузера. Сначала здесь стоял
+// `@atlaskit/pragmatic-drag-and-drop`, но выяснилось, что платим мы за него зря:
+// хиттест всё равно делает браузер, а из его услуг оставалась нормализация
+// `dragenter`/`dragleave` да «honey pot» под чужой баг с залипшим `:hover`. За
+// это — 6.9 КБ gzip против 1.5 КБ нашей базы и CJS-хвост `bind-event-listener`,
+// который дважды ронял дев у потребителя («does not provide an export named
+// 'bind'»). Кому нужны его хитбоксы — подключит адаптером поверх.
+//
+// Слушателей ЧЕТЫРЕ на весь список, а не по четыре на строку: события
+// drag-and-drop всплывают, и `ev.target.closest` скажет, кто под курсором. На
+// трёхстах строках это разница между 4 записями в таблице слушателей и 1200.
+//
 // Тач не поддерживается: HTML5 DnD там не существует. Для пальца — `DumbSortable`.
 
-import {
-  draggable,
-  dropTargetForElements,
-  monitorForElements,
-} from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { createAutoScroller } from '@solid-dumb-kit/shared'
 import { createFlip, type Flip } from '@solid-dumb-kit/shared'
 import { shouldAnimate } from '@solid-dumb-kit/shared'
@@ -92,7 +99,6 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
   const els = new Map<string, HTMLElement>()
   let container: HTMLElement | null = null
   let drag: Drag | null = null
-  let stopMonitor: (() => void) | null = null
   /**
    * Цель последнего нажатия — по ней решаем, тянут ли за ручку. Слушатель ОДИН
    * на весь движок: на трёхстах строках триста `pointerdown` — это триста
@@ -100,6 +106,9 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
    * же причине слушает жест на уровне документа, а не на каждом элементе.
    */
   let pressed: Element | null = null
+  /** где курсор был на прошлом событии — чтобы отличить движение от «стоим» */
+  let lastX = -1
+  let lastY = -1
   const remember = (ev: PointerEvent) => { pressed = ev.target as Element | null }
   if (typeof document !== 'undefined') {
     document.addEventListener('pointerdown', remember, { capture: true, passive: true })
@@ -215,16 +224,15 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
   }
 
   /** Курсор над строкой — значит её место и нужно занять. */
-  function hover(targets: ReadonlyArray<{ data: Record<string, unknown> }>) {
+  function hover(id: string | null) {
     const d = drag
-    if (!d) return
-    for (const t of targets) {
-      const id = t.data?.sortDndId as string | undefined
-      if (!id) continue
+    if (!d || !id) return
+    {
       // над самим собой: место уже наше, пересчитывать нечего
       if (id === d.id) return
       const idx = d.ids.indexOf(id)
       if (idx < 0) return
+      if (els.get(id)?.getAnimations().length) return   // цель сама едет — не цель
       // номер соседа среди оставшихся — и правило SortableJS: цель ниже нас,
       // значит встаём после неё; выше — перед ней
       const rest = idx < d.from ? idx : idx - 1
@@ -259,91 +267,99 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     })
   }
 
-  function ensureMonitor() {
-    if (stopMonitor) return
-    stopMonitor = monitorForElements({
-      canMonitor: ({ source }) => Boolean(source.data?.sortDndId),
-      onDrag({ location }) {
-        if (!drag) return
-        scroller.move(location.current.input.clientX, location.current.input.clientY)
-      },
-      // смена цели — единственный момент, когда место вообще может измениться
-      onDropTargetChange({ location }) {
-        hover(location.current.dropTargets)
-      },
-      onDrop({ location }) {
-        const d = drag
-        if (!d) return
-        const inside = location.current.dropTargets.some(
-          (t) => t.data?.sortDndList || t.data?.sortDndId,
-        )
-        const { from, k } = d
-        const moved = inside && k !== from
-        endDrag(moved ? () => opts.onEnd?.(from, k) : undefined)
-      },
-    })
+  /** кто под событием: слушатели висят на контейнере, не на каждой строке */
+  const idOf = (ev: Event) => {
+    const el = (ev.target as HTMLElement | null)?.closest?.('[data-sort-dnd-id]') as HTMLElement | null
+    return el?.dataset.sortDndId ?? null
+  }
+
+  const onDragStart = (ev: DragEvent) => {
+    if (opts.disabled?.()) { ev.preventDefault(); return }
+    const el = (ev.target as HTMLElement | null)?.closest?.('[data-sort-dnd-id]') as HTMLElement | null
+    const id = el?.dataset.sortDndId
+    if (!id) return
+
+    // Ручка: `draggable` стоит на строке, поэтому целью события будет она сама,
+    // а не ручка внутри — куда нажали, знает только запомненный `pointerdown`.
+    const handle = el!.querySelector('[data-drag-handle]')
+    if (handle && !(pressed && handle.contains(pressed))) { ev.preventDefault(); return }
+
+    const ids = opts.order()
+    const from = ids.indexOf(id)
+    if (from < 0) { ev.preventDefault(); return }
+
+    // без `setData` жест не начнётся в Firefox
+    ev.dataTransfer?.setData('text/plain', id)
+    if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move'
+
+    drag = {
+      id, el: el!, ids, from, k: from,
+      steps: [], slots: [], moved: new Set(),
+      grid: opts.axis?.() === 'grid', ready: false,
+    }
+    lastX = ev.clientX
+    lastY = ev.clientY
+    opts.onActive?.(id)
+    // Прятать оригинал нельзя: `visibility: hidden` лишает его событий `drag`,
+    // а на них держится автопрокрутка. Глушим прозрачностью.
+    el!.style.opacity = '0.35'
+    flip = createFlip(shouldAnimate(opts.animate))
+    scroller.start(container ?? el!)
+    measure(drag)
+  }
+
+  const onDragOver = (ev: DragEvent) => {
+    ev.preventDefault()                       // без этого не будет `drop`
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
+    if (!drag) return
+    scroller.move(ev.clientX, ev.clientY)
+
+    // Курсор обязан реально сдвинуться. Пока строки едут, браузер шлёт
+    // `dragover` и при неподвижной мыши, а хиттест идёт по ВИДИМОЙ картинке —
+    // под курсор попадает то одна строка, то другая, и место дёргается само,
+    // без участия руки.
+    if (ev.clientX === lastX && ev.clientY === lastY) return
+    lastX = ev.clientX
+    lastY = ev.clientY
+    hover(idOf(ev))
+  }
+
+  /** конец жеста: `drop` и `dragend` — оба, чтобы не остаться приглушённым */
+  const onFinish = (ev: DragEvent) => {
+    const d = drag
+    if (!d) return
+    if (ev.type === 'drop') ev.preventDefault()
+    const inside = ev.type === 'drop'
+    const { from, k } = d
+    endDrag(inside && k !== from ? () => opts.onEnd?.(from, k) : undefined)
   }
 
   return {
     attachContainer(el: HTMLElement) {
-      ensureMonitor()
-      const stop = dropTargetForElements({
-        element: el,
-        getData: () => ({ sortDndList: true }),
-        canDrop: ({ source }) => Boolean(source.data?.sortDndId),
-      })
+      // ВСЕ слушатели жеста — здесь, четыре штуки на любое число строк
+      el.addEventListener('dragstart', onDragStart)
+      el.addEventListener('dragover', onDragOver)
+      el.addEventListener('drop', onFinish)
+      el.addEventListener('dragend', onFinish)
       container = el
-      return () => { stop(); if (container === el) container = null }
+      return () => {
+        el.removeEventListener('dragstart', onDragStart)
+        el.removeEventListener('dragover', onDragOver)
+        el.removeEventListener('drop', onFinish)
+        el.removeEventListener('dragend', onFinish)
+        if (container === el) container = null
+      }
     },
 
     attach(el: HTMLElement, id: string) {
       els.set(id, el)
       el.dataset.sortDndId = id
-      ensureMonitor()
-
-      // Зона приёма на каждой строке — тот самый хиттест, который браузер делает
-      // сам. `getData` зовут часто, поэтому внутри ничего, кроме id: готовые
-      // хитбоксы Pragmatic сюда не годятся, они на каждый вызов мерят элемент.
-      const stopDrop = dropTargetForElements({
-        element: el,
-        getData: () => ({ sortDndId: id }),
-        canDrop: ({ source }) => Boolean(source.data?.sortDndId),
-      })
-
-      const stopDrag = draggable({
-        element: el,
-        canDrag: () => {
-          if (opts.disabled?.()) return false
-          const handle = el.querySelector('[data-drag-handle]')
-          if (!handle) return true
-          return Boolean(pressed && handle.contains(pressed))
-        },
-        getInitialData: () => ({ sortDndId: id }),
-        // Картинку переноса не трогаем: нативная и так снимается с самой строки
-        // и держится за точку захвата.
-        onDragStart() {
-          const ids = opts.order()
-          const from = ids.indexOf(id)
-          if (from < 0) return
-
-          drag = {
-            id, el, ids, from, k: from,
-            steps: [], slots: [], moved: new Set(),
-            grid: opts.axis?.() === 'grid', ready: false,
-          }
-          opts.onActive?.(id)
-          // Прятать оригинал нельзя: `visibility: hidden` лишает его событий
-          // `drag`, а на них держится автопрокрутка. Глушим прозрачностью.
-          el.style.opacity = '0.35'
-          flip = createFlip(shouldAnimate(opts.animate))
-          scroller.start(container ?? el)
-          measure(drag)
-        },
-      })
+      // атрибутом, а не свойством: свойство отражается в атрибут только в
+      // настоящем браузере, а в happy-dom (тесты) — нет
+      el.setAttribute('draggable', 'true')
 
       return () => {
-        stopDrag()
-        stopDrop()
+        el.removeAttribute('draggable')
         delete el.dataset.sortDndId
         if (els.get(id) === el) els.delete(id)
       }
@@ -352,8 +368,6 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     active: () => drag?.id ?? null,
     destroy() {
       endDrag()
-      stopMonitor?.()
-      stopMonitor = null
       if (typeof document !== 'undefined') {
         document.removeEventListener('pointerdown', remember, true)
       }

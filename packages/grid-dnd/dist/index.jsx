@@ -4,13 +4,6 @@ import { createMemo as createMemo2, For as For2 } from "solid-js";
 // src/solid.ts
 import { createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
 
-// src/dndCore.ts
-import {
-  draggable,
-  dropTargetForElements,
-  monitorForElements
-} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-
 // ../shared/dist/index.js
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -701,7 +694,6 @@ function createGridDndEngine(opts = {}) {
   const zones = /* @__PURE__ */ new Map();
   let drag = null;
   let over = null;
-  let stopMonitor = null;
   const boxes = /* @__PURE__ */ new Map();
   const scroller = createAutoScroller();
   const setOver = (name) => {
@@ -847,40 +839,85 @@ function createGridDndEngine(opts = {}) {
     setOver(null);
     opts.onActive?.(null);
   }
-  function ensureMonitor() {
-    if (stopMonitor) return;
-    stopMonitor = monitorForElements({
-      canMonitor: ({ source }) => Boolean(source.data?.dumbGridId),
-      onDrag({ location }) {
-        if (!drag) return;
-        scroller.move(location.current.input.clientX, location.current.input.clientY);
-        for (const target of location.current.dropTargets) {
-          const name = target.data?.dumbGridZone;
-          const zone = typeof name === "string" ? zones.get(name) : null;
-          if (!zone) continue;
-          setOver(zone.name);
-          update(drag, zone, location.current.input.clientX, location.current.input.clientY);
-          return;
-        }
-        setOver(null);
-      },
-      onDrop({ location }) {
-        const d = drag;
-        if (!d) return;
-        const dropped = location.current.dropTargets.some(
-          (t) => t.data?.dumbGridZone === d.toZone
-        );
-        const { toZone, toIndex, fromZone, fromIndex, id } = d;
-        endDrag();
-        if (!dropped || toIndex < 0) return;
-        if (toZone !== fromZone) {
-          opts.onTransfer?.({ grid: fromZone, id, index: fromIndex }, { grid: toZone, index: toIndex });
-          return;
-        }
-        if (toIndex !== fromIndex) zones.get(fromZone)?.opts.onReorder?.(fromIndex, toIndex);
-      }
+  const zoneOf = (ev) => {
+    const el = ev.target?.closest?.("[data-dnd-zone]");
+    const name = el?.dataset.dndZone;
+    return name ? zones.get(name) ?? null : null;
+  };
+  const accepts = (zone, from) => from === zone.name || !zone.opts.accepts || zone.opts.accepts(from);
+  const onDragStart = (ev) => {
+    const el = ev.target?.closest?.("[data-dnd-block]");
+    const id = el?.dataset.dndBlock;
+    const zone = zoneOf(ev);
+    if (!id || !zone) return;
+    if (zone.opts.disabled?.() || !zone.opts.order().includes(id)) {
+      ev.preventDefault();
+      return;
+    }
+    const index = zone.opts.order().indexOf(id);
+    if (index < 0) {
+      ev.preventDefault();
+      return;
+    }
+    const span = zone.opts.spanOf(id);
+    ev.dataTransfer?.setData("text/plain", id);
+    if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
+    boxes.clear();
+    drag = {
+      fromZone: zone.name,
+      id,
+      fromIndex: index,
+      el,
+      span,
+      toZone: zone.name,
+      toIndex: index,
+      snaps: /* @__PURE__ */ new Map(),
+      view: [],
+      touched: /* @__PURE__ */ new Set(),
+      flip: createFlip(shouldAnimate(opts.animate)),
+      preview: null,
+      previewZone: null
+    };
+    setOver(zone.name);
+    opts.onActive?.({ grid: zone.name, id, ...span });
+    el.style.opacity = "0.4";
+    scroller.start(zone.el ?? el);
+    snapshotZones(() => {
+      if (!drag || drag.id !== id) return;
+      const snap = snapOf(zone);
+      if (!snap) return;
+      drag.snaps.set(zone.name, snap);
+      drag.view = snap.base;
     });
-  }
+  };
+  const onDragOver = (ev) => {
+    const d = drag;
+    if (!d) return;
+    const zone = zoneOf(ev);
+    if (!zone || !accepts(zone, d.fromZone)) {
+      setOver(null);
+      return;
+    }
+    ev.preventDefault();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+    scroller.move(ev.clientX, ev.clientY);
+    setOver(zone.name);
+    update(d, zone, ev.clientX, ev.clientY);
+  };
+  const onFinish = (ev) => {
+    const d = drag;
+    if (!d) return;
+    const dropped = ev.type === "drop" && zoneOf(ev)?.name === d.toZone;
+    if (ev.type === "drop") ev.preventDefault();
+    const { toZone, toIndex, fromZone, fromIndex, id } = d;
+    endDrag();
+    if (!dropped || toIndex < 0) return;
+    if (toZone !== fromZone) {
+      opts.onTransfer?.({ grid: fromZone, id, index: fromIndex }, { grid: toZone, index: toIndex });
+      return;
+    }
+    if (toIndex !== fromIndex) zones.get(fromZone)?.opts.onReorder?.(fromIndex, toIndex);
+  };
   return {
     grid(name, zoneOpts) {
       const zone = zones.get(name) ?? {
@@ -895,23 +932,14 @@ function createGridDndEngine(opts = {}) {
       };
       zone.opts = zoneOpts;
       zones.set(name, zone);
-      ensureMonitor();
       return {
         attachContainer(el) {
           zone.el = el;
           el.dataset.dndZone = zone.name;
-          const stop = dropTargetForElements({
-            element: el,
-            // данные статичны: считать что-то в getData значило бы считать это
-            // на каждое движение — место мы вычисляем сами и по снимку
-            getData: () => ({ dumbGridZone: zone.name }),
-            canDrop: ({ source }) => {
-              const from = source.data?.dumbGridZone;
-              if (typeof from !== "string") return false;
-              if (from === zone.name) return true;
-              return !zone.opts.accepts || zone.opts.accepts(from);
-            }
-          });
+          el.addEventListener("dragstart", onDragStart);
+          el.addEventListener("dragover", onDragOver);
+          el.addEventListener("drop", onFinish);
+          el.addEventListener("dragend", onFinish);
           let ro = null;
           if (typeof ResizeObserver === "function") {
             ro = new ResizeObserver((entries) => {
@@ -925,7 +953,10 @@ function createGridDndEngine(opts = {}) {
             zone.ro = ro;
           }
           return () => {
-            stop();
+            el.removeEventListener("dragstart", onDragStart);
+            el.removeEventListener("dragover", onDragOver);
+            el.removeEventListener("drop", onFinish);
+            el.removeEventListener("dragend", onFinish);
             ro?.disconnect();
             delete el.dataset.dndZone;
             if (zone.ro === ro) zone.ro = null;
@@ -935,51 +966,9 @@ function createGridDndEngine(opts = {}) {
         attach(el, id) {
           zone.els.set(id, el);
           el.dataset.dndBlock = id;
-          const stop = draggable({
-            element: el,
-            canDrag: () => {
-              if (zone.opts.disabled?.()) return false;
-              return zone.opts.order().includes(id);
-            },
-            getInitialData: () => ({ dumbGridZone: zone.name, dumbGridId: id }),
-            onDragStart() {
-              const index = zone.opts.order().indexOf(id);
-              if (index < 0) return;
-              const span = zone.opts.spanOf(id);
-              boxes.clear();
-              drag = {
-                fromZone: zone.name,
-                id,
-                fromIndex: index,
-                el,
-                span,
-                toZone: zone.name,
-                toIndex: index,
-                snaps: /* @__PURE__ */ new Map(),
-                view: [],
-                touched: /* @__PURE__ */ new Set(),
-                flip: createFlip(shouldAnimate(opts.animate)),
-                preview: null,
-                previewZone: null
-              };
-              setOver(zone.name);
-              opts.onActive?.({ grid: zone.name, id, ...span });
-              el.style.opacity = "0.4";
-              scroller.start(zone.el ?? el);
-              snapshotZones(() => {
-                if (!drag || drag.id !== id) return;
-                const snap = snapOf(zone);
-                if (!snap) return;
-                drag.snaps.set(zone.name, snap);
-                drag.view = snap.base;
-              });
-            }
-            // ЗДЕСЬ убирать за собой нельзя: этот обработчик срабатывает раньше
-            // монитора, а тому ещё нужно прочитать, куда блок сел. Всё вместе —
-            // и уборку, и коммит — делает монитор.
-          });
+          el.setAttribute("draggable", "true");
           return () => {
-            stop();
+            el.removeAttribute("draggable");
             delete el.dataset.dndBlock;
             if (zone.els.get(id) === el) zone.els.delete(id);
           };
@@ -990,8 +979,6 @@ function createGridDndEngine(opts = {}) {
     over: () => over,
     destroy() {
       endDrag();
-      stopMonitor?.();
-      stopMonitor = null;
       for (const z of zones.values()) {
         z.ro?.disconnect();
         z.ro = null;

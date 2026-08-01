@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/grid-dnd",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Та же сетка на нативном HTML5 drag-and-drop",
   "license": "MIT",
   "type": "module",
@@ -31,9 +31,6 @@
   "scripts": {
     "build": "tsup --config ../../configs/tsup.ts",
     "dev": "tsup --config ../../configs/tsup.ts --watch"
-  },
-  "dependencies": {
-    "@atlaskit/pragmatic-drag-and-drop": "^2.0.1"
   },
   "peerDependencies": {
     "solid-js": "^1.8.0"

@@ -4,13 +4,6 @@ import { For } from "solid-js";
 // src/solid.ts
 import { createSignal, onCleanup } from "solid-js";
 
-// src/sortDndCore.ts
-import {
-  draggable,
-  dropTargetForElements,
-  monitorForElements
-} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-
 // ../shared/dist/index.js
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -255,8 +248,9 @@ function createSortDndEngine(opts) {
   const els = /* @__PURE__ */ new Map();
   let container = null;
   let drag = null;
-  let stopMonitor = null;
   let pressed = null;
+  let lastX = -1;
+  let lastY = -1;
   const remember = (ev) => {
     pressed = ev.target;
   };
@@ -346,15 +340,14 @@ function createSortDndEngine(opts) {
     }
     d.moved = next;
   }
-  function hover(targets) {
+  function hover(id) {
     const d = drag;
-    if (!d) return;
-    for (const t of targets) {
-      const id = t.data?.sortDndId;
-      if (!id) continue;
+    if (!d || !id) return;
+    {
       if (id === d.id) return;
       const idx = d.ids.indexOf(id);
       if (idx < 0) return;
+      if (els.get(id)?.getAnimations().length) return;
       const rest = idx < d.from ? idx : idx - 1;
       const to = rest >= d.k ? rest + 1 : rest;
       if (to === d.k) return;
@@ -382,90 +375,90 @@ function createSortDndEngine(opts) {
       el.style.opacity = "";
     });
   }
-  function ensureMonitor() {
-    if (stopMonitor) return;
-    stopMonitor = monitorForElements({
-      canMonitor: ({ source }) => Boolean(source.data?.sortDndId),
-      onDrag({ location }) {
-        if (!drag) return;
-        scroller.move(location.current.input.clientX, location.current.input.clientY);
-      },
-      // смена цели — единственный момент, когда место вообще может измениться
-      onDropTargetChange({ location }) {
-        hover(location.current.dropTargets);
-      },
-      onDrop({ location }) {
-        const d = drag;
-        if (!d) return;
-        const inside = location.current.dropTargets.some(
-          (t) => t.data?.sortDndList || t.data?.sortDndId
-        );
-        const { from, k } = d;
-        const moved = inside && k !== from;
-        endDrag(moved ? () => opts.onEnd?.(from, k) : void 0);
-      }
-    });
-  }
+  const idOf = (ev) => {
+    const el = ev.target?.closest?.("[data-sort-dnd-id]");
+    return el?.dataset.sortDndId ?? null;
+  };
+  const onDragStart = (ev) => {
+    if (opts.disabled?.()) {
+      ev.preventDefault();
+      return;
+    }
+    const el = ev.target?.closest?.("[data-sort-dnd-id]");
+    const id = el?.dataset.sortDndId;
+    if (!id) return;
+    const handle = el.querySelector("[data-drag-handle]");
+    if (handle && !(pressed && handle.contains(pressed))) {
+      ev.preventDefault();
+      return;
+    }
+    const ids = opts.order();
+    const from = ids.indexOf(id);
+    if (from < 0) {
+      ev.preventDefault();
+      return;
+    }
+    ev.dataTransfer?.setData("text/plain", id);
+    if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
+    drag = {
+      id,
+      el,
+      ids,
+      from,
+      k: from,
+      steps: [],
+      slots: [],
+      moved: /* @__PURE__ */ new Set(),
+      grid: opts.axis?.() === "grid",
+      ready: false
+    };
+    lastX = ev.clientX;
+    lastY = ev.clientY;
+    opts.onActive?.(id);
+    el.style.opacity = "0.35";
+    flip = createFlip(shouldAnimate(opts.animate));
+    scroller.start(container ?? el);
+    measure(drag);
+  };
+  const onDragOver = (ev) => {
+    ev.preventDefault();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+    if (!drag) return;
+    scroller.move(ev.clientX, ev.clientY);
+    if (ev.clientX === lastX && ev.clientY === lastY) return;
+    lastX = ev.clientX;
+    lastY = ev.clientY;
+    hover(idOf(ev));
+  };
+  const onFinish = (ev) => {
+    const d = drag;
+    if (!d) return;
+    if (ev.type === "drop") ev.preventDefault();
+    const inside = ev.type === "drop";
+    const { from, k } = d;
+    endDrag(inside && k !== from ? () => opts.onEnd?.(from, k) : void 0);
+  };
   return {
     attachContainer(el) {
-      ensureMonitor();
-      const stop = dropTargetForElements({
-        element: el,
-        getData: () => ({ sortDndList: true }),
-        canDrop: ({ source }) => Boolean(source.data?.sortDndId)
-      });
+      el.addEventListener("dragstart", onDragStart);
+      el.addEventListener("dragover", onDragOver);
+      el.addEventListener("drop", onFinish);
+      el.addEventListener("dragend", onFinish);
       container = el;
       return () => {
-        stop();
+        el.removeEventListener("dragstart", onDragStart);
+        el.removeEventListener("dragover", onDragOver);
+        el.removeEventListener("drop", onFinish);
+        el.removeEventListener("dragend", onFinish);
         if (container === el) container = null;
       };
     },
     attach(el, id) {
       els.set(id, el);
       el.dataset.sortDndId = id;
-      ensureMonitor();
-      const stopDrop = dropTargetForElements({
-        element: el,
-        getData: () => ({ sortDndId: id }),
-        canDrop: ({ source }) => Boolean(source.data?.sortDndId)
-      });
-      const stopDrag = draggable({
-        element: el,
-        canDrag: () => {
-          if (opts.disabled?.()) return false;
-          const handle = el.querySelector("[data-drag-handle]");
-          if (!handle) return true;
-          return Boolean(pressed && handle.contains(pressed));
-        },
-        getInitialData: () => ({ sortDndId: id }),
-        // Картинку переноса не трогаем: нативная и так снимается с самой строки
-        // и держится за точку захвата.
-        onDragStart() {
-          const ids = opts.order();
-          const from = ids.indexOf(id);
-          if (from < 0) return;
-          drag = {
-            id,
-            el,
-            ids,
-            from,
-            k: from,
-            steps: [],
-            slots: [],
-            moved: /* @__PURE__ */ new Set(),
-            grid: opts.axis?.() === "grid",
-            ready: false
-          };
-          opts.onActive?.(id);
-          el.style.opacity = "0.35";
-          flip = createFlip(shouldAnimate(opts.animate));
-          scroller.start(container ?? el);
-          measure(drag);
-        }
-      });
+      el.setAttribute("draggable", "true");
       return () => {
-        stopDrag();
-        stopDrop();
+        el.removeAttribute("draggable");
         delete el.dataset.sortDndId;
         if (els.get(id) === el) els.delete(id);
       };
@@ -473,8 +466,6 @@ function createSortDndEngine(opts) {
     active: () => drag?.id ?? null,
     destroy() {
       endDrag();
-      stopMonitor?.();
-      stopMonitor = null;
       if (typeof document !== "undefined") {
         document.removeEventListener("pointerdown", remember, true);
       }

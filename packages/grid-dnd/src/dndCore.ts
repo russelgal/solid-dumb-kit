@@ -24,12 +24,6 @@
 //
 // Тач не поддерживается — HTML5 DnD там не существует; для пальца есть `DumbGrid`.
 
-import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine'
-import {
-  draggable,
-  dropTargetForElements,
-  monitorForElements,
-} from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
 import { createAutoScroller } from '@solid-dumb-kit/shared'
 import {
   cellRect, colWidth, moveDeltas, packFlow, reorder, rowCount,
@@ -216,7 +210,6 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
   const zones = new Map<string, Zone>()
   let drag: Drag | null = null
   let over: string | null = null
-  let stopMonitor: (() => void) | null = null
   /** прямоугольники контейнеров, снятые наблюдателем на старте жеста */
   const boxes = new Map<string, { left: number; top: number }>()
   const scroller = createAutoScroller()
@@ -396,43 +389,93 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
 
   /* ────────── регистрация ────────── */
 
-  /** Один монитор на группу: он и даёт координаты, и знает активные цели. */
-  function ensureMonitor() {
-    if (stopMonitor) return
-    stopMonitor = monitorForElements({
-      canMonitor: ({ source }) => Boolean(source.data?.dumbGridId),
-      onDrag({ location }) {
-        if (!drag) return
-        scroller.move(location.current.input.clientX, location.current.input.clientY)
-        // цели идут от внутренней к внешней — берём ближайшую нашу
-        for (const target of location.current.dropTargets) {
-          const name = target.data?.dumbGridZone
-          const zone = typeof name === 'string' ? zones.get(name) : null
-          if (!zone) continue
-          setOver(zone.name)
-          update(drag, zone, location.current.input.clientX, location.current.input.clientY)
-          return
-        }
-        setOver(null)
-      },
-      onDrop({ location }) {
-        const d = drag
-        if (!d) return
-        // порядок важен: сначала читаем состояние, потом прибираем
-        const dropped = location.current.dropTargets.some(
-          (t) => t.data?.dumbGridZone === d.toZone,
-        )
-        const { toZone, toIndex, fromZone, fromIndex, id } = d
-        endDrag()
-        if (!dropped || toIndex < 0) return
+  /* ────────── жест: слушатели на контейнерах зон ────────── */
+  //
+  // Библиотеки под этим нет — только события браузера. Зона под курсором это
+  // `closest('[data-dnd-zone]')`: вложенная сетка лежит внутри блока внешней,
+  // поэтому ближайший предок и есть «самая внутренняя цель» — ровно та выборка,
+  // которую раньше давал стек целей Pragmatic.
+  //
+  // Слушателей четыре на зону, а не по четыре на блок: события всплывают.
 
-        if (toZone !== fromZone) {
-          opts.onTransfer?.({ grid: fromZone, id, index: fromIndex }, { grid: toZone, index: toIndex })
-          return
-        }
-        if (toIndex !== fromIndex) zones.get(fromZone)?.opts.onReorder?.(fromIndex, toIndex)
-      },
+  const zoneOf = (ev: Event) => {
+    const el = (ev.target as HTMLElement | null)?.closest?.('[data-dnd-zone]') as HTMLElement | null
+    const name = el?.dataset.dndZone
+    return name ? zones.get(name) ?? null : null
+  }
+
+  /** пускает ли зона к себе блок из зоны `from` */
+  const accepts = (zone: Zone, from: string) =>
+    from === zone.name || !zone.opts.accepts || zone.opts.accepts(from)
+
+  const onDragStart = (ev: DragEvent) => {
+    const el = (ev.target as HTMLElement | null)?.closest?.('[data-dnd-block]') as HTMLElement | null
+    const id = el?.dataset.dndBlock
+    const zone = zoneOf(ev)
+    if (!id || !zone) return
+    if (zone.opts.disabled?.() || !zone.opts.order().includes(id)) { ev.preventDefault(); return }
+
+    const index = zone.opts.order().indexOf(id)
+    if (index < 0) { ev.preventDefault(); return }
+    const span = zone.opts.spanOf(id)
+
+    // без `setData` жест не начнётся в Firefox
+    ev.dataTransfer?.setData('text/plain', id)
+    if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move'
+
+    boxes.clear()
+    drag = {
+      fromZone: zone.name, id, fromIndex: index, el: el!, span,
+      toZone: zone.name, toIndex: index,
+      snaps: new Map(), view: [],
+      touched: new Set(), flip: createFlip(shouldAnimate(opts.animate)),
+      preview: null, previewZone: null,
+    }
+    setOver(zone.name)
+    opts.onActive?.({ grid: zone.name, id, ...span })
+    el!.style.opacity = '0.4'
+    scroller.start(zone.el ?? el!)
+
+    // снимок асинхронный: до него жест просто ничего не двигает
+    snapshotZones(() => {
+      if (!drag || drag.id !== id) return
+      const snap = snapOf(zone)
+      if (!snap) return
+      drag.snaps.set(zone.name, snap)
+      drag.view = snap.base
     })
+  }
+
+  const onDragOver = (ev: DragEvent) => {
+    const d = drag
+    if (!d) return
+    const zone = zoneOf(ev)
+    if (!zone || !accepts(zone, d.fromZone)) { setOver(null); return }
+
+    ev.preventDefault()                      // без этого не будет `drop`
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
+    scroller.move(ev.clientX, ev.clientY)
+    setOver(zone.name)
+    update(d, zone, ev.clientX, ev.clientY)
+  }
+
+  /** конец жеста. `drop` значит «бросили в зону», `dragend` — «где угодно». */
+  const onFinish = (ev: DragEvent) => {
+    const d = drag
+    if (!d) return
+    const dropped = ev.type === 'drop' && zoneOf(ev)?.name === d.toZone
+    if (ev.type === 'drop') ev.preventDefault()
+
+    // порядок важен: сначала читаем состояние, потом прибираем
+    const { toZone, toIndex, fromZone, fromIndex, id } = d
+    endDrag()
+    if (!dropped || toIndex < 0) return
+
+    if (toZone !== fromZone) {
+      opts.onTransfer?.({ grid: fromZone, id, index: fromIndex }, { grid: toZone, index: toIndex })
+      return
+    }
+    if (toIndex !== fromIndex) zones.get(fromZone)?.opts.onReorder?.(fromIndex, toIndex)
   }
 
   return {
@@ -442,24 +485,15 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
       }
       zone.opts = zoneOpts
       zones.set(name, zone)
-      ensureMonitor()
-
       return {
         attachContainer(el: HTMLElement) {
           zone.el = el
           el.dataset.dndZone = zone.name
-          const stop = dropTargetForElements({
-            element: el,
-            // данные статичны: считать что-то в getData значило бы считать это
-            // на каждое движение — место мы вычисляем сами и по снимку
-            getData: () => ({ dumbGridZone: zone.name }),
-            canDrop: ({ source }) => {
-              const from = source.data?.dumbGridZone
-              if (typeof from !== 'string') return false
-              if (from === zone.name) return true
-              return !zone.opts.accepts || zone.opts.accepts(from)
-            },
-          })
+          // ВСЕ слушатели жеста — здесь, четыре на зону при любом числе блоков
+          el.addEventListener('dragstart', onDragStart)
+          el.addEventListener('dragover', onDragOver)
+          el.addEventListener('drop', onFinish)
+          el.addEventListener('dragend', onFinish)
 
           let ro: ResizeObserver | null = null
           if (typeof ResizeObserver === 'function') {
@@ -476,7 +510,10 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
           }
 
           return () => {
-            stop()
+            el.removeEventListener('dragstart', onDragStart)
+            el.removeEventListener('dragover', onDragOver)
+            el.removeEventListener('drop', onFinish)
+            el.removeEventListener('dragend', onFinish)
             ro?.disconnect()
             delete el.dataset.dndZone
             if (zone.ro === ro) zone.ro = null
@@ -487,49 +524,14 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
         attach(el: HTMLElement, id: string) {
           zone.els.set(id, el)
           el.dataset.dndBlock = id
-
-          const stop = draggable({
-            element: el,
-            canDrag: () => {
-              if (zone.opts.disabled?.()) return false
-              return zone.opts.order().includes(id)
-            },
-            getInitialData: () => ({ dumbGridZone: zone.name, dumbGridId: id }),
-            onDragStart() {
-              const index = zone.opts.order().indexOf(id)
-              if (index < 0) return
-              const span = zone.opts.spanOf(id)
-
-              boxes.clear()
-              drag = {
-                fromZone: zone.name, id, fromIndex: index, el, span,
-                toZone: zone.name, toIndex: index,
-                snaps: new Map(), view: [],
-                touched: new Set(), flip: createFlip(shouldAnimate(opts.animate)),
-                preview: null, previewZone: null,
-              }
-              setOver(zone.name)
-              opts.onActive?.({ grid: zone.name, id, ...span })
-              el.style.opacity = '0.4'
-              scroller.start(zone.el ?? el)
-
-              // снимок асинхронный: до него жест просто ничего не двигает
-              snapshotZones(() => {
-                if (!drag || drag.id !== id) return
-                const snap = snapOf(zone)
-                if (!snap) return
-                drag.snaps.set(zone.name, snap)
-                drag.view = snap.base
-              })
-            },
-            // ЗДЕСЬ убирать за собой нельзя: этот обработчик срабатывает раньше
-            // монитора, а тому ещё нужно прочитать, куда блок сел. Всё вместе —
-            // и уборку, и коммит — делает монитор.
-
-          })
+          // Слушателей на блоке нет вовсе — только атрибут. Кто под курсором,
+          // разбирает делегированный обработчик зоны по `data-dnd-block`.
+          // атрибутом, а не свойством: свойство отражается в атрибут только в
+          // настоящем браузере, а в happy-dom (тесты) — нет
+          el.setAttribute('draggable', 'true')
 
           return () => {
-            stop()
+            el.removeAttribute('draggable')
             delete el.dataset.dndBlock
             if (zone.els.get(id) === el) zone.els.delete(id)
           }
@@ -541,8 +543,6 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
     over: () => over,
     destroy() {
       endDrag()
-      stopMonitor?.()
-      stopMonitor = null
       for (const z of zones.values()) {
         z.ro?.disconnect()
         z.ro = null
