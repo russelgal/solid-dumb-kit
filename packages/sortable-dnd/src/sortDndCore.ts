@@ -84,17 +84,19 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
   const isGrid = () => opts.axis?.() === 'grid'
   const indexOf = (id: string) => opts.order().indexOf(id)
 
-  /** где лежит место k при заданном порядке */
-  function slotAt(order: Array<string>, k: number): Slot {
-    if (grid) {
-      return {
-        left: origin.left + (k % grid.cols) * grid.stepX,
-        top: origin.top + Math.floor(k / grid.cols) * grid.stepY,
-      }
+  /**
+   * Где лежит место k в сетке. Места там равные, поэтому чистая арифметика — от
+   * порядка не зависит вовсе.
+   *
+   * Для списка такой функции нет намеренно: место там — сумма высот всех, кто
+   * стоит до него, то есть O(k), и вызов её в цикле по элементам давал O(n²) на
+   * каждый `dragover`. Как считается список, см. `commit`.
+   */
+  function gridSlot(k: number): Slot {
+    return {
+      left: origin.left + (k % grid!.cols) * grid!.stepX,
+      top: origin.top + Math.floor(k / grid!.cols) * grid!.stepY,
     }
-    let top = origin.top
-    for (let i = 0; i < k && i < order.length; i++) top += sizes.get(order[i]) ?? 0
-    return { left: origin.left, top }
   }
 
   /** сняты ли места хоть раз — до первого замера жест просто ничего не двигает */
@@ -162,17 +164,48 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
    * фреймворк пересоздаст узлы, и анимация на старых ушла бы в никуда.
    */
   function commit(from: number, to: number) {
+    if (from === to) return
     const was = opts.order()
-    const next = was.slice()
-    next.splice(to, 0, next.splice(from, 1)[0])
+
+    // Двигаются ТОЛЬКО места между `from` и `to`: перестановка одного элемента
+    // сдвигает соседей на единицу, а всё, что лежит за пределами этого отрезка,
+    // в обоих порядках стоит одинаково. Обходить весь список незачем — обычно
+    // это две-три строки вместо трёхсот.
+    const lo = Math.min(from, to)
+    const hi = Math.max(from, to)
+    /** куда переезжает место i: сам перетаскиваемый — в `to`, соседи — на одно */
+    const moveTo = (i: number) => (i === from ? to : from < to ? i - 1 : i + 1)
 
     const back: Array<{ id: string; dx: number; dy: number }> = []
-    for (let i = 0; i < was.length; i++) {
-      const id = was[i]
-      const a = slotAt(was, i)
-      const b = slotAt(next, next.indexOf(id))
-      if (a.left === b.left && a.top === b.top) continue
-      back.push({ id, dx: a.left - b.left, dy: a.top - b.top })
+
+    if (grid) {
+      for (let i = lo; i <= hi; i++) {
+        const a = gridSlot(i)
+        const b = gridSlot(moveTo(i))
+        if (a.left === b.left && a.top === b.top) continue
+        back.push({ id: was[i], dx: a.left - b.left, dy: a.top - b.top })
+      }
+    } else {
+      const next = was.slice()
+      next.splice(to, 0, next.splice(from, 1)[0])
+
+      // Нам нужна РАЗНОСТЬ вершин, а всё, что лежит до места `lo`, в обоих
+      // порядках одинаково — общее слагаемое сокращается. Поэтому суммы ведём
+      // от нуля, а не от настоящей вершины: проход по началу списка не нужен.
+      const tWas: Array<number> = []
+      const tNext: Array<number> = []
+      let aw = 0
+      let an = 0
+      for (let i = lo; i <= hi; i++) {
+        tWas.push(aw)
+        tNext.push(an)
+        aw += sizes.get(was[i]) ?? 0
+        an += sizes.get(next[i]) ?? 0
+      }
+      for (let i = lo; i <= hi; i++) {
+        const dy = tWas[i - lo] - tNext[moveTo(i) - lo]
+        if (dy) back.push({ id: was[i], dx: 0, dy })
+      }
     }
 
     opts.onMove?.(from, to)

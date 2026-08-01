@@ -26,6 +26,9 @@ function createStableOrder(id) {
         for (const key of seen.keys()) if (!live.has(key)) seen.delete(key);
       }
       return items.slice().sort((a, b) => seen.get(id(a)) - seen.get(id(b)));
+    },
+    rank(item) {
+      return seen.get(id(item)) ?? Number.MAX_SAFE_INTEGER;
     }
   };
 }
@@ -276,16 +279,11 @@ function createSortDndEngine(opts) {
   let grid = null;
   const isGrid = () => opts.axis?.() === "grid";
   const indexOf = (id) => opts.order().indexOf(id);
-  function slotAt(order, k) {
-    if (grid) {
-      return {
-        left: origin.left + k % grid.cols * grid.stepX,
-        top: origin.top + Math.floor(k / grid.cols) * grid.stepY
-      };
-    }
-    let top = origin.top;
-    for (let i = 0; i < k && i < order.length; i++) top += sizes.get(order[i]) ?? 0;
-    return { left: origin.left, top };
+  function gridSlot(k) {
+    return {
+      left: origin.left + k % grid.cols * grid.stepX,
+      top: origin.top + Math.floor(k / grid.cols) * grid.stepY
+    };
   }
   let measured = false;
   function measure() {
@@ -338,16 +336,36 @@ function createSortDndEngine(opts) {
     for (const t of targets) io.observe(t);
   }
   function commit(from, to) {
+    if (from === to) return;
     const was = opts.order();
-    const next = was.slice();
-    next.splice(to, 0, next.splice(from, 1)[0]);
+    const lo = Math.min(from, to);
+    const hi = Math.max(from, to);
+    const moveTo = (i) => i === from ? to : from < to ? i - 1 : i + 1;
     const back = [];
-    for (let i = 0; i < was.length; i++) {
-      const id = was[i];
-      const a = slotAt(was, i);
-      const b = slotAt(next, next.indexOf(id));
-      if (a.left === b.left && a.top === b.top) continue;
-      back.push({ id, dx: a.left - b.left, dy: a.top - b.top });
+    if (grid) {
+      for (let i = lo; i <= hi; i++) {
+        const a = gridSlot(i);
+        const b = gridSlot(moveTo(i));
+        if (a.left === b.left && a.top === b.top) continue;
+        back.push({ id: was[i], dx: a.left - b.left, dy: a.top - b.top });
+      }
+    } else {
+      const next = was.slice();
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      const tWas = [];
+      const tNext = [];
+      let aw = 0;
+      let an = 0;
+      for (let i = lo; i <= hi; i++) {
+        tWas.push(aw);
+        tNext.push(an);
+        aw += sizes.get(was[i]) ?? 0;
+        an += sizes.get(next[i]) ?? 0;
+      }
+      for (let i = lo; i <= hi; i++) {
+        const dy = tWas[i - lo] - tNext[moveTo(i) - lo];
+        if (dy) back.push({ id: was[i], dx: 0, dy });
+      }
     }
     opts.onMove?.(from, to);
     for (const m of back) {
