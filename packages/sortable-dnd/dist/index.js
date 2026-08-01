@@ -250,6 +250,8 @@ function createSortDndEngine(opts) {
   let pressed = null;
   let lastX = -1;
   let lastY = -1;
+  let overList = false;
+  let escaped = false;
   const remember = (ev) => {
     pressed = ev.target;
   };
@@ -413,6 +415,8 @@ function createSortDndEngine(opts) {
     };
     lastX = ev.clientX;
     lastY = ev.clientY;
+    overList = true;
+    escaped = false;
     opts.onActive?.(id);
     el.style.opacity = "0.35";
     flip = createFlip(shouldAnimate(opts.animate));
@@ -423,32 +427,46 @@ function createSortDndEngine(opts) {
     ev.preventDefault();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
     if (!drag) return;
+    overList = true;
     scroller.move(ev.clientX, ev.clientY);
     if (ev.clientX === lastX && ev.clientY === lastY) return;
     lastX = ev.clientX;
     lastY = ev.clientY;
     hover(idOf(ev));
   };
+  const onDragLeave = (ev) => {
+    const to = ev.relatedTarget;
+    if (!to) return;
+    if (container?.contains(to)) return;
+    overList = false;
+  };
+  const onKey = (ev) => {
+    if (ev.key === "Escape") escaped = true;
+  };
   const onFinish = (ev) => {
     const d = drag;
     if (!d) return;
     if (ev.type === "drop") ev.preventDefault();
-    const inside = ev.type === "drop";
+    const committed = overList && !escaped && d.k !== d.from;
     const { from, k } = d;
-    endDrag(inside && k !== from ? () => opts.onEnd?.(from, k) : void 0);
+    endDrag(committed ? () => opts.onEnd?.(from, k) : void 0);
   };
   return {
     attachContainer(el) {
       el.addEventListener("dragstart", onDragStart);
       el.addEventListener("dragover", onDragOver);
+      el.addEventListener("dragleave", onDragLeave);
       el.addEventListener("drop", onFinish);
       el.addEventListener("dragend", onFinish);
+      document.addEventListener("keydown", onKey);
       container = el;
       return () => {
         el.removeEventListener("dragstart", onDragStart);
         el.removeEventListener("dragover", onDragOver);
+        el.removeEventListener("dragleave", onDragLeave);
         el.removeEventListener("drop", onFinish);
         el.removeEventListener("dragend", onFinish);
+        document.removeEventListener("keydown", onKey);
         if (container === el) container = null;
       };
     },

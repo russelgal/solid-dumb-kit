@@ -560,6 +560,8 @@ function createGridDndEngine(opts = {}) {
     setOver(null);
     opts.onActive?.(null);
   }
+  let overZone = null;
+  let escaped = false;
   const zoneOf = (ev) => {
     const el = ev.target?.closest?.("[data-dnd-zone]");
     const name = el?.dataset.dndZone;
@@ -583,6 +585,8 @@ function createGridDndEngine(opts = {}) {
     const span = zone.opts.spanOf(id);
     ev.dataTransfer?.setData("text/plain", id);
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
+    overZone = zone.name;
+    escaped = false;
     boxes.clear();
     drag = {
       fromZone: zone.name,
@@ -622,13 +626,24 @@ function createGridDndEngine(opts = {}) {
     ev.preventDefault();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
     scroller.move(ev.clientX, ev.clientY);
+    overZone = zone.name;
     setOver(zone.name);
     update(d, zone, ev.clientX, ev.clientY);
+  };
+  const onZoneLeave = (ev) => {
+    const to = ev.relatedTarget;
+    if (!to) return;
+    const zone = zoneOf(ev);
+    if (zone?.el?.contains(to)) return;
+    if (overZone === zone?.name) overZone = null;
+  };
+  const onKey = (ev) => {
+    if (ev.key === "Escape") escaped = true;
   };
   const onFinish = (ev) => {
     const d = drag;
     if (!d) return;
-    const dropped = ev.type === "drop" && zoneOf(ev)?.name === d.toZone;
+    const dropped = !escaped && overZone === d.toZone;
     if (ev.type === "drop") ev.preventDefault();
     const { toZone, toIndex, fromZone, fromIndex, id } = d;
     endDrag();
@@ -659,8 +674,10 @@ function createGridDndEngine(opts = {}) {
           el.dataset.dndZone = zone.name;
           el.addEventListener("dragstart", onDragStart);
           el.addEventListener("dragover", onDragOver);
+          el.addEventListener("dragleave", onZoneLeave);
           el.addEventListener("drop", onFinish);
           el.addEventListener("dragend", onFinish);
+          document.addEventListener("keydown", onKey);
           let ro = null;
           if (typeof ResizeObserver === "function") {
             ro = new ResizeObserver((entries) => {
@@ -676,8 +693,10 @@ function createGridDndEngine(opts = {}) {
           return () => {
             el.removeEventListener("dragstart", onDragStart);
             el.removeEventListener("dragover", onDragOver);
+            el.removeEventListener("dragleave", onZoneLeave);
             el.removeEventListener("drop", onFinish);
             el.removeEventListener("dragend", onFinish);
+            document.removeEventListener("keydown", onKey);
             ro?.disconnect();
             delete el.dataset.dndZone;
             if (zone.ro === ro) zone.ro = null;

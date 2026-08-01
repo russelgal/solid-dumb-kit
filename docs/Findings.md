@@ -38,6 +38,10 @@ Verified claims, with how they were verified. Only things that cost time and are
 
 **`setData` is required for Firefox**, or the gesture won't start. `preventDefault()` in `dragover` is required everywhere, or there'll be no `drop`.
 
+**You can't rely on `drop` alone.** The browser doesn't always deliver it: under fast movement Chrome swallows `dragover`, and without a fresh one it won't count the drop — most visible during autoscroll, where the cursor is still and events are scarce. The user watches the neighbours part, releases, and everything silently reverts. `dropEffect` won't tell you: a dropped-but-undelivered gesture reads `none`, exactly like a cancelled one. `dragend` settles it (it always arrives), and "did it happen" is decided by your own signal: released over the zone, and Escape wasn't pressed.
+
+**`dragleave` very often arrives with a null `relatedTarget`.** Moving from one element to another is also a `dragleave`, and clearing an "over the zone" flag on it cancels gestures for no reason. Count it as leaving only when the browser names where it went and that isn't a descendant of yours.
+
 **Deferred source dimming has a race.** The dimming must happen on the next tick (otherwise the transparency lands in the drag image), but if the gesture ends before that tick, the deferred call switches it on *after* cleanup. A synchronous gesture flag fixes it.
 
 **Gaps between elements are holes in the hit test.** The cursor falls between them onto the container, and "append" fires where nobody expects it. Caught twice: in the tree (fixed by butting rows together) and on the board, where the grid `gap` is part of the design and can't go. There the fix is different: **"missed the elements" doesn't mean "append"** while dragging inside your own zone. To become last you hover the last element — the rule "target below us, so go after it" gets you there. Empty space only means something for a visitor from another zone: in an empty zone there's nothing else to hover.

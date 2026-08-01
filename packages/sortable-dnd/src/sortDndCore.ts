@@ -109,6 +109,10 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
   /** где курсор был на прошлом событии — чтобы отличить движение от «стоим» */
   let lastX = -1
   let lastY = -1
+  /** курсор над списком — по этому и решаем, состоялся ли жест */
+  let overList = false
+  /** нажали Escape — жест отменён, что бы ни говорил браузер */
+  let escaped = false
   const remember = (ev: PointerEvent) => { pressed = ev.target as Element | null }
   if (typeof document !== 'undefined') {
     document.addEventListener('pointerdown', remember, { capture: true, passive: true })
@@ -299,6 +303,8 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     }
     lastX = ev.clientX
     lastY = ev.clientY
+    overList = true
+    escaped = false
     opts.onActive?.(id)
     // Прятать оригинал нельзя: `visibility: hidden` лишает его событий `drag`,
     // а на них держится автопрокрутка. Глушим прозрачностью.
@@ -312,6 +318,7 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     ev.preventDefault()                       // без этого не будет `drop`
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
     if (!drag) return
+    overList = true
     scroller.move(ev.clientX, ev.clientY)
 
     // Курсор обязан реально сдвинуться. Пока строки едут, браузер шлёт
@@ -324,14 +331,42 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     hover(idOf(ev))
   }
 
-  /** конец жеста: `drop` и `dragend` — оба, чтобы не остаться приглушённым */
+  /**
+   * Ушли за пределы списка. Считаем уходом только когда браузер прямо называет,
+   * КУДА ушли, и это не наш потомок: переход со строки на строку — тоже
+   * `dragleave`, а `relatedTarget` там сплошь и рядом пустой. Снимать флаг на
+   * пустом значило бы отменять жест на ровном месте.
+   */
+  const onDragLeave = (ev: DragEvent) => {
+    const to = ev.relatedTarget as Node | null
+    if (!to) return
+    if (container?.contains(to)) return
+    overList = false
+  }
+
+  const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') escaped = true }
+
+  /**
+   * Конец жеста.
+   *
+   * Коммит нельзя вешать на один `drop`: браузер доставляет его не всегда — при
+   * быстром движении Chrome глотает `dragover`, и без свежего `dragover` дроп он
+   * не считает состоявшимся. Пользователь видит, как строки всё время
+   * расступались, отпускает — и порядок молча откатывается. Особенно заметно при
+   * автопрокрутке: там курсор стоит, а событий почти нет.
+   *
+   * По `dropEffect` это тоже не определить: у несостоявшегося дропа он `none` —
+   * ровно как у отменённого жеста. Поэтому решаем сами: жест состоялся, если
+   * отпустили НАД списком и не нажимали Escape. `dragend` приходит всегда, он и
+   * подводит итог; `drop` просто успевает раньше.
+   */
   const onFinish = (ev: DragEvent) => {
     const d = drag
     if (!d) return
     if (ev.type === 'drop') ev.preventDefault()
-    const inside = ev.type === 'drop'
+    const committed = overList && !escaped && d.k !== d.from
     const { from, k } = d
-    endDrag(inside && k !== from ? () => opts.onEnd?.(from, k) : undefined)
+    endDrag(committed ? () => opts.onEnd?.(from, k) : undefined)
   }
 
   return {
@@ -339,14 +374,18 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
       // ВСЕ слушатели жеста — здесь, четыре штуки на любое число строк
       el.addEventListener('dragstart', onDragStart)
       el.addEventListener('dragover', onDragOver)
+      el.addEventListener('dragleave', onDragLeave)
       el.addEventListener('drop', onFinish)
       el.addEventListener('dragend', onFinish)
+      document.addEventListener('keydown', onKey)
       container = el
       return () => {
         el.removeEventListener('dragstart', onDragStart)
         el.removeEventListener('dragover', onDragOver)
+        el.removeEventListener('dragleave', onDragLeave)
         el.removeEventListener('drop', onFinish)
         el.removeEventListener('dragend', onFinish)
+        document.removeEventListener('keydown', onKey)
         if (container === el) container = null
       }
     },

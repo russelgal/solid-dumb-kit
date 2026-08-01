@@ -398,6 +398,11 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
   //
   // Слушателей четыре на зону, а не по четыре на блок: события всплывают.
 
+  /** зона под курсором на последнем событии — по ней решаем, состоялся ли жест */
+  let overZone: string | null = null
+  /** нажали Escape — жест отменён, что бы ни говорил браузер */
+  let escaped = false
+
   const zoneOf = (ev: Event) => {
     const el = (ev.target as HTMLElement | null)?.closest?.('[data-dnd-zone]') as HTMLElement | null
     const name = el?.dataset.dndZone
@@ -423,6 +428,8 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
     ev.dataTransfer?.setData('text/plain', id)
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move'
 
+    overZone = zone.name
+    escaped = false
     boxes.clear()
     drag = {
       fromZone: zone.name, id, fromIndex: index, el: el!, span,
@@ -455,15 +462,38 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
     ev.preventDefault()                      // без этого не будет `drop`
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
     scroller.move(ev.clientX, ev.clientY)
+    overZone = zone.name
     setOver(zone.name)
     update(d, zone, ev.clientX, ev.clientY)
   }
 
-  /** конец жеста. `drop` значит «бросили в зону», `dragend` — «где угодно». */
+  /** ушли из зоны — только если браузер прямо назвал, куда, и это не наш потомок */
+  const onZoneLeave = (ev: DragEvent) => {
+    const to = ev.relatedTarget as Node | null
+    if (!to) return
+    const zone = zoneOf(ev)
+    if (zone?.el?.contains(to)) return
+    if (overZone === zone?.name) overZone = null
+  }
+
+  const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') escaped = true }
+
+  /**
+   * Конец жеста.
+   *
+   * Ждать одного `drop` нельзя: браузер доставляет его не всегда — при быстром
+   * движении Chrome глотает `dragover`, а без свежего он дроп не считает
+   * состоявшимся. Пользователь видит, как блоки расступались, отпускает — и всё
+   * молча откатывается. По `dropEffect` не различить: у несостоявшегося дропа он
+   * `none`, ровно как у отменённого жеста.
+   *
+   * Поэтому решаем сами: жест состоялся, если отпустили НАД зоной и не нажимали
+   * Escape. `dragend` приходит всегда, он и подводит итог.
+   */
   const onFinish = (ev: DragEvent) => {
     const d = drag
     if (!d) return
-    const dropped = ev.type === 'drop' && zoneOf(ev)?.name === d.toZone
+    const dropped = !escaped && overZone === d.toZone
     if (ev.type === 'drop') ev.preventDefault()
 
     // порядок важен: сначала читаем состояние, потом прибираем
@@ -492,8 +522,10 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
           // ВСЕ слушатели жеста — здесь, четыре на зону при любом числе блоков
           el.addEventListener('dragstart', onDragStart)
           el.addEventListener('dragover', onDragOver)
+          el.addEventListener('dragleave', onZoneLeave)
           el.addEventListener('drop', onFinish)
           el.addEventListener('dragend', onFinish)
+          document.addEventListener('keydown', onKey)
 
           let ro: ResizeObserver | null = null
           if (typeof ResizeObserver === 'function') {
@@ -512,8 +544,10 @@ export function createGridDndEngine(opts: DndGroupOptions = {}): DndEngine {
           return () => {
             el.removeEventListener('dragstart', onDragStart)
             el.removeEventListener('dragover', onDragOver)
+            el.removeEventListener('dragleave', onZoneLeave)
             el.removeEventListener('drop', onFinish)
             el.removeEventListener('dragend', onFinish)
+            document.removeEventListener('keydown', onKey)
             ro?.disconnect()
             delete el.dataset.dndZone
             if (zone.ro === ro) zone.ro = null

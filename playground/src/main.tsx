@@ -1,4 +1,4 @@
-import './app.css'
+import "./app.css";
 import { render } from "solid-js/web";
 import { createSignal, For, Show, onCleanup, type JSX } from "solid-js";
 
@@ -233,8 +233,8 @@ function App() {
           class="block px-4 pt-4 pb-2 text-base font-semibold no-underline"
           href="#"
           onClick={(e) => {
-            e.preventDefault()
-            location.hash = TABS[0].id
+            e.preventDefault();
+            location.hash = TABS[0].id;
           }}
         >
           solid-dumb-kit
@@ -244,7 +244,7 @@ function App() {
           <For each={GROUPS}>
             {(group) => (
               <>
-                <li class="menu-title" title={group.note}>
+                <li class="menu-title text-primary text-xl" title={group.note}>
                   {group.title}
                 </li>
                 <For each={group.items}>
@@ -252,9 +252,9 @@ function App() {
                     <li>
                       <a
                         class="py-2"
-                        classList={{ 'menu-active': tab() === t.id }}
+                        classList={{ "menu-active": tab() === t.id }}
                         href={`#${t.id}`}
-                        aria-current={tab() === t.id ? 'page' : undefined}
+                        aria-current={tab() === t.id ? "page" : undefined}
                       >
                         {/* Пункт меню у daisyUI — grid в СТРОКУ: без обёртки
                             подпись, описание и имя пакета встали бы рядом и
@@ -278,7 +278,10 @@ function App() {
           </For>
         </ul>
 
-        <a class="link link-primary block px-4 pt-1 pb-4 text-sm" href="https://github.com/russelgal/solid-dumb-kit">
+        <a
+          class="link link-primary block px-4 pt-1 pb-4 text-sm"
+          href="https://github.com/russelgal/solid-dumb-kit"
+        >
           GitHub ↗
         </a>
       </aside>
@@ -293,7 +296,7 @@ function App() {
         </For>
       </main>
     </div>
-  )
+  );
 }
 
 render(() => <App />, document.getElementById("root")!);
