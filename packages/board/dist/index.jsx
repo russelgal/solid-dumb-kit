@@ -1,5 +1,5 @@
 // src/DumbBoard.tsx
-import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 // ../shared/dist/index.js
 function prefersReducedMotion() {
@@ -288,8 +288,22 @@ function DumbBoard(props) {
   const spanOf = (s) => Math.max(1, Math.min(cols(), s.span ?? Math.floor(cols() / 2)));
   const colsIn = (s) => Math.max(1, s.cols ?? 3);
   const sectionById = (id) => props.sections.find((s) => s.id === id);
+  const renderOrder = () => props.sections.map((s) => s.id).sort();
+  const showOrder = (id) => props.sections.findIndex((s) => s.id === id);
   const itemsOf = (id) => props.items.filter((it) => props.section(it) === id);
-  const placeOf = (item) => itemsOf(props.section(item)).findIndex((x) => props.id(x) === props.id(item));
+  const renderItemsOf = (id) => itemsOf(id).slice().sort((a, b) => props.id(a) < props.id(b) ? -1 : 1);
+  const places = createMemo(() => {
+    const out = /* @__PURE__ */ new Map();
+    const seen = /* @__PURE__ */ new Map();
+    for (const it of props.items) {
+      const z = props.section(it);
+      const k = seen.get(z) ?? 0;
+      out.set(props.id(it), k);
+      seen.set(z, k + 1);
+    }
+    return out;
+  });
+  const placeOf = (item) => places().get(props.id(item)) ?? 0;
   const [held, setHeld] = createSignal(null);
   const [heldSection, setHeldSection] = createSignal(null);
   const [sizing, setSizing] = createSignal(null);
@@ -583,66 +597,70 @@ function DumbBoard(props) {
     }}
     style={{ "--dumb-board-cols": String(cols()), "--dumb-board-gap": `${gap()}px` }}
   >
-        <For each={props.sections}>
-          {(s) => <section
-    class="dumb-board-panel"
-    classList={{ held: heldSection() === s.id, sizing: sizing() === s.id }}
-    data-board-section={s.id}
-    draggable={editable()}
-    ref={(el) => panelEls.set(s.id, el)}
-    style={{ "grid-column": `span ${spanOf(s)}` }}
-  >
-              <Show when={s.title}>
+        <For each={renderOrder()}>
+          {(sid) => {
+    const s = () => sectionById(sid);
+    return <section
+      class="dumb-board-panel"
+      classList={{ held: heldSection() === sid, sizing: sizing() === sid }}
+      data-board-section={sid}
+      draggable={editable()}
+      ref={(el) => panelEls.set(sid, el)}
+      style={{ "grid-column": `span ${spanOf(s())}`, order: String(showOrder(sid)) }}
+    >
+              <Show when={s().title}>
                 <h4
-    class="dumb-board-head"
-    data-board-handle
-    onDblClick={() => editable() && toggleWide(s)}
-  >
+      class="dumb-board-head"
+      data-board-handle
+      onDblClick={() => editable() && toggleWide(s())}
+    >
                   <Show when={editable()}><span class="dumb-board-grip">⠿</span></Show>
                   <span class="dumb-board-title">
-                    {s.title}
-                    <Show when={s.subtitle}><span class="dumb-board-sub">{s.subtitle}</span></Show>
+                    {s().title}
+                    <Show when={s().subtitle}><span class="dumb-board-sub">{s().subtitle}</span></Show>
                   </span>
-                  <span class="dumb-board-count">{itemsOf(s.id).length}</span>
+                  <span class="dumb-board-count">{itemsOf(sid).length}</span>
                   <Show when={props.sectionActions}>
-                    <span class="dumb-board-actions">{props.sectionActions(s)}</span>
+                    <span class="dumb-board-actions">{props.sectionActions(s())}</span>
                   </Show>
                 </h4>
               </Show>
 
               <div
-    class="dumb-board-zone"
-    data-board-zone={s.id}
-    ref={(el) => zoneEls.set(s.id, el)}
-    style={{
-      "--dumb-board-inner": String(colsIn(s)),
-      ...s.rows ? { height: `${s.rows * rowH() + 12}px` } : {}
-    }}
-  >
-                <For each={itemsOf(s.id)}>
-                  {(item, i) => <div
-    class="dumb-board-block"
-    classList={{ held: held() === props.id(item) }}
-    data-board-block={props.id(item)}
-    draggable={editable()}
-    ref={(el) => blockEls.set(props.id(item), el)}
-    style={{ order: String(i()) }}
-  >
-                      {props.children(item, s)}
+      class="dumb-board-zone"
+      data-board-zone={sid}
+      ref={(el) => zoneEls.set(sid, el)}
+      style={{
+        "--dumb-board-inner": String(colsIn(s())),
+        ...s().rows ? { height: `${s().rows * rowH() + 12}px` } : {}
+      }}
+    >
+                {
+      /* Итерируем сами элементы, а не их id: иначе содержимое пришлось
+         бы искать в `props.items` прямо в разметке, и оно зависело бы от
+         всего массива — любая правка пересоздавала бы ВСЕ блоки. */
+    }
+                <For each={renderItemsOf(sid)}>
+                  {(item) => <div
+      class="dumb-board-block"
+      classList={{ held: held() === props.id(item) }}
+      data-board-block={props.id(item)}
+      draggable={editable()}
+      ref={(el) => blockEls.set(props.id(item), el)}
+      style={{ order: String(placeOf(item)) }}
+    >
+                      {props.children(item, s())}
                     </div>}
                 </For>
               </div>
 
-              {
-    /* Ручки только в правке — при `editable={false}` их нет вовсе,
-       ни элементов, ни слушателей */
-  }
               <Show when={editable() && resizable()}>
-                <div class="dumb-board-grip-x" data-board-resize={s.id} data-axis="x" />
-                <div class="dumb-board-grip-y" data-board-resize={s.id} data-axis="y" />
-                <div class="dumb-board-grip-xy" data-board-resize={s.id} data-axis="xy" />
+                <div class="dumb-board-grip-x" data-board-resize={sid} data-axis="x" />
+                <div class="dumb-board-grip-y" data-board-resize={sid} data-axis="y" />
+                <div class="dumb-board-grip-xy" data-board-resize={sid} data-axis="xy" />
               </Show>
-            </section>}
+            </section>;
+  }}
         </For>
       </div>
 

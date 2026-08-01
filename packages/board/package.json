@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/board",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DumbBoard — секции с блоками: перенос между секциями, сортировка и ресайз самих секций",
   "license": "MIT",
   "type": "module",

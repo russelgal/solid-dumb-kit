@@ -8,7 +8,7 @@ import { createSignal, For } from 'solid-js'
 import { DumbBoard, type BoardSection } from '@solid-dumb-kit/board'
 import { Bar, Switch, Check, Pick, Btn, Note } from '../_controls'
 
-type Widget = { id: string; section: string; title: string; kind: string }
+type Widget = { id: string; title: string; kind: string }
 
 const KINDS = ['график', 'таблица', 'счётчик', 'карта', 'лента']
 const SECTIONS0: Array<BoardSection> = [
@@ -18,28 +18,46 @@ const SECTIONS0: Array<BoardSection> = [
 ]
 const WIDGETS0: Array<Widget> = Array.from({ length: 24 }, (_, i) => ({
   id: `w${i}`,
-  section: i < 9 ? 'sales' : i < 15 ? 'stock' : 'archive',
   title: `Блок ${i + 1}`,
   kind: KINDS[i % KINDS.length],
 }))
+/**
+ * В какой секции блок — ОТДЕЛЬНО от самого блока.
+ *
+ * Соблазн держать `section` полем виджета велик, но тогда переезд приходится
+ * писать как `{ ...item, section }` — а это новый объект, `<For>` считает его
+ * другим элементом и пересоздаёт узел. Пересозданный узел анимировать нечем:
+ * FLIP цепляется за элемент, которого уже нет, и соседи стоят как вкопанные.
+ */
+const WHERE0: Record<string, string> = Object.fromEntries(
+  WIDGETS0.map((w, i) => [w.id, i < 9 ? 'sales' : i < 15 ? 'stock' : 'archive']),
+)
 const HUE = (i: number) => `oklch(0.75 0.12 ${(i * 53) % 360})`
 
 export default function DumbBoardExample() {
   const [sections, setSections] = createSignal(SECTIONS0)
   const [widgets, setWidgets] = createSignal(WIDGETS0)
+  const [where, setWhere] = createSignal(WHERE0)
   const [edit, setEdit] = createSignal(true)
   const [animate, setAnimate] = createSignal(true)
   const [cols, setCols] = createSignal(3)
   const [log, setLog] = createSignal('тащи блок — или секцию за заголовок')
 
-  /** блок переехал: вынуть из массива и вставить перед k-м блоком новой секции */
+  /**
+   * Блок переехал. Двигаем ТОТ ЖЕ объект — переставляем его в массиве и
+   * записываем новую секцию рядом. Ни одного нового объекта: узлы переживают
+   * переезд, и FLIP есть за что зацепиться.
+   */
   const move = (item: Widget, toSection: string, toIndex: number) => {
     const rest = widgets().filter((w) => w.id !== item.id)
-    const before = rest.filter((w) => w.section === toSection).slice(0, toIndex)
-    const anchor = before.length ? rest.indexOf(before[before.length - 1]) + 1
-      : rest.findIndex((w) => w.section === toSection)
-    const at = anchor < 0 ? rest.length : anchor
-    setWidgets([...rest.slice(0, at), { ...item, section: toSection }, ...rest.slice(at)])
+    const inTarget = rest.filter((w) => where()[w.id] === toSection)
+    const anchor = toIndex < inTarget.length
+      ? rest.indexOf(inTarget[toIndex])
+      : inTarget.length
+        ? rest.indexOf(inTarget[inTarget.length - 1]) + 1
+        : rest.length
+    setWhere({ ...where(), [item.id]: toSection })
+    setWidgets([...rest.slice(0, anchor), item, ...rest.slice(anchor)])
     setLog(`${item.title} → «${sections().find((s) => s.id === toSection)?.title}», место ${toIndex}`)
   }
 
@@ -58,6 +76,7 @@ export default function DumbBoardExample() {
   const reset = () => {
     setSections(SECTIONS0)
     setWidgets(WIDGETS0)
+    setWhere(WHERE0)
     setLog('раскладка сброшена')
   }
 
@@ -100,7 +119,7 @@ export default function DumbBoardExample() {
         sections={withCols()}
         items={widgets()}
         id={(w) => w.id}
-        section={(w) => w.section}
+        section={(w) => where()[w.id]}
         onMove={move}
         onSectionMove={moveSection}
         onSectionResize={resize}

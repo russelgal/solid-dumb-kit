@@ -52,6 +52,23 @@ Order in `items` *is* the order of blocks; order in `sections` is the order of s
 </DumbBoard>
 ```
 
+### One requirement on `items`
+
+Block objects must **survive the move**: move the same object rather than
+recreating it. Keeping the section as a field on the block is tempting, but then
+a move reads `{ ...item, section }` — and that's a new object, so `<For>` treats
+it as a different element and rebuilds the node. A rebuilt node has nothing to
+animate: FLIP grabs an element that no longer exists.
+
+Keep the section alongside — a separate `id → section` map — and move the object
+itself:
+
+```tsx
+const [where, setWhere] = createSignal<Record<string, string>>(WHERE0)
+
+<DumbBoard items={widgets()} section={(w) => where()[w.id]} …>
+```
+
 ## Props
 
 | prop | type | what it does |
