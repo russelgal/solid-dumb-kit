@@ -77,9 +77,8 @@ export default function DumbSortableDndExample() {
         <section class="min-w-0">
           <h4 class="mb-2 text-sm font-medium text-base-content/70">Список — 300 строк</h4>
 
-          {/* flex обязателен: на нём и держится `order` */}
           <DumbSortableDnd
-            class="flex max-h-[66vh] flex-col gap-2 overflow-y-auto pr-1 [scrollbar-gutter:stable]"
+            class="sd-list"
             items={rows()}
             setItems={(next) => {
               setRows(next)
@@ -88,19 +87,12 @@ export default function DumbSortableDndExample() {
             id={(r) => r.id}
           >
             {(row, i) => (
-              <article
-                class={`row flex items-center gap-3 rounded-box border-l-4 bg-base-100 px-3 py-2.5 shadow-sm ring-1 ring-base-300 ${EDGE_L[row.n % EDGE_L.length]} ${row.tall ? 'min-h-17' : 'min-h-9'}`}
-              >
-                <button
-                  class="handle btn btn-ghost btn-xs cursor-grab px-1 text-base-content/40 active:cursor-grabbing"
-                  data-drag-handle
-                  type="button"
-                  title="перетащить"
-                >
+              <article class={`sd-row ${EDGE_L[row.n % EDGE_L.length]} ${row.tall ? 'min-h-17' : 'min-h-9'}`}>
+                <button class="sd-handle" data-drag-handle type="button" title="перетащить">
                   ⠿
                 </button>
                 <div class="min-w-0 flex-1">
-                  <div class="title text-sm font-medium">{row.label}</div>
+                  <div class="sd-title text-sm font-medium">{row.label}</div>
                   <div class="text-xs text-base-content/50">
                     {row.tall ? 'двойная высота' : 'обычная строка'}
                   </div>
@@ -120,7 +112,7 @@ export default function DumbSortableDndExample() {
           </p>
 
           <DumbSortableDnd
-            class="grid max-h-[66vh] grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 overflow-y-auto pr-1 [scrollbar-gutter:stable]"
+            class="sd-grid"
             axis="grid"
             items={tiles()}
             setItems={(next) => {
@@ -130,11 +122,7 @@ export default function DumbSortableDndExample() {
             id={(t) => t.id}
           >
             {(tile) => (
-              <div
-                class={`tile grid h-18 cursor-grab place-items-center rounded-box border-t-4 bg-base-100 font-semibold shadow-sm ring-1 ring-base-300 active:cursor-grabbing ${EDGE_T[tile.n % EDGE_T.length]}`}
-              >
-                {tile.n}
-              </div>
+              <div class={`sd-tile ${EDGE_T[tile.n % EDGE_T.length]}`}>{tile.n}</div>
             )}
           </DumbSortableDnd>
         </section>
