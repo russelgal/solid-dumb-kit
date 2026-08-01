@@ -9,6 +9,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[DumbSortable](docs/DumbSortable.md)** — zero-dep FLIP drag-reorder (vertical list **or** grid), no reflow during drag. Ships as a declarative component and a low-level `createDumbSortable` primitive.
 - **[DumbTree](docs/DumbTree.md)** — sidebar tree *or* flat list with fuzzy search, sorting, persisted expand state and optional drag-reorder. Styled for Tailwind + daisyUI.
 - **[DumbTable](docs/DumbTable.md)** — bring-your-own-columns table: sorting (client or server) on TanStack Table, row drag-reorder, pagination.
+- **[DumbBoard](docs/DumbBoard.md)** — a board of sections: blocks move between sections, the sections themselves reorder and resize. Inside a section the DOM is never touched — only CSS `order` moves, and FLIP plays out the rest.
 - **[DumbGrid](docs/DumbGrid.md)** — dashboard grid: blocks sized in whole columns/rows, drag and resize in grid steps, three layout modes (`flow` / `dense` / free `{x,y}`), optional visible grid, layout persisted. No element measurements during a gesture.
 - **[utils](docs/utils.md)** — framework-free helpers: `ru-RU` number/date/size formatting, slugs, image extraction from a ZIP, imgproxy URLs.
 - **[Odata1C](docs/Odata1C.md)** — framework-free client for the 1C standard OData interface: Basic auth, request building, and the platform's quirks handled for you. Runs in the browser and in Node.
@@ -66,6 +67,7 @@ Packages split by **how the gesture is driven**. That's the one division that ma
 | --- | --- | --- |
 | `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — list and tile grid | — |
 | `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — grid, two boards, transfer between them | — |
+| `@solid-dumb-kit/board` | `DumbBoard` — sections with blocks, moves between them, section resize | — |
 
 **Data and utilities** — the gesture isn't the point:
 

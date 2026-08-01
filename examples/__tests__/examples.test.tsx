@@ -14,6 +14,7 @@ import KanbanExample from '../pointer/Kanban.example'
 import UtilsExample from '../data/utils.example'
 import Odata1CExample from '../data/Odata1C.example'
 import DumbSortableDndExample from '../dnd/DumbSortableDnd.example'
+import DumbBoardExample from '../dnd/DumbBoard.example'
 import CssOrderExample from '../lab/CssOrder.example'
 import RawDndExample from '../lab/RawDnd.example'
 import FlipBenchExample from '../lab/FlipBench.example'
@@ -42,6 +43,7 @@ const EXAMPLES = [
   ['Board', BoardExample],
   ['DumbGridDnd', DumbGridDndExample],
   ['DumbSortableDnd', DumbSortableDndExample],
+  ['DumbBoard', DumbBoardExample],
   ['CssOrder', CssOrderExample],
   ['RawDnd', RawDndExample],
   ['FlipBench', FlipBenchExample],

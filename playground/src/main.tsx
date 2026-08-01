@@ -10,6 +10,7 @@ import BoardExample from '../../examples/pointer/Board.example'
 
 import DumbGridDndExample from '../../examples/dnd/DumbGridDnd.example'
 import DumbSortableDndExample from '../../examples/dnd/DumbSortableDnd.example'
+import DumbBoardExample from '../../examples/dnd/DumbBoard.example'
 
 import DumbTreeExample from '../../examples/data/DumbTree.example'
 import DumbTableExample from '../../examples/data/DumbTable.example'
@@ -60,6 +61,7 @@ const GROUPS: Array<Group> = [
     items: [
       { id: 'dnd', label: 'DumbGridDnd', pkg: 'grid-dnd', hint: 'сетка на HTML5 DnD', Comp: DumbGridDndExample },
       { id: 'sortdnd', label: 'DumbSortableDnd', pkg: 'sortable-dnd', hint: 'список и сетка плиток', Comp: DumbSortableDndExample },
+      { id: 'board2', label: 'DumbBoard', pkg: 'board', hint: 'секции, блоки, ресайз', Comp: DumbBoardExample },
     ],
   },
   {

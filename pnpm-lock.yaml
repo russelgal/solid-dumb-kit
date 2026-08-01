@@ -11,6 +11,9 @@ importers:
       '@changesets/cli':
         specifier: ^2.29.4
         version: 2.31.1(@types/node@26.1.1)
+      '@solid-dumb-kit/board':
+        specifier: workspace:*
+        version: link:packages/board
       '@solid-dumb-kit/grid':
         specifier: workspace:*
         version: link:packages/grid
@@ -74,6 +77,16 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.1)(happy-dom@20.11.1)(vite@8.1.5(@types/node@26.1.1)(esbuild@0.27.7))
+
+  packages/board:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/grid:
     dependencies:

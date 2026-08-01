@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.4",
+    "@solid-dumb-kit/board": "workspace:*",
     "@solid-dumb-kit/grid": "workspace:*",
     "@solid-dumb-kit/grid-dnd": "workspace:*",
     "@solid-dumb-kit/odata-1c": "workspace:*",
