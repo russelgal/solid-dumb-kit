@@ -2,6 +2,15 @@ declare function prefersReducedMotion(): boolean;
 /** анимировать ли: undefined → да, но с оглядкой на системную настройку */
 declare function shouldAnimate(explicit?: boolean): boolean;
 
+/**
+ * Вставить стили один раз на документ.
+ *
+ * @param id  ключ, он же `data-dumb-kit` у тега — по нему видно в инспекторе,
+ *            кто это положил, и по нему же ищется уже вставленное
+ * @param css  сами правила
+ */
+declare function injectStyle(id: string, css: string): void;
+
 type Flip = {
     /** отправить элемент на смещение (dx, dy) от его места в потоке */
     to: (el: HTMLElement, dx: number, dy: number) => void;
@@ -109,4 +118,4 @@ type PressGate = {
  */
 declare function createPressGate(opts?: PressGateOptions): PressGate;
 
-export { ACCEL, type AutoScroller, EDGE, type Flip, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, type PressGate, type PressGateOptions, type ViewGeom, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, doScroll, focusInside, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
+export { ACCEL, type AutoScroller, EDGE, type Flip, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, type PressGate, type PressGateOptions, type ViewGeom, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };

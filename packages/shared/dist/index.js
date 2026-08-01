@@ -7,6 +7,19 @@ function shouldAnimate(explicit) {
   return !prefersReducedMotion();
 }
 
+// src/injectStyle.ts
+var done = /* @__PURE__ */ new Set();
+function injectStyle(id, css) {
+  if (typeof document === "undefined") return;
+  if (done.has(id)) return;
+  done.add(id);
+  if (document.querySelector(`style[data-dumb-kit="${id}"]`)) return;
+  const el = document.createElement("style");
+  el.setAttribute("data-dumb-kit", id);
+  el.textContent = css;
+  document.head.appendChild(el);
+}
+
 // src/flip.ts
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
@@ -385,4 +398,4 @@ function createPressGate(opts = {}) {
   };
 }
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, doScroll, focusInside, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
+export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };

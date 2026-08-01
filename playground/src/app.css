@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/* Примеры лежат вне корня витрины — Tailwind надо показать, где их искать */
+@source "../../examples";
+
+/* daisyUI — как в проектах, где кит и используется. Витрине он даёт кнопки,
+   бейджи и таблицы даром, а `DumbTree` наконец перестаёт таскать с собой
+   шестидесятистрочный шим, который подделывал его классы.
+   Сам кит daisyUI НЕ требует: пакеты не знают ни про Tailwind, ни про темы. */
+@plugin "daisyui";
+
+/* Оформление кита в витрине. Кит даёт только структуру — сетку, позиции ручек,
+   приглушение источника, — а как это выглядит, решает потребитель. Здесь
+   потребитель мы, и решаем один раз на все примеры. */
+@layer components {
+  .dumb-board-zone {
+    @apply rounded-xl bg-base-200 p-2.5;
+  }
+  .dumb-board-panel.sizing {
+    @apply rounded-xl outline-2 outline-offset-4 outline-primary;
+  }
+  .dumb-board-grip-x::after {
+    content: '';
+    @apply absolute top-2 bottom-2 left-[5px] w-0.5 rounded-sm bg-base-300;
+  }
+  .dumb-board-grip-y::after {
+    content: '';
+    @apply absolute top-[5px] right-2 left-2 h-0.5 rounded-sm bg-base-300;
+  }
+  .dumb-board-grip-xy::after {
+    content: '';
+    @apply absolute right-1 bottom-1 h-2 w-2 rounded-br-[3px] border-r-2 border-b-2 border-base-300;
+  }
+  .dumb-board-grip-x:hover::after,
+  .dumb-board-grip-y:hover::after { @apply bg-primary }
+  .dumb-board-grip-xy:hover::after { @apply border-primary }
+}

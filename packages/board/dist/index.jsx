@@ -9,6 +9,17 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var done = /* @__PURE__ */ new Set();
+function injectStyle(id, css) {
+  if (typeof document === "undefined") return;
+  if (done.has(id)) return;
+  done.add(id);
+  if (document.querySelector(`style[data-dumb-kit="${id}"]`)) return;
+  const el = document.createElement("style");
+  el.setAttribute("data-dumb-kit", id);
+  el.textContent = css;
+  document.head.appendChild(el);
+}
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
 var C = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 };
@@ -277,8 +288,34 @@ function moveAt(list, from, to) {
 }
 
 // src/DumbBoard.tsx
-var styled = false;
+var CSS = `
+          .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
+                        grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
+          .dumb-board-panel { position: relative; min-width: 0 }
+          .dumb-board-panel.held { opacity: .35 }
+          .dumb-board-head { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
+                             font: inherit; font-size: 13px; cursor: grab; user-select: none }
+          .dumb-board-head:active { cursor: grabbing }
+          .dumb-board-grip { color: #cbd5e1 }
+          .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
+          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .65 }
+          .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
+                              background: rgb(0 0 0 / .06) }
+          .dumb-board-actions { margin-left: auto; display: flex; gap: 4px }
+          /* \u0441\u0435\u0442\u043A\u0430 \u0431\u043B\u043E\u043A\u043E\u0432: \u0441\u044E\u0434\u0430 \u0438 \u0441\u043C\u043E\u0442\u0440\u0438\u0442 order */
+          .dumb-board-zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
+                             overflow-y: auto; scrollbar-gutter: stable;
+                             grid-template-columns: repeat(var(--dumb-board-inner), 1fr) }
+          .dumb-board-block.held { opacity: .35 }
+          .dumb-board-grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
+                               cursor: col-resize; touch-action: none }
+          .dumb-board-grip-y { position: absolute; left: 12px; right: 12px; bottom: -9px; height: 12px;
+                               cursor: row-resize; touch-action: none }
+          .dumb-board-grip-xy { position: absolute; right: -9px; bottom: -9px; width: 16px; height: 16px;
+                                cursor: nwse-resize; touch-action: none }
+        `;
 function DumbBoard(props) {
+  injectStyle("board", CSS);
   const cols = () => props.cols ?? 12;
   const gap = () => props.gap ?? 14;
   const rowH = () => props.rowHeight ?? 76;
@@ -307,8 +344,6 @@ function DumbBoard(props) {
   const [held, setHeld] = createSignal(null);
   const [heldSection, setHeldSection] = createSignal(null);
   const [sizing, setSizing] = createSignal(null);
-  const [first] = createSignal(!styled);
-  styled = true;
   const blockEls = /* @__PURE__ */ new Map();
   const zoneEls = /* @__PURE__ */ new Map();
   const panelEls = /* @__PURE__ */ new Map();
@@ -664,38 +699,6 @@ function DumbBoard(props) {
         </For>
       </div>
 
-      {
-    /* Структурные стили инжектятся ОДИН раз на страницу, сколько бы досок ни
-       отрисовалось. Всё остальное — оформление блоков и шапки — твоё. */
-  }
-      <Show when={first()}>
-        <style>{`
-          .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
-                        grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
-          .dumb-board-panel { position: relative; min-width: 0 }
-          .dumb-board-panel.held { opacity: .35 }
-          .dumb-board-head { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
-                             font: inherit; font-size: 13px; cursor: grab; user-select: none }
-          .dumb-board-head:active { cursor: grabbing }
-          .dumb-board-grip { color: #cbd5e1 }
-          .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
-          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .65 }
-          .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                              background: rgb(0 0 0 / .06) }
-          .dumb-board-actions { margin-left: auto; display: flex; gap: 4px }
-          /* \u0441\u0435\u0442\u043A\u0430 \u0431\u043B\u043E\u043A\u043E\u0432: \u0441\u044E\u0434\u0430 \u0438 \u0441\u043C\u043E\u0442\u0440\u0438\u0442 order */
-          .dumb-board-zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
-                             overflow-y: auto; scrollbar-gutter: stable;
-                             grid-template-columns: repeat(var(--dumb-board-inner), 1fr) }
-          .dumb-board-block.held { opacity: .35 }
-          .dumb-board-grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
-                               cursor: col-resize; touch-action: none }
-          .dumb-board-grip-y { position: absolute; left: 12px; right: 12px; bottom: -9px; height: 12px;
-                               cursor: row-resize; touch-action: none }
-          .dumb-board-grip-xy { position: absolute; right: -9px; bottom: -9px; width: 16px; height: 16px;
-                                cursor: nwse-resize; touch-action: none }
-        `}</style>
-      </Show>
     </div>;
 }
 export {

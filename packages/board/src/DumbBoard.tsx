@@ -18,7 +18,7 @@
 // указателе работает и пальцем.
 
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount, type JSX } from 'solid-js'
-import { createAutoScroller, createFlip, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, injectStyle, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
 import { moveAt, panelFlow, rowsFor, slotAt, type PanelBox, type Slot, type ZoneGeom } from './boardMath'
 
 export type BoardSection = {
@@ -76,9 +76,41 @@ export type DumbBoardProps<T> = {
   children: (item: T, section: BoardSection) => JSX.Element
 }
 
-let styled = false
+/**
+ * Структурные стили — сетка, позиции ручек, приглушение источника. Кладутся в
+ * `<head>` один раз на документ: внутри дерева они исчезли бы вместе с первым
+ * размонтированным экземпляром. Всё остальное оформление твоё.
+ */
+const CSS = `
+          .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
+                        grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
+          .dumb-board-panel { position: relative; min-width: 0 }
+          .dumb-board-panel.held { opacity: .35 }
+          .dumb-board-head { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
+                             font: inherit; font-size: 13px; cursor: grab; user-select: none }
+          .dumb-board-head:active { cursor: grabbing }
+          .dumb-board-grip { color: #cbd5e1 }
+          .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
+          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .65 }
+          .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
+                              background: rgb(0 0 0 / .06) }
+          .dumb-board-actions { margin-left: auto; display: flex; gap: 4px }
+          /* сетка блоков: сюда и смотрит order */
+          .dumb-board-zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
+                             overflow-y: auto; scrollbar-gutter: stable;
+                             grid-template-columns: repeat(var(--dumb-board-inner), 1fr) }
+          .dumb-board-block.held { opacity: .35 }
+          .dumb-board-grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
+                               cursor: col-resize; touch-action: none }
+          .dumb-board-grip-y { position: absolute; left: 12px; right: 12px; bottom: -9px; height: 12px;
+                               cursor: row-resize; touch-action: none }
+          .dumb-board-grip-xy { position: absolute; right: -9px; bottom: -9px; width: 16px; height: 16px;
+                                cursor: nwse-resize; touch-action: none }
+        `
 
 export function DumbBoard<T>(props: DumbBoardProps<T>) {
+  injectStyle('board', CSS)
+
   const cols = () => props.cols ?? 12
   const gap = () => props.gap ?? 14
   const rowH = () => props.rowHeight ?? 76
@@ -137,8 +169,6 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   const [held, setHeld] = createSignal<string | null>(null)
   const [heldSection, setHeldSection] = createSignal<string | null>(null)
   const [sizing, setSizing] = createSignal<string | null>(null)
-  const [first] = createSignal(!styled)
-  styled = true
 
   const blockEls = new Map<string, HTMLElement>()
   const zoneEls = new Map<string, HTMLElement>()
@@ -538,36 +568,6 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
         </For>
       </div>
 
-      {/* Структурные стили инжектятся ОДИН раз на страницу, сколько бы досок ни
-          отрисовалось. Всё остальное — оформление блоков и шапки — твоё. */}
-      <Show when={first()}>
-        <style>{`
-          .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
-                        grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
-          .dumb-board-panel { position: relative; min-width: 0 }
-          .dumb-board-panel.held { opacity: .35 }
-          .dumb-board-head { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
-                             font: inherit; font-size: 13px; cursor: grab; user-select: none }
-          .dumb-board-head:active { cursor: grabbing }
-          .dumb-board-grip { color: #cbd5e1 }
-          .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
-          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .65 }
-          .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                              background: rgb(0 0 0 / .06) }
-          .dumb-board-actions { margin-left: auto; display: flex; gap: 4px }
-          /* сетка блоков: сюда и смотрит order */
-          .dumb-board-zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
-                             overflow-y: auto; scrollbar-gutter: stable;
-                             grid-template-columns: repeat(var(--dumb-board-inner), 1fr) }
-          .dumb-board-block.held { opacity: .35 }
-          .dumb-board-grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
-                               cursor: col-resize; touch-action: none }
-          .dumb-board-grip-y { position: absolute; left: 12px; right: 12px; bottom: -9px; height: 12px;
-                               cursor: row-resize; touch-action: none }
-          .dumb-board-grip-xy { position: absolute; right: -9px; bottom: -9px; width: 16px; height: 16px;
-                                cursor: nwse-resize; touch-action: none }
-        `}</style>
-      </Show>
     </div>
   )
 }

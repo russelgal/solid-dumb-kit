@@ -84,20 +84,20 @@ export default function DumbBoardExample() {
   const withCols = () => sections().map((s) => ({ ...s, cols: s.id === 'archive' ? cols() * 2 : cols() }))
 
   return (
-    <div class="db-example">
-      <h3>DumbBoard — секции, блоки и переносы между ними</h3>
-      <p class="note">
+    <div class="p-5 text-slate-900">
+      <h3 class="mb-1 text-lg font-semibold">DumbBoard — секции, блоки и переносы между ними</h3>
+      <p class="mb-2 max-w-[92ch] text-sm text-base-content/80">
         Внутри секции DOM не трогается — двигается только <code>order</code>. Перенос в соседнюю
         секцию без перестановки DOM невозможен (<code>order</code> живёт внутри одного контейнера),
         и это единственное место, где DOM меняется. Оба случая доигрывает <b>FLIP</b>.
       </p>
-      <p class="note">
+      <p class="mb-2 max-w-[92ch] text-sm text-base-content/80">
         Секции тащат за заголовок, размер тянут за правый край, нижний или угол; двойной клик по
         шапке — во всю ширину и обратно. Перенос идёт на нативном drag-and-drop, а ресайз — на
         указательных событиях: <code>dragover</code> не даёт покадровой точности, которая нужна,
         когда тянут размер.
       </p>
-      <p class="note">
+      <p class="mb-2 max-w-[92ch] text-sm text-base-content/80">
         Состояние — <b>два массива</b>: порядок в <code>items</code> и есть порядок блоков,
         размер живёт на самой секции. Компонент ничего не хранит.
       </p>
@@ -125,46 +125,19 @@ export default function DumbBoardExample() {
         onSectionResize={resize}
         editable={edit()}
         animate={animate()}
-        class="db-board"
+        class="[&_.dumb-board-head]:text-slate-600"
       >
         {(w) => (
-          <article class="widget" style={{ '--hue': HUE(Number(w.id.slice(1))) }}>
-            <span class="wtitle">{w.title}</span>
-            <span class="wkind">{w.kind}</span>
+          <article
+            class="flex h-[68px] cursor-grab flex-col justify-center gap-0.5 rounded-[10px] border-t-4 bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(15,23,42,.06),inset_0_0_0_1px_#e2e8f0] active:cursor-grabbing"
+            style={{ 'border-top-color': HUE(Number(w.id.slice(1))) }}
+          >
+            <span class="text-[13.5px] font-medium">{w.title}</span>
+            <span class="text-[11.5px] text-slate-400">{w.kind}</span>
           </article>
         )}
       </DumbBoard>
 
-      <style>{`
-        .db-example { padding: 16px 20px; color: #0f172a }
-        .db-example h3 { margin: 0 0 4px }
-        .db-example .note { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 92ch }
-
-        /* Оформление — целиком наше: кит дал только структуру и жест */
-        .db-example .dumb-board-head { color: #475569 }
-        .db-example .dumb-board-zone { padding: 10px; border-radius: 12px; background: #f8fafc;
-                                       box-shadow: inset 0 0 0 1px #e2e8f0 }
-        .db-example .dumb-board-panel.sizing { outline: 2px solid #6366f1; outline-offset: 4px;
-                                               border-radius: 12px }
-        .db-example .dumb-board-grip-x::after { content: ''; position: absolute; top: 8px; bottom: 8px;
-                                                left: 5px; width: 2px; border-radius: 2px; background: #e2e8f0 }
-        .db-example .dumb-board-grip-y::after { content: ''; position: absolute; left: 8px; right: 8px;
-                                                top: 5px; height: 2px; border-radius: 2px; background: #e2e8f0 }
-        .db-example .dumb-board-grip-xy::after { content: ''; position: absolute; right: 4px; bottom: 4px;
-                                                 width: 8px; height: 8px; border-right: 2px solid #cbd5e1;
-                                                 border-bottom: 2px solid #cbd5e1; border-radius: 0 0 3px 0 }
-        .db-example .dumb-board-grip-x:hover::after,
-        .db-example .dumb-board-grip-y:hover::after { background: #6366f1 }
-        .db-example .dumb-board-grip-xy:hover::after { border-color: #6366f1 }
-
-        .db-example .widget { display: flex; flex-direction: column; justify-content: center; gap: 3px;
-                              height: 68px; padding: 8px 10px; border-radius: 10px; cursor: grab;
-                              background: #fff; box-shadow: 0 1px 2px rgba(15,23,42,.06), inset 0 0 0 1px #e2e8f0;
-                              border-top: 4px solid var(--hue) }
-        .db-example .widget:active { cursor: grabbing }
-        .db-example .wtitle { font-size: 13.5px; font-weight: 500 }
-        .db-example .wkind { font-size: 11.5px; color: #94a3b8 }
-      `}</style>
     </div>
   )
 }

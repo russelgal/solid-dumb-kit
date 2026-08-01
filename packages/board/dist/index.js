@@ -11,6 +11,17 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var done = /* @__PURE__ */ new Set();
+function injectStyle(id, css) {
+  if (typeof document === "undefined") return;
+  if (done.has(id)) return;
+  done.add(id);
+  if (document.querySelector(`style[data-dumb-kit="${id}"]`)) return;
+  const el = document.createElement("style");
+  el.setAttribute("data-dumb-kit", id);
+  el.textContent = css;
+  document.head.appendChild(el);
+}
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
 var C = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 };
@@ -279,7 +290,17 @@ function moveAt(list, from, to) {
 }
 
 // src/DumbBoard.tsx
-var _tmpl$ = /* @__PURE__ */ template(`<style>
+var _tmpl$ = /* @__PURE__ */ template(`<div><div class=dumb-board>`);
+var _tmpl$2 = /* @__PURE__ */ template(`<span class=dumb-board-grip>\u283F`);
+var _tmpl$3 = /* @__PURE__ */ template(`<span class=dumb-board-sub>`);
+var _tmpl$4 = /* @__PURE__ */ template(`<span class=dumb-board-actions>`);
+var _tmpl$5 = /* @__PURE__ */ template(`<h4 class=dumb-board-head data-board-handle><span class=dumb-board-title></span><span class=dumb-board-count>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<div class=dumb-board-grip-x data-axis=x>`);
+var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-board-grip-y data-axis=y>`);
+var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-board-grip-xy data-axis=xy>`);
+var _tmpl$9 = /* @__PURE__ */ template(`<section class=dumb-board-panel><div class=dumb-board-zone>`);
+var _tmpl$0 = /* @__PURE__ */ template(`<div class=dumb-board-block>`);
+var CSS = `
           .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
                         grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
           .dumb-board-panel { position: relative; min-width: 0 }
@@ -304,19 +325,9 @@ var _tmpl$ = /* @__PURE__ */ template(`<style>
                                cursor: row-resize; touch-action: none }
           .dumb-board-grip-xy { position: absolute; right: -9px; bottom: -9px; width: 16px; height: 16px;
                                 cursor: nwse-resize; touch-action: none }
-        `);
-var _tmpl$2 = /* @__PURE__ */ template(`<div><div class=dumb-board>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<span class=dumb-board-grip>\u283F`);
-var _tmpl$4 = /* @__PURE__ */ template(`<span class=dumb-board-sub>`);
-var _tmpl$5 = /* @__PURE__ */ template(`<span class=dumb-board-actions>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<h4 class=dumb-board-head data-board-handle><span class=dumb-board-title></span><span class=dumb-board-count>`);
-var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-board-grip-x data-axis=x>`);
-var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-board-grip-y data-axis=y>`);
-var _tmpl$9 = /* @__PURE__ */ template(`<div class=dumb-board-grip-xy data-axis=xy>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<section class=dumb-board-panel><div class=dumb-board-zone>`);
-var _tmpl$1 = /* @__PURE__ */ template(`<div class=dumb-board-block>`);
-var styled = false;
+        `;
 function DumbBoard(props) {
+  injectStyle("board", CSS);
   const cols = () => props.cols ?? 12;
   const gap = () => props.gap ?? 14;
   const rowH = () => props.rowHeight ?? 76;
@@ -345,8 +356,6 @@ function DumbBoard(props) {
   const [held, setHeld] = createSignal(null);
   const [heldSection, setHeldSection] = createSignal(null);
   const [sizing, setSizing] = createSignal(null);
-  const [first] = createSignal(!styled);
-  styled = true;
   const blockEls = /* @__PURE__ */ new Map();
   const zoneEls = /* @__PURE__ */ new Map();
   const panelEls = /* @__PURE__ */ new Map();
@@ -647,7 +656,7 @@ function DumbBoard(props) {
     measure();
   };
   return (() => {
-    var _el$ = _tmpl$2(), _el$2 = _el$.firstChild;
+    var _el$ = _tmpl$(), _el$2 = _el$.firstChild;
     _el$.addEventListener("drop", (ev) => {
       ev.preventDefault();
       finish();
@@ -672,65 +681,65 @@ function DumbBoard(props) {
       children: (sid) => {
         const s = () => sectionById(sid);
         return (() => {
-          var _el$4 = _tmpl$0(), _el$1 = _el$4.firstChild;
-          use((el) => panelEls.set(sid, el), _el$4);
-          setAttribute(_el$4, "data-board-section", sid);
-          insert(_el$4, createComponent(Show, {
+          var _el$3 = _tmpl$9(), _el$0 = _el$3.firstChild;
+          use((el) => panelEls.set(sid, el), _el$3);
+          setAttribute(_el$3, "data-board-section", sid);
+          insert(_el$3, createComponent(Show, {
             get when() {
               return s().title;
             },
             get children() {
-              var _el$5 = _tmpl$6(), _el$7 = _el$5.firstChild, _el$9 = _el$7.nextSibling;
-              _el$5.$$dblclick = () => editable() && toggleWide(s());
-              insert(_el$5, createComponent(Show, {
+              var _el$4 = _tmpl$5(), _el$6 = _el$4.firstChild, _el$8 = _el$6.nextSibling;
+              _el$4.$$dblclick = () => editable() && toggleWide(s());
+              insert(_el$4, createComponent(Show, {
                 get when() {
                   return editable();
                 },
                 get children() {
-                  return _tmpl$3();
+                  return _tmpl$2();
                 }
-              }), _el$7);
-              insert(_el$7, () => s().title, null);
-              insert(_el$7, createComponent(Show, {
+              }), _el$6);
+              insert(_el$6, () => s().title, null);
+              insert(_el$6, createComponent(Show, {
                 get when() {
                   return s().subtitle;
                 },
                 get children() {
-                  var _el$8 = _tmpl$4();
-                  insert(_el$8, () => s().subtitle);
-                  return _el$8;
+                  var _el$7 = _tmpl$3();
+                  insert(_el$7, () => s().subtitle);
+                  return _el$7;
                 }
               }), null);
-              insert(_el$9, () => itemsOf(sid).length);
-              insert(_el$5, createComponent(Show, {
+              insert(_el$8, () => itemsOf(sid).length);
+              insert(_el$4, createComponent(Show, {
                 get when() {
                   return props.sectionActions;
                 },
                 get children() {
-                  var _el$0 = _tmpl$5();
-                  insert(_el$0, () => props.sectionActions(s()));
-                  return _el$0;
+                  var _el$9 = _tmpl$4();
+                  insert(_el$9, () => props.sectionActions(s()));
+                  return _el$9;
                 }
               }), null);
-              return _el$5;
+              return _el$4;
             }
-          }), _el$1);
-          use((el) => zoneEls.set(sid, el), _el$1);
-          setAttribute(_el$1, "data-board-zone", sid);
-          insert(_el$1, createComponent(For, {
+          }), _el$0);
+          use((el) => zoneEls.set(sid, el), _el$0);
+          setAttribute(_el$0, "data-board-zone", sid);
+          insert(_el$0, createComponent(For, {
             get each() {
               return renderItemsOf(sid);
             },
             children: (item) => (() => {
-              var _el$13 = _tmpl$1();
-              use((el) => blockEls.set(props.id(item), el), _el$13);
-              insert(_el$13, () => props.children(item, s()));
+              var _el$12 = _tmpl$0();
+              use((el) => blockEls.set(props.id(item), el), _el$12);
+              insert(_el$12, () => props.children(item, s()));
               effect((_p$) => {
                 var _v$1 = !!(held() === props.id(item)), _v$10 = props.id(item), _v$11 = editable(), _v$12 = String(placeOf(item));
-                _v$1 !== _p$.e && _el$13.classList.toggle("held", _p$.e = _v$1);
-                _v$10 !== _p$.t && setAttribute(_el$13, "data-board-block", _p$.t = _v$10);
-                _v$11 !== _p$.a && setAttribute(_el$13, "draggable", _p$.a = _v$11);
-                _v$12 !== _p$.o && setStyleProperty(_el$13, "order", _p$.o = _v$12);
+                _v$1 !== _p$.e && _el$12.classList.toggle("held", _p$.e = _v$1);
+                _v$10 !== _p$.t && setAttribute(_el$12, "data-board-block", _p$.t = _v$10);
+                _v$11 !== _p$.a && setAttribute(_el$12, "draggable", _p$.a = _v$11);
+                _v$12 !== _p$.o && setStyleProperty(_el$12, "order", _p$.o = _v$12);
                 return _p$;
               }, {
                 e: void 0,
@@ -738,15 +747,19 @@ function DumbBoard(props) {
                 a: void 0,
                 o: void 0
               });
-              return _el$13;
+              return _el$12;
             })()
           }));
-          insert(_el$4, createComponent(Show, {
+          insert(_el$3, createComponent(Show, {
             get when() {
               return memo(() => !!editable())() && resizable();
             },
             get children() {
               return [(() => {
+                var _el$1 = _tmpl$6();
+                setAttribute(_el$1, "data-board-resize", sid);
+                return _el$1;
+              })(), (() => {
                 var _el$10 = _tmpl$7();
                 setAttribute(_el$10, "data-board-resize", sid);
                 return _el$10;
@@ -754,10 +767,6 @@ function DumbBoard(props) {
                 var _el$11 = _tmpl$8();
                 setAttribute(_el$11, "data-board-resize", sid);
                 return _el$11;
-              })(), (() => {
-                var _el$12 = _tmpl$9();
-                setAttribute(_el$12, "data-board-resize", sid);
-                return _el$12;
               })()];
             }
           }), null);
@@ -768,12 +777,12 @@ function DumbBoard(props) {
                 height: `${s().rows * rowH() + 12}px`
               } : {}
             };
-            _v$5 !== _p$.e && _el$4.classList.toggle("held", _p$.e = _v$5);
-            _v$6 !== _p$.t && _el$4.classList.toggle("sizing", _p$.t = _v$6);
-            _v$7 !== _p$.a && setAttribute(_el$4, "draggable", _p$.a = _v$7);
-            _v$8 !== _p$.o && setStyleProperty(_el$4, "grid-column", _p$.o = _v$8);
-            _v$9 !== _p$.i && setStyleProperty(_el$4, "order", _p$.i = _v$9);
-            _p$.n = style(_el$1, _v$0, _p$.n);
+            _v$5 !== _p$.e && _el$3.classList.toggle("held", _p$.e = _v$5);
+            _v$6 !== _p$.t && _el$3.classList.toggle("sizing", _p$.t = _v$6);
+            _v$7 !== _p$.a && setAttribute(_el$3, "draggable", _p$.a = _v$7);
+            _v$8 !== _p$.o && setStyleProperty(_el$3, "grid-column", _p$.o = _v$8);
+            _v$9 !== _p$.i && setStyleProperty(_el$3, "order", _p$.i = _v$9);
+            _p$.n = style(_el$0, _v$0, _p$.n);
             return _p$;
           }, {
             e: void 0,
@@ -783,18 +792,10 @@ function DumbBoard(props) {
             i: void 0,
             n: void 0
           });
-          return _el$4;
+          return _el$3;
         })();
       }
     }));
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return first();
-      },
-      get children() {
-        return _tmpl$();
-      }
-    }), null);
     effect((_p$) => {
       var _v$ = props.class, _v$2 = props.style, _v$3 = String(cols()), _v$4 = `${gap()}px`;
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);

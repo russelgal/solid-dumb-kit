@@ -11,6 +11,9 @@
 /** Анимации: анимировать или молча выключиться при prefers-reduced-motion. */
 export { prefersReducedMotion, shouldAnimate } from './motion'
 
+/** Разовый инжект стилей в `<head>` — переживает размонтирование компонента. */
+export { injectStyle } from './injectStyle'
+
 /** FLIP: элементу говорят, куда отъехать, — он доезжает `transform`ом. */
 export { createFlip, type Flip } from './flip'
 
