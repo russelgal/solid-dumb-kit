@@ -1,7 +1,9 @@
 import { JSX } from 'solid-js';
 
-type BoardSection = {
+type BoardSection<T = unknown> = {
     id: string;
+    /** блоки этой секции; порядок в массиве = порядок на экране */
+    items: Array<T>;
     /** заголовок; он же ручка переноса секции. Не задан — шапки нет вовсе */
     title?: JSX.Element;
     /** приписка мельче под заголовком */
@@ -16,13 +18,16 @@ type BoardSection = {
     accepts?: (from: string) => boolean;
 };
 type DumbBoardProps<T> = {
-    sections: Array<BoardSection>;
-    /** порядок в массиве = порядок на экране */
-    items: Array<T>;
+    /** секции вместе с их блоками — ОДИН массив, он же всё состояние доски */
+    sections: Array<BoardSection<T>>;
+    /**
+     * Позвать с новой раскладкой. Зовётся ПО ХОДУ жеста, на каждом шаге: данные
+     * всё время совпадают с тем, что на экране, и ничего не теряется, если
+     * браузер не доставит `drop`. Секции доска не мутирует — отдаёт новый массив.
+     */
+    setSections: (next: Array<BoardSection<T>>) => void;
     /** стабильный id блока */
     id: (item: T) => string;
-    /** в какой секции блок */
-    section: (item: T) => string;
     /** блок переехал: в секцию `toSection`, на место `toIndex` среди её блоков */
     onMove?: (item: T, toSection: string, toIndex: number) => void;
     /** секцию перетащили за заголовок */
@@ -32,6 +37,12 @@ type DumbBoardProps<T> = {
         span: number;
         rows: number;
     }) => void;
+    /**
+     * Сколько колонок зоны занимает блок; по умолчанию одну. Высоту не
+     * спрашиваем — её задаёт содержимое, доска её замеряет (тем же снимком через
+     * `IntersectionObserver`, что и список в `sortable-dnd`).
+     */
+    blockSpan?: (item: T) => number;
     /** колонок у самой доски; по умолчанию 12 */
     cols?: number;
     /** зазор сетки, px; по умолчанию 14 */
@@ -47,11 +58,11 @@ type DumbBoardProps<T> = {
     /** разрешить ресайз секций; по умолчанию да */
     resizable?: boolean;
     /** свои кнопки в правой части шапки секции */
-    sectionActions?: (section: BoardSection) => JSX.Element;
+    sectionActions?: (section: BoardSection<T>) => JSX.Element;
     class?: string;
     style?: JSX.CSSProperties;
     /** ВЕРНИ один корневой элемент — компонент привяжется прямо к нему */
-    children: (item: T, section: BoardSection) => JSX.Element;
+    children: (item: T, section: BoardSection<T>) => JSX.Element;
 };
 declare function DumbBoard<T>(props: DumbBoardProps<T>): JSX.Element;
 
@@ -69,9 +80,25 @@ type ZoneGeom = {
     cols: number;
 };
 /**
- * Где лежит k-е место в секции. Блоки одинаковые, шаг известен — значит позиция
- * это арифметика, а не замер. Состав секции на неё не влияет: блоки уезжают,
- * места остаются.
+ * Геометрия зоны с РАЗНЫМИ блоками: шага по вертикали тут нет вовсе — высота
+ * строки это максимум высот тех, кто в ней стоит, а значит зависит от порядка.
+ * Позиции считает `panelFlow` по снятым размерам, ровно как список в
+ * `sortable-dnd` считает свои места по снятым высотам строк.
+ */
+type ZoneFlow = {
+    left: number;
+    top: number;
+    colW: number;
+    gap: number;
+    cols: number;
+};
+/**
+ * Где лежит k-е место в секции с ОДИНАКОВЫМИ блоками. Шаг известен — значит
+ * позиция это арифметика, а не замер, и состав секции на неё не влияет.
+ *
+ * Для блоков разного размера не годится: там строка тем выше, чем выше самый
+ * высокий в ней, то есть место зависит от того, кто перед ним стоит. Считай
+ * такие зоны через `panelFlow`, как считаются секции.
  */
 declare function slotAt(g: ZoneGeom | undefined, k: number): Slot | null;
 /** сколько строк занимает секция с `count` блоками при `cols` колонках */
@@ -82,13 +109,18 @@ type PanelBox = {
     height: number;
 };
 /**
- * Куда лягут секции при заданном порядке — поток, как `grid-auto-flow: row`.
- * Секция занимает `span` колонок; не влезла в остаток строки — переносится на
+ * Куда лягут коробки при заданном порядке — поток, как `grid-auto-flow: row`.
+ * Коробка занимает `span` колонок; не влезла в остаток строки — переносится на
  * следующую, а высота строки это максимум высот тех, кто в ней стоит.
  *
- * Позиции секций НЕ снимаются заранее, а считаются вот этим: секции разной
- * ширины, и обмен местами «половина» ↔ «во всю ширину» перекладывает всю сетку.
+ * Этим считаются И секции доски, И блоки внутри секции: задача одна и та же.
+ * Позиции НЕ снимаются заранее, а считаются вот этим, потому что коробки разной
+ * ширины: обмен местами «половина» ↔ «во всю ширину» перекладывает всю сетку.
  * Снятые заранее места после первой же перестановки врут, а FLIP по ним дёргается.
+ *
+ * Требование к разметке: элементы не должны растягиваться на высоту строки
+ * (`align-self: start`), иначе замеренная высота у всех в строке одинаковая, и
+ * переехавший в другую строку блок посчитается не по своей.
  */
 declare function panelFlow(order: Array<PanelBox>, opts: {
     cols: number;
@@ -102,4 +134,4 @@ declare function panelFlow(order: Array<PanelBox>, opts: {
  */
 declare function moveAt<T>(list: Array<T>, from: number, to: number): Array<T>;
 
-export { type BoardSection, DumbBoard, type DumbBoardProps, type PanelBox, type Slot, type ZoneGeom, moveAt, panelFlow, rowsFor, slotAt };
+export { type BoardSection, DumbBoard, type DumbBoardProps, type PanelBox, type Slot, type ZoneFlow, type ZoneGeom, moveAt, panelFlow, rowsFor, slotAt };

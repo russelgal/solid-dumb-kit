@@ -10,5 +10,6 @@ export {
   moveAt,
   type Slot,
   type ZoneGeom,
+  type ZoneFlow,
   type PanelBox,
 } from './boardMath'

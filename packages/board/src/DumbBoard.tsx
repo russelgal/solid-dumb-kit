@@ -19,10 +19,12 @@
 
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount, type JSX } from 'solid-js'
 import { createAutoScroller, createFlip, createStableOrder, injectStyle, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
-import { moveAt, panelFlow, rowsFor, slotAt, type PanelBox, type Slot, type ZoneGeom } from './boardMath'
+import { moveAt, panelFlow, rowsFor, type PanelBox, type Slot, type ZoneFlow } from './boardMath'
 
-export type BoardSection = {
+export type BoardSection<T = unknown> = {
   id: string
+  /** блоки этой секции; порядок в массиве = порядок на экране */
+  items: Array<T>
   /** заголовок; он же ручка переноса секции. Не задан — шапки нет вовсе */
   title?: JSX.Element
   /** приписка мельче под заголовком */
@@ -38,19 +40,30 @@ export type BoardSection = {
 }
 
 export type DumbBoardProps<T> = {
-  sections: Array<BoardSection>
-  /** порядок в массиве = порядок на экране */
-  items: Array<T>
+  /** секции вместе с их блоками — ОДИН массив, он же всё состояние доски */
+  sections: Array<BoardSection<T>>
+  /**
+   * Позвать с новой раскладкой. Зовётся ПО ХОДУ жеста, на каждом шаге: данные
+   * всё время совпадают с тем, что на экране, и ничего не теряется, если
+   * браузер не доставит `drop`. Секции доска не мутирует — отдаёт новый массив.
+   */
+  setSections: (next: Array<BoardSection<T>>) => void
   /** стабильный id блока */
   id: (item: T) => string
-  /** в какой секции блок */
-  section: (item: T) => string
+
   /** блок переехал: в секцию `toSection`, на место `toIndex` среди её блоков */
   onMove?: (item: T, toSection: string, toIndex: number) => void
   /** секцию перетащили за заголовок */
   onSectionMove?: (fromIndex: number, toIndex: number) => void
   /** секции сменили размер: колонок доски и строк сетки блоков */
   onSectionResize?: (id: string, size: { span: number; rows: number }) => void
+
+  /**
+   * Сколько колонок зоны занимает блок; по умолчанию одну. Высоту не
+   * спрашиваем — её задаёт содержимое, доска её замеряет (тем же снимком через
+   * `IntersectionObserver`, что и список в `sortable-dnd`).
+   */
+  blockSpan?: (item: T) => number
 
   /** колонок у самой доски; по умолчанию 12 */
   cols?: number
@@ -69,11 +82,11 @@ export type DumbBoardProps<T> = {
   resizable?: boolean
 
   /** свои кнопки в правой части шапки секции */
-  sectionActions?: (section: BoardSection) => JSX.Element
+  sectionActions?: (section: BoardSection<T>) => JSX.Element
   class?: string
   style?: JSX.CSSProperties
   /** ВЕРНИ один корневой элемент — компонент привяжется прямо к нему */
-  children: (item: T, section: BoardSection) => JSX.Element
+  children: (item: T, section: BoardSection<T>) => JSX.Element
 }
 
 /**
@@ -99,6 +112,10 @@ const CSS = `
           .dumb-board-zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
                              overflow-y: auto; scrollbar-gutter: stable;
                              grid-template-columns: repeat(var(--dumb-board-inner), 1fr) }
+          /* блок НЕ растягивается на высоту строки: иначе у всех в строке
+             замеряется одна и та же высота, и переехавший в другую строку
+             считается не по своей */
+          .dumb-board-block { align-self: start; min-width: 0 }
           .dumb-board-block.held { opacity: .35 }
           .dumb-board-grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
                                cursor: col-resize; touch-action: none }
@@ -118,9 +135,20 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   const editable = () => props.editable !== false
   const resizable = () => props.resizable !== false
 
-  const spanOf = (s: BoardSection) => Math.max(1, Math.min(cols(), s.span ?? Math.floor(cols() / 2)))
-  const colsIn = (s: BoardSection) => Math.max(1, s.cols ?? 3)
+  const spanOf = (s: BoardSection<T>) => Math.max(1, Math.min(cols(), s.span ?? Math.floor(cols() / 2)))
+  const colsIn = (s: BoardSection<T>) => Math.max(1, s.cols ?? 3)
   const sectionById = (id: string) => props.sections.find((s) => s.id === id)!
+  /** блоки секции в их ПОКАЗНОМ порядке — он же порядок в её массиве */
+  const itemsOf = (id: string) => sectionById(id)?.items ?? []
+  /** в какой секции лежит блок */
+  const sectionOf = (blockId: string) =>
+    props.sections.find((s) => s.items.some((it) => props.id(it) === blockId))
+  /** сколько колонок ЗОНЫ занимает блок — зажимаем шириной самой зоны */
+  const spanOfBlock = (item: T, s?: BoardSection<T>) => {
+    const want = Math.max(1, Math.round(props.blockSpan?.(item) ?? 1))
+    const sec = s ?? sectionOf(props.id(item))
+    return Math.min(want, sec ? colsIn(sec) : want)
+  }
   /**
    * Порядок РЕНДЕРА, а не показа. `<For>` по нему не пересоздаёт узлы при
    * перестановке — сортировка по id не зависит от того, как секции показаны, —
@@ -132,13 +160,10 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
    * на каждом ресайзе).
    */
   // порядок разметки — по появлению; см. `createStableOrder`
-  const stableSections = createStableOrder((s: { id: string }) => s.id)
+  const stableSections = createStableOrder((s: BoardSection<T>) => s.id)
   const stableItems = createStableOrder(props.id)
   const renderOrder = () => stableSections.sort(props.sections).map((s) => s.id)
   const showOrder = (id: string) => props.sections.findIndex((s) => s.id === id)
-
-  /** блоки секции в их ПОКАЗНОМ порядке — он же порядок в `items` */
-  const itemsOf = (id: string) => props.items.filter((it) => props.section(it) === id)
 
   /**
    * Блоки секции в порядке РЕНДЕРА — по id, а не по показу.
@@ -149,11 +174,13 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
    * анимирует пустоту, а соседи стоят на месте. Сортировка по id от показа не
    * зависит, поэтому `<For>` не делает ничего, а порядок задаёт CSS `order`.
    */
-  // Номера раздаём по ВСЕМУ списку разом, а секции потом сортируем по ним: если
+  // Номера раздаём по ВСЕМ блокам доски разом, а секции потом фильтруют: если
   // кормить помощник посекционно, его уборка выбросит блоки соседних секций.
-  const ranked = createMemo(() => stableItems.sort(props.items))
-  const renderItemsOf = (id: string) =>
-    ranked().filter((it) => props.section(it) === id)
+  const ranked = createMemo(() => stableItems.sort(props.sections.flatMap((s) => s.items)))
+  const renderItemsOf = (id: string) => {
+    const own = new Set(itemsOf(id).map(props.id))
+    return ranked().filter((it) => own.has(props.id(it)))
+  }
   /**
    * Место каждого блока среди блоков своей секции — одной картой на всю доску.
    * Считать его поиском по массиву на каждый блок значит получить квадрат:
@@ -161,13 +188,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
    */
   const places = createMemo(() => {
     const out = new Map<string, number>()
-    const seen = new Map<string, number>()
-    for (const it of props.items) {
-      const z = props.section(it)
-      const k = seen.get(z) ?? 0
-      out.set(props.id(it), k)
-      seen.set(z, k + 1)
-    }
+    for (const s of props.sections) s.items.forEach((it, k) => out.set(props.id(it), k))
     return out
   })
   const placeOf = (item: T) => places().get(props.id(item)) ?? 0
@@ -182,7 +203,9 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   let wrapEl!: HTMLElement
 
   /** геометрия секций — снимается разом, НЕ во время жеста */
-  let geom: Record<string, ZoneGeom> = {}
+  let geom: Record<string, ZoneFlow> = {}
+  /** высота каждого блока: строка тем выше, чем выше самый высокий в ней */
+  let blockH: Record<string, number> = {}
   let panelH: Record<string, number> = {}
   let wrapAt: Slot = { left: 0, top: 0 }
   /** ширина колонки доски: приходит из ResizeObserver, а не из замера */
@@ -212,36 +235,34 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
       if (rects.size < targets.length && batches < 4) return
       io.disconnect()
 
-      const next: Record<string, ZoneGeom> = {}
+      const next: Record<string, ZoneFlow> = {}
+      const nextH: Record<string, number> = {}
       for (const s of props.sections) {
         const n = colsIn(s)
         const own = itemsOf(s.id)
-          .map((it, k) => ({ k, r: rects.get(blockEls.get(props.id(it))!) }))
-          .filter((x): x is { k: number; r: DOMRectReadOnly } => Boolean(x.r))
+          .map((it, k) => ({ k, id: props.id(it), span: spanOfBlock(it), r: rects.get(blockEls.get(props.id(it))!) }))
+          .filter((x): x is { k: number; id: string; span: number; r: DOMRectReadOnly } => Boolean(x.r))
         const zoneRect = rects.get(zoneEls.get(s.id)!)
 
+        for (const o of own) nextH[o.id] = o.r.height
+
         if (!own.length) {
-          if (zoneRect) next[s.id] = { left: zoneRect.left + 10, top: zoneRect.top + 10, stepX: 96, stepY: rowH(), cols: n }
+          if (zoneRect) next[s.id] = { left: zoneRect.left + 10, top: zoneRect.top + 10, colW: 96, gap: 8, cols: n }
           continue
         }
+        // Первый блок стоит в левом верхнем углу зоны — он и есть начало
+        // координат. Зазор снимаем по паре соседей из одной строки, ширину
+        // колонки выводим из ширины блока и того, сколько колонок он занимает.
         const a = own[0]
-        // шаг по X — первая пара из одной строки, по Y — из соседних
-        let stepX = a.r.width + 8
-        let stepY = a.r.height + 8
+        let gap = 8
         for (const o of own) {
-          if (Math.floor(o.k / n) === Math.floor(a.k / n) && o.k !== a.k) { stepX = (o.r.left - a.r.left) / (o.k - a.k); break }
+          if (o.r.top === a.r.top && o.r.left > a.r.left) { gap = o.r.left - (a.r.left + a.r.width); break }
         }
-        for (const o of own) {
-          const dr = Math.floor(o.k / n) - Math.floor(a.k / n)
-          if (dr > 0) { stepY = (o.r.top - a.r.top) / dr; break }
-        }
-        next[s.id] = {
-          left: a.r.left - (a.k % n) * stepX,
-          top: a.r.top - Math.floor(a.k / n) * stepY,
-          stepX, stepY, cols: n,
-        }
+        const colW = (a.r.width - (a.span - 1) * gap) / a.span
+        next[s.id] = { left: a.r.left, top: a.r.top, colW, gap, cols: n }
       }
       geom = next
+      blockH = nextH
 
       // у секций запоминаем только ВЫСОТЫ: позиции считает `panelFlow`, потому
       // что секции разной ширины и перестановка перекладывает всю сетку
@@ -253,6 +274,22 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
       if (wr) wrapAt = { left: wr.left, top: wr.top }
     })
     for (const t of targets) io.observe(t)
+  }
+
+  /**
+   * Замерить, когда всё встанет.
+   *
+   * `boundingClientRect` у `IntersectionObserver` считается С УЧЁТОМ transform, а
+   * FLIP на дропе как раз доигрывает переезд. Замер в этот момент снимает
+   * промежуточные позиции: начало координат зоны уезжает на десяток пикселей, и
+   * следующий жест стартует блоки не оттуда, где они на самом деле.
+   */
+  function measureWhenStill() {
+    const anims = [...blockEls.values(), ...panelEls.values()]
+      .filter(Boolean)
+      .flatMap((el) => el.getAnimations())
+    if (!anims.length) { measure(); return }
+    Promise.allSettled(anims.map((a) => a.finished)).then(() => measure())
   }
 
   onMount(() => {
@@ -274,43 +311,82 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
 
   /* ────────── перенос блоков ────────── */
 
-  /** снимок «кто где» до изменения — по нему считаются смещения FLIP */
+  /**
+   * Куда лягут блоки секции при её нынешнем составе. Считается потоком, а не
+   * шагом сетки: блоки бывают разной ширины и высоты, и место k зависит от
+   * того, кто стоит перед ним. Ровно та же задача, что у секций, — и та же
+   * функция.
+   */
+  const blockPlaces = (sectionId: string): Record<string, Slot> => {
+    const g = geom[sectionId]
+    if (!g) return {}
+    const boxes: Array<PanelBox> = itemsOf(sectionId).map((it) => ({
+      id: props.id(it),
+      span: spanOfBlock(it),
+      height: blockH[props.id(it)] ?? 0,
+    }))
+    return panelFlow(boxes, { cols: g.cols, colW: g.colW, gap: g.gap, origin: { left: g.left, top: g.top } })
+  }
+
+  /** снимок «кто где лежал» до изменения — по нему считаются смещения FLIP */
   const snapshotPlaces = () => {
-    const out = new Map<string, { zone: string; k: number }>()
-    for (const s of props.sections) itemsOf(s.id).forEach((it, k) => out.set(props.id(it), { zone: s.id, k }))
+    const out = new Map<string, Slot>()
+    for (const s of props.sections) {
+      const pos = blockPlaces(s.id)
+      for (const id of Object.keys(pos)) out.set(id, pos[id])
+    }
     return out
   }
 
   /** доиграть переезды: элементы берём ПОСЛЕ смены — при переносе Solid их пересоздаёт */
-  const playBlocks = (was: Map<string, { zone: string; k: number }>) => {
+  const playBlocks = (was: Map<string, Slot>) => {
     for (const s of props.sections) {
-      itemsOf(s.id).forEach((it, k) => {
-        const id = props.id(it)
-        const prev = was.get(id)
-        if (!prev || (prev.zone === s.id && prev.k === k)) return
-        const from = slotAt(geom[prev.zone], prev.k)
-        const to = slotAt(geom[s.id], k)
+      const now = blockPlaces(s.id)
+      for (const id of Object.keys(now)) {
+        const from = was.get(id)
+        const to = now[id]
+        if (!from || (from.left === to.left && from.top === to.top)) continue
         const el = blockEls.get(id)
-        if (from && to && el) flip.nudge(el, from.left - to.left, from.top - to.top)
-      })
+        if (el) flip.nudge(el, from.left - to.left, from.top - to.top)
+      }
     }
   }
 
+  /**
+   * Переложить блок и доиграть переезд.
+   *
+   * Новый массив секций собирает доска: вынимает блок из его секции и вставляет
+   * в целевую на место `toIndex`. Объект блока при этом ТОТ ЖЕ — не копия: иначе
+   * `<For>` счёл бы его другим элементом, пересоздал узел, и анимировать было бы
+   * нечего (FLIP держится за живой элемент).
+   */
   function moveBlock(item: T, toSection: string, toIndex: number) {
+    const bid = props.id(item)
     const was = snapshotPlaces()
+
+    const next = props.sections.map((s) => {
+      const has = s.items.some((it) => props.id(it) === bid)
+      if (!has && s.id !== toSection) return s
+      const rest = s.items.filter((it) => props.id(it) !== bid)
+      if (s.id !== toSection) return { ...s, items: rest }
+      const k = Math.max(0, Math.min(rest.length, toIndex))
+      return { ...s, items: [...rest.slice(0, k), item, ...rest.slice(k)] }
+    })
+
+    props.setSections(next)
     props.onMove?.(item, toSection, toIndex)
     playBlocks(was)
   }
 
   /* ────────── перестановка секций ────────── */
 
-  const panelBoxes = (order: Array<BoardSection>): Array<PanelBox> =>
+  const panelBoxes = (order: Array<BoardSection<T>>): Array<PanelBox> =>
     order.map((s) => ({ id: s.id, span: spanOf(s), height: panelH[s.id] ?? 0 }))
 
   const flowOpts = () => ({ cols: cols(), colW, gap: gap(), origin: wrapAt })
 
   /** переложить секции и доиграть: раскладка считается потоком до и после */
-  const playSections = (order: Array<BoardSection>, apply: () => void) => {
+  const playSections = (order: Array<BoardSection<T>>, apply: () => void) => {
     const was = panelFlow(panelBoxes(props.sections), flowOpts())
     apply()
     const now = panelFlow(panelBoxes(order), flowOpts())
@@ -327,20 +403,26 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     const from = props.sections.findIndex((s) => s.id === id)
     if (from < 0 || from === toIndex) return
     const order = moveAt(props.sections, from, toIndex)
-    playSections(order, () => props.onSectionMove?.(from, toIndex))
+    playSections(order, () => {
+      props.setSections(order)
+      props.onSectionMove?.(from, toIndex)
+    })
   }
 
   /** ширина, с которой секцию развернули, — чтобы вернуть ту же */
   const wasSpan: Record<string, number> = {}
 
   /** двойной клик по шапке: во всю ширину и обратно */
-  function toggleWide(s: BoardSection) {
+  function toggleWide(s: BoardSection<T>) {
     const full = spanOf(s) >= cols()
     if (!full) wasSpan[s.id] = spanOf(s)
     const span = full ? (wasSpan[s.id] ?? Math.floor(cols() / 2)) : cols()
     const order = props.sections.map((x) => (x.id === s.id ? { ...x, span } : x))
-    playSections(order, () => props.onSectionResize?.(s.id, { span, rows: s.rows ?? 0 }))
-    measure()
+    playSections(order, () => {
+      props.setSections(order)
+      props.onSectionResize?.(s.id, { span, rows: s.rows ?? 0 })
+    })
+    measureWhenStill()
   }
 
   /* ────────── ресайз секций: указательные события, шаг в единицу сетки ────────── */
@@ -377,6 +459,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     if (d.axis !== 'y') span = Math.max(minSpan(), Math.min(cols(), d.span + Math.round((ev.clientX - d.x) / colW)))
     if (d.axis !== 'x') rows = Math.max(1, d.rows + Math.round((ev.clientY - d.y) / rowH()))
     if (span === spanOf(s) && rows === (s.rows ?? d.rows)) return
+    props.setSections(props.sections.map((x) => (x.id === d.id ? { ...x, span, rows } : x)))
     props.onSectionResize?.(d.id, { span, rows })
   }
 
@@ -384,7 +467,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     if (!sizingFrom) return
     sizingFrom = null
     setSizing(null)
-    measure()          // размер изменился — места блоков внутри другие
+    measureWhenStill()   // размер изменился — места блоков внутри другие
   }
 
   /* ────────── жест: делегированные слушатели на всей доске ────────── */
@@ -454,19 +537,20 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
 
     const id = held()
     if (!id) return
-    const item = props.items.find((x) => props.id(x) === id)
-    if (!item) return
+    const home = sectionOf(id)
+    const item = home?.items.find((x) => props.id(x) === id)
+    if (!item || !home) return
     const zoneId = closestOf(ev, '[data-board-zone]')?.dataset.boardZone
     const zone = zoneId ? sectionById(zoneId) : null
     if (!zone) return
-    const from = props.section(item)
+    const from = home.id
     if (zone.accepts && from !== zone.id && !zone.accepts(from)) return
 
     const over = closestOf(ev, '[data-board-block]')?.dataset.boardBlock
     if (over) {
       if (over === id) return
       if (blockEls.get(over)?.getAnimations().length) return
-      const target = props.items.find((x) => props.id(x) === over)
+      const target = zone.items.find((x) => props.id(x) === over)
       if (!target) return
       const k = placeOf(target)
       if (from === zone.id && placeOf(item) === k) return
@@ -491,7 +575,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     setHeld(null)
     setHeldSection(null)
     scroller.stop()
-    measure()          // состав секций изменился — геометрия другая
+    measureWhenStill()   // состав секций изменился — геометрия другая
   }
 
   return (
@@ -552,7 +636,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
                 }}
               >
                 {/* Итерируем сами элементы, а не их id: иначе содержимое пришлось
-                    бы искать в `props.items` прямо в разметке, и оно зависело бы от
+                    бы искать в массиве прямо в разметке, и оно зависело бы от
                     всего массива — любая правка пересоздавала бы ВСЕ блоки. */}
                 <For each={renderItemsOf(sid)}>
                   {(item) => (
@@ -562,7 +646,12 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
                       data-board-block={props.id(item)}
                       draggable={editable()}
                       ref={(el) => blockEls.set(props.id(item), el)}
-                      style={{ order: String(placeOf(item)) }}
+                      style={{
+                        order: String(placeOf(item)),
+                        ...(spanOfBlock(item, s()) > 1
+                          ? { 'grid-column': `span ${spanOfBlock(item, s())}` }
+                          : {}),
+                      }}
                     >
                       {props.children(item, s())}
                     </div>

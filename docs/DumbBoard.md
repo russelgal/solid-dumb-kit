@@ -18,66 +18,70 @@ Three things make up the whole mechanic:
 
 The move gesture is native drag-and-drop: the browser works out the zone under the cursor, so we don't. Resizing is the **opposite** — pointer events: a move answers "where do I put this", while a resize is dragged frame by frame, which `dragover` won't give you.
 
-Positions are arithmetic over a single snapshot (`IntersectionObserver`, off-main-thread): blocks are identical and the step is known, so slot `k` is `left + (k % cols) * stepX`. The snapshot refreshes on mount, after a drop and on resize — but **never mid-gesture**.
+Positions come from a single snapshot (`IntersectionObserver`, off-main-thread) plus flow packing: blocks differ in width and height, so a row is as tall as the tallest block in it and slot `k` depends on who stands before it. The snapshot refreshes on mount, after a drop and on resize — but **never mid-gesture**, and never while a FLIP animation is still playing (`boundingClientRect` includes transforms, so an early snapshot records where blocks are *travelling*, not where they live).
 
 ## State
 
-Two arrays, both yours:
+One array, yours:
 
 ```tsx
-const [sections, setSections] = createSignal<Array<BoardSection>>([
-  { id: 'sales', title: 'Sales', cols: 3, span: 6 },
-  { id: 'stock', title: 'Stock', cols: 3, span: 6 },
-])
-const [widgets, setWidgets] = createSignal([
-  { id: 'w1', section: 'sales', title: 'Revenue' },
+const [sections, setSections] = createSignal<Array<BoardSection<Widget>>>([
+  { id: 'sales', title: 'Sales', cols: 3, span: 6, items: [{ id: 'w1', title: 'Revenue' }] },
+  { id: 'stock', title: 'Stock', cols: 3, span: 6, items: [] },
 ])
 ```
 
-Order in `items` *is* the order of blocks; order in `sections` is the order of sections; size lives on the section itself. The component **stores nothing** — it reports what happened and you edit the arrays.
+Blocks live **inside** their section: `sections[i].items`. Section array order is the on-screen order, `items` order is the order of blocks within a section, and size lives on the section itself.
+
+The component **stores nothing and mutates nothing**: on every step of a gesture it builds a new sections array and hands it to `setSections`. The data always matches the picture — including when the browser fails to deliver `drop`, which it often does.
 
 ## Example
 
 ```tsx
 <DumbBoard
   sections={sections()}
-  items={widgets()}
+  setSections={setSections}
   id={(w) => w.id}
-  section={(w) => w.section}
-  onMove={(item, toSection, toIndex) => { /* rearrange the array */ }}
-  onSectionMove={(from, to) => { /* reorder sections */ }}
-  onSectionResize={(id, { span, rows }) => { /* store the size */ }}
+  blockSpan={(w) => w.w}            // block width in zone columns; defaults to 1
+  onMove={(item, toSection, toIndex) => { /* notification only */ }}
 >
   {(w) => <article class="card">{w.title}</article>}
 </DumbBoard>
 ```
 
-### One requirement on `items`
+### Block size is in cells, not pixels
 
-Block objects must **survive the move**: move the same object rather than
-recreating it. Keeping the section as a field on the block is tempting, but then
-a move reads `{ ...item, section }` — and that's a new object, so `<For>` treats
-it as a different element and rebuilds the node. A rebuilt node has nothing to
-animate: FLIP grabs an element that no longer exists.
-
-Keep the section alongside — a separate `id → section` map — and move the object
-itself:
+Width comes from `blockSpan` (zone columns); height comes from the block's own
+content, but take it as a **multiple of the row step**, or rows end up with
+ragged gaps: a neighbour turns out taller and the short block reaches no boundary
+at all.
 
 ```tsx
-const [where, setWhere] = createSignal<Record<string, string>>(WHERE0)
-
-<DumbBoard items={widgets()} section={(w) => where()[w.id]} …>
+const ROW = 76, GAP = 8
+const cellH = (h: number) => h * ROW + (h - 1) * GAP   // 1 row → 76, 2 → 160
 ```
+
+Height is **measured** — one snapshot through `IntersectionObserver`, the same
+way the list in `sortable-dnd` snapshots its row heights. Not a single forced
+layout happens during a gesture.
+
+### One requirement on blocks
+
+Block objects must **survive the move**: the board carries the same object from
+one section's array into another's and never makes a copy. Don't make one either
+— `{ ...item }` is a new object, `<For>` treats it as a different element and
+rebuilds the node, and a rebuilt node has nothing to animate: FLIP grabs an
+element that no longer exists.
 
 ## Props
 
 | prop | type | what it does |
 | --- | --- | --- |
-| `sections` | `Array<BoardSection>` | sections; array order = on-screen order |
-| `items` | `Array<T>` | blocks; array order = order within a section |
+| `sections` | `Array<BoardSection<T>>` | sections along with their blocks; array order = on-screen order |
+| `setSections` | `(next) => void` | the new layout; called during the gesture, on every step |
 | `id` | `(item: T) => string` | stable block id |
-| `section` | `(item: T) => string` | which section a block is in |
-| `onMove` | `(item, toSection, toIndex) => void` | a block moved |
+| `blockSpan` | `(item: T) => number` | block width in zone columns, defaults to `1` |
+| `onMove` | `(item, toSection, toIndex) => void` | a block moved — notification |
 | `onSectionMove` | `(from, to) => void` | a section was dragged by its header |
 | `onSectionResize` | `(id, { span, rows }) => void` | a section changed size |
 | `cols` | `number` | board columns, defaults to `12` |
@@ -94,6 +98,7 @@ const [where, setWhere] = createSignal<Record<string, string>>(WHERE0)
 | field | meaning |
 | --- | --- |
 | `id` | required |
+| `items` | the section's blocks; array order = on-screen order |
 | `title` | header, and the drag handle. Not set — no header at all |
 | `subtitle` | smaller line underneath |
 | `cols` | columns **inside** the section, defaults to `3` |

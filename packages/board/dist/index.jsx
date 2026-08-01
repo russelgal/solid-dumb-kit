@@ -327,6 +327,10 @@ var CSS = `
           .dumb-board-zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
                              overflow-y: auto; scrollbar-gutter: stable;
                              grid-template-columns: repeat(var(--dumb-board-inner), 1fr) }
+          /* \u0431\u043B\u043E\u043A \u041D\u0415 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u0442\u0441\u044F \u043D\u0430 \u0432\u044B\u0441\u043E\u0442\u0443 \u0441\u0442\u0440\u043E\u043A\u0438: \u0438\u043D\u0430\u0447\u0435 \u0443 \u0432\u0441\u0435\u0445 \u0432 \u0441\u0442\u0440\u043E\u043A\u0435
+             \u0437\u0430\u043C\u0435\u0440\u044F\u0435\u0442\u0441\u044F \u043E\u0434\u043D\u0430 \u0438 \u0442\u0430 \u0436\u0435 \u0432\u044B\u0441\u043E\u0442\u0430, \u0438 \u043F\u0435\u0440\u0435\u0435\u0445\u0430\u0432\u0448\u0438\u0439 \u0432 \u0434\u0440\u0443\u0433\u0443\u044E \u0441\u0442\u0440\u043E\u043A\u0443
+             \u0441\u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044F \u043D\u0435 \u043F\u043E \u0441\u0432\u043E\u0435\u0439 */
+          .dumb-board-block { align-self: start; min-width: 0 }
           .dumb-board-block.held { opacity: .35 }
           .dumb-board-grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
                                cursor: col-resize; touch-action: none }
@@ -346,22 +350,25 @@ function DumbBoard(props) {
   const spanOf = (s) => Math.max(1, Math.min(cols(), s.span ?? Math.floor(cols() / 2)));
   const colsIn = (s) => Math.max(1, s.cols ?? 3);
   const sectionById = (id) => props.sections.find((s) => s.id === id);
+  const itemsOf = (id) => sectionById(id)?.items ?? [];
+  const sectionOf = (blockId) => props.sections.find((s) => s.items.some((it) => props.id(it) === blockId));
+  const spanOfBlock = (item, s) => {
+    const want = Math.max(1, Math.round(props.blockSpan?.(item) ?? 1));
+    const sec = s ?? sectionOf(props.id(item));
+    return Math.min(want, sec ? colsIn(sec) : want);
+  };
   const stableSections = createStableOrder((s) => s.id);
   const stableItems = createStableOrder(props.id);
   const renderOrder = () => stableSections.sort(props.sections).map((s) => s.id);
   const showOrder = (id) => props.sections.findIndex((s) => s.id === id);
-  const itemsOf = (id) => props.items.filter((it) => props.section(it) === id);
-  const ranked = createMemo(() => stableItems.sort(props.items));
-  const renderItemsOf = (id) => ranked().filter((it) => props.section(it) === id);
+  const ranked = createMemo(() => stableItems.sort(props.sections.flatMap((s) => s.items)));
+  const renderItemsOf = (id) => {
+    const own = new Set(itemsOf(id).map(props.id));
+    return ranked().filter((it) => own.has(props.id(it)));
+  };
   const places = createMemo(() => {
     const out = /* @__PURE__ */ new Map();
-    const seen = /* @__PURE__ */ new Map();
-    for (const it of props.items) {
-      const z = props.section(it);
-      const k = seen.get(z) ?? 0;
-      out.set(props.id(it), k);
-      seen.set(z, k + 1);
-    }
+    for (const s of props.sections) s.items.forEach((it, k) => out.set(props.id(it), k));
     return out;
   });
   const placeOf = (item) => places().get(props.id(item)) ?? 0;
@@ -373,6 +380,7 @@ function DumbBoard(props) {
   const panelEls = /* @__PURE__ */ new Map();
   let wrapEl;
   let geom = {};
+  let blockH = {};
   let panelH = {};
   let wrapAt = { left: 0, top: 0 };
   let colW = 0;
@@ -393,39 +401,29 @@ function DumbBoard(props) {
       if (rects.size < targets.length && batches < 4) return;
       io.disconnect();
       const next = {};
+      const nextH = {};
       for (const s of props.sections) {
         const n = colsIn(s);
-        const own = itemsOf(s.id).map((it, k) => ({ k, r: rects.get(blockEls.get(props.id(it))) })).filter((x) => Boolean(x.r));
+        const own = itemsOf(s.id).map((it, k) => ({ k, id: props.id(it), span: spanOfBlock(it), r: rects.get(blockEls.get(props.id(it))) })).filter((x) => Boolean(x.r));
         const zoneRect = rects.get(zoneEls.get(s.id));
+        for (const o of own) nextH[o.id] = o.r.height;
         if (!own.length) {
-          if (zoneRect) next[s.id] = { left: zoneRect.left + 10, top: zoneRect.top + 10, stepX: 96, stepY: rowH(), cols: n };
+          if (zoneRect) next[s.id] = { left: zoneRect.left + 10, top: zoneRect.top + 10, colW: 96, gap: 8, cols: n };
           continue;
         }
         const a = own[0];
-        let stepX = a.r.width + 8;
-        let stepY = a.r.height + 8;
+        let gap2 = 8;
         for (const o of own) {
-          if (Math.floor(o.k / n) === Math.floor(a.k / n) && o.k !== a.k) {
-            stepX = (o.r.left - a.r.left) / (o.k - a.k);
+          if (o.r.top === a.r.top && o.r.left > a.r.left) {
+            gap2 = o.r.left - (a.r.left + a.r.width);
             break;
           }
         }
-        for (const o of own) {
-          const dr = Math.floor(o.k / n) - Math.floor(a.k / n);
-          if (dr > 0) {
-            stepY = (o.r.top - a.r.top) / dr;
-            break;
-          }
-        }
-        next[s.id] = {
-          left: a.r.left - a.k % n * stepX,
-          top: a.r.top - Math.floor(a.k / n) * stepY,
-          stepX,
-          stepY,
-          cols: n
-        };
+        const colW2 = (a.r.width - (a.span - 1) * gap2) / a.span;
+        next[s.id] = { left: a.r.left, top: a.r.top, colW: colW2, gap: gap2, cols: n };
       }
       geom = next;
+      blockH = nextH;
       for (const s of props.sections) {
         const r = rects.get(panelEls.get(s.id));
         if (r) panelH[s.id] = r.height;
@@ -434,6 +432,14 @@ function DumbBoard(props) {
       if (wr) wrapAt = { left: wr.left, top: wr.top };
     });
     for (const t of targets) io.observe(t);
+  }
+  function measureWhenStill() {
+    const anims = [...blockEls.values(), ...panelEls.values()].filter(Boolean).flatMap((el) => el.getAnimations());
+    if (!anims.length) {
+      measure();
+      return;
+    }
+    Promise.allSettled(anims.map((a) => a.finished)).then(() => measure());
   }
   onMount(() => {
     measure();
@@ -453,26 +459,48 @@ function DumbBoard(props) {
     ro.observe(wrapEl);
     onCleanup(() => ro.disconnect());
   });
+  const blockPlaces = (sectionId) => {
+    const g = geom[sectionId];
+    if (!g) return {};
+    const boxes = itemsOf(sectionId).map((it) => ({
+      id: props.id(it),
+      span: spanOfBlock(it),
+      height: blockH[props.id(it)] ?? 0
+    }));
+    return panelFlow(boxes, { cols: g.cols, colW: g.colW, gap: g.gap, origin: { left: g.left, top: g.top } });
+  };
   const snapshotPlaces = () => {
     const out = /* @__PURE__ */ new Map();
-    for (const s of props.sections) itemsOf(s.id).forEach((it, k) => out.set(props.id(it), { zone: s.id, k }));
+    for (const s of props.sections) {
+      const pos = blockPlaces(s.id);
+      for (const id of Object.keys(pos)) out.set(id, pos[id]);
+    }
     return out;
   };
   const playBlocks = (was) => {
     for (const s of props.sections) {
-      itemsOf(s.id).forEach((it, k) => {
-        const id = props.id(it);
-        const prev = was.get(id);
-        if (!prev || prev.zone === s.id && prev.k === k) return;
-        const from = slotAt(geom[prev.zone], prev.k);
-        const to = slotAt(geom[s.id], k);
+      const now = blockPlaces(s.id);
+      for (const id of Object.keys(now)) {
+        const from = was.get(id);
+        const to = now[id];
+        if (!from || from.left === to.left && from.top === to.top) continue;
         const el = blockEls.get(id);
-        if (from && to && el) flip.nudge(el, from.left - to.left, from.top - to.top);
-      });
+        if (el) flip.nudge(el, from.left - to.left, from.top - to.top);
+      }
     }
   };
   function moveBlock(item, toSection, toIndex) {
+    const bid = props.id(item);
     const was = snapshotPlaces();
+    const next = props.sections.map((s) => {
+      const has = s.items.some((it) => props.id(it) === bid);
+      if (!has && s.id !== toSection) return s;
+      const rest = s.items.filter((it) => props.id(it) !== bid);
+      if (s.id !== toSection) return { ...s, items: rest };
+      const k = Math.max(0, Math.min(rest.length, toIndex));
+      return { ...s, items: [...rest.slice(0, k), item, ...rest.slice(k)] };
+    });
+    props.setSections(next);
     props.onMove?.(item, toSection, toIndex);
     playBlocks(was);
   }
@@ -494,7 +522,10 @@ function DumbBoard(props) {
     const from = props.sections.findIndex((s) => s.id === id);
     if (from < 0 || from === toIndex) return;
     const order = moveAt(props.sections, from, toIndex);
-    playSections(order, () => props.onSectionMove?.(from, toIndex));
+    playSections(order, () => {
+      props.setSections(order);
+      props.onSectionMove?.(from, toIndex);
+    });
   }
   const wasSpan = {};
   function toggleWide(s) {
@@ -502,8 +533,11 @@ function DumbBoard(props) {
     if (!full) wasSpan[s.id] = spanOf(s);
     const span = full ? wasSpan[s.id] ?? Math.floor(cols() / 2) : cols();
     const order = props.sections.map((x) => x.id === s.id ? { ...x, span } : x);
-    playSections(order, () => props.onSectionResize?.(s.id, { span, rows: s.rows ?? 0 }));
-    measure();
+    playSections(order, () => {
+      props.setSections(order);
+      props.onSectionResize?.(s.id, { span, rows: s.rows ?? 0 });
+    });
+    measureWhenStill();
   }
   let sizingFrom = null;
   const onGripDown = (ev) => {
@@ -534,13 +568,14 @@ function DumbBoard(props) {
     if (d.axis !== "y") span = Math.max(minSpan(), Math.min(cols(), d.span + Math.round((ev.clientX - d.x) / colW)));
     if (d.axis !== "x") rows = Math.max(1, d.rows + Math.round((ev.clientY - d.y) / rowH()));
     if (span === spanOf(s) && rows === (s.rows ?? d.rows)) return;
+    props.setSections(props.sections.map((x) => x.id === d.id ? { ...x, span, rows } : x));
     props.onSectionResize?.(d.id, { span, rows });
   };
   const onGripUp = () => {
     if (!sizingFrom) return;
     sizingFrom = null;
     setSizing(null);
-    measure();
+    measureWhenStill();
   };
   const closestOf = (ev, sel) => ev.target?.closest?.(sel);
   let pressed = null;
@@ -601,18 +636,19 @@ function DumbBoard(props) {
     }
     const id = held();
     if (!id) return;
-    const item = props.items.find((x) => props.id(x) === id);
-    if (!item) return;
+    const home = sectionOf(id);
+    const item = home?.items.find((x) => props.id(x) === id);
+    if (!item || !home) return;
     const zoneId = closestOf(ev, "[data-board-zone]")?.dataset.boardZone;
     const zone = zoneId ? sectionById(zoneId) : null;
     if (!zone) return;
-    const from = props.section(item);
+    const from = home.id;
     if (zone.accepts && from !== zone.id && !zone.accepts(from)) return;
     const over = closestOf(ev, "[data-board-block]")?.dataset.boardBlock;
     if (over) {
       if (over === id) return;
       if (blockEls.get(over)?.getAnimations().length) return;
-      const target = props.items.find((x) => props.id(x) === over);
+      const target = zone.items.find((x) => props.id(x) === over);
       if (!target) return;
       const k = placeOf(target);
       if (from === zone.id && placeOf(item) === k) return;
@@ -628,7 +664,7 @@ function DumbBoard(props) {
     setHeld(null);
     setHeldSection(null);
     scroller.stop();
-    measure();
+    measureWhenStill();
   };
   return <div
     class={props.class}
@@ -695,7 +731,7 @@ function DumbBoard(props) {
     >
                 {
       /* Итерируем сами элементы, а не их id: иначе содержимое пришлось
-         бы искать в `props.items` прямо в разметке, и оно зависело бы от
+         бы искать в массиве прямо в разметке, и оно зависело бы от
          всего массива — любая правка пересоздавала бы ВСЕ блоки. */
     }
                 <For each={renderItemsOf(sid)}>
@@ -705,7 +741,10 @@ function DumbBoard(props) {
       data-board-block={props.id(item)}
       draggable={editable()}
       ref={(el) => blockEls.set(props.id(item), el)}
-      style={{ order: String(placeOf(item)) }}
+      style={{
+        order: String(placeOf(item)),
+        ...spanOfBlock(item, s()) > 1 ? { "grid-column": `span ${spanOfBlock(item, s())}` } : {}
+      }}
     >
                       {props.children(item, s())}
                     </div>}
