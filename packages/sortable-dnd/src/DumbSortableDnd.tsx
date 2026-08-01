@@ -1,4 +1,5 @@
 import { For, createEffect, createMemo, type JSX } from 'solid-js'
+import { createStableOrder } from '@solid-dumb-kit/shared'
 import { createDumbSortableDnd } from './solid'
 
 // Сортировка списка на нативном drag-and-drop.
@@ -68,13 +69,13 @@ export function DumbSortableDnd<T>(props: DumbSortableDndProps<T>) {
   const els = new Map<string, HTMLElement>()
 
   /**
-   * Порядок РЕНДЕРА — по id, а не по показу. Сортировка по id от перестановок не
+   * Порядок РЕНДЕРА — по появлению, а не по показу. От перестановок он не
    * зависит, поэтому `<For>` при них не делает ничего: ни одного перемещения
-   * узла за весь жест.
+   * узла за весь жест. На старте совпадает с порядком `items`, так что разметка
+   * читается как исходный список.
    */
-  const rendered = createMemo(() =>
-    props.items.slice().sort((a, b) => (props.id(a) < props.id(b) ? -1 : 1)),
-  )
+  const stable = createStableOrder(props.id)
+  const rendered = createMemo(() => stable.sort(props.items))
 
   /** показное место каждого элемента — одной картой, а не поиском на каждый */
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])))

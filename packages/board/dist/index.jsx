@@ -20,6 +20,27 @@ function injectStyle(id, css) {
   el.textContent = css;
   document.head.appendChild(el);
 }
+function createStableOrder(id) {
+  const seen = /* @__PURE__ */ new Map();
+  let next = 0;
+  return {
+    sort(items) {
+      const live = /* @__PURE__ */ new Set();
+      for (const it of items) {
+        const key = id(it);
+        live.add(key);
+        if (!seen.has(key)) seen.set(key, next++);
+      }
+      if (seen.size > live.size) {
+        for (const key of seen.keys()) if (!live.has(key)) seen.delete(key);
+      }
+      return items.slice().sort((a, b) => seen.get(id(a)) - seen.get(id(b)));
+    },
+    rank(item) {
+      return seen.get(id(item)) ?? Number.MAX_SAFE_INTEGER;
+    }
+  };
+}
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
 var C = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 };
@@ -325,10 +346,13 @@ function DumbBoard(props) {
   const spanOf = (s) => Math.max(1, Math.min(cols(), s.span ?? Math.floor(cols() / 2)));
   const colsIn = (s) => Math.max(1, s.cols ?? 3);
   const sectionById = (id) => props.sections.find((s) => s.id === id);
-  const renderOrder = () => props.sections.map((s) => s.id).sort();
+  const stableSections = createStableOrder((s) => s.id);
+  const stableItems = createStableOrder(props.id);
+  const renderOrder = () => stableSections.sort(props.sections).map((s) => s.id);
   const showOrder = (id) => props.sections.findIndex((s) => s.id === id);
   const itemsOf = (id) => props.items.filter((it) => props.section(it) === id);
-  const renderItemsOf = (id) => itemsOf(id).slice().sort((a, b) => props.id(a) < props.id(b) ? -1 : 1);
+  const ranked = createMemo(() => stableItems.sort(props.items));
+  const renderItemsOf = (id) => ranked().filter((it) => props.section(it) === id);
   const places = createMemo(() => {
     const out = /* @__PURE__ */ new Map();
     const seen = /* @__PURE__ */ new Map();

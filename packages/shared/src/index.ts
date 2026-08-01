@@ -14,6 +14,13 @@ export { prefersReducedMotion, shouldAnimate } from './motion'
 /** Разовый инжект стилей в `<head>` — переживает размонтирование компонента. */
 export { injectStyle } from './injectStyle'
 
+/**
+ * Неизменный порядок рендера: показ идёт через CSS `order`, а разметка не
+ * шевелится. Порядок — по появлению, а не по id: сортировка по id стабильна, но
+ * читать разметку после неё нельзя (`r10` раньше `r2`).
+ */
+export { createStableOrder, type StableOrder } from './stableOrder'
+
 /** FLIP: элементу говорят, куда отъехать, — он доезжает `transform`ом. */
 export { createFlip, type Flip } from './flip'
 

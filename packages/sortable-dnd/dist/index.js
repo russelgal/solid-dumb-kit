@@ -11,6 +11,24 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+function createStableOrder(id) {
+  const seen = /* @__PURE__ */ new Map();
+  let next = 0;
+  return {
+    sort(items) {
+      const live = /* @__PURE__ */ new Set();
+      for (const it of items) {
+        const key = id(it);
+        live.add(key);
+        if (!seen.has(key)) seen.set(key, next++);
+      }
+      if (seen.size > live.size) {
+        for (const key of seen.keys()) if (!live.has(key)) seen.delete(key);
+      }
+      return items.slice().sort((a, b) => seen.get(id(a)) - seen.get(id(b)));
+    }
+  };
+}
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
 var C = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 };
@@ -506,7 +524,8 @@ function DumbSortableDnd(props) {
     onEnd: (from, to) => props.onEnd?.(from, to)
   });
   const els = /* @__PURE__ */ new Map();
-  const rendered = createMemo(() => props.items.slice().sort((a, b) => props.id(a) < props.id(b) ? -1 : 1));
+  const stable = createStableOrder(props.id);
+  const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
   createEffect(() => {
     for (const [id, i] of places()) {

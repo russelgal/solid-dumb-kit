@@ -18,7 +18,7 @@
 // указателе работает и пальцем.
 
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount, type JSX } from 'solid-js'
-import { createAutoScroller, createFlip, injectStyle, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, createStableOrder, injectStyle, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
 import { moveAt, panelFlow, rowsFor, slotAt, type PanelBox, type Slot, type ZoneGeom } from './boardMath'
 
 export type BoardSection = {
@@ -131,7 +131,10 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
    * не случится, даже если потребитель отдаст новые объекты секций (а он отдаст —
    * на каждом ресайзе).
    */
-  const renderOrder = () => props.sections.map((s) => s.id).sort()
+  // порядок разметки — по появлению; см. `createStableOrder`
+  const stableSections = createStableOrder((s: { id: string }) => s.id)
+  const stableItems = createStableOrder(props.id)
+  const renderOrder = () => stableSections.sort(props.sections).map((s) => s.id)
   const showOrder = (id: string) => props.sections.findIndex((s) => s.id === id)
 
   /** блоки секции в их ПОКАЗНОМ порядке — он же порядок в `items` */
@@ -146,8 +149,11 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
    * анимирует пустоту, а соседи стоят на месте. Сортировка по id от показа не
    * зависит, поэтому `<For>` не делает ничего, а порядок задаёт CSS `order`.
    */
+  // Номера раздаём по ВСЕМУ списку разом, а секции потом сортируем по ним: если
+  // кормить помощник посекционно, его уборка выбросит блоки соседних секций.
+  const ranked = createMemo(() => stableItems.sort(props.items))
   const renderItemsOf = (id: string) =>
-    itemsOf(id).slice().sort((a, b) => (props.id(a) < props.id(b) ? -1 : 1))
+    ranked().filter((it) => props.section(it) === id)
   /**
    * Место каждого блока среди блоков своей секции — одной картой на всю доску.
    * Считать его поиском по массиву на каждый блок значит получить квадрат:

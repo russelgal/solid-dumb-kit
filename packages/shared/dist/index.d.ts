@@ -11,6 +11,22 @@ declare function shouldAnimate(explicit?: boolean): boolean;
  */
 declare function injectStyle(id: string, css: string): void;
 
+type StableOrder<T> = {
+    /**
+     * Отсортировать по порядку появления; новые получают номер тут же, за
+     * исчезнувшими прибирается. Отдавать сюда надо ВЕСЬ список: по подмножеству
+     * уборка выбросит тех, кого в нём просто не было, и при следующем вызове они
+     * получат новые номера — порядок поедет на ровном месте.
+     */
+    sort: (items: Array<T>) => Array<T>;
+    /** номер элемента — чтобы отсортировать подмножество, не трогая карту */
+    rank: (item: T) => number;
+};
+/**
+ * @param id как достать стабильный id элемента
+ */
+declare function createStableOrder<T>(id: (item: T) => string): StableOrder<T>;
+
 type Flip = {
     /** отправить элемент на смещение (dx, dy) от его места в потоке */
     to: (el: HTMLElement, dx: number, dy: number) => void;
@@ -118,4 +134,4 @@ type PressGate = {
  */
 declare function createPressGate(opts?: PressGateOptions): PressGate;
 
-export { ACCEL, type AutoScroller, EDGE, type Flip, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, type PressGate, type PressGateOptions, type ViewGeom, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
+export { ACCEL, type AutoScroller, EDGE, type Flip, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, type PressGate, type PressGateOptions, type StableOrder, type ViewGeom, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, createStableOrder, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };

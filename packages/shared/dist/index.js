@@ -20,6 +20,29 @@ function injectStyle(id, css) {
   document.head.appendChild(el);
 }
 
+// src/stableOrder.ts
+function createStableOrder(id) {
+  const seen = /* @__PURE__ */ new Map();
+  let next = 0;
+  return {
+    sort(items) {
+      const live = /* @__PURE__ */ new Set();
+      for (const it of items) {
+        const key = id(it);
+        live.add(key);
+        if (!seen.has(key)) seen.set(key, next++);
+      }
+      if (seen.size > live.size) {
+        for (const key of seen.keys()) if (!live.has(key)) seen.delete(key);
+      }
+      return items.slice().sort((a, b) => seen.get(id(a)) - seen.get(id(b)));
+    },
+    rank(item) {
+      return seen.get(id(item)) ?? Number.MAX_SAFE_INTEGER;
+    }
+  };
+}
+
 // src/flip.ts
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
@@ -398,4 +421,4 @@ function createPressGate(opts = {}) {
   };
 }
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
+export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, createStableOrder, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
