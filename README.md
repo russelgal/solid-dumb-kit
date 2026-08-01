@@ -19,6 +19,8 @@ Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 **📓 Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
+**🧭 Write-ups:** [What turned out to be true](docs/Findings.md) — verified claims, with how they were verified · [Global DnD](docs/GlobalDnd.md) — dragging between unlike things (a proposal, not implemented)
+
 ## Install
 
 The kit ships as one package per component, each with its own version and its own tag. Install only what you need: `@solid-dumb-kit/table` won't drag `@tanstack/solid-table` into a project that just wants a sortable list, and the DnD packages have no runtime deps at all — they run on bare browser events.
