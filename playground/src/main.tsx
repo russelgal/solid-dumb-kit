@@ -1,88 +1,104 @@
 import { render } from 'solid-js/web'
-import { createSignal, For, Show, onCleanup } from 'solid-js'
-import SelectionAreaExample from '../../examples/SelectionArea.example'
-import DumbSortableExample from '../../examples/DumbSortable.example'
-import ResizableGridExample from '../../examples/ResizableGrid.example'
-import DumbTreeExample from '../../examples/DumbTree.example'
-import DumbTableExample from '../../examples/DumbTable.example'
-import DumbGridExample from '../../examples/DumbGrid.example'
-import BoardExample from '../../examples/Board.example'
-import DumbGridDndExample from '../../examples/DumbGridDnd.example'
-import DumbSortableDndExample from '../../examples/DumbSortableDnd.example'
-import CssOrderExample from '../../examples/CssOrder.example'
-import RawDndExample from '../../examples/RawDnd.example'
-import FlipBenchExample from '../../examples/FlipBench.example'
-import OrderKanbanExample from '../../examples/OrderKanban.example'
-import OrderBoardExample from '../../examples/OrderBoard.example'
-import OrderTableExample from '../../examples/OrderTable.example'
-import OrderTreeExample from '../../examples/OrderTree.example'
-import KanbanExample from '../../examples/Kanban.example'
-import UtilsExample from '../../examples/utils.example'
-import Odata1CExample from '../../examples/Odata1C.example'
+import { createSignal, For, Show, onCleanup, type JSX } from 'solid-js'
 
-// Примеры сгруппированы по тому, ЧЕМ они являются, а не по алфавиту: сначала
-// жесты на указателе, потом их нативные двойники, потом всё остальное. Так
-// сразу видно, что у половины компонентов есть по две реализации.
-const GROUPS = [
+import SelectionAreaExample from '../../examples/pointer/SelectionArea.example'
+import DumbSortableExample from '../../examples/pointer/DumbSortable.example'
+import KanbanExample from '../../examples/pointer/Kanban.example'
+import ResizableGridExample from '../../examples/pointer/ResizableGrid.example'
+import DumbGridExample from '../../examples/pointer/DumbGrid.example'
+import BoardExample from '../../examples/pointer/Board.example'
+
+import DumbGridDndExample from '../../examples/dnd/DumbGridDnd.example'
+import DumbSortableDndExample from '../../examples/dnd/DumbSortableDnd.example'
+
+import DumbTreeExample from '../../examples/data/DumbTree.example'
+import DumbTableExample from '../../examples/data/DumbTable.example'
+import Odata1CExample from '../../examples/data/Odata1C.example'
+import UtilsExample from '../../examples/data/utils.example'
+
+import RawDndExample from '../../examples/lab/RawDnd.example'
+import CssOrderExample from '../../examples/lab/CssOrder.example'
+import FlipBenchExample from '../../examples/lab/FlipBench.example'
+import OrderKanbanExample from '../../examples/lab/OrderKanban.example'
+import OrderBoardExample from '../../examples/lab/OrderBoard.example'
+import OrderTableExample from '../../examples/lab/OrderTable.example'
+import OrderTreeExample from '../../examples/lab/OrderTree.example'
+
+/** Вкладка витрины. `pkg` — какой пакет ставить, чтобы пример заработал. */
+type Tab = {
+  id: string
+  label: string
+  hint: string
+  pkg?: string
+  Comp: () => JSX.Element
+}
+
+type Group = { title: string; note: string; items: Array<Tab> }
+
+// Разложено по тому, ЧЕМ ведётся жест, а не по алфавиту и не по виду виджета.
+// Это главное деление в ките: указательные события и нативный drag-and-drop —
+// две несмешиваемые механики, и половина компонентов существует в обеих. У
+// каждого примера подписан пакет, который надо поставить, чтобы он заработал.
+//
+// Папки в `examples/` названы так же: pointer, dnd, data, lab.
+const GROUPS: Array<Group> = [
   {
-    title: 'Жесты',
+    title: 'Указатель',
+    note: 'pointer events: работает пальцем, зону под курсором считаем сами',
     items: [
-      { id: 'selection', label: 'SelectionArea', hint: 'рамка выделения', Comp: SelectionAreaExample },
-      { id: 'sortable', label: 'DumbSortable', hint: 'список и сетка', Comp: DumbSortableExample },
-      { id: 'kanban', label: 'Kanban', hint: 'между колонками', Comp: KanbanExample },
-    ],
-  },
-  {
-    title: 'Сетки',
-    items: [
-      { id: 'grid', label: 'ResizableGrid', hint: 'панели с ресайзом', Comp: ResizableGridExample },
-      { id: 'dashboard', label: 'DumbGrid', hint: 'дашборд', Comp: DumbGridExample },
-      { id: 'board', label: 'Вложенные сетки', hint: 'сетка в сетке', Comp: BoardExample },
+      { id: 'selection', label: 'SelectionArea', pkg: 'selection', hint: 'рамка выделения', Comp: SelectionAreaExample },
+      { id: 'sortable', label: 'DumbSortable', pkg: 'sortable', hint: 'список и сетка', Comp: DumbSortableExample },
+      { id: 'kanban', label: 'Kanban', pkg: 'sortable', hint: 'между колонками', Comp: KanbanExample },
+      { id: 'grid', label: 'ResizableGrid', pkg: 'resizable-grid', hint: 'панели с ресайзом', Comp: ResizableGridExample },
+      { id: 'dashboard', label: 'DumbGrid', pkg: 'grid', hint: 'дашборд', Comp: DumbGridExample },
+      { id: 'board', label: 'Вложенные сетки', pkg: 'grid', hint: 'сетка в сетке', Comp: BoardExample },
     ],
   },
   {
     title: 'Нативный DnD',
+    note: 'HTML5 drag-and-drop: зону решает браузер, тач не поддерживается',
     items: [
-      { id: 'dnd', label: 'DumbGridDnd', hint: 'сетка на HTML5 DnD', Comp: DumbGridDndExample },
-      { id: 'sortdnd', label: 'DumbSortableDnd', hint: 'список на HTML5 DnD', Comp: DumbSortableDndExample },
-    ],
-  },
-  {
-    title: 'Пробы',
-    items: [
-      { id: 'rawdnd', label: 'Нативный DnD с нуля', hint: 'три обработчика, без анимаций', Comp: RawDndExample },
-      { id: 'cssorder', label: 'CSS order + FLIP', hint: 'перемешивание без DOM', Comp: CssOrderExample },
-      { id: 'flipbench', label: 'Замер vs снимок', hint: 'сколько стоит померить', Comp: FlipBenchExample },
-      { id: 'orderkanban', label: 'Канбан на order', hint: 'колонки и переезды', Comp: OrderKanbanExample },
-      { id: 'orderboard', label: 'Доска на order', hint: 'вложенные сетки', Comp: OrderBoardExample },
-      { id: 'ordertable', label: 'Таблица на order', hint: 'subgrid + сортировка', Comp: OrderTableExample },
-      { id: 'ordertree', label: 'Дерево на order', hint: 'перенос между уровнями', Comp: OrderTreeExample },
+      { id: 'dnd', label: 'DumbGridDnd', pkg: 'grid-dnd', hint: 'сетка на HTML5 DnD', Comp: DumbGridDndExample },
+      { id: 'sortdnd', label: 'DumbSortableDnd', pkg: 'sortable-dnd', hint: 'список и сетка плиток', Comp: DumbSortableDndExample },
     ],
   },
   {
     title: 'Данные',
+    note: 'таблицы, деревья и утилиты — жест тут не главное',
     items: [
-      { id: 'tree', label: 'DumbTree', hint: 'дерево и плоский список', Comp: DumbTreeExample },
-      { id: 'table', label: 'DumbTable', hint: 'TanStack + драг строк', Comp: DumbTableExample },
-      { id: 'odata1c', label: 'Odata1C', hint: 'клиент 1С', Comp: Odata1CExample },
-      { id: 'utils', label: 'utils', hint: 'формат, slug, zip', Comp: UtilsExample },
+      { id: 'tree', label: 'DumbTree', pkg: 'tree', hint: 'дерево и плоский список', Comp: DumbTreeExample },
+      { id: 'table', label: 'DumbTable', pkg: 'table', hint: 'TanStack + драг строк', Comp: DumbTableExample },
+      { id: 'odata1c', label: 'Odata1C', pkg: 'odata-1c', hint: 'клиент 1С, без Solid', Comp: Odata1CExample },
+      { id: 'utils', label: 'utils', pkg: 'utils', hint: 'формат, slug, zip', Comp: UtilsExample },
     ],
   },
-] as const
+  {
+    title: 'Лаборатория',
+    note: 'без кита вообще — проверяем идеи на голых событиях браузера',
+    items: [
+      { id: 'rawdnd', label: 'Нативный DnD с нуля', hint: 'три обработчика, без анимаций', Comp: RawDndExample },
+      { id: 'cssorder', label: 'CSS order + FLIP', pkg: 'shared', hint: 'сортировка без перестановки DOM', Comp: CssOrderExample },
+      { id: 'flipbench', label: 'Замер vs снимок', pkg: 'shared', hint: 'сколько стоит померить', Comp: FlipBenchExample },
+      { id: 'orderkanban', label: 'Канбан на order', pkg: 'shared', hint: 'колонки и переезды', Comp: OrderKanbanExample },
+      { id: 'orderboard', label: 'Доска на order', pkg: 'shared', hint: 'вложенные сетки и ресайз', Comp: OrderBoardExample },
+      { id: 'ordertable', label: 'Таблица на order', pkg: 'shared', hint: 'subgrid + сортировка', Comp: OrderTableExample },
+      { id: 'ordertree', label: 'Дерево на order', pkg: 'shared', hint: 'перенос между уровнями', Comp: OrderTreeExample },
+    ],
+  },
+]
 
 const TABS = GROUPS.flatMap((g) => g.items)
-type TabId = (typeof TABS)[number]['id']
 
 // Навигация по hash: вкладка живёт в URL (#kanban), поэтому на конкретный
 // пример можно дать прямую ссылку, а F5 не сбрасывает выбор. Hash, а не
 // history API — демо стоит на GitHub Pages, где /solid-dumb-kit/kanban отдал бы 404.
-const fromHash = (): TabId => {
+const fromHash = (): string => {
   const id = location.hash.replace(/^#/, '')
-  return TABS.some((t) => t.id === id) ? (id as TabId) : TABS[0].id
+  return TABS.some((t) => t.id === id) ? id : TABS[0].id
 }
 
 function App() {
-  const [tab, setTab] = createSignal<TabId>(fromHash())
+  const [tab, setTab] = createSignal(fromHash())
 
   const onHash = () => setTab(fromHash())
   window.addEventListener('hashchange', onHash)
@@ -99,7 +115,7 @@ function App() {
           <For each={GROUPS}>
             {(group) => (
               <div class="pg-group">
-                <div class="pg-group-title">{group.title}</div>
+                <div class="pg-group-title" title={group.note}>{group.title}</div>
                 <For each={group.items}>
                   {(t) => (
                     <a
@@ -110,6 +126,9 @@ function App() {
                     >
                       <span class="pg-label">{t.label}</span>
                       <span class="pg-hint">{t.hint}</span>
+                      <Show when={t.pkg}>
+                        <span class="pg-pkg">@solid-dumb-kit/{t.pkg}</span>
+                      </Show>
                     </a>
                   )}
                 </For>
@@ -153,6 +172,10 @@ function App() {
         .pg-label { display: block; font-size: 13.5px; font-weight: 500 }
         .pg-link.active .pg-label { color: #4338ca }
         .pg-hint { display: block; font-size: 11.5px; color: #94a3b8 }
+        /* какой пакет ставить — видно прямо в меню, чтобы не искать по докам */
+        .pg-pkg { display: block; margin-top: 2px; font-size: 10.5px; color: #cbd5e1;
+                  font-family: ui-monospace, SFMono-Regular, monospace }
+        .pg-link.active .pg-pkg { color: #a5b4fc }
 
         .pg-gh { margin-top: auto; padding: 8px; font-size: 13px; color: #3b82f6; text-decoration: none }
 

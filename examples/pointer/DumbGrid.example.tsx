@@ -5,7 +5,7 @@
 // Nothing here measures a single element: column width comes from a
 // ResizeObserver on the container, everything else is arithmetic.
 import { createSignal, For, Show } from 'solid-js'
-import { Bar, Switch, Check, Pick, Btn } from './_controls'
+import { Bar, Switch, Check, Pick, Btn } from '../_controls'
 import { DumbGrid, type DumbGridItem } from '@solid-dumb-kit/grid'
 
 const STORAGE_KEY = 'example:dumb-grid'

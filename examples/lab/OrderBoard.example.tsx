@@ -21,7 +21,7 @@
 // меряется в колонках, и размер меняется только на смене снапа — то есть
 // перекладка случается раз в колонку, а не каждый кадр.
 import { createSignal, createEffect, onCleanup, onMount, For, Show } from 'solid-js'
-import { Bar, Switch, Check, Pick, Btn, Note } from './_controls'
+import { Bar, Switch, Check, Pick, Btn, Note } from '../_controls'
 import type { JSX } from 'solid-js'
 import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
 

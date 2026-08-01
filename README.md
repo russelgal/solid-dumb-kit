@@ -21,7 +21,7 @@ Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 ## Install
 
-The kit ships as one package per component, each with its own version and its own tag. Install only what you need: `@solid-dumb-kit/table` won't drag in `@atlaskit/pragmatic-drag-and-drop`, and `@solid-dumb-kit/sortable` has no runtime deps at all.
+The kit ships as one package per component, each with its own version and its own tag. Install only what you need: `@solid-dumb-kit/table` won't drag `@tanstack/solid-table` into a project that just wants a sortable list, and the DnD packages have no runtime deps at all — they run on bare browser events.
 
 **Not on npm yet** — packages install straight from GitHub, as a subdirectory of the repo:
 
@@ -47,19 +47,38 @@ pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 
 Links between packages are compiled into the build rather than declared as dependencies: `workspace:` specifiers don't resolve over a git install. The cost is 0.1–5 KB gzip per package, and it buys the ability to install them separately.
 
+Packages split by **how the gesture is driven**. That's the one division that matters here: pointer events and native drag-and-drop are two separate implementations, and half the components exist in both.
+
+**Pointer** — works with a finger, we work out the drop zone ourselves:
+
+| package | what's inside | pulls in |
+| --- | --- | --- |
+| `@solid-dumb-kit/sortable` | `DumbSortable`, `createSortableGroup` — list, grid, dragging between columns | — |
+| `@solid-dumb-kit/selection` | `SelectionArea` — marquee selection | — |
+| `@solid-dumb-kit/grid` | `DumbGrid` — dashboard grid, nesting, transfer between grids | `@solid-primitives/storage`, `valibot` |
+| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — resizable panels | `@solid-primitives/storage`, `valibot` |
+
+**Native DnD** — the browser picks the zone, no touch support:
+
+| package | what's inside | pulls in |
+| --- | --- | --- |
+| `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — list and tile grid | — |
+| `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — grid, two boards, transfer between them | — |
+
+**Data and utilities** — the gesture isn't the point:
+
+| package | what's inside | pulls in |
+| --- | --- | --- |
+| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
+| `@solid-dumb-kit/tree` | `DumbTree` — tree and flat list | `@solid-primitives/storage` |
+| `@solid-dumb-kit/odata-1c` | 1C OData client — no Solid needed | — |
+| `@solid-dumb-kit/utils` | format, slug, zip, imgproxy | `fflate`, `slug` |
+
+**Foundation** — everything else stands on it, installs itself as a dependency:
+
 | package | what's inside | pulls in |
 | --- | --- | --- |
 | `@solid-dumb-kit/shared` | FLIP, autoscroll, viewport, gesture rules | — |
-| `@solid-dumb-kit/sortable` | `DumbSortable` — list and grid, pointer-driven | — |
-| `@solid-dumb-kit/selection` | `SelectionArea` — marquee selection | — |
-| `@solid-dumb-kit/grid` | `DumbGrid` — dashboard grid | `@solid-primitives/storage`, `valibot` |
-| `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — same grid on HTML5 DnD | `@atlaskit/pragmatic-drag-and-drop` |
-| `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — sorting on HTML5 DnD | `@atlaskit/pragmatic-drag-and-drop` |
-| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — resizable panels | `@solid-primitives/storage`, `valibot` |
-| `@solid-dumb-kit/tree` | `DumbTree` — tree and flat list | `@solid-primitives/storage` |
-| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
-| `@solid-dumb-kit/odata-1c` | 1C OData client — no Solid needed | — |
-| `@solid-dumb-kit/utils` | format, slug, zip, imgproxy | `fflate`, `slug` |
 
 ## Quick start
 

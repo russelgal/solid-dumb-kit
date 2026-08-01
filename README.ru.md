@@ -21,7 +21,7 @@
 
 ## Установка
 
-Кит разбит на пакеты — по одному на компонент, у каждого своя версия и свой тег. Ставь только те, что нужны: `@solid-dumb-kit/table` не потянет за собой `@atlaskit/pragmatic-drag-and-drop`, а `@solid-dumb-kit/sortable` не тянет вообще ничего.
+Кит разбит на пакеты — по одному на компонент, у каждого своя версия и свой тег. Ставь только те, что нужны: `@solid-dumb-kit/table` не потянет за собой `@tanstack/solid-table` в проект, которому нужна одна сортировка списка, а DnD-пакеты не тянут вообще ничего — они на голых событиях браузера.
 
 **В npm пока не публикуем** — пакеты ставятся прямо с GitHub, подкаталогом репозитория:
 
@@ -47,19 +47,38 @@ pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 
 Внутренние связи между пакетами вкомпилированы в сборку, а не объявлены зависимостями: `workspace:`-ссылки при git-установке не резолвятся. Цена — от 0.1 до 5 КБ gzip на пакет, и она честно окупается тем, что ставить можно по одному.
 
+Пакеты делятся по тому, **чем ведётся жест**. Это главное разделение в ките: указательные события и нативный drag-and-drop — две несмешиваемые реализации, и половина компонентов существует в обеих.
+
+**Указатель** — работает пальцем, зону под курсором считаем сами:
+
+| пакет | что внутри | тянет за собой |
+| --- | --- | --- |
+| `@solid-dumb-kit/sortable` | `DumbSortable`, `createSortableGroup` — список, сетка, перенос между колонками | — |
+| `@solid-dumb-kit/selection` | `SelectionArea` — выделение рамкой | — |
+| `@solid-dumb-kit/grid` | `DumbGrid` — дашборд-сетка, вложенность, перенос между сетками | `@solid-primitives/storage`, `valibot` |
+| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — панели с ресайзом | `@solid-primitives/storage`, `valibot` |
+
+**Нативный DnD** — зону решает браузер, тач не поддерживается:
+
+| пакет | что внутри | тянет за собой |
+| --- | --- | --- |
+| `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — список и сетка плиток | — |
+| `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — сетка, две доски, перенос между ними | — |
+
+**Данные и утилиты** — жест тут не главное:
+
+| пакет | что внутри | тянет за собой |
+| --- | --- | --- |
+| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
+| `@solid-dumb-kit/tree` | `DumbTree` — дерево и плоский список | `@solid-primitives/storage` |
+| `@solid-dumb-kit/odata-1c` | клиент OData 1С — без Solid | — |
+| `@solid-dumb-kit/utils` | формат, slug, zip, imgproxy | `fflate`, `slug` |
+
+**Основание** — на нём стоят остальные, ставится сам как зависимость:
+
 | пакет | что внутри | тянет за собой |
 | --- | --- | --- |
 | `@solid-dumb-kit/shared` | FLIP, автопрокрутка, вьюпорт, правила жестов | — |
-| `@solid-dumb-kit/sortable` | `DumbSortable` — список и сетка на указателе | — |
-| `@solid-dumb-kit/selection` | `SelectionArea` — выделение рамкой | — |
-| `@solid-dumb-kit/grid` | `DumbGrid` — дашборд-сетка | `@solid-primitives/storage`, `valibot` |
-| `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — та же сетка на HTML5 DnD | `@atlaskit/pragmatic-drag-and-drop` |
-| `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — сортировка на HTML5 DnD | `@atlaskit/pragmatic-drag-and-drop` |
-| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — панели с ресайзом | `@solid-primitives/storage`, `valibot` |
-| `@solid-dumb-kit/tree` | `DumbTree` — дерево и плоский список | `@solid-primitives/storage` |
-| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
-| `@solid-dumb-kit/odata-1c` | клиент OData 1С — без Solid | — |
-| `@solid-dumb-kit/utils` | формат, slug, zip, imgproxy | `fflate`, `slug` |
 
 ## Быстрый старт
 
