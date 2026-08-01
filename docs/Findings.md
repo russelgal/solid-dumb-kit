@@ -40,6 +40,10 @@ Verified claims, with how they were verified. Only things that cost time and are
 
 **You can't rely on `drop` alone.** The browser doesn't always deliver it: under fast movement Chrome swallows `dragover`, and without a fresh one it won't count the drop — most visible during autoscroll, where the cursor is still and events are scarce. The user watches the neighbours part, releases, and everything silently reverts. `dropEffect` won't tell you: a dropped-but-undelivered gesture reads `none`, exactly like a cancelled one. `dragend` settles it (it always arrives), and "did it happen" is decided by your own signal: released over the zone, and Escape wasn't pressed.
 
+**Escape cancels the gesture, but `keydown` never reaches the page.** The drag mechanism takes the keyboard for the duration: a `keydown` listener will never fire. The page only gets `keyup`, and only AFTER `dragend`, about a millisecond later (measured). So the outcome is settled a frame and a half after `dragend` rather than inside it — enough to tell a cancel from an ordinary drop. `dropEffect` can't tell them apart: an undelivered drop reads `none` too.
+
+**An ordinary drop very often isn't delivered at all.** In the same probe where Escape produced `dragend` + `keyup`, a normal release produced ONE `dragend` and no `drop` whatsoever. That's the common case, not a rare one — another argument for changing the order during the gesture instead of banking it until the drop.
+
 **`dragleave` very often arrives with a null `relatedTarget`.** Moving from one element to another is also a `dragleave`, and clearing an "over the zone" flag on it cancels gestures for no reason. Count it as leaving only when the browser names where it went and that isn't a descendant of yours.
 
 **Deferred source dimming has a race.** The dimming must happen on the next tick (otherwise the transparency lands in the drag image), but if the gesture ends before that tick, the deferred call switches it on *after* cleanup. A synchronous gesture flag fixes it.

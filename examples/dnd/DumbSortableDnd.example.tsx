@@ -8,17 +8,21 @@
 import { createSignal, For } from 'solid-js'
 import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
 
-type Row = { id: string; label: string; size: number }
+type Row = { id: string; n: number; label: string; size: number }
 
 // Триста строк и двести плиток — чтобы было видно, что длина списка ни на что не
 // влияет: место вставки ищет браузер, а не мы. Высоты строк нарочно разные — на
 // них видно, что сдвиг считается по настоящим размерам, а не «на глазок».
 const ROWS: Array<Row> = Array.from({ length: 300 }, (_, i) => ({
   id: `r${i}`,
+  n: i,
   label: `Track ${String(i + 1).padStart(3, '0')}`,
   size: i % 7 === 0 ? 2 : 1,
 }))
 
+// Цвет закреплён ЗА СТРОКОЙ, а не за её местом — как в пробе `CssOrder`. Так
+// видно, что строка переехала, а не перекрасилась; и `style` при перестановке
+// правится ровно один раз, на `order`, а не второй раз на цвет.
 const HUE = (i: number) => `oklch(0.72 0.13 ${(i * 37) % 360})`
 
 type Tile = { id: string; n: number }
@@ -55,7 +59,7 @@ export default function DumbSortableDndExample() {
         id={(r) => r.id}
       >
         {(row, i) => (
-          <article class="row" style={{ '--hue': HUE(i()), '--size': String(row.size) }}>
+          <article class="row" style={{ '--hue': HUE(row.n), '--size': String(row.size) }}>
             <button class="handle" data-drag-handle type="button" title="перетащить">⠿</button>
             <div class="body">
               <div class="title">{row.label}</div>

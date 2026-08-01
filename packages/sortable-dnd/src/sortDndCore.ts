@@ -59,7 +59,11 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
   const scroller = createAutoScroller()
 
   /** кого тащат и откуда начали — для `onEnd` и отмены */
+  /** сколько ждать признака отмены после `dragend` — полтора кадра */
+  const SETTLE_MS = 24
+
   let dragId: string | null = null
+  let stopRo: (() => void) | null = null
   let startIndex = -1
   /** нажали Escape — вернуть на место */
   let escaped = false
@@ -92,6 +96,9 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     for (let i = 0; i < k && i < order.length; i++) top += sizes.get(order[i]) ?? 0
     return { left: origin.left, top }
   }
+
+  /** сняты ли места хоть раз — до первого замера жест просто ничего не двигает */
+  let measured = false
 
   function measure() {
     const ids = opts.order()
@@ -142,6 +149,7 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
         grid = null
         sizes = new Map(ids.map((id, i) => [id, (list[i]?.height ?? 0) + gap]))
       }
+      measured = true
     })
     for (const t of targets) io.observe(t)
   }
@@ -188,6 +196,10 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     document.addEventListener('pointerdown', remember, { capture: true, passive: true })
   }
 
+  // Escape во время нативного драга до страницы НЕ ДОХОДИТ: клавиатуру забирает
+  // себе сам механизм переноса, и `keydown` мы не увидим никогда. Долетает
+  // только `keyup` — и уже после `dragend`, примерно через миллисекунду. Отсюда
+  // и отложенный итог в `finish`.
   const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') escaped = true }
 
   let lastX = -1
@@ -221,7 +233,10 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     // а на них держится автопрокрутка. Глушим прозрачностью.
     el!.style.opacity = '0.35'
     scroller.start(container ?? el!)
-    measure()
+    // Замер уже есть — со старта или с прошлой перерисовки. Снимаем заново
+    // только если его нет вовсе: наблюдатель асинхронный, и ждать его на первом
+    // же движении значит потерять начало анимации.
+    if (!measured) measure()
   }
 
   const onDragOver = (ev: DragEvent) => {
@@ -263,17 +278,24 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     opts.onActive?.(null)
 
     const el = els.get(id)
-    const cur = indexOf(id)
-    if (escaped && cur >= 0 && cur !== startIndex) commit(cur, startIndex)
-    else if (cur >= 0 && cur !== startIndex) opts.onEnd?.(startIndex, cur)
 
-    // сдвиги снимаем следующим кадром: к этому моменту раскладка уже новая, и
-    // снятие проходит незаметно, а не рывком через старые места
-    requestAnimationFrame(() => {
-      flip?.clear()
-      flip = null
-      if (el) el.style.opacity = ''
-    })
+    // Итог подводим не сразу, а через кадр: признак отмены (`keyup` от Escape)
+    // приходит ПОСЛЕ `dragend`, и решать в самом `dragend` попросту рано.
+    // По `dropEffect` отмену не отличить — у недоставленного дропа он тоже
+    // `none`, и раньше именно на этом жест молча откатывался.
+    setTimeout(() => {
+      const cur = indexOf(id)
+      if (escaped && cur >= 0 && cur !== startIndex) commit(cur, startIndex)
+      else if (cur >= 0 && cur !== startIndex) opts.onEnd?.(startIndex, cur)
+
+      // сдвиги снимаем следующим кадром: к этому моменту раскладка уже новая, и
+      // снятие проходит незаметно, а не рывком через старые места
+      requestAnimationFrame(() => {
+        flip?.clear()
+        flip = null
+        if (el) el.style.opacity = ''
+      })
+    }, SETTLE_MS)
   }
 
   const onDrop = (ev: DragEvent) => { ev.preventDefault(); finish() }
@@ -281,18 +303,29 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
   return {
     attachContainer(el: HTMLElement) {
       // ВСЕ слушатели жеста — здесь, четыре штуки на любое число элементов
+      // Места снимаем на монтировании и на смене размеров — как в пробе
+      // `CssOrder`, а не на каждом жесте: раскладка между жестами не меняется,
+      // а триста наблюдений на старте каждого драга не бесплатны.
+      if (typeof ResizeObserver === 'function') {
+        const ro = new ResizeObserver(() => { measured = false; measure() })
+        ro.observe(el)
+        stopRo = () => ro.disconnect()
+      }
+
       el.addEventListener('dragstart', onDragStart)
       el.addEventListener('dragover', onDragOver)
       el.addEventListener('drop', onDrop)
       el.addEventListener('dragend', finish)
-      document.addEventListener('keydown', onKey)
+      document.addEventListener('keyup', onKey)
       container = el
       return () => {
         el.removeEventListener('dragstart', onDragStart)
         el.removeEventListener('dragover', onDragOver)
         el.removeEventListener('drop', onDrop)
         el.removeEventListener('dragend', finish)
-        document.removeEventListener('keydown', onKey)
+        document.removeEventListener('keyup', onKey)
+        stopRo?.()
+        stopRo = null
         if (container === el) container = null
       }
     },

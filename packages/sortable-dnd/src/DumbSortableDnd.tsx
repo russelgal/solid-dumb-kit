@@ -1,4 +1,4 @@
-import { For, type JSX } from 'solid-js'
+import { For, createEffect, createMemo, type JSX } from 'solid-js'
 import { createDumbSortableDnd } from './solid'
 
 // Сортировка списка на нативном drag-and-drop.
@@ -15,6 +15,14 @@ import { createDumbSortableDnd } from './solid'
 //       </div>
 //     )}
 //   </DumbSortableDnd>
+//
+// DOM НЕ ТРОГАЕТСЯ ВОВСЕ. Элементы рендерятся в неизменном порядке — по id, — а
+// показывает их браузер по CSS `order`. Иначе `<For>` при каждой перестановке
+// двигал бы узлы, и FLIP анимировал бы то, что фреймворк только что пересоздал.
+//
+// Отсюда одно требование к контейнеру: он должен быть flex или grid, иначе
+// `order` браузер проигнорирует и порядок замрёт. Класс на нём — твой, поэтому
+// проверить это за тебя мы не можем.
 //
 // Контейнер, в отличие от `DumbSortable`, рисует компонент: он же и зона приёма,
 // без неё браузеру некуда доставлять дроп. Нужен свой — бери примитив
@@ -57,12 +65,46 @@ export function DumbSortableDnd<T>(props: DumbSortableDndProps<T>) {
     onEnd: (from, to) => props.onEnd?.(from, to),
   })
 
+  const els = new Map<string, HTMLElement>()
+
+  /**
+   * Порядок РЕНДЕРА — по id, а не по показу. Сортировка по id от перестановок не
+   * зависит, поэтому `<For>` при них не делает ничего: ни одного перемещения
+   * узла за весь жест.
+   */
+  const rendered = createMemo(() =>
+    props.items.slice().sort((a, b) => (props.id(a) < props.id(b) ? -1 : 1)),
+  )
+
+  /** показное место каждого элемента — одной картой, а не поиском на каждый */
+  const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])))
+
+  // `order` проставляем эффектом, а не в разметке: элемент отдаёт потребитель, и
+  // раскладывать его атрибуты мы можем только после того, как он создан.
+  //
+  // Пишем ТОЛЬКО тем, у кого место изменилось. Перестановка задевает соседей
+  // между старым местом и новым, остальных — нет, и трогать их `style` значило
+  // бы будить браузер на триста строк вместо трёх.
+  createEffect(() => {
+    for (const [id, i] of places()) {
+      const el = els.get(id)
+      if (!el) continue
+      const next = String(i)
+      if (el.style.order !== next) el.style.order = next
+    }
+  })
+
   return (
     <div ref={s.container} class={props.class} style={props.style}>
-      <For each={props.items}>
-        {(item, i) => {
-          const el = props.children(item, i) as unknown as Node
-          if (el instanceof HTMLElement) s.bind(props.id(item))(el)
+      <For each={rendered()}>
+        {(item) => {
+          const id = props.id(item)
+          const el = props.children(item, () => places().get(id) ?? 0) as unknown as Node
+          if (el instanceof HTMLElement) {
+            els.set(id, el)
+            el.style.order = String(places().get(id) ?? 0)
+            s.bind(id)(el)
+          }
           return el as unknown as JSX.Element
         }}
       </For>

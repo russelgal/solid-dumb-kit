@@ -1,5 +1,5 @@
 import { use, insert, createComponent, effect, className, style, template } from 'solid-js/web';
-import { createSignal, onCleanup, For } from 'solid-js';
+import { createSignal, onCleanup, createMemo, createEffect, For } from 'solid-js';
 
 // src/DumbSortableDnd.tsx
 
@@ -248,7 +248,9 @@ function createSortDndEngine(opts) {
   let container = null;
   let flip = null;
   const scroller = createAutoScroller();
+  const SETTLE_MS = 24;
   let dragId = null;
+  let stopRo = null;
   let startIndex = -1;
   let escaped = false;
   let sizes = /* @__PURE__ */ new Map();
@@ -267,6 +269,7 @@ function createSortDndEngine(opts) {
     for (let i = 0; i < k && i < order.length; i++) top += sizes.get(order[i]) ?? 0;
     return { left: origin.left, top };
   }
+  let measured = false;
   function measure() {
     const ids = opts.order();
     const targets = ids.map((id) => els.get(id)).filter(Boolean);
@@ -312,6 +315,7 @@ function createSortDndEngine(opts) {
         grid = null;
         sizes = new Map(ids.map((id, i) => [id, (list[i]?.height ?? 0) + gap]));
       }
+      measured = true;
     });
     for (const t of targets) io.observe(t);
   }
@@ -378,7 +382,7 @@ function createSortDndEngine(opts) {
     opts.onActive?.(id);
     el.style.opacity = "0.35";
     scroller.start(container ?? el);
-    measure();
+    if (!measured) measure();
   };
   const onDragOver = (ev) => {
     ev.preventDefault();
@@ -405,14 +409,16 @@ function createSortDndEngine(opts) {
     scroller.stop();
     opts.onActive?.(null);
     const el = els.get(id);
-    const cur = indexOf(id);
-    if (escaped && cur >= 0 && cur !== startIndex) commit(cur, startIndex);
-    else if (cur >= 0 && cur !== startIndex) opts.onEnd?.(startIndex, cur);
-    requestAnimationFrame(() => {
-      flip?.clear();
-      flip = null;
-      if (el) el.style.opacity = "";
-    });
+    setTimeout(() => {
+      const cur = indexOf(id);
+      if (escaped && cur >= 0 && cur !== startIndex) commit(cur, startIndex);
+      else if (cur >= 0 && cur !== startIndex) opts.onEnd?.(startIndex, cur);
+      requestAnimationFrame(() => {
+        flip?.clear();
+        flip = null;
+        if (el) el.style.opacity = "";
+      });
+    }, SETTLE_MS);
   };
   const onDrop = (ev) => {
     ev.preventDefault();
@@ -420,18 +426,28 @@ function createSortDndEngine(opts) {
   };
   return {
     attachContainer(el) {
+      if (typeof ResizeObserver === "function") {
+        const ro = new ResizeObserver(() => {
+          measured = false;
+          measure();
+        });
+        ro.observe(el);
+        stopRo = () => ro.disconnect();
+      }
       el.addEventListener("dragstart", onDragStart);
       el.addEventListener("dragover", onDragOver);
       el.addEventListener("drop", onDrop);
       el.addEventListener("dragend", finish);
-      document.addEventListener("keydown", onKey);
+      document.addEventListener("keyup", onKey);
       container = el;
       return () => {
         el.removeEventListener("dragstart", onDragStart);
         el.removeEventListener("dragover", onDragOver);
         el.removeEventListener("drop", onDrop);
         el.removeEventListener("dragend", finish);
-        document.removeEventListener("keydown", onKey);
+        document.removeEventListener("keyup", onKey);
+        stopRo?.();
+        stopRo = null;
         if (container === el) container = null;
       };
     },
@@ -489,17 +505,33 @@ function DumbSortableDnd(props) {
     },
     onEnd: (from, to) => props.onEnd?.(from, to)
   });
+  const els = /* @__PURE__ */ new Map();
+  const rendered = createMemo(() => props.items.slice().sort((a, b) => props.id(a) < props.id(b) ? -1 : 1));
+  const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
+  createEffect(() => {
+    for (const [id, i] of places()) {
+      const el = els.get(id);
+      if (!el) continue;
+      const next = String(i);
+      if (el.style.order !== next) el.style.order = next;
+    }
+  });
   return (() => {
     var _el$ = _tmpl$();
     var _ref$ = s.container;
     typeof _ref$ === "function" ? use(_ref$, _el$) : s.container = _el$;
     insert(_el$, createComponent(For, {
       get each() {
-        return props.items;
+        return rendered();
       },
-      children: (item, i) => {
-        const el = props.children(item, i);
-        if (el instanceof HTMLElement) s.bind(props.id(item))(el);
+      children: (item) => {
+        const id = props.id(item);
+        const el = props.children(item, () => places().get(id) ?? 0);
+        if (el instanceof HTMLElement) {
+          els.set(id, el);
+          el.style.order = String(places().get(id) ?? 0);
+          s.bind(id)(el);
+        }
         return el;
       }
     }));
