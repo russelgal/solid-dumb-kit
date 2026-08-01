@@ -595,9 +595,8 @@ function DumbBoard(props) {
       moveBlock(item, zone.id, k);
       return;
     }
-    const last = itemsOf(zone.id).filter((x) => props.id(x) !== id).length;
-    if (from === zone.id && placeOf(item) === last) return;
-    moveBlock(item, zone.id, last);
+    if (from === zone.id) return;
+    moveBlock(item, zone.id, itemsOf(zone.id).length);
   };
   const finish = () => {
     gesture = null;

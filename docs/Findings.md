@@ -40,7 +40,7 @@ Verified claims, with how they were verified. Only things that cost time and are
 
 **Deferred source dimming has a race.** The dimming must happen on the next tick (otherwise the transparency lands in the drag image), but if the gesture ends before that tick, the deferred call switches it on *after* cleanup. A synchronous gesture flag fixes it.
 
-**Gaps between rows are holes in the hit test.** The cursor falls between elements onto the container, and "append to this level" fires where nobody expects it. Separate with a line, not with emptiness.
+**Gaps between elements are holes in the hit test.** The cursor falls between them onto the container, and "append" fires where nobody expects it. Caught twice: in the tree (fixed by butting rows together) and on the board, where the grid `gap` is part of the design and can't go. There the fix is different: **"missed the elements" doesn't mean "append"** while dragging inside your own zone. To become last you hover the last element — the rule "target below us, so go after it" gets you there. Empty space only means something for a visitor from another zone: in an empty zone there's nothing else to hover.
 
 ## Animation
 
