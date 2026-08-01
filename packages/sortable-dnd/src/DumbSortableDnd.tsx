@@ -22,13 +22,19 @@ import { createDumbSortableDnd } from './solid'
 
 export type DumbSortableDndProps<T> = {
   items: Array<T>
-  /** позвать с новым порядком (на дропе) */
+  /**
+   * Позвать с новым порядком. Зовётся ПО ХОДУ жеста, на каждом шаге, — так же,
+   * как у `DumbBoard`: данные всё время совпадают с тем, что на экране, и ничего
+   * не теряется, если браузер не доставит `drop`.
+   */
   setItems: (next: Array<T>) => void
   /** стабильный id элемента */
   id: (item: T) => string
   /** `y` — вертикальный список (по умолчанию), `grid` — сетка плиток */
   axis?: 'y' | 'grid'
   disabled?: boolean
+  /** жест закончен: откуда и куда переехал элемент — удобно для сохранения */
+  onEnd?: (fromIndex: number, toIndex: number) => void
   /** анимировать расступание; по умолчанию да, но не при prefers-reduced-motion */
   animate?: boolean
   class?: string
@@ -43,11 +49,12 @@ export function DumbSortableDnd<T>(props: DumbSortableDndProps<T>) {
     axis: () => props.axis ?? 'y',
     disabled: () => props.disabled === true,
     animate: props.animate,
-    onEnd: (from, to) => {
+    onMove: (from, to) => {
       const next = props.items.slice()
       next.splice(to, 0, next.splice(from, 1)[0])
       props.setItems(next)
     },
+    onEnd: (from, to) => props.onEnd?.(from, to),
   })
 
   return (

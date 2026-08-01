@@ -2,13 +2,19 @@ import { JSX } from 'solid-js';
 
 type DumbSortableDndProps<T> = {
     items: Array<T>;
-    /** позвать с новым порядком (на дропе) */
+    /**
+     * Позвать с новым порядком. Зовётся ПО ХОДУ жеста, на каждом шаге, — так же,
+     * как у `DumbBoard`: данные всё время совпадают с тем, что на экране, и ничего
+     * не теряется, если браузер не доставит `drop`.
+     */
     setItems: (next: Array<T>) => void;
     /** стабильный id элемента */
     id: (item: T) => string;
     /** `y` — вертикальный список (по умолчанию), `grid` — сетка плиток */
     axis?: 'y' | 'grid';
     disabled?: boolean;
+    /** жест закончен: откуда и куда переехал элемент — удобно для сохранения */
+    onEnd?: (fromIndex: number, toIndex: number) => void;
     /** анимировать расступание; по умолчанию да, но не при prefers-reduced-motion */
     animate?: boolean;
     class?: string;
@@ -27,15 +33,20 @@ type SortDndOptions = {
     disabled?: () => boolean;
     /** анимировать расступание; по умолчанию да, но не при prefers-reduced-motion */
     animate?: boolean;
-    /** на дропе: переставить из fromIndex в toIndex (индексы в order()) */
+    /**
+     * Переставить ПРЯМО СЕЙЧАС, посреди жеста. Источник истины — данные
+     * потребителя, поэтому движок ничего не переставляет сам.
+     */
+    onMove?: (fromIndex: number, toIndex: number) => void;
+    /** жест закончен: откуда и куда переехал элемент — для персиста */
     onEnd?: (fromIndex: number, toIndex: number) => void;
-    /** id строки, которую тащат (null — жеста нет) */
+    /** id элемента, который тащат (null — жеста нет) */
     onActive?: (id: string | null) => void;
 };
 type SortDndEngine = {
-    /** ref на контейнер списка */
+    /** ref на контейнер */
     attachContainer: (el: HTMLElement) => () => void;
-    /** ref на строку; ручка — дочка с [data-drag-handle] */
+    /** ref на элемент; ручка — дочка с [data-drag-handle] */
     attach: (el: HTMLElement, id: string) => () => void;
     active: () => string | null;
     destroy: () => void;

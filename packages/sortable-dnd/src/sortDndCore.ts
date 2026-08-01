@@ -1,56 +1,25 @@
-// Сортировка списка на нативном drag-and-drop.
+// Сортировка списка и сетки на нативном drag-and-drop.
 //
-// Место вставки МЫ НЕ СЧИТАЕМ. Это единственное, что браузер во время
-// drag-and-drop делает идеально и даром: зона приёма висит на каждой строке, и
-// событие приходит ровно на ту, над которой указатель. Прошлая версия вместо
-// этого снимала координаты всех строк и сравнивала с ними курсор — и
-// разваливалась, стоило списку поехать: после автопрокрутки снимок описывал
-// позиции, которых на экране давно нет.
+// Устроено так же, как `@solid-dumb-kit/board`, и по той же причине: порядок
+// меняется СРАЗУ, на каждом шаге, а не копится внутри до отпускания.
 //
-// Данные при этом не трогаются до самого дропа. Меняется только порядок МЕСТ, и
-// его доигрывает FLIP: едет и перетаскиваемая строка (на место, которое займёт),
-// и те соседи, что оказались между старым местом и новым. Остальные не
-// шевелятся, и в их `style` не попадает ни байта.
+// Копить было ошибкой. Коммит тогда висит на событии `drop`, а браузер
+// доставляет его не всегда: при быстром движении Chrome глотает `dragover`, и
+// без свежего дроп не считается состоявшимся — особенно при автопрокрутке, где
+// курсор стоит и событий почти нет. Пользователь видит, как соседи расступались,
+// отпускает — и порядок прежний. Различить это по `dropEffect` нельзя: у
+// несостоявшегося дропа он `none`, ровно как у отменённого жеста.
 //
-// Важное следствие того, что едет и сама строка: она всегда стоит там, где
-// курсор, и накрывает собой цель. Значит место не дребезжит — над собой мы
-// ничего не пересчитываем — и не «убегает» вниз.
+// Когда порядок меняется сразу, терять нечего: `drop` ничего не решает, а
+// `dragend` только прибирает. Заодно данные потребителя всё время совпадают с
+// тем, что на экране.
 //
-// Место (`k`) живёт в координатах списка БЕЗ перетаскиваемой строки: «встать
-// перед k-м из оставшихся». Через исходные индексы жест выходит несимметричным:
-// сосед, который уже отъехал, в исходном порядке стоит там же, где стоял, и шаг
-// назад съедается — назад приходится вести на две строки вместо одной. В
-// координатах остатка правило то же, что у SortableJS: цель ниже нас — встаём
-// после неё, выше — перед. Туда же без пересчёта ложится `onEnd`: это ровно
-// индексы для `splice(from, 1)` + `splice(to, 0, …)`.
-//
-// Насколько двигать — арифметика по одному разовому замеру:
-//
-//   • соседи — на высоту перетаскиваемой строки с зазором (убрали элемент
-//     высотой H, всё, что ниже, поднялось на H + gap);
-//   • сама строка — на сумму высот тех, кого она перешагнула;
-//   • сетка — на разницу мест, а места по ходу жеста не двигаются.
-//
-// Везде РАЗНИЦЫ, а не абсолютные координаты, поэтому прокрутка — колесом,
-// автоскроллом, чем угодно — на расчёт не влияет.
-//
-// Библиотеки под этим нет вообще — только события браузера. Сначала здесь стоял
-// `@atlaskit/pragmatic-drag-and-drop`, но выяснилось, что платим мы за него зря:
-// хиттест всё равно делает браузер, а из его услуг оставалась нормализация
-// `dragenter`/`dragleave` да «honey pot» под чужой баг с залипшим `:hover`. За
-// это — 6.9 КБ gzip против 1.5 КБ нашей базы и CJS-хвост `bind-event-listener`,
-// который дважды ронял дев у потребителя («does not provide an export named
-// 'bind'»). Кому нужны его хитбоксы — подключит адаптером поверх.
-//
-// Слушателей ЧЕТЫРЕ на весь список, а не по четыре на строку: события
-// drag-and-drop всплывают, и `ev.target.closest` скажет, кто под курсором. На
-// трёхстах строках это разница между 4 записями в таблице слушателей и 1200.
+// Место вставки мы не считаем: зона приёма висит на каждом элементе, и
+// `dragover` приходит ровно на тот, над которым указатель.
 //
 // Тач не поддерживается: HTML5 DnD там не существует. Для пальца — `DumbSortable`.
 
-import { createAutoScroller } from '@solid-dumb-kit/shared'
-import { createFlip, type Flip } from '@solid-dumb-kit/shared'
-import { shouldAnimate } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
 
 export type SortDndOptions = {
   /** текущий порядок id — совпадает с порядком данных */
@@ -61,77 +30,72 @@ export type SortDndOptions = {
   disabled?: () => boolean
   /** анимировать расступание; по умолчанию да, но не при prefers-reduced-motion */
   animate?: boolean
-  /** на дропе: переставить из fromIndex в toIndex (индексы в order()) */
+  /**
+   * Переставить ПРЯМО СЕЙЧАС, посреди жеста. Источник истины — данные
+   * потребителя, поэтому движок ничего не переставляет сам.
+   */
+  onMove?: (fromIndex: number, toIndex: number) => void
+  /** жест закончен: откуда и куда переехал элемент — для персиста */
   onEnd?: (fromIndex: number, toIndex: number) => void
-  /** id строки, которую тащат (null — жеста нет) */
+  /** id элемента, который тащат (null — жеста нет) */
   onActive?: (id: string | null) => void
 }
 
 export type SortDndEngine = {
-  /** ref на контейнер списка */
+  /** ref на контейнер */
   attachContainer: (el: HTMLElement) => () => void
-  /** ref на строку; ручка — дочка с [data-drag-handle] */
+  /** ref на элемент; ручка — дочка с [data-drag-handle] */
   attach: (el: HTMLElement, id: string) => () => void
   active: () => string | null
   destroy: () => void
 }
 
-type Shift = { dx: number; dy: number }
-
-type Drag = {
-  id: string
-  el: HTMLElement
-  ids: Array<string>
-  from: number
-  /** куда встанет: индекс в ids */
-  k: number
-  /** высота каждой строки вместе с зазором под ней (список) */
-  steps: Array<number>
-  /** позиции мест (сетка); по ходу жеста не меняются */
-  slots: Array<{ left: number; top: number }>
-  /** кого мы уже сдвинули — чтобы вернуть тех, кто вышел из диапазона */
-  moved: Set<string>
-  grid: boolean
-  ready: boolean
-}
+type Slot = { left: number; top: number }
 
 export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
   const els = new Map<string, HTMLElement>()
   let container: HTMLElement | null = null
-  let drag: Drag | null = null
-  /**
-   * Цель последнего нажатия — по ней решаем, тянут ли за ручку. Слушатель ОДИН
-   * на весь движок: на трёхстах строках триста `pointerdown` — это триста
-   * лишних записей в таблице слушателей ради одной переменной. Pragmatic по той
-   * же причине слушает жест на уровне документа, а не на каждом элементе.
-   */
-  let pressed: Element | null = null
-  /** где курсор был на прошлом событии — чтобы отличить движение от «стоим» */
-  let lastX = -1
-  let lastY = -1
-  /** курсор над списком — по этому и решаем, состоялся ли жест */
-  let overList = false
-  /** нажали Escape — жест отменён, что бы ни говорил браузер */
-  let escaped = false
-  const remember = (ev: PointerEvent) => { pressed = ev.target as Element | null }
-  if (typeof document !== 'undefined') {
-    document.addEventListener('pointerdown', remember, { capture: true, passive: true })
-  }
-  const scroller = createAutoScroller()
   let flip: Flip | null = null
+  const scroller = createAutoScroller()
+
+  /** кого тащат и откуда начали — для `onEnd` и отмены */
+  let dragId: string | null = null
+  let startIndex = -1
+  /** нажали Escape — вернуть на место */
+  let escaped = false
 
   /**
-   * Единственный замер за жест. IntersectionObserver, а не
-   * `getBoundingClientRect`: bounds считаются off-main-thread, синхронного
-   * reflow не случается даже на сотнях строк. Замер асинхронный, и это не
-   * мешает — до его прихода жест уже работает, просто без движения соседей.
+   * Геометрия мест. Снимается ОДИН раз на старте жеста: `IntersectionObserver`
+   * считает bounds off-main-thread, forced layout не случается даже на трёхстах
+   * строках.
+   *
+   * Высоты хранятся ПО ЭЛЕМЕНТАМ, а не по местам: строки бывают разной высоты, и
+   * место k — это сумма высот тех, кто стоит до него.
    */
-  function measure(d: Drag) {
-    const targets: Array<HTMLElement> = []
-    for (const id of d.ids) {
-      const el = els.get(id)
-      if (el) targets.push(el)
+  let sizes = new Map<string, number>()
+  let origin: Slot = { left: 0, top: 0 }
+  /** сетка: места равные, поэтому хватает шага и числа колонок */
+  let grid: { stepX: number; stepY: number; cols: number } | null = null
+
+  const isGrid = () => opts.axis?.() === 'grid'
+  const indexOf = (id: string) => opts.order().indexOf(id)
+
+  /** где лежит место k при заданном порядке */
+  function slotAt(order: Array<string>, k: number): Slot {
+    if (grid) {
+      return {
+        left: origin.left + (k % grid.cols) * grid.stepX,
+        top: origin.top + Math.floor(k / grid.cols) * grid.stepY,
+      }
     }
+    let top = origin.top
+    for (let i = 0; i < k && i < order.length; i++) top += sizes.get(order[i]) ?? 0
+    return { left: origin.left, top }
+  }
+
+  function measure() {
+    const ids = opts.order()
+    const targets = ids.map((id) => els.get(id)).filter(Boolean) as Array<HTMLElement>
     if (!targets.length || typeof IntersectionObserver !== 'function') return
 
     const rects = new Map<string, DOMRectReadOnly>()
@@ -143,14 +107,16 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
       }
       batches++
       // наблюдатель не обязан прислать всё одним батчем — ждём каждую цель, но
-      // не бесконечно: молчащая (например, display:none) не должна вешать жест
+      // не бесконечно: молчащая (display:none) не должна вешать жест
       if (rects.size < targets.length && batches < 4) return
       io.disconnect()
-      if (drag !== d) return
 
-      const list = d.ids.map((id) => rects.get(id))
-      d.slots = list.map((r) => (r ? { left: r.left, top: r.top } : { left: 0, top: 0 }))
-      // зазор берём из первой пары соседей: в списке он один на всех
+      const list = ids.map((id) => rects.get(id))
+      const first = list.find(Boolean)
+      if (!first) return
+      origin = { left: first.left, top: first.top }
+
+      // зазор берём из первой пары соседей: он один на всех
       let gap = 0
       for (let i = 1; i < list.length; i++) {
         const a = list[i - 1]
@@ -159,123 +125,73 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
         gap = Math.max(0, b.top - (a.top + a.height))
         break
       }
-      d.steps = list.map((r) => (r ? r.height + gap : 0))
-      d.ready = true
-      if (d.k !== d.from) place(d)          // место успели сменить до замера
+
+      if (isGrid()) {
+        // шаг по X — первая пара из одной строки, по Y — из соседних
+        let stepX = first.width + gap
+        let stepY = first.height + gap
+        let cols = 1
+        for (let i = 1; i < list.length; i++) {
+          const r = list[i]
+          if (!r) continue
+          if (r.top > first.top + 1) { stepY = r.top - first.top; cols = i; break }
+          stepX = (r.left - first.left) / i
+        }
+        grid = { stepX, stepY, cols: Math.max(1, cols) }
+      } else {
+        grid = null
+        sizes = new Map(ids.map((id, i) => [id, (list[i]?.height ?? 0) + gap]))
+      }
     })
     for (const t of targets) io.observe(t)
   }
 
-  /** id i-го из оставшихся: перетаскиваемая в этом счёте не участвует */
-  const idAt = (d: Drag, i: number) => d.ids[i < d.from ? i : i + 1]
+  /**
+   * Переставить и доиграть движение. Смещения считаются ДО перестановки: после
+   * неё элементы уже стоят на новых местах, остаётся стартовать их со старых.
+   *
+   * Элементы берём из карты ПОСЛЕ смены: если потребитель отдаст новые объекты,
+   * фреймворк пересоздаст узлы, и анимация на старых ушла бы в никуда.
+   */
+  function commit(from: number, to: number) {
+    const was = opts.order()
+    const next = was.slice()
+    next.splice(to, 0, next.splice(from, 1)[0])
 
-  /** какое место занимает i-й из оставшихся, если перетаскиваемая встанет в k */
-  const slotAt = (i: number, k: number) => (i < k ? i : i + 1)
-
-  /** Куда отъезжает i-й из оставшихся: он либо стоит, либо сдвинут на одно место. */
-  function shiftOf(d: Drag, i: number): Shift {
-    const was = slotAt(i, d.from)
-    const now = slotAt(i, d.k)
-    if (was === now) return { dx: 0, dy: 0 }
-    if (d.grid) {
-      const a = d.slots[was]
-      const b = d.slots[now]
-      return a && b ? { dx: b.left - a.left, dy: b.top - a.top } : { dx: 0, dy: 0 }
+    const back: Array<{ id: string; dx: number; dy: number }> = []
+    for (let i = 0; i < was.length; i++) {
+      const id = was[i]
+      const a = slotAt(was, i)
+      const b = slotAt(next, next.indexOf(id))
+      if (a.left === b.left && a.top === b.top) continue
+      back.push({ id, dx: a.left - b.left, dy: a.top - b.top })
     }
-    // сосед пропускает перетаскиваемую мимо себя — значит едет ровно на её высоту
-    return { dx: 0, dy: (now - was) * (d.steps[d.from] ?? 0) }
-  }
 
-  /** Куда отъезжает сама перетаскиваемая: она перешагивает через остальных. */
-  function shiftOfDrag(d: Drag): Shift {
-    if (d.grid) {
-      const a = d.slots[d.from]
-      const b = d.slots[d.k]
-      return a && b ? { dx: b.left - a.left, dy: b.top - a.top } : { dx: 0, dy: 0 }
-    }
-    let dy = 0
-    if (d.k > d.from) for (let i = d.from; i < d.k; i++) dy += d.steps[i + 1] ?? 0
-    else for (let i = d.k; i < d.from; i++) dy -= d.steps[i] ?? 0
-    return { dx: 0, dy }
-  }
-
-  /** Развезти всех, кого касается текущее место. Прочих не трогаем вовсе. */
-  function place(d: Drag) {
-    if (!d.ready) return
-    const lo = Math.min(d.from, d.k)
-    const hi = Math.max(d.from, d.k)
-    const next = new Set<string>()
-
-    const self = shiftOfDrag(d)
-    flip?.to(d.el, self.dx, self.dy)
-
-    for (let i = lo; i < hi; i++) {
-      const id = idAt(d, i)
-      const el = els.get(id)
-      if (!el) continue
-      const { dx, dy } = shiftOf(d, i)
-      if (!dx && !dy) continue
-      flip?.to(el, dx, dy)
-      next.add(id)
-    }
-    // кто вышел из диапазона — домой
-    for (const id of d.moved) {
-      if (next.has(id)) continue
-      const el = els.get(id)
-      if (el) flip?.to(el, 0, 0)
-    }
-    d.moved = next
-  }
-
-  /** Курсор над строкой — значит её место и нужно занять. */
-  function hover(id: string | null) {
-    const d = drag
-    if (!d || !id) return
-    {
-      // над самим собой: место уже наше, пересчитывать нечего
-      if (id === d.id) return
-      const idx = d.ids.indexOf(id)
-      if (idx < 0) return
-      if (els.get(id)?.getAnimations().length) return   // цель сама едет — не цель
-      // номер соседа среди оставшихся — и правило SortableJS: цель ниже нас,
-      // значит встаём после неё; выше — перед ней
-      const rest = idx < d.from ? idx : idx - 1
-      const to = rest >= d.k ? rest + 1 : rest
-      if (to === d.k) return
-      d.k = to
-      place(d)
-      return
+    opts.onMove?.(from, to)
+    for (const m of back) {
+      const el = els.get(m.id)
+      if (el) flip?.nudge(el, m.dx, m.dy)
     }
   }
 
-  function endDrag(commit?: () => void) {
-    if (!drag) return
-    const el = drag.el
-    drag = null
-    scroller.stop()
-    opts.onActive?.(null)
-    if (!commit) {
-      flip?.clear()
-      flip = null
-      el.style.opacity = ''
-      return
-    }
-    commit()
-    // сдвиги снимаем СЛЕДУЮЩИМ кадром: к этому моменту потребитель уже
-    // переставил данные, элементы физически стоят там, куда их привёз FLIP, и
-    // снятие проходит незаметно. Наоборот — виден рывок через старые места.
-    requestAnimationFrame(() => {
-      flip?.clear()
-      flip = null
-      el.style.opacity = ''
-    })
-  }
+  /* ────────── жест ────────── */
 
-  /** кто под событием: слушатели висят на контейнере, не на каждой строке */
   const idOf = (ev: Event) => {
     const el = (ev.target as HTMLElement | null)?.closest?.('[data-sort-dnd-id]') as HTMLElement | null
     return el?.dataset.sortDndId ?? null
   }
+
+  /** цель последнего нажатия — по ней решаем, тянут ли за ручку */
+  let pressed: Element | null = null
+  const remember = (ev: PointerEvent) => { pressed = ev.target as Element | null }
+  if (typeof document !== 'undefined') {
+    document.addEventListener('pointerdown', remember, { capture: true, passive: true })
+  }
+
+  const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') escaped = true }
+
+  let lastX = -1
+  let lastY = -1
 
   const onDragStart = (ev: DragEvent) => {
     if (opts.disabled?.()) { ev.preventDefault(); return }
@@ -283,108 +199,99 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
     const id = el?.dataset.sortDndId
     if (!id) return
 
-    // Ручка: `draggable` стоит на строке, поэтому целью события будет она сама,
+    // Ручка: `draggable` стоит на элементе, поэтому целью события будет он сам,
     // а не ручка внутри — куда нажали, знает только запомненный `pointerdown`.
     const handle = el!.querySelector('[data-drag-handle]')
     if (handle && !(pressed && handle.contains(pressed))) { ev.preventDefault(); return }
 
-    const ids = opts.order()
-    const from = ids.indexOf(id)
+    const from = indexOf(id)
     if (from < 0) { ev.preventDefault(); return }
 
-    // без `setData` жест не начнётся в Firefox
-    ev.dataTransfer?.setData('text/plain', id)
+    ev.dataTransfer?.setData('text/plain', id)   // без него жест не начнётся в Firefox
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move'
 
-    drag = {
-      id, el: el!, ids, from, k: from,
-      steps: [], slots: [], moved: new Set(),
-      grid: opts.axis?.() === 'grid', ready: false,
-    }
+    dragId = id
+    startIndex = from
+    escaped = false
     lastX = ev.clientX
     lastY = ev.clientY
-    overList = true
-    escaped = false
+    flip = createFlip(shouldAnimate(opts.animate))
     opts.onActive?.(id)
     // Прятать оригинал нельзя: `visibility: hidden` лишает его событий `drag`,
     // а на них держится автопрокрутка. Глушим прозрачностью.
     el!.style.opacity = '0.35'
-    flip = createFlip(shouldAnimate(opts.animate))
     scroller.start(container ?? el!)
-    measure(drag)
+    measure()
   }
 
   const onDragOver = (ev: DragEvent) => {
     ev.preventDefault()                       // без этого не будет `drop`
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move'
-    if (!drag) return
-    overList = true
+    const id = dragId
+    if (!id) return
     scroller.move(ev.clientX, ev.clientY)
 
-    // Курсор обязан реально сдвинуться. Пока строки едут, браузер шлёт
+    // Курсор обязан реально сдвинуться. Пока элементы едут, браузер шлёт
     // `dragover` и при неподвижной мыши, а хиттест идёт по ВИДИМОЙ картинке —
-    // под курсор попадает то одна строка, то другая, и место дёргается само,
-    // без участия руки.
+    // под курсор попадает то одно, то другое, и порядок дёргается сам.
     if (ev.clientX === lastX && ev.clientY === lastY) return
     lastX = ev.clientX
     lastY = ev.clientY
-    hover(idOf(ev))
+
+    // Над самим собой пересчитывать нечего. Промах — это зазор сетки, дырка в
+    // хиттесте, а не приглашение уехать в конец списка.
+    const over = idOf(ev)
+    if (!over || over === id) return
+    if (els.get(over)?.getAnimations().length) return   // цель сама едет
+
+    const order = opts.order()
+    const cur = order.indexOf(id)
+    const t = order.indexOf(over)
+    if (cur < 0 || t < 0 || cur === t) return
+    commit(cur, t)
   }
 
   /**
-   * Ушли за пределы списка. Считаем уходом только когда браузер прямо называет,
-   * КУДА ушли, и это не наш потомок: переход со строки на строку — тоже
-   * `dragleave`, а `relatedTarget` там сплошь и рядом пустой. Снимать флаг на
-   * пустом значило бы отменять жест на ровном месте.
+   * Конец жеста. Порядок уже применён — прибираем и, если отменили, возвращаем.
+   * Пришёл `drop` или нет, не имеет значения: терять нечего.
    */
-  const onDragLeave = (ev: DragEvent) => {
-    const to = ev.relatedTarget as Node | null
-    if (!to) return
-    if (container?.contains(to)) return
-    overList = false
+  const finish = () => {
+    const id = dragId
+    if (!id) return
+    dragId = null
+    scroller.stop()
+    opts.onActive?.(null)
+
+    const el = els.get(id)
+    const cur = indexOf(id)
+    if (escaped && cur >= 0 && cur !== startIndex) commit(cur, startIndex)
+    else if (cur >= 0 && cur !== startIndex) opts.onEnd?.(startIndex, cur)
+
+    // сдвиги снимаем следующим кадром: к этому моменту раскладка уже новая, и
+    // снятие проходит незаметно, а не рывком через старые места
+    requestAnimationFrame(() => {
+      flip?.clear()
+      flip = null
+      if (el) el.style.opacity = ''
+    })
   }
 
-  const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') escaped = true }
-
-  /**
-   * Конец жеста.
-   *
-   * Коммит нельзя вешать на один `drop`: браузер доставляет его не всегда — при
-   * быстром движении Chrome глотает `dragover`, и без свежего `dragover` дроп он
-   * не считает состоявшимся. Пользователь видит, как строки всё время
-   * расступались, отпускает — и порядок молча откатывается. Особенно заметно при
-   * автопрокрутке: там курсор стоит, а событий почти нет.
-   *
-   * По `dropEffect` это тоже не определить: у несостоявшегося дропа он `none` —
-   * ровно как у отменённого жеста. Поэтому решаем сами: жест состоялся, если
-   * отпустили НАД списком и не нажимали Escape. `dragend` приходит всегда, он и
-   * подводит итог; `drop` просто успевает раньше.
-   */
-  const onFinish = (ev: DragEvent) => {
-    const d = drag
-    if (!d) return
-    if (ev.type === 'drop') ev.preventDefault()
-    const committed = overList && !escaped && d.k !== d.from
-    const { from, k } = d
-    endDrag(committed ? () => opts.onEnd?.(from, k) : undefined)
-  }
+  const onDrop = (ev: DragEvent) => { ev.preventDefault(); finish() }
 
   return {
     attachContainer(el: HTMLElement) {
-      // ВСЕ слушатели жеста — здесь, четыре штуки на любое число строк
+      // ВСЕ слушатели жеста — здесь, четыре штуки на любое число элементов
       el.addEventListener('dragstart', onDragStart)
       el.addEventListener('dragover', onDragOver)
-      el.addEventListener('dragleave', onDragLeave)
-      el.addEventListener('drop', onFinish)
-      el.addEventListener('dragend', onFinish)
+      el.addEventListener('drop', onDrop)
+      el.addEventListener('dragend', finish)
       document.addEventListener('keydown', onKey)
       container = el
       return () => {
         el.removeEventListener('dragstart', onDragStart)
         el.removeEventListener('dragover', onDragOver)
-        el.removeEventListener('dragleave', onDragLeave)
-        el.removeEventListener('drop', onFinish)
-        el.removeEventListener('dragend', onFinish)
+        el.removeEventListener('drop', onDrop)
+        el.removeEventListener('dragend', finish)
         document.removeEventListener('keydown', onKey)
         if (container === el) container = null
       }
@@ -404,9 +311,9 @@ export function createSortDndEngine(opts: SortDndOptions): SortDndEngine {
       }
     },
 
-    active: () => drag?.id ?? null,
+    active: () => dragId,
     destroy() {
-      endDrag()
+      finish()
       if (typeof document !== 'undefined') {
         document.removeEventListener('pointerdown', remember, true)
       }

@@ -246,26 +246,30 @@ function createAutoScroller() {
 function createSortDndEngine(opts) {
   const els = /* @__PURE__ */ new Map();
   let container = null;
-  let drag = null;
-  let pressed = null;
-  let lastX = -1;
-  let lastY = -1;
-  let overList = false;
-  let escaped = false;
-  const remember = (ev) => {
-    pressed = ev.target;
-  };
-  if (typeof document !== "undefined") {
-    document.addEventListener("pointerdown", remember, { capture: true, passive: true });
-  }
-  const scroller = createAutoScroller();
   let flip = null;
-  function measure(d) {
-    const targets = [];
-    for (const id of d.ids) {
-      const el = els.get(id);
-      if (el) targets.push(el);
+  const scroller = createAutoScroller();
+  let dragId = null;
+  let startIndex = -1;
+  let escaped = false;
+  let sizes = /* @__PURE__ */ new Map();
+  let origin = { left: 0, top: 0 };
+  let grid = null;
+  const isGrid = () => opts.axis?.() === "grid";
+  const indexOf = (id) => opts.order().indexOf(id);
+  function slotAt(order, k) {
+    if (grid) {
+      return {
+        left: origin.left + k % grid.cols * grid.stepX,
+        top: origin.top + Math.floor(k / grid.cols) * grid.stepY
+      };
     }
+    let top = origin.top;
+    for (let i = 0; i < k && i < order.length; i++) top += sizes.get(order[i]) ?? 0;
+    return { left: origin.left, top };
+  }
+  function measure() {
+    const ids = opts.order();
+    const targets = ids.map((id) => els.get(id)).filter(Boolean);
     if (!targets.length || typeof IntersectionObserver !== "function") return;
     const rects = /* @__PURE__ */ new Map();
     let batches = 0;
@@ -277,9 +281,10 @@ function createSortDndEngine(opts) {
       batches++;
       if (rects.size < targets.length && batches < 4) return;
       io.disconnect();
-      if (drag !== d) return;
-      const list = d.ids.map((id) => rects.get(id));
-      d.slots = list.map((r) => r ? { left: r.left, top: r.top } : { left: 0, top: 0 });
+      const list = ids.map((id) => rects.get(id));
+      const first = list.find(Boolean);
+      if (!first) return;
+      origin = { left: first.left, top: first.top };
       let gap = 0;
       for (let i = 1; i < list.length; i++) {
         const a = list[i - 1];
@@ -288,98 +293,62 @@ function createSortDndEngine(opts) {
         gap = Math.max(0, b.top - (a.top + a.height));
         break;
       }
-      d.steps = list.map((r) => r ? r.height + gap : 0);
-      d.ready = true;
-      if (d.k !== d.from) place(d);
+      if (isGrid()) {
+        let stepX = first.width + gap;
+        let stepY = first.height + gap;
+        let cols = 1;
+        for (let i = 1; i < list.length; i++) {
+          const r = list[i];
+          if (!r) continue;
+          if (r.top > first.top + 1) {
+            stepY = r.top - first.top;
+            cols = i;
+            break;
+          }
+          stepX = (r.left - first.left) / i;
+        }
+        grid = { stepX, stepY, cols: Math.max(1, cols) };
+      } else {
+        grid = null;
+        sizes = new Map(ids.map((id, i) => [id, (list[i]?.height ?? 0) + gap]));
+      }
     });
     for (const t of targets) io.observe(t);
   }
-  const idAt = (d, i) => d.ids[i < d.from ? i : i + 1];
-  const slotAt = (i, k) => i < k ? i : i + 1;
-  function shiftOf(d, i) {
-    const was = slotAt(i, d.from);
-    const now = slotAt(i, d.k);
-    if (was === now) return { dx: 0, dy: 0 };
-    if (d.grid) {
-      const a = d.slots[was];
-      const b = d.slots[now];
-      return a && b ? { dx: b.left - a.left, dy: b.top - a.top } : { dx: 0, dy: 0 };
+  function commit(from, to) {
+    const was = opts.order();
+    const next = was.slice();
+    next.splice(to, 0, next.splice(from, 1)[0]);
+    const back = [];
+    for (let i = 0; i < was.length; i++) {
+      const id = was[i];
+      const a = slotAt(was, i);
+      const b = slotAt(next, next.indexOf(id));
+      if (a.left === b.left && a.top === b.top) continue;
+      back.push({ id, dx: a.left - b.left, dy: a.top - b.top });
     }
-    return { dx: 0, dy: (now - was) * (d.steps[d.from] ?? 0) };
-  }
-  function shiftOfDrag(d) {
-    if (d.grid) {
-      const a = d.slots[d.from];
-      const b = d.slots[d.k];
-      return a && b ? { dx: b.left - a.left, dy: b.top - a.top } : { dx: 0, dy: 0 };
+    opts.onMove?.(from, to);
+    for (const m of back) {
+      const el = els.get(m.id);
+      if (el) flip?.nudge(el, m.dx, m.dy);
     }
-    let dy = 0;
-    if (d.k > d.from) for (let i = d.from; i < d.k; i++) dy += d.steps[i + 1] ?? 0;
-    else for (let i = d.k; i < d.from; i++) dy -= d.steps[i] ?? 0;
-    return { dx: 0, dy };
-  }
-  function place(d) {
-    if (!d.ready) return;
-    const lo = Math.min(d.from, d.k);
-    const hi = Math.max(d.from, d.k);
-    const next = /* @__PURE__ */ new Set();
-    const self = shiftOfDrag(d);
-    flip?.to(d.el, self.dx, self.dy);
-    for (let i = lo; i < hi; i++) {
-      const id = idAt(d, i);
-      const el = els.get(id);
-      if (!el) continue;
-      const { dx, dy } = shiftOf(d, i);
-      if (!dx && !dy) continue;
-      flip?.to(el, dx, dy);
-      next.add(id);
-    }
-    for (const id of d.moved) {
-      if (next.has(id)) continue;
-      const el = els.get(id);
-      if (el) flip?.to(el, 0, 0);
-    }
-    d.moved = next;
-  }
-  function hover(id) {
-    const d = drag;
-    if (!d || !id) return;
-    {
-      if (id === d.id) return;
-      const idx = d.ids.indexOf(id);
-      if (idx < 0) return;
-      if (els.get(id)?.getAnimations().length) return;
-      const rest = idx < d.from ? idx : idx - 1;
-      const to = rest >= d.k ? rest + 1 : rest;
-      if (to === d.k) return;
-      d.k = to;
-      place(d);
-      return;
-    }
-  }
-  function endDrag(commit) {
-    if (!drag) return;
-    const el = drag.el;
-    drag = null;
-    scroller.stop();
-    opts.onActive?.(null);
-    if (!commit) {
-      flip?.clear();
-      flip = null;
-      el.style.opacity = "";
-      return;
-    }
-    commit();
-    requestAnimationFrame(() => {
-      flip?.clear();
-      flip = null;
-      el.style.opacity = "";
-    });
   }
   const idOf = (ev) => {
     const el = ev.target?.closest?.("[data-sort-dnd-id]");
     return el?.dataset.sortDndId ?? null;
   };
+  let pressed = null;
+  const remember = (ev) => {
+    pressed = ev.target;
+  };
+  if (typeof document !== "undefined") {
+    document.addEventListener("pointerdown", remember, { capture: true, passive: true });
+  }
+  const onKey = (ev) => {
+    if (ev.key === "Escape") escaped = true;
+  };
+  let lastX = -1;
+  let lastY = -1;
   const onDragStart = (ev) => {
     if (opts.disabled?.()) {
       ev.preventDefault();
@@ -393,79 +362,75 @@ function createSortDndEngine(opts) {
       ev.preventDefault();
       return;
     }
-    const ids = opts.order();
-    const from = ids.indexOf(id);
+    const from = indexOf(id);
     if (from < 0) {
       ev.preventDefault();
       return;
     }
     ev.dataTransfer?.setData("text/plain", id);
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
-    drag = {
-      id,
-      el,
-      ids,
-      from,
-      k: from,
-      steps: [],
-      slots: [],
-      moved: /* @__PURE__ */ new Set(),
-      grid: opts.axis?.() === "grid",
-      ready: false
-    };
+    dragId = id;
+    startIndex = from;
+    escaped = false;
     lastX = ev.clientX;
     lastY = ev.clientY;
-    overList = true;
-    escaped = false;
+    flip = createFlip(shouldAnimate(opts.animate));
     opts.onActive?.(id);
     el.style.opacity = "0.35";
-    flip = createFlip(shouldAnimate(opts.animate));
     scroller.start(container ?? el);
-    measure(drag);
+    measure();
   };
   const onDragOver = (ev) => {
     ev.preventDefault();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
-    if (!drag) return;
-    overList = true;
+    const id = dragId;
+    if (!id) return;
     scroller.move(ev.clientX, ev.clientY);
     if (ev.clientX === lastX && ev.clientY === lastY) return;
     lastX = ev.clientX;
     lastY = ev.clientY;
-    hover(idOf(ev));
+    const over = idOf(ev);
+    if (!over || over === id) return;
+    if (els.get(over)?.getAnimations().length) return;
+    const order = opts.order();
+    const cur = order.indexOf(id);
+    const t = order.indexOf(over);
+    if (cur < 0 || t < 0 || cur === t) return;
+    commit(cur, t);
   };
-  const onDragLeave = (ev) => {
-    const to = ev.relatedTarget;
-    if (!to) return;
-    if (container?.contains(to)) return;
-    overList = false;
+  const finish = () => {
+    const id = dragId;
+    if (!id) return;
+    dragId = null;
+    scroller.stop();
+    opts.onActive?.(null);
+    const el = els.get(id);
+    const cur = indexOf(id);
+    if (escaped && cur >= 0 && cur !== startIndex) commit(cur, startIndex);
+    else if (cur >= 0 && cur !== startIndex) opts.onEnd?.(startIndex, cur);
+    requestAnimationFrame(() => {
+      flip?.clear();
+      flip = null;
+      if (el) el.style.opacity = "";
+    });
   };
-  const onKey = (ev) => {
-    if (ev.key === "Escape") escaped = true;
-  };
-  const onFinish = (ev) => {
-    const d = drag;
-    if (!d) return;
-    if (ev.type === "drop") ev.preventDefault();
-    const committed = overList && !escaped && d.k !== d.from;
-    const { from, k } = d;
-    endDrag(committed ? () => opts.onEnd?.(from, k) : void 0);
+  const onDrop = (ev) => {
+    ev.preventDefault();
+    finish();
   };
   return {
     attachContainer(el) {
       el.addEventListener("dragstart", onDragStart);
       el.addEventListener("dragover", onDragOver);
-      el.addEventListener("dragleave", onDragLeave);
-      el.addEventListener("drop", onFinish);
-      el.addEventListener("dragend", onFinish);
+      el.addEventListener("drop", onDrop);
+      el.addEventListener("dragend", finish);
       document.addEventListener("keydown", onKey);
       container = el;
       return () => {
         el.removeEventListener("dragstart", onDragStart);
         el.removeEventListener("dragover", onDragOver);
-        el.removeEventListener("dragleave", onDragLeave);
-        el.removeEventListener("drop", onFinish);
-        el.removeEventListener("dragend", onFinish);
+        el.removeEventListener("drop", onDrop);
+        el.removeEventListener("dragend", finish);
         document.removeEventListener("keydown", onKey);
         if (container === el) container = null;
       };
@@ -480,9 +445,9 @@ function createSortDndEngine(opts) {
         if (els.get(id) === el) els.delete(id);
       };
     },
-    active: () => drag?.id ?? null,
+    active: () => dragId,
     destroy() {
-      endDrag();
+      finish();
       if (typeof document !== "undefined") {
         document.removeEventListener("pointerdown", remember, true);
       }
@@ -517,11 +482,12 @@ function DumbSortableDnd(props) {
     axis: () => props.axis ?? "y",
     disabled: () => props.disabled === true,
     animate: props.animate,
-    onEnd: (from, to) => {
+    onMove: (from, to) => {
       const next = props.items.slice();
       next.splice(to, 0, next.splice(from, 1)[0]);
       props.setItems(next);
-    }
+    },
+    onEnd: (from, to) => props.onEnd?.(from, to)
   });
   return (() => {
     var _el$ = _tmpl$();
