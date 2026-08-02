@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/shared",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "FLIP, автопрокрутка, вьюпорт и правила жестов — база остальных пакетов",
   "license": "MIT",
   "type": "module",

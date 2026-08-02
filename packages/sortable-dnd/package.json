@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/sortable-dnd",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Сортировка на нативном HTML5 drag-and-drop",
   "license": "MIT",
   "type": "module",
