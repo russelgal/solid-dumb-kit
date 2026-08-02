@@ -1,5 +1,4 @@
 import { JSX } from 'solid-js';
-import { SpanValue } from '@solid-dumb-kit/grid-dnd';
 
 /** чем заливаем: своё дело потребителя, галерея транспорт не выбирает */
 type Uploader = (file: File, ctx: {
@@ -55,15 +54,9 @@ type GalleryItem = {
     name?: string;
     size?: number;
     status?: GalleryStatus;
-    /** 0…1, пока идёт заливка */
-    progress?: number;
     error?: string;
     /** ключ в хранилище — приходит из транспорта */
     key?: string;
-    /** ширина плитки: число колонок или доля сетки (`'half'`, `'1/3'`) */
-    w?: SpanValue;
-    /** высота плитки в строках */
-    h?: number;
 };
 type DumbGalleryProps = {
     items: Array<GalleryItem>;
@@ -83,10 +76,8 @@ type DumbGalleryProps = {
     multiple?: boolean;
     /** больше стольких не принимать; не задан — без предела */
     max?: number;
-    /** колонок в сетке; по умолчанию 6 */
-    cols?: number;
-    /** высота строки, px; по умолчанию 120 */
-    rowHeight?: number;
+    /** ширина плитки, css-трек; по умолчанию `minmax(120px, 1fr)` */
+    tile?: string;
     /** зазор сетки, px; по умолчанию 10 */
     gap?: number;
     /** правка: без неё нет ни выбора, ни перестановки, ни удаления */
@@ -95,8 +86,11 @@ type DumbGalleryProps = {
     animate?: boolean;
     /** клик по плитке — открыть просмотр, например */
     onOpen?: (item: GalleryItem, index: number) => void;
-    /** своя плитка целиком; не задана — рисуем свою */
-    children?: (item: GalleryItem, index: () => number) => JSX.Element;
+    /**
+     * Своя плитка целиком; не задана — рисуем свою. Третьим аргументом идёт
+     * прогресс (0…1): в `items` его нет намеренно, см. ниже.
+     */
+    children?: (item: GalleryItem, index: () => number, progress: () => number) => JSX.Element;
     class?: string;
     style?: JSX.CSSProperties;
 };

@@ -42,7 +42,7 @@
     "access": "public"
   },
   "devDependencies": {
-    "@solid-dumb-kit/grid-dnd": "workspace:*",
-    "@solid-dumb-kit/shared": "workspace:*"
+    "@solid-dumb-kit/shared": "workspace:*",
+    "@solid-dumb-kit/sortable-dnd": "workspace:*"
   }
 }

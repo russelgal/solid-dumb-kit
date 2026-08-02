@@ -146,8 +146,7 @@ export default function DumbGalleryExample() {
         upload={uploader()}
         concurrency={conc()}
         editable={edit()}
-        cols={6}
-        rowHeight={130}
+        tile="minmax(140px, 1fr)"
         class="max-w-[92ch] rounded-box border border-dashed border-base-300 p-3
                [&_.dumb-gallery-tile]:ring-1 [&_.dumb-gallery-tile]:ring-base-300
                [&_.dumb-gallery-tile]:cursor-grab [&_.dumb-gallery-tile]:bg-base-200

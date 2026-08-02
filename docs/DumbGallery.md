@@ -6,13 +6,18 @@ Images: pick, look, reorder, upload.
 
 Assembled from things that already exist: file picking and drop-into-window come
 from [`@solid-primitives/upload`](https://primitives.solidjs.community/package/upload),
-the grid and reordering from [`DumbGridDnd`](DumbGridDnd.md), uploading from a
-queue with a transport you supply.
+reordering from [`DumbSortableDnd`](DumbSortableDnd.md), uploading from a queue
+with a transport you supply.
 
-**Tiles have a size.** A shot can span several columns and rows (`w`, `h`) while
-the order stays an order. The price is that the gesture is native, so **you
-can't reorder with a finger**: HTML5 drag-and-drop doesn't exist on touch.
-Picking, viewing and removing all work with a finger.
+**Order comes from CSS `order`; the markup doesn't move.** The browser relocates
+zero nodes during a gesture — verified with a mutation counter. Hence the
+requirement on the container: it has to be a grid or a flex box, and the
+gallery's own grid is exactly that.
+
+The price of a native gesture is that **you can't reorder with a finger**: HTML5
+drag-and-drop doesn't exist on touch. Picking, viewing and removing all work with
+a finger; if you need the order too, take `DumbSortable` and draw the tiles
+yourself.
 
 ## How it works
 
@@ -136,8 +141,7 @@ Progress won't move here (see above); everything else works as usual.
 | `accept` | `string` | what to allow, defaults to `image/*` |
 | `multiple` | `boolean` | allow picking several at once |
 | `max` | `number` | take no more than this many |
-| `cols` | `number` | grid columns, defaults to `6` |
-| `rowHeight` | `number` | row height in px, defaults to `120` |
+| `tile` | `string` | tile width, css track; defaults to `minmax(120px, 1fr)` |
 | `gap` | `number` | grid gap in px, defaults to `10` |
 | `editable` | `boolean` | edit mode; `false` means no picking, no reorder, no removal |
 | `animate` | `boolean` | animate reordering |
@@ -153,10 +157,8 @@ Progress won't move here (see above); everything else works as usual.
 | `preview` | the picked file's `objectURL`; shown while it exists |
 | `name`, `size` | from the file |
 | `status` | `local` · `queued` · `uploading` · `done` · `error` |
-| `progress` | `0…1` while uploading |
 | `error` | the message if it failed |
 | `key` | storage key — comes from the transport |
-| `w`, `h` | tile size in grid cells; defaults to `1×1` |
 
 ## Dropped a file or dragged a tile
 
@@ -167,13 +169,22 @@ why the "drop here" outline doesn't light up when you're merely reordering.
 Worth knowing if you draw your own tile: the primitive's dropzone also listens
 to `dragstart`, and without that check it would react to reordering.
 
-## Progress doesn't rebuild the tiles
+## Progress lives outside `items`
 
-An upload fires dozens of progress events a second, each of them changing
-`items`. The grid blocks are reused as long as a tile's **size** hasn't changed:
-`DumbGridDnd` iterates by reference, so a fresh object per tick would rebuild
-every node at once. Verified: across a full four-file upload the tile nodes stay
-the same ones.
+An upload fires dozens of progress events a second. Put them on the item and
+every tick would mint a new object; `<For>` compares by reference and would
+rebuild the whole tile — node, image, handlers. So progress lives in internal
+state and reaches your own tile as a third argument:
+
+```tsx
+<DumbGallery …>
+  {(item, index, progress) => <MyTile item={item} pct={progress()} />}
+</DumbGallery>
+```
+
+Verified: across a full upload the tile nodes stay the same ones, and exactly one
+rebuild happens per file — on the `uploading → done` transition, where the item's
+address genuinely changes.
 
 ## The queue on its own
 
