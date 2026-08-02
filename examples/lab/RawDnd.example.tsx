@@ -86,25 +86,25 @@ export default function RawDndExample() {
   }
 
   return (
-    <div class="raw-example">
-      <h3>Нативный DnD с нуля — три обработчика, ноль расчётов</h3>
-      <p class="note">
+    <div class="p-5 text-base-content">
+      <h3 class="mb-1 text-lg font-semibold">Нативный DnD с нуля — три обработчика, ноль расчётов</h3>
+      <p class="mb-2 max-w-[90ch] text-[13px] text-base-content">
         Ни библиотек, ни снимков координат. <code>dragstart</code> запомнил, кого тащат,{' '}
         <code>dragover</code> пришёл на соседа — значит его место и занимаем, <code>dragend</code>{' '}
         прибрал. Хиттест делает браузер: событие приходит ровно на тот элемент, над которым
         курсор. Дребезга нет даром — после перестановки под курсором оказывается сама
         перетаскиваемая карточка, а над собой мы ничего не пересчитываем.
       </p>
-      <p class="note warn">
+      <p class="mb-2 max-w-[90ch] text-[13px] text-warning">
         Анимаций здесь <b>нет</b> — карточки телепортируются. Ровно за этим в ките и появился
         FLIP: сравни с вкладками <b>CSS order + FLIP</b> и <b>DumbSortableDnd</b>.
       </p>
-      <div class="bar">{log()}</div>
+      <div class="mb-3 min-h-[18px] text-[13px] text-base-content">{log()}</div>
 
       {/* Четыре слушателя на всю сетку, а не по четыре на карточку: события
           drag-and-drop всплывают, и `ev.target.closest` скажет, кто под курсором. */}
       <div
-        class="grid"
+        class="grid max-w-[620px] grid-cols-6 gap-2.5"
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
@@ -113,11 +113,12 @@ export default function RawDndExample() {
         <For each={cards()}>
           {(card) => (
             <div
-              class="card"
-              classList={{ held: held() === card.id }}
+              class="grid h-23 cursor-grab place-items-center rounded-xl border-t-5 bg-base-100 text-lg font-semibold text-base-content ring-1 ring-base-300 active:cursor-grabbing"
+              // только прозрачность: спрятать оригинал совсем — оборвать жест
+              classList={{ 'opacity-35': held() === card.id }}
               data-id={card.id}
               draggable="true"
-              style={{ '--hue': HUE(card.n) }}
+              style={{ 'border-top-color': HUE(card.n) }}
             >
               {card.n}
             </div>
@@ -125,33 +126,11 @@ export default function RawDndExample() {
         </For>
       </div>
 
-      <pre class="src">{`// четыре слушателя на весь контейнер — события всплывают
+      <pre class="mt-3.5 max-w-[620px] rounded-box bg-base-200 px-3 py-2.5 text-xs/normal text-base-content ring-1 ring-base-300">{`// четыре слушателя на весь контейнер — события всплывают
 onDragStart: запомнить id (ev.target.closest)
 onDragOver:  ev.preventDefault(); переставить на место цели
 onDragEnd:   забыть id`}</pre>
 
-      <style>{`
-        .raw-example { padding: 16px 20px; color: var(--color-base-content) }
-        .raw-example h3 { margin: 0 0 4px }
-        .raw-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
-        .raw-example .note.warn { color: color-mix(in oklch, var(--color-warning) 45%, var(--color-base-content)) }
-        .raw-example .bar { margin: 0 0 12px; font-size: 13px; color: var(--color-base-content); min-height: 18px }
-
-        .raw-example .grid { display: grid; gap: 10px; max-width: 620px;
-                             grid-template-columns: repeat(6, 1fr) }
-        .raw-example .card { display: grid; place-items: center; height: 92px; border-radius: 12px;
-                             cursor: grab; font-weight: 600; font-size: 18px; color: var(--color-base-content);
-                             background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300);
-                             border-top: 5px solid var(--hue) }
-        .raw-example .card:active { cursor: grabbing }
-        /* только прозрачность: спрятать оригинал совсем — оборвать жест */
-        .raw-example .card.held { opacity: .35 }
-
-        .raw-example .src { margin: 14px 0 0; padding: 10px 12px; max-width: 620px;
-                            font-size: 12px; line-height: 1.5; color: var(--color-base-content);
-                            background: var(--color-base-200); border-radius: 10px;
-                            box-shadow: inset 0 0 0 1px var(--color-base-300) }
-      `}</style>
     </div>
   )
 }

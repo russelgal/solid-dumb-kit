@@ -53,18 +53,23 @@ export default function DumbGridDndExample() {
       w: w.w,
       h: w.h,
       content: () => (
-        <div class="widget" style={{ '--hue': String(w.hue) }}>
-          <span class="wtitle">{w.title}</span>
-          <span class="wval">{((w.hue * 137) % 900) + 100}</span>
+        <div class="flex h-full box-border flex-col justify-center gap-0.5 rounded-box bg-base-100 px-2.5 py-2 ring-1 ring-base-300 border-l-[3px]" style={{ 'border-left-color': `oklch(0.7 0.13 ${w.hue})` }}>
+          <span class="text-xs text-base-content">{w.title}</span>
+          <span class="text-[17px] font-semibold">{((w.hue * 137) % 900) + 100}</span>
         </div>
       ),
     }))
 
   const Board = (p: { side: Side; title: string }) => (
-    <section class="board" classList={{ over: group.over() === p.side && group.active()?.grid !== p.side }}>
-      <header>
+    <section
+      class="rounded-xl border border-base-300 bg-base-200 p-2 transition-colors"
+      classList={{
+        'border-primary bg-primary/15': group.over() === p.side && group.active()?.grid !== p.side,
+      }}
+    >
+      <header class="flex items-center gap-2 px-1 pt-0.5 pb-2 text-[13px]">
         <strong>{p.title}</strong>
-        <span class="count">{sides[p.side].get().length}</span>
+        <span class="text-xs text-base-content">{sides[p.side].get().length}</span>
       </header>
       <DumbGridDnd
         group={group}
@@ -82,44 +87,22 @@ export default function DumbGridDndExample() {
   )
 
   return (
-    <div class="dnd-example">
-      <h3>DumbGridDnd — нативный drag-and-drop</h3>
-      <p class="note">
+    <div class="p-5 text-base-content">
+      <h3 class="mb-1 text-lg font-semibold">DumbGridDnd — нативный drag-and-drop</h3>
+      <p class="mb-2.5 text-[13px] text-base-content">
         Перенос ведёт <b>браузер</b>: над какой доской и над каким блоком курсор — говорят его же
         события, поэтому считать здесь почти нечего. Порядок держит пример, компонент лишь
         сообщает <code>onReorder</code> и <code>onTransfer</code>.{' '}
         <b>Тач не поддерживается</b> — HTML5 DnD там не существует.
       </p>
 
-      <div class="bar"><span class="log">{log()}</span></div>
+      <div class="mb-3 min-h-[18px] text-[13px]"><span class="text-base-content">{log()}</span></div>
 
-      <div class="boards">
+      <div class="grid grid-cols-2 items-start gap-3">
         <Board side="left" title="Продажи" />
         <Board side="right" title="Операционка" />
       </div>
 
-      <style>{`
-        .dnd-example { padding: 16px 20px; color: var(--color-base-content) }
-        .dnd-example h3 { margin: 0 0 4px }
-        .dnd-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
-        .dnd-example .bar { margin: 0 0 12px; font-size: 13px; min-height: 18px }
-        .dnd-example .log { color: var(--color-base-content) }
-
-        .dnd-example .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start }
-        .dnd-example .board { border: 1px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-200);
-                              padding: 8px; transition: background .15s, border-color .15s }
-        .dnd-example .board.over { border-color: var(--color-primary); background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)) }
-        .dnd-example .board header { display: flex; gap: 8px; align-items: center;
-                                     padding: 2px 4px 8px; font-size: 13px }
-        .dnd-example .count { color: var(--color-base-content); font-size: 12px }
-
-        .dnd-example .widget { height: 100%; box-sizing: border-box; display: flex; flex-direction: column;
-                               justify-content: center; gap: 2px; padding: 8px 10px; border-radius: 10px;
-                               background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300);
-                               border-left: 3px solid oklch(0.7 0.13 var(--hue)) }
-        .dnd-example .wtitle { font-size: 12px; color: var(--color-base-content) }
-        .dnd-example .wval { font-size: 17px; font-weight: 600 }
-      `}</style>
     </div>
   )
 }
