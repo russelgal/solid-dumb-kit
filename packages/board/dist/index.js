@@ -985,6 +985,8 @@ function DumbBoard(props) {
   };
   const closestOf = (ev, sel) => ev.target?.closest?.(sel);
   let pressed = null;
+  let lastOver = null;
+  let undoGuard = null;
   let gesture = null;
   let lastX = -1;
   let lastY = -1;
@@ -1024,6 +1026,8 @@ function DumbBoard(props) {
     lastX = ev.clientX;
     lastY = ev.clientY;
     gesture = id;
+    lastOver = null;
+    undoGuard = null;
     scroller.start(block);
     setTimeout(() => {
       if (gesture === id) setHeld(id);
@@ -1038,6 +1042,10 @@ function DumbBoard(props) {
     const dy = ev.clientY - lastY;
     lastX = ev.clientX;
     lastY = ev.clientY;
+    if (undoGuard) {
+      const back = (ev.clientX - undoGuard.x) * undoGuard.dx + (ev.clientY - undoGuard.y) * undoGuard.dy;
+      if (back < -8) undoGuard = null;
+    }
     const movingSection = heldSection();
     if (movingSection) {
       const overId = closestOf(ev, "[data-board-section]")?.dataset.boardSection;
@@ -1058,21 +1066,38 @@ function DumbBoard(props) {
     if (zone.accepts && from !== zone.id && !zone.accepts(from)) return;
     const over = closestOf(ev, "[data-board-block]")?.dataset.boardBlock;
     if (over) {
-      if (over === id) return;
-      if (blockEls.get(over)?.getAnimations().length) return;
+      if (over === id) {
+        lastOver = null;
+        return;
+      }
+      if (over === lastOver) return;
+      lastOver = null;
       const target = zone.items.find((x) => props.id(x) === over);
       if (!target) return;
       const k = placeOf(target);
       if (from === zone.id && placeOf(item) === k) return;
+      if (undoGuard && undoGuard.zone === zone.id && undoGuard.k === k) return;
       if (!crossedMid(zone.id, over, ev, dx, dy)) return;
+      lastOver = over;
+      undoGuard = {
+        zone: zone.id,
+        k: placeOf(item),
+        x: ev.clientX,
+        y: ev.clientY,
+        dx: Math.sign(dx),
+        dy: Math.sign(dy)
+      };
       moveBlock(item, zone.id, k);
       return;
     }
+    lastOver = null;
     if (from === zone.id) return;
-    moveBlock(item, zone.id, itemsOf(zone.id).length);
+    moveBlock(item, zone.id, zone.items.length);
   };
   const finish = () => {
     gesture = null;
+    lastOver = null;
+    undoGuard = null;
     if (!held() && !heldSection()) return;
     setHeld(null);
     setHeldSection(null);

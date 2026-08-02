@@ -58,7 +58,13 @@ Verified claims, with how they were verified. Only things that cost time and are
 
 **An animation cut short has to be picked up where it actually is.** Computed by inverting the Bézier against its `currentTime`; no layout read.
 
-**Neighbours of unequal size oscillate if the swap fires on contact.** Drag a narrow block onto a wide one, the order changes — and the wide one lands exactly under the cursor. The very next event takes it as the target and swaps back, then again: one slow gesture flipped the order six times. The "target is animating" guard doesn't help — under slow movement the animation has time to finish. The fix is a threshold at the target's MIDPOINT in the direction of travel (the SortableJS rule): right after a swap the cursor sits before that midpoint on the side it came from, so swapping back means moving half a block backwards. The axis is whichever the cursor moved along more.
+**Neighbours of unequal size oscillate, and one threshold isn't enough.** Drag a narrow block onto a wide one, the order changes — and the wide one lands exactly under the cursor; the next event takes it as the target and swaps back. The "target is animating" guard doesn't help: under slow movement the animation has time to finish. Three rules were needed together, each covering its own case:
+
+1. **A threshold at the target's midpoint** in the direction of travel (the SortableJS rule) — otherwise the swap fires on touching the edge.
+2. **One swap per entry onto a neighbour**: until the cursor leaves it, no second swap. This catches oscillation on a SINGLE target.
+3. **A ban on putting the block back where it just came from** — oscillation also happens across TWO targets alternating: over one neighbour the slot comes out third, over the other first, and they alternate every frame. The ban holds only while the hand keeps travelling the same way; a reversal lifts it, or you couldn't change your mind mid-gesture.
+
+Computing the slot from the layout WITHOUT the dragged block is tempting (it doesn't depend on where that block goes, so the slot becomes a pure function of the pointer), but it doesn't work: the block stays in the flow, merely dimmed, so that layout disagrees with the picture and the block jumps to someone else's place the moment the gesture starts.
 
 **A target that is itself moving is a bad target.** It ended up under the cursor on its way somewhere else. Check `el.getAnimations().length` and skip it.
 

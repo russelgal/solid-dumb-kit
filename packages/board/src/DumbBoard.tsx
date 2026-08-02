@@ -506,7 +506,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     return out
   }
 
-  /** прямоугольник блока на экране — та же арифметика, что у `blockPlaces` */
+  /** прямоугольник блока на экране — та же арифметика ячеек, что у `blockPlaces` */
   const rectOf = (sectionId: string, blockId: string) => {
     const s = sectionById(sectionId)
     const origin = zoneAt[sectionId]
@@ -524,17 +524,8 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   }
 
   /**
-   * Перешёл ли курсор СЕРЕДИНУ цели в ту сторону, куда едет.
-   *
-   * Без этого условия блоки разной ширины качаются: тащишь узкий на широкий,
-   * место меняется — и широкий встаёт ровно под курсор. Следующее же событие
-   * видит его целью и меняет обратно, потом снова, и так весь жест. Порог по
-   * середине даёт запас: сразу после обмена курсор оказывается ПЕРЕД серединой
-   * цели с той стороны, откуда пришёл, и обратный обмен требует уехать назад
-   * на пол-блока. Правило то же, что в SortableJS.
-   *
-   * Ось выбираем по тому, куда сдвинулся курсор сильнее: перестановка бывает и
-   * вертикальной, когда блок переезжает строкой ниже.
+   * Перешёл ли курсор СЕРЕДИНУ цели в ту сторону, куда едет. Ось берём ту, по
+   * которой он сдвинулся сильнее: перестановка бывает и вертикальной.
    */
   const crossedMid = (sectionId: string, overId: string, ev: DragEvent, dx: number, dy: number) => {
     const r = rectOf(sectionId, overId)
@@ -774,6 +765,36 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
 
   /** цель нажатия — по ней отличаем «тащат секцию» от «тащат блок» */
   let pressed: Element | null = null
+  /**
+   * Сосед, с которым обмен уже сделан. Пока курсор с него не ушёл, второго
+   * обмена не будет.
+   *
+   * Без этого блоки качаются: после перестановки сосед переезжает ровно под
+   * курсор, порог по его середине оказывается пройден уже с другой стороны — и
+   * следующее событие меняет их обратно. Считать место по раскладке БЕЗ
+   * перетаскиваемого блока тоже не годится: он остаётся в потоке (только
+   * приглушённый), такая раскладка расходится с картинкой, и блок прыгает на
+   * чужое место прямо на старте жеста.
+   *
+   * Приём из SortableJS: один обмен на один заход на соседа.
+   */
+  let lastOver: string | null = null
+
+  /**
+   * Место, откуда блок только что уехал. Вернуть его туда следующим же шагом
+   * нельзя.
+   *
+   * Памяти о последнем соседе мало: качель бывает и на ДВУХ целях по очереди.
+   * Тащишь широкий блок вниз-влево, над одним соседом место выходит третьим,
+   * над другим — первым, и они меняются местами каждый кадр.
+   *
+   * Держится запрет ровно пока курсор едет В ТУ ЖЕ СТОРОНУ, что и в момент
+   * обмена. Стоит развернуться — снимается: передумать посреди жеста и вернуть
+   * блок откуда взял должно быть можно, а качель как раз тем и отличается, что
+   * рука всё это время едет в одну сторону.
+   */
+  let undoGuard: { zone: string; k: number; x: number; y: number; dx: number; dy: number } | null = null
+
   /** синхронный признак жеста: отложенная подсветка иначе включится после уборки */
   let gesture: string | null = null
   let lastX = -1
@@ -810,6 +831,8 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     lastX = ev.clientX
     lastY = ev.clientY
     gesture = id
+    lastOver = null
+    undoGuard = null
     scroller.start(block!)
     setTimeout(() => { if (gesture === id) setHeld(id) })
   }
@@ -827,6 +850,12 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     const dy = ev.clientY - lastY
     lastX = ev.clientX
     lastY = ev.clientY
+
+    // разворот руки снимает запрет на возврат
+    if (undoGuard) {
+      const back = (ev.clientX - undoGuard.x) * undoGuard.dx + (ev.clientY - undoGuard.y) * undoGuard.dy
+      if (back < -8) undoGuard = null
+    }
 
     const movingSection = heldSection()
     if (movingSection) {
@@ -850,16 +879,28 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
 
     const over = closestOf(ev, '[data-board-block]')?.dataset.boardBlock
     if (over) {
-      if (over === id) return
-      if (blockEls.get(over)?.getAnimations().length) return
+      if (over === id) { lastOver = null; return }   // над собой — память ни к чему
+      if (over === lastOver) return                  // с этим уже менялись, ждём ухода
+      lastOver = null
       const target = zone.items.find((x) => props.id(x) === over)
       if (!target) return
       const k = placeOf(target)
       if (from === zone.id && placeOf(item) === k) return
+      if (undoGuard && undoGuard.zone === zone.id && undoGuard.k === k) return
       if (!crossedMid(zone.id, over, ev, dx, dy)) return
+      lastOver = over
+      undoGuard = {
+        zone: zone.id,
+        k: placeOf(item),
+        x: ev.clientX,
+        y: ev.clientY,
+        dx: Math.sign(dx),
+        dy: Math.sign(dy),
+      }
       moveBlock(item, zone.id, k)
       return
     }
+    lastOver = null
     // Мимо блоков. Внутри СВОЕЙ секции это почти всегда зазор сетки — дырка в
     // хиттесте, а не пустое место: тащишь блок вперёд, он на миг попадает в
     // промежуток между соседями, и «в конец» выбрасывает его в хвост списка.
@@ -869,11 +910,13 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     // А вот когда блок приехал из ЧУЖОЙ секции, пустое место — единственное, на
     // что можно навести в пустой секции, и там это осмысленно.
     if (from === zone.id) return
-    moveBlock(item, zone.id, itemsOf(zone.id).length)
+    moveBlock(item, zone.id, zone.items.length)
   }
 
   const finish = () => {
     gesture = null
+    lastOver = null
+    undoGuard = null
     if (!held() && !heldSection()) return
     setHeld(null)
     setHeldSection(null)
