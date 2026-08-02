@@ -62,6 +62,7 @@ export default function DumbGridDndExample() {
 
   const Board = (p: { side: Side; title: string }) => (
     <section
+      data-board={p.side}
       class="rounded-xl border border-base-300 bg-base-200 p-2 transition-colors"
       classList={{
         'border-primary bg-primary/15': group.over() === p.side && group.active()?.grid !== p.side,

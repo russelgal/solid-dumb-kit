@@ -533,7 +533,7 @@ describe('DumbGridDnd.example — нативная сетка', () => {
 
   it('две доски, блоки нативно перетаскиваемые', () => {
     const host = mount(DumbGridDndExample)
-    expect(host.querySelectorAll('.board').length).toBe(2)
+    expect(host.querySelectorAll('[data-board]').length).toBe(2)
     expect(blocks(host).length).toBe(6)
     expect(host.querySelectorAll('[data-dnd-block][draggable="true"]').length).toBe(6)
   })
@@ -558,7 +558,7 @@ describe('DumbGridDnd.example — нативная сетка', () => {
 
   it('две доски, блоки зарегистрированы в движке', () => {
     const host = mount(DumbGridDndExample)
-    expect(host.querySelectorAll('.board').length).toBe(2)
+    expect(host.querySelectorAll('[data-board]').length).toBe(2)
     expect(cells(host).length).toBe(6)
   })
 
