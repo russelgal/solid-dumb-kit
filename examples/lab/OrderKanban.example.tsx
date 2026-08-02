@@ -340,15 +340,15 @@ export default function OrderKanbanExample() {
 
   return (
     <div
-      class="ok-example"
+      class="p-5 text-base-content"
       onPointerDown={remember}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={finish}
       onDrop={(ev) => { ev.preventDefault(); finish() }}
     >
-      <h3>Канбан на CSS order + FLIP</h3>
-      <p class="note">
+      <h3 class="mb-1 text-lg font-semibold">Канбан на CSS order + FLIP</h3>
+      <p class="mb-2 max-w-[90ch] text-[13px] text-base-content">
         <b>Колонки тоже сортируются</b> — тащи за заголовок; у них свой <code>order</code> и свои
         места, механика та же. Внутри колонки DOM не трогается вовсе — меняется только{' '}
         <code>order</code>. Переезд в
@@ -357,42 +357,42 @@ export default function OrderKanbanExample() {
         место, где DOM меняется за весь жест. FLIP доигрывает оба случая одинаково: он про DOM
         ничего не знает, ему говорят «стартуй отсюда, приезжай в ноль».
       </p>
-      <p class="note">
+      <p class="mb-2 max-w-[90ch] text-[13px] text-base-content">
         Позиции не снимаются на каждый шаг: колонка — стопка одинаковых карточек, значит геометрии
         хватает трёх чисел (левый край, верх первого места, шаг). Место <code>k</code> — это{' '}
         <code>top + k * step</code>, и состав колонок на эти три числа не влияет. Снимок обновляется
         только на дропе и на resize — то есть никогда посреди жеста.
       </p>
-      <div class="bar">{log()}</div>
+      <div class="mt-2 mb-3 min-h-[18px] text-[13px] text-base-content">{log()}</div>
 
-      <div class="cols">
+      <div class="grid grid-cols-[repeat(4,minmax(200px,1fr))] items-start gap-3.5">
         <For each={COLS}>
           {(col) => (
             <section
-              class="col"
-              classList={{ held: heldCol() === col.id }}
+              classList={{ 'opacity-35': heldCol() === col.id }}
               data-col={col.id}
               draggable="true"
               ref={(el) => colEls.set(col.id, el)}
               style={{ order: String(colPlace()[col.id]) }}
             >
-              <h4 class="col-title" data-col-handle>
-                <span class="grip">⠿</span>
-                {col.title} <span class="count">{board()[col.id].length}</span>
+              <h4 class="mb-2 flex cursor-grab items-center gap-1.5 text-[13px] text-base-content select-none active:cursor-grabbing" data-col-handle>
+                <span class="text-base-content">⠿</span>
+                {col.title} <span class="rounded-full bg-base-300 px-1.5 py-px text-[11px] text-base-content">{board()[col.id].length}</span>
               </h4>
-              <div class="zone" data-zone={col.id} ref={(el) => zoneEls.set(col.id, el)}>
+              {/* сетка в одну колонку: сюда и смотрит order */}
+              <div class="grid min-h-30 grid-cols-1 content-start gap-2 rounded-xl bg-base-200 p-2.5 ring-1 ring-base-300" data-zone={col.id} ref={(el) => zoneEls.set(col.id, el)}>
                 <For each={board()[col.id]}>
                   {(id) => (
                     <article
-                      class="card"
-                      classList={{ held: held() === id }}
+                      class="flex cursor-grab flex-col gap-0.5 rounded-box border-l-4 bg-base-100 px-2.5 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing"
+                      classList={{ 'opacity-35': held() === id }}
                       data-card={id}
                       draggable="true"
                       ref={(el) => cardEls.set(id, el)}
-                      style={{ order: String(place()[id]), '--hue': HUE(index(id)) }}
+                      style={{ order: String(place()[id]), 'border-left-color': HUE(index(id)) }}
                     >
-                      <span class="text">{cardById(id).text}</span>
-                      <span class="tag">{cardById(id).tag}</span>
+                      <span class="text-[13.5px] font-medium">{cardById(id).text}</span>
+                      <span class="text-[11.5px] text-base-content">{cardById(id).tag}</span>
                     </article>
                   )}
                 </For>
@@ -402,34 +402,6 @@ export default function OrderKanbanExample() {
         </For>
       </div>
 
-      <style>{`
-        .ok-example { padding: 16px 20px; color: var(--color-base-content) }
-        .ok-example h3 { margin: 0 0 4px }
-        .ok-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
-        .ok-example .bar { margin: 8px 0 12px; font-size: 13px; color: var(--color-base-content); min-height: 18px }
-
-        .ok-example .cols { display: grid; gap: 14px; align-items: start;
-                            grid-template-columns: repeat(4, minmax(200px, 1fr)) }
-        .ok-example .col-title { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
-                                 font-size: 13px; color: var(--color-base-content); cursor: grab; user-select: none }
-        .ok-example .col-title:active { cursor: grabbing }
-        .ok-example .grip { color: var(--color-base-content) }
-        .ok-example .col.held { opacity: .35 }
-        .ok-example .count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                             color: var(--color-base-content); background: var(--color-base-300) }
-        /* сетка в одну колонку: сюда и смотрит order */
-        .ok-example .zone { display: grid; grid-template-columns: 1fr; gap: 8px; align-content: start;
-                            min-height: 120px; padding: 10px; border-radius: 12px;
-                            background: var(--color-base-200); box-shadow: inset 0 0 0 1px var(--color-base-300) }
-        .ok-example .card { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px;
-                            border-radius: 10px; cursor: grab; background: var(--color-base-100);
-                            box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) 6%, transparent), inset 0 0 0 1px var(--color-base-300);
-                            border-left: 4px solid var(--hue) }
-        .ok-example .card:active { cursor: grabbing }
-        .ok-example .card.held { opacity: .35 }
-        .ok-example .text { font-size: 13.5px; font-weight: 500 }
-        .ok-example .tag { font-size: 11.5px; color: var(--color-base-content) }
-      `}</style>
     </div>
   )
 }

@@ -308,27 +308,33 @@ export default function OrderTreeExample() {
    * Одна ветка. `<ul>` — grid в колонку, `<li>` носят `order` и `draggable`.
    * Целями дропа служат сами эти элементы: строка узла и сам `<ul>`.
    */
+  // Каждый уровень — grid в одну колонку: сюда и смотрит `order`. Строки идут
+  // ВПЛОТНУЮ, без зазоров: зазор — это дырка в хиттесте, курсор проваливается
+  // между строками на сам <ul>, а тот значит «в конец уровня», и узел
+  // неожиданно улетает вниз. Разделяем линией, не пустотой.
   const Branch = (props: { pid: string | null; level: number }) => (
-    <ul class="branch" classList={{ root: props.pid === null }} data-branch={props.pid ?? ''}>
+    <ul class="m-0 grid list-none grid-cols-1 gap-0 p-0" data-branch={props.pid ?? ''}>
       <For each={kids(props.pid)}>
         {(id) => (
           <li
-            class="item"
-            classList={{ held: held() === id }}
+            class="grid grid-cols-1 gap-0"
+            // приглушаем весь <li>: раз браузер тащит ветку целиком, пусть и
+            // видно будет, что уезжает именно ветка
+            classList={{ 'opacity-35': held() === id }}
             data-node={id}
             draggable="true"
             ref={(el) => items.set(id, el)}
             style={{ order: String(place()[id]) }}
           >
             <div
-              class="node"
+              class="flex h-7.5 cursor-grab items-center gap-2 border-b border-base-200 bg-base-100 pr-2.5 hover:bg-base-200 active:cursor-grabbing"
               data-into={id}
               ref={(el) => els.set(id, el)}
               style={{ 'padding-left': `${props.level * INDENT + 8}px` }}
             >
-              <Show when={kids(id).length} fallback={<span class="bullet">•</span>}>
+              <Show when={kids(id).length} fallback={<span class="w-4.5 text-center text-xs text-base-content">•</span>}>
                 <button
-                  class="twist"
+                  class="w-4.5 cursor-pointer border-none bg-none p-0 text-[11px]/none text-base-content"
                   type="button"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => toggle(id)}
@@ -336,8 +342,8 @@ export default function OrderTreeExample() {
                   {closed()[id] ? '▸' : '▾'}
                 </button>
               </Show>
-              <span class="label">{byId(id).label}</span>
-              <span class="kind">{byId(id).kind}</span>
+              <span class="text-[13.5px] font-medium">{byId(id).label}</span>
+              <span class="ml-auto text-[11.5px] text-base-content">{byId(id).kind}</span>
             </div>
             <Show when={!closed()[id]}>
               <Branch pid={id} level={props.level + 1} />
@@ -350,21 +356,21 @@ export default function OrderTreeExample() {
 
   return (
     <div
-      class="tr-example"
+      class="p-5 text-base-content"
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={finish}
       onDrop={(ev) => { ev.preventDefault(); finish() }}
     >
-      <h3>Дерево на CSS order + FLIP</h3>
-      <p class="note">
+      <h3 class="mb-1 text-lg font-semibold">Дерево на CSS order + FLIP</h3>
+      <p class="mb-2 max-w-[92ch] text-[13px] text-base-content">
         Разметка — настоящие вложенные <code>&lt;ul&gt;/&lt;li&gt;</code>. Внутри уровня работает{' '}
         <code>order</code>, и DOM не трогается. Смена уровня — единственный случай, когда узел
         физически переходит в другой список: у соседнего <code>&lt;ul&gt;</code> свой{' '}
         <code>order</code>. Вместе с узлом едет вся ветка — она и так лежит внутри его{' '}
         <code>&lt;li&gt;</code>.
       </p>
-      <p class="note">
+      <p class="mb-2 max-w-[92ch] text-[13px] text-base-content">
         Куда положить, решает браузер, и целями служат элементы, которые и так есть: строка{' '}
         <b>папки</b> принимает внутрь (свёрнутая раскроется сама), строка <b>листа</b> уступает своё
         место, пустое поле <code>&lt;ul&gt;</code> — «в конец этого уровня». Ни одной пустой обёртки
@@ -372,41 +378,12 @@ export default function OrderTreeExample() {
         <b>анимации</b>: строка постоянной высоты, вложенность даёт отступ слева — значит на экране
         ровная стопка. Сворачивание анимируется тем же FLIP.
       </p>
-      <div class="bar">{log()}</div>
+      <div class="mt-2 mb-3 min-h-[18px] text-[13px] text-base-content">{log()}</div>
 
-      <div class="tree" ref={root}>
+      <div class="max-w-[560px] overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300" ref={root}>
         <Branch pid={null} level={0} />
       </div>
 
-      <style>{`
-        .tr-example { padding: 16px 20px; color: var(--color-base-content) }
-        .tr-example h3 { margin: 0 0 4px }
-        .tr-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 92ch }
-        .tr-example .bar { margin: 8px 0 12px; font-size: 13px; color: var(--color-base-content); min-height: 18px }
-
-        .tr-example .tree { max-width: 560px; overflow: hidden; border-radius: 12px;
-                            background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300) }
-        /* каждый уровень — grid в одну колонку: сюда и смотрит order */
-        /* Строки идут ВПЛОТНУЮ, без зазоров. Зазор — это дырка в хиттесте: курсор
-           проваливается между строками на сам <ul>, а тот значит «в конец
-           уровня», и узел неожиданно улетает вниз. Разделяем линией, не пустотой. */
-        .tr-example .branch { display: grid; grid-template-columns: 1fr; gap: 0;
-                              margin: 0; padding: 0; list-style: none }
-        .tr-example .item { display: grid; grid-template-columns: 1fr; gap: 0 }
-        .tr-example .node { display: flex; align-items: center; gap: 8px; height: 30px;
-                            padding-right: 10px; cursor: grab; background: var(--color-base-100);
-                            border-bottom: 1px solid var(--color-base-200) }
-        .tr-example .node:hover { background: var(--color-base-200) }
-        .tr-example .node:active { cursor: grabbing }
-        /* приглушаем весь <li>: раз браузер тащит ветку целиком, пусть и
-           видно будет, что уезжает именно ветка */
-        .tr-example .item.held { opacity: .35 }
-        .tr-example .twist { width: 18px; padding: 0; border: none; background: none; cursor: pointer;
-                             color: var(--color-base-content); font-size: 11px; line-height: 1 }
-        .tr-example .bullet { width: 18px; text-align: center; color: var(--color-base-content); font-size: 12px }
-        .tr-example .label { font-size: 13.5px; font-weight: 500 }
-        .tr-example .kind { margin-left: auto; font-size: 11.5px; color: var(--color-base-content) }
-      `}</style>
     </div>
   )
 }
