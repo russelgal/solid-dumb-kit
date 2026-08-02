@@ -92,6 +92,21 @@ export default function DumbBoardExample() {
   const [sizes, setSizes] = createSignal<Record<string, { w: number; h: number }>>({})
   const sizeOf = (w: Widget) => sizes()[w.id] ?? { w: w.w, h: w.h }
 
+  /**
+   * Второй вариант витрины: все блоки в одну строку высотой.
+   *
+   * Так выглядит обычный дашборд — карточки одинаковые, разной только ширина.
+   * Движок при этом тот же: укладка вырождается в простую сетку, строки
+   * перестают быть рваными, и видно, что механика от разнокалиберности не
+   * зависела. Заодно тут проще заметить перестановку: соседи едут ровно на
+   * ширину блока, а не прыгают через полстроки.
+   */
+  const [equalH, setEqualH] = createSignal(false)
+  const rowsOf = (w: Widget) => (equalH() ? 1 : sizeOf(w).h)
+  /** в режиме равной высоты ресайз по вертикали запираем — иначе переключатель врёт */
+  const limitsFor = (w: Widget): BlockLimits =>
+    equalH() ? { ...limitsOf(w), minH: 1, maxH: 1 } : limitsOf(w)
+
   // колонки внутри секций крутим снаружи — у широкой их вдвое больше
   const withCols = () =>
     sections().map((s) => ({ ...s, cols: s.id === 'archive' ? cols() * 2 : cols() }))
@@ -120,10 +135,22 @@ export default function DumbBoardExample() {
         разворачивается обратно. Размер блока тянут за уголок — пока тянешь, едет рамка-превью,
         а <code>onBlockResize</code> отдаёт новый размер тебе.
       </p>
+      <p class="mb-2 max-w-[92ch] text-sm text-base-content">
+        Переключатель <b>высота блоков</b> даёт второй вариант — <b>все блоки в одну строку</b>,
+        как на обычном дашборде: разной остаётся только ширина. Движок тот же, укладка вырождается
+        в простую сетку, строки перестают быть рваными. Вертикальный ресайз в этом режиме заперт,
+        иначе переключатель врал бы.
+      </p>
 
       <Bar>
         <Switch checked={edit()} onChange={setEdit}>режим правки</Switch>
         <Check checked={animate()} onChange={setAnimate}>анимация</Check>
+        <Pick
+          label="высота блоков"
+          value={equalH() ? 'равная' : 'разная'}
+          options={[{ value: 'разная' }, { value: 'равная' }]}
+          onChange={(v) => setEqualH(v === 'равная')}
+        />
         <Pick
           label="колонок в секции"
           value={cols()}
@@ -141,10 +168,10 @@ export default function DumbBoardExample() {
         setSections={setSections}
         id={(w) => w.id}
         blockSpan={(w) => sizeOf(w).w}
-        blockRows={(w) => sizeOf(w).h}
+        blockRows={rowsOf}
         // minW задан не у всех: без него блок не ужимается сам, но ресайзом
         // сузить его всё равно можно — это разные вещи
-        blockLimits={limitsOf}
+        blockLimits={limitsFor}
         onBlockResize={(w, size) => {
           setSizes({ ...sizes(), [w.id]: size })
           setLog(`${w.title} — ${size.w}×${size.h} ячеек`)
@@ -166,11 +193,11 @@ export default function DumbBoardExample() {
           >
             <span class="text-[13.5px] font-medium text-base-content">{w.title}</span>
             <span class="text-[11.5px] text-base-content">{w.kind}</span>
-            <span class="text-[11px] text-base-content">{sizeOf(w).w}×{sizeOf(w).h} ячеек</span>
+            <span class="text-[11px] text-base-content">{sizeOf(w).w}×{rowsOf(w)} ячеек</span>
             {/* пределы — те же, что уходят в blockLimits: видно, докуда тянется
                 ресайз и с какой ширины блок готов ужиматься */}
             <span class="text-[11px] leading-tight text-base-content">
-              Ш {range(w.minW, w.maxW)} · В {range(w.minH, w.maxH)}
+              Ш {range(limitsFor(w).minW, limitsFor(w).maxW)} · В {range(limitsFor(w).minH, limitsFor(w).maxH)}
               {w.minW === undefined ? '' : ' · ужимается'}
             </span>
           </article>
