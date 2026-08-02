@@ -66,25 +66,25 @@ export default function DumbTreeExample() {
   const [log, setLog] = createSignal('click a row →')
 
   const badge = (n: Cat) => (
-    <span class="badge">
+    <span class="text-[11px] text-base-content tabular-nums">
       {n.count || ''}
     </span>
   )
 
   return (
-    <div class="dt-demo tree-example">
+    <div class="dt-demo p-5 text-base-content">
       <style>{SHIM}</style>
 
-      <p class="intro">
+      <p class="mb-4 text-[13px] text-base-content">
         Type in the search box (fuzzy — <code>gst hs</code> finds “Guest houses”), toggle the sort
         mode, collapse folders and reload the page: expanded folders and sort mode are persisted
         per <code>storageKey</code>. Hidden items are dimmed via <code>rowClass</code>, counts come
         from <code>rowExtra</code> — the kit itself knows nothing about those fields.
       </p>
 
-      <div class="cols">
+      <div class="flex flex-wrap items-start gap-6">
         <section>
-          <h3>Tree — hierarchy by <code>parent</code></h3>
+          <h3 class="mb-2 text-sm">Tree — hierarchy by <code>parent</code></h3>
           <DumbTree
             nodes={CATS}
             title="CATALOGUE"
@@ -101,7 +101,7 @@ export default function DumbTreeExample() {
         </section>
 
         <section>
-          <h3>Flat + <code>sortable</code> — drag by ⠿</h3>
+          <h3 class="mb-2 text-sm">Flat + <code>sortable</code> — drag by ⠿</h3>
           <DumbTree
             nodes={flat()}
             flat
@@ -121,33 +121,20 @@ export default function DumbTreeExample() {
           />
         </section>
 
-        <section class="side">
-          <h3>Callbacks</h3>
-          <code class="log">{log()}</code>
-          <p class="order">
+        <section class="min-w-60 flex-1">
+          <h3 class="mb-2 text-sm">Callbacks</h3>
+          <code class="block rounded-box bg-neutral px-3 py-2.5 text-[13px] text-neutral-content">{log()}</code>
+          <p class="text-[13px]/relaxed text-base-content">
             Current order:<br />
             <For each={flat()}>{(n, i) => <span>{i() > 0 ? ' · ' : ''}{n.title}</span>}</For>
           </p>
-          <p class="muted">
+          <p class="text-xs text-base-content">
             Drag-reorder is flat-only, and switches off while a filter is typed — the displayed
             order no longer maps to the source one.
           </p>
         </section>
       </div>
 
-      <style>{`
-        .tree-example { padding: 16px 20px; color: var(--color-base-content) }
-        .tree-example .intro { margin: 0 0 16px; font-size: 13px; color: var(--color-base-content) }
-        .tree-example .cols { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap }
-        .tree-example h3 { margin: 0 0 8px; font-size: 14px }
-        .tree-example .side { flex: 1; min-width: 240px }
-        .tree-example .log { display: block; padding: 10px 12px; border-radius: 10px;
-                             background: var(--color-neutral); color: var(--color-neutral-content); font-size: 13px }
-        .tree-example .order { font-size: 13px; color: var(--color-base-content); line-height: 1.6 }
-        .tree-example .muted { font-size: 12px; color: var(--color-base-content) }
-        .tree-example .badge { font-size: 11px; color: var(--color-base-content); font-variant-numeric: tabular-nums }
-        .dt-demo .dt-dim { opacity: .45 }
-      `}</style>
     </div>
   )
 }

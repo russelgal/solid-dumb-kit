@@ -1,28 +1,43 @@
 import { chromium } from 'playwright'
+const TABS = 'selection sortable kanban grid dashboard board dnd sortdnd board2 tree table odata1c utils rawdnd cssorder flipbench orderkanban orderboard ordertable ordertree'.split(' ')
 const browser = await chromium.launch({ channel: 'chrome' })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
-const errs = []; page.on('pageerror', (e) => errs.push(e.message.split('\n')[0]))
-await page.goto('http://localhost:4199/solid-dumb-kit/#sortdnd', { waitUntil: 'networkidle' })
-await page.waitForTimeout(1500)
-console.log('  контейнер списка:', await page.evaluate(() => {
-  const l = document.querySelector('.list'); const cs = getComputedStyle(l)
-  return `${cs.display}/${cs.flexDirection} | строк: ${l.querySelectorAll('.list-row').length}` }))
-const shown = () => page.evaluate(() => [...document.querySelectorAll('.list-row')]
-  .map((e) => ({ y: e.getBoundingClientRect().y, t: e.querySelector('.sd-title').textContent.replace('Track ','') }))
-  .sort((a, b) => a.y - b.y).slice(0, 6).map((v) => v.t).join(','))
-const dom = () => page.evaluate(() => [...document.querySelectorAll('.list-row')].slice(0, 6).map((e) => e.dataset.sortDndId).join(','))
-console.log('  разметка :', await dom(), '| на экране:', await shown())
-await page.evaluate(() => { window.__m = 0
-  new MutationObserver((r) => { for (const x of r) window.__m += x.addedNodes.length + x.removedNodes.length })
-    .observe(document.querySelector('.list'), { childList: true, subtree: true }) })
-const at = (i) => page.evaluate((k) => [...document.querySelectorAll('.list-row')]
-  .map((e) => { const r = e.getBoundingClientRect(); const g = e.querySelector('.sd-handle').getBoundingClientRect()
-    return { y: r.y, gx: g.x + g.width/2, gy: g.y + g.height/2, cx: r.x + r.width/2, ty: r.y + r.height/2 } }).sort((a,b)=>a.y-b.y)[k], i)
-const p = await at(0), q = await at(4)
-await page.mouse.move(p.gx, p.gy); await page.mouse.down(); await page.waitForTimeout(300)
-for (let i = 1; i <= 24; i++) { await page.mouse.move(p.gx + ((q.cx - p.gx) * i) / 24, p.gy + ((q.ty - p.gy) * i) / 24, { steps: 1 }); await page.waitForTimeout(70) }
-await page.mouse.up(); await page.waitForTimeout(900)
-console.log('  после жеста — разметка:', await dom(), '| на экране:', await shown(), '| мутаций:', await page.evaluate(() => window.__m))
-console.log('  ошибки:', errs.length ? errs : 'нет')
-await page.screenshot({ path: '/tmp/shot-list.png', clip: { x: 250, y: 180, width: 620, height: 420 } })
+const rows = []
+for (const theme of ['nord', 'dark']) {
+  for (const tab of TABS) {
+    const errs = []
+    const onErr = (e) => errs.push(e.message.split('\n')[0])
+    page.on('pageerror', onErr)
+    await page.goto(`http://localhost:4199/solid-dumb-kit/#${tab}`, { waitUntil: 'networkidle' })
+    await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+    await page.waitForTimeout(500)
+    const r = await page.evaluate(() => {
+      const root = document.querySelector('main') ?? document.body
+      const els = [...root.querySelectorAll('*')]
+      // сколько текста реально нарисовано и не схлопнулся ли контент
+      const painted = els.filter((e) => { const b = e.getBoundingClientRect(); return b.width > 2 && b.height > 2 }).length
+      // элементы, у которых цвет текста в точности равен фону — верный признак
+      // того, что токен подставлен не тот
+      let invisible = 0, sample = ''
+      const bgOf = (el) => { let e = el
+        while (e) { const b = getComputedStyle(e).backgroundColor
+          if (b && !/rgba\(0, 0, 0, 0\)|transparent/.test(b)) return b; e = e.parentElement }
+        return null }
+      for (const e of els) {
+        if (!e.textContent?.trim() || e.children.length) continue
+        const cs = getComputedStyle(e)
+        if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < 0.05) continue
+        const bg = bgOf(e)
+        if (bg && bg === cs.color) { invisible++; if (!sample) sample = e.textContent.trim().slice(0, 30) }
+      }
+      return { painted, invisible, sample, text: root.innerText.trim().length }
+    })
+    page.off('pageerror', onErr)
+    rows.push({ theme, tab, ...r, errs: errs.length })
+  }
+}
+const bad = rows.filter((r) => r.invisible > 0 || r.errs > 0 || r.painted < 10 || r.text < 50)
+console.log(`  проверено ${rows.length} страниц (20 вкладок × 2 темы)`)
+console.log(`  проблемных: ${bad.length}`)
+for (const b of bad) console.log(`    ${b.theme}/${b.tab}: невидимого текста ${b.invisible}${b.sample ? ` («${b.sample}»)` : ''}, ошибок ${b.errs}, нарисовано узлов ${b.painted}, текста ${b.text}`)
 await browser.close()

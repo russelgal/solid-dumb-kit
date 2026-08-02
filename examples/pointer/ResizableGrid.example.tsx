@@ -8,30 +8,30 @@ import { ResizableGrid } from '@solid-dumb-kit/resizable-grid'
 // берём токены темы, иначе панель светится белым в тёмной
 const Panel = (p: { title: string; bg?: string; fg?: string; children?: any }) => (
   <div
-    class="panel"
+    class="box-border h-full overflow-auto px-3.5 py-3"
     style={{ background: p.bg ?? 'var(--color-base-100)', color: p.fg ?? 'var(--color-base-content)' }}
   >
-    <div class="panel-title">{p.title}</div>
+    <div class="mb-2 text-xs uppercase tracking-wide opacity-60">{p.title}</div>
     {p.children}
   </div>
 )
 
 const list = (n: number, label: string) => (
   <For each={Array.from({ length: n }, (_, i) => i)}>
-    {(i) => <div class="line" classList={{ odd: i % 2 === 0 }}>{label} {i + 1}</div>}
+    {(i) => <div class="rounded px-1.5 py-1 text-[13px]" classList={{ 'bg-base-content/10': i % 2 === 0 }}>{label} {i + 1}</div>}
   </For>
 )
 
 export default function ResizableGridExample() {
   return (
-    <div class="rg-example">
-      <h3>ResizableGrid</h3>
-      <p class="note">
+    <div class="p-5">
+      <h3 class="mb-1 text-lg font-semibold">ResizableGrid</h3>
+      <p class="mb-2.5 text-[13px] text-base-content">
         Drag the gaps ↔ between columns and ↕ between rows. Sizes are saved to <code>localStorage</code> — reload and they stick.
       </p>
 
       {/* грид растягивается на родителя — высоту задаём ЕМУ */}
-      <div class="frame">
+      <div class="h-[70vh] overflow-hidden rounded-xl border border-base-300">
         <ResizableGrid
           storageKey="example:resizable-grid"
           rowInitial={2}
@@ -41,7 +41,7 @@ export default function ResizableGridExample() {
             { id: 'tree', min: 160, initial: 1, content: () => <Panel title="Sidebar" bg="var(--color-base-200)">{list(20, 'Item')}</Panel> },
             { id: 'main', min: 320, initial: 3, content: () => (
               <Panel title="Editor">
-                <p class="lead">Main panel — grab a divider and drag.</p>
+                <p class="mb-2">Main panel — grab a divider and drag.</p>
                 {list(12, 'Line')}
               </Panel>
             ) },
@@ -54,20 +54,6 @@ export default function ResizableGridExample() {
         />
       </div>
 
-      <style>{`
-        .rg-example { padding: 16px 20px }
-        .rg-example h3 { margin: 0 0 4px }
-        .rg-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
-        .rg-example .frame { height: 70vh; border: 1px solid var(--color-base-300);
-                             border-radius: 12px; overflow: hidden }
-
-        .rg-example .panel { height: 100%; padding: 12px 14px; box-sizing: border-box; overflow: auto }
-        .rg-example .panel-title { font-size: 12px; text-transform: uppercase;
-                                   letter-spacing: .04em; opacity: .6; margin-bottom: 8px }
-        .rg-example .lead { margin: 0 0 8px }
-        .rg-example .line { padding: 4px 6px; border-radius: 6px; font-size: 13px }
-        .rg-example .line.odd { background: color-mix(in oklch, var(--color-base-content) 12%, transparent) }
-      `}</style>
     </div>
   )
 }
