@@ -105,9 +105,9 @@ export default function DumbTableExample() {
 
   const columns: DumbColumn<Product>[] = [
     { key: 'vendor_code', label: 'Артикул', sortable: true, width: '130px',
-      render: (p) => <code class="sku">{p.vendor_code}</code> },
+      render: (p) => <code class="text-xs">{p.vendor_code}</code> },
     { key: 'name', label: 'Название', sortable: true,
-      render: (p) => <span class="name">{p.name}</span> },
+      render: (p) => <span class="font-medium">{p.name}</span> },
     { key: 'brand', label: 'Бренд', sortable: true, width: '140px' },
     { key: 'price', label: 'Цена', sortable: true, align: 'right', width: '120px',
       render: (p) => fmtPrice(p.price) },
@@ -116,8 +116,12 @@ export default function DumbTableExample() {
     { key: 'stock', label: 'Остаток', sortable: true, align: 'right', width: '110px', stopClick: true,
       render: (p) => (
         <input
-          class="cell-input num"
-          classList={{ out: p.stock === 0, low: p.stock > 0 && p.stock < 30 }}
+          class="w-full box-border rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-right text-[13px] tabular-nums hover:border-base-300 focus:border-primary focus:bg-base-100 focus:outline-none"
+          classList={{
+            'text-error': p.stock === 0,
+            'text-warning': p.stock > 0 && p.stock < 30,
+            'text-success': p.stock >= 30,
+          }}
           type="number"
           min="0"
           value={p.stock}
@@ -127,7 +131,7 @@ export default function DumbTableExample() {
     { key: 'note', label: 'Заметка', width: '180px', stopClick: true,
       render: (p) => (
         <input
-          class="cell-input"
+          class="w-full box-border rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[13px] hover:border-base-300 focus:border-primary focus:bg-base-100 focus:outline-none"
           placeholder="—"
           value={p.note ?? ''}
           onInput={(e) => patch(p.id, { note: e.currentTarget.value })}
@@ -136,15 +140,15 @@ export default function DumbTableExample() {
     // stopClick: клик по кнопке не должен всплывать в onRowClick
     { key: 'buy', label: '', align: 'right', width: '110px', stopClick: true,
       render: (p) => (
-        <button class="btn btn-buy" classList={{ on: cart().has(p.id) }} onClick={() => toggleCart(p)}>
+        <button class="btn btn-xs" classList={{ 'btn-success': cart().has(p.id) }} onClick={() => toggleCart(p)}>
           {cart().has(p.id) ? '✓ в заказе' : 'заказать'}
         </button>
       ) },
   ]
 
   return (
-    <div class="dt-example">
-      <p class="intro">
+    <div class="p-5 text-base-content">
+      <p class="mb-3 text-[13px] text-base-content">
         1000 строк, колонки описаны обычными объектами. Клик по заголовку сортирует (под капотом
         TanStack), третий клик сбрасывает сортировку. Протяжка за <b>⠿</b> переставляет строку —
         ручка гаснет, пока активна сортировка, потому что показанный порядок уже не совпадает
@@ -155,11 +159,11 @@ export default function DumbTableExample() {
         обычные <code>input</code>: печатать в них можно спокойно, драг с полей не стартует.
       </p>
 
-      <div class="toolbar">
+      <div class="mb-2.5 flex min-h-5 flex-wrap items-center gap-3 text-[13px]">
         <span>{picked() ? <>row click → <b>{picked()!.name}</b> · {picked()!.vendor_code}</> : 'click a row →'}</span>
-        <span class="count">выделено рамкой: <b>{selected().size}</b></span>
+        <span class="ml-auto">выделено рамкой: <b>{selected().size}</b></span>
         <button
-          class="btn"
+          class="btn btn-xs"
           onClick={() => withViewTransition(() => {
             // при активной сортировке перемешивание было бы не видно — снимаем её
             setSort(null); setOrder(null)
@@ -169,15 +173,15 @@ export default function DumbTableExample() {
         >
           перемешать
         </button>
-        <button class="btn" onClick={() => setSelected(new Set())} disabled={!selected().size}>
+        <button class="btn btn-xs" onClick={() => setSelected(new Set())} disabled={!selected().size}>
           сбросить
         </button>
-        <button class="btn btn-danger" onClick={removeSelected} disabled={!selected().size}>
+        <button class="btn btn-xs btn-error" onClick={removeSelected} disabled={!selected().size}>
           удалить выделенное
         </button>
       </div>
 
-      <SelectionArea class="surface" selectables="tbody tr" selected={selected} onChange={setSelected}>
+      <SelectionArea class="overflow-hidden rounded-xl border border-base-300" selectables="tbody tr" selected={selected} onChange={setSelected}>
         <DumbTable
           rows={pageRows()}
           columns={columns}
@@ -188,15 +192,19 @@ export default function DumbTableExample() {
             setSort(key); setOrder(dir); setPage(1)
           })}
           onRowClick={(p) => setPicked(p)}
-          headClass="head"
+          headClass="[&_th]:border-b [&_th]:border-base-300 [&_th]:bg-base-200 [&_th]:text-xs [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-base-content"
           rowClass={(p) =>
-            ['row', cart().has(p.id) ? 'in-cart' : '', selected().has(p.id) ? 'selected' : '']
+            [
+              'border-b border-base-200 hover:bg-base-200',
+              cart().has(p.id) ? 'bg-success/15' : '',
+              selected().has(p.id) ? 'bg-primary/15 shadow-[inset_2px_0_0_var(--color-primary)]' : '',
+            ]
               .filter(Boolean).join(' ')
           }
           // имя на строку — чтобы браузер вёл КАЖДУЮ отдельно, а не делал
           // кроссфейд всей таблицы
           rowStyle={(p) => ({ 'view-transition-name': `row-${p.id}` })}
-          empty={<div class="empty">Ничего не найдено</div>}
+          empty={<div class="p-6 text-center text-base-content">Ничего не найдено</div>}
           onReorder={(from, to) => {
             // индексы приходят в порядке ТЕКУЩЕЙ страницы — переводим в глобальные.
             // Сортировка при этом заведомо снята: ручка гаснет, пока она активна.
@@ -208,7 +216,7 @@ export default function DumbTableExample() {
         />
       </SelectionArea>
 
-      <div class="pager">
+      <div class="mt-3">
         <DumbPagination
           page={page()}
           total={rows().length}
@@ -220,44 +228,6 @@ export default function DumbTableExample() {
         />
       </div>
 
-      <style>{`
-        .dt-example { padding: 16px 20px; color: var(--color-base-content) }
-        .dt-example .intro { margin: 0 0 12px; font-size: 13px; color: var(--color-base-content) }
-
-        .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
-                   font-size: 13px; min-height: 20px; flex-wrap: wrap }
-        .toolbar .count { margin-left: auto }
-
-        .btn { padding: 3px 9px; border-radius: 6px; border: 1px solid var(--color-base-300);
-               background: var(--color-base-100); color: inherit; font: inherit; font-size: 12px; cursor: pointer }
-        .btn:disabled { color: var(--color-base-content); cursor: default }
-        .btn-danger:not(:disabled) { border-color: var(--color-error); background: var(--color-error); color: var(--color-base-100) }
-        .btn-buy.on { border-color: var(--color-success); background: var(--color-success); color: var(--color-base-100) }
-
-        .surface { border: 1px solid var(--color-base-300); border-radius: 12px; overflow: hidden }
-        .btn.on { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-base-100) }
-
-        .pager { margin-top: 12px }
-        .empty { padding: 24px; text-align: center; color: var(--color-base-content) }
-
-        .head th { background: var(--color-base-200); color: var(--color-base-content); font-size: 12px; text-transform: uppercase;
-                   letter-spacing: .03em; border-bottom: 1px solid var(--color-base-300) }
-        .row { border-bottom: 1px solid var(--color-base-200) }
-        .row:hover { background: var(--color-base-200) }
-        .row.in-cart { background: color-mix(in oklch, var(--color-success) 18%, var(--color-base-100)) }
-        .row.selected { background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)); box-shadow: inset 2px 0 0 var(--color-primary) }
-
-        .sku { font-size: 12px }
-        .name { font-weight: 500 }
-        .cell-input { width: 100%; padding: 3px 6px; border-radius: 6px; box-sizing: border-box;
-                      border: 1px solid transparent; background: transparent;
-                      font: inherit; font-size: 13px; color: inherit }
-        .cell-input:hover { border-color: var(--color-base-300) }
-        .cell-input:focus { border-color: var(--color-primary); background: var(--color-base-100); outline: none }
-        .cell-input.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-success) }
-        .cell-input.low { color: var(--color-warning) }
-        .cell-input.out { color: var(--color-error) }
-      `}</style>
     </div>
   )
 }

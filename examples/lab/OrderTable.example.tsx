@@ -37,6 +37,14 @@ type Geom = { top: number; step: number }
 
 const money = (v: number) => v.toLocaleString('ru-RU') + ' ₽'
 
+/** цвет метки статуса; классы перечислены буквально — Tailwind ищет их в тексте */
+const CHIP: Record<string, string> = {
+  default: 'bg-primary/15 text-primary',
+  'оплачен': 'bg-success/15 text-success',
+  'отменён': 'bg-error/15 text-error',
+  'в работе': 'bg-warning/15 text-warning',
+}
+
 export default function OrderTableExample() {
   // строка → её место (оно же CSS order). Порядок в DOM не меняется НИКОГДА
   const [place, setPlace] = createSignal<Record<string, number>>(
@@ -219,15 +227,15 @@ export default function OrderTableExample() {
 
   return (
     <div
-      class="ot-example"
+      class="p-5 text-base-content"
       onPointerDown={remember}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={finish}
       onDrop={(ev) => { ev.preventDefault(); finish() }}
     >
-      <h3>Таблица на CSS order + FLIP</h3>
-      <p class="note">
+      <h3 class="mb-1 text-lg font-semibold">Таблица на CSS order + FLIP</h3>
+      <p class="mb-2 max-w-[92ch] text-[13px] text-base-content">
         У таблицы своя засада: <code>order</code> на <code>&lt;tr&gt;</code> не действует — строки
         живут в табличной модели раскладки, а <code>order</code> понимают только flex и grid.
         Обходится честно, без хаков: таблица становится <code>display: grid</code>, а{' '}
@@ -235,22 +243,30 @@ export default function OrderTableExample() {
         (значит <code>order</code> работает), колонки продолжают выравниваться по общей сетке, а
         разметка остаётся таблицей — для скринридера ничего не изменилось.
       </p>
-      <p class="note">
+      <p class="mb-2 max-w-[92ch] text-[13px] text-base-content">
         <b>Кликни по заголовку</b> — сортировка тоже анимирована: видно, куда уехала каждая строка,
         а не «моргнуло и стало по-другому». <b>Потяни за ⠿</b> — то же самое руками. DOM при этом не
         трогается ни разу: порядок <code>&lt;tr&gt;</code> в разметке всё время исходный.
       </p>
-      <div class="bar">
+      <div class="mt-2 mb-3 flex min-h-6.5 items-center gap-2.5 text-[13px] text-base-content [&_button]:cursor-pointer [&_button]:rounded-lg [&_button]:border [&_button]:border-base-300 [&_button]:bg-base-100 [&_button]:px-2.5 [&_button]:py-1 [&_button]:text-[12.5px]">
         {log()} <button type="button" onClick={reset}>Исходный порядок</button>
       </div>
 
-      <table class="grid-table">
+      {/* ВОТ ОНО: таблица как сетка, строки как subgrid — только так работает order */}
+      <table class="grid w-full max-w-[900px] grid-cols-[34px_minmax(120px,1.4fr)_120px_120px_110px] border-collapse text-[13.5px]
+                    [&_thead]:col-span-full [&_thead]:grid [&_thead]:grid-cols-subgrid
+                    [&_tbody]:col-span-full [&_tbody]:grid [&_tbody]:grid-cols-subgrid
+                    [&_tr]:col-span-full [&_tr]:grid [&_tr]:grid-cols-subgrid
+                    [&_th]:border-b [&_th]:border-base-300 [&_th]:px-2.5 [&_th]:py-2 [&_th]:text-left
+                    [&_th]:cursor-pointer [&_th]:text-xs [&_th]:font-semibold [&_th]:select-none
+                    [&_td]:border-b [&_td]:border-base-200 [&_td]:px-2.5 [&_td]:py-2 [&_td]:text-left
+                    [&_tbody_tr]:bg-base-100 [&_tbody_tr:hover]:bg-base-200">
         <thead>
           <tr>
-            <th class="h-drag" />
+            <th class="!cursor-default" />
             <th onClick={() => sortBy('name')}>Название{arrow('name')}</th>
             <th onClick={() => sortBy('status')}>Статус{arrow('status')}</th>
-            <th class="num" onClick={() => sortBy('sum')}>Сумма{arrow('sum')}</th>
+            <th class="text-right! tabular-nums" onClick={() => sortBy('sum')}>Сумма{arrow('sum')}</th>
             <th onClick={() => sortBy('date')}>Дата{arrow('date')}</th>
           </tr>
         </thead>
@@ -258,58 +274,28 @@ export default function OrderTableExample() {
           <For each={ROWS}>
             {(row) => (
               <tr
-                classList={{ held: held() === row.id }}
+                classList={{ 'opacity-35': held() === row.id }}
                 data-row={row.id}
                 draggable="true"
                 ref={(el) => rowEls.set(row.id, el)}
                 style={{ order: String(place()[row.id]) }}
               >
-                <td class="drag"><span data-drag-handle title="перетащить">⠿</span></td>
+                <td class="text-base-content [&_span]:cursor-grab [&_span:active]:cursor-grabbing"><span data-drag-handle title="перетащить">⠿</span></td>
                 <td>{row.name}</td>
-                <td><span class="chip" data-status={row.status}>{row.status}</span></td>
-                <td class="num">{money(row.sum)}</td>
-                <td class="dim">{row.date}</td>
+                <td><span
+                    class={`rounded-full px-2 py-0.5 text-[11.5px] ${CHIP[row.status] ?? CHIP.default}`}
+                    data-status={row.status}
+                  >
+                    {row.status}
+                  </span></td>
+                <td class="text-right! tabular-nums">{money(row.sum)}</td>
+                <td class="tabular-nums text-base-content">{row.date}</td>
               </tr>
             )}
           </For>
         </tbody>
       </table>
 
-      <style>{`
-        .ot-example { padding: 16px 20px; color: var(--color-base-content) }
-        .ot-example h3 { margin: 0 0 4px }
-        .ot-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 92ch }
-        .ot-example .bar { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px;
-                           font-size: 13px; color: var(--color-base-content); min-height: 26px }
-        .ot-example .bar button { padding: 5px 10px; font: inherit; font-size: 12.5px; cursor: pointer;
-                                  border: 1px solid var(--color-base-300); border-radius: 8px; background: var(--color-base-100) }
-
-        /* ВОТ ОНО: таблица как сетка, строки как subgrid — только так работает order */
-        .ot-example .grid-table { display: grid; width: 100%; max-width: 900px;
-                                  grid-template-columns: 34px minmax(120px, 1.4fr) 120px 120px 110px;
-                                  border-collapse: collapse; font-size: 13.5px }
-        .ot-example thead, .ot-example tbody, .ot-example tr {
-                                  display: grid; grid-column: 1 / -1;
-                                  grid-template-columns: subgrid }
-        .ot-example th, .ot-example td { padding: 8px 10px; text-align: left;
-                                         border-bottom: 1px solid var(--color-base-200) }
-        .ot-example th { position: relative; font-size: 12px; font-weight: 600; color: var(--color-base-content);
-                         cursor: pointer; user-select: none; border-bottom: 1px solid var(--color-base-300) }
-        .ot-example th.h-drag { cursor: default }
-        .ot-example tbody tr { background: var(--color-base-100) }
-        .ot-example tbody tr:hover { background: var(--color-base-200) }
-        .ot-example tbody tr.held { opacity: .35 }
-        .ot-example .drag { color: var(--color-base-content) }
-        .ot-example .drag span { cursor: grab }
-        .ot-example .drag span:active { cursor: grabbing }
-        .ot-example .num { text-align: right; font-variant-numeric: tabular-nums }
-        .ot-example .dim { color: var(--color-base-content); font-variant-numeric: tabular-nums }
-        .ot-example .chip { padding: 2px 8px; border-radius: 999px; font-size: 11.5px;
-                            background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)); color: color-mix(in oklch, var(--color-primary) 50%, var(--color-base-content)) }
-        .ot-example .chip[data-status="оплачен"] { background: color-mix(in oklch, var(--color-success) 18%, var(--color-base-100)); color: color-mix(in oklch, var(--color-success) 50%, var(--color-base-content)) }
-        .ot-example .chip[data-status="отменён"] { background: color-mix(in oklch, var(--color-error) 18%, var(--color-base-100)); color: color-mix(in oklch, var(--color-error) 50%, var(--color-base-content)) }
-        .ot-example .chip[data-status="в работе"] { background: color-mix(in oklch, var(--color-warning) 18%, var(--color-base-100)); color: color-mix(in oklch, var(--color-warning) 50%, var(--color-base-content)) }
-      `}</style>
     </div>
   )
 }
