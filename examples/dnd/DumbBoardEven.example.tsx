@@ -91,6 +91,20 @@ export default function DumbBoardEvenExample() {
    */
   const [rows, setRows] = createSignal(1)
 
+  /**
+   * Удаление — целиком на стороне потребителя: доска состояние не держит, а
+   * `sections` тут наш массив. Выбрасываем карточку из её секции и отдаём новый
+   * массив тем же `setSections`, каким доска пользуется сама.
+   */
+  const dropCard = (id: string, title: string) => {
+    setSections(sections().map((s) => ({ ...s, items: s.items.filter((c) => c.id !== id) })))
+    setLog(`«${title}» удалена`)
+  }
+  const dropSection = (id: string, title: string) => {
+    setSections(sections().filter((s) => s.id !== id))
+    setLog(`секция «${title}» удалена вместе с карточками`)
+  }
+
   // ноль значит «как задано у секции»; иначе перебиваем у всех сразу
   const withCols = () =>
     cols() ? sections().map((s) => ({ ...s, cols: cols() })) : sections()
@@ -156,13 +170,32 @@ export default function DumbBoardEvenExample() {
           setLog(`«${sections().find((s) => s.id === id)?.title}» — ${size.span} из 12 колонок`)}
         editable={edit()}
         animate={animate()}
+        sectionActions={(s) => (
+          <button
+            class="btn btn-ghost btn-xs"
+            title="удалить секцию вместе с карточками"
+            onClick={() => dropSection(s.id, String(s.title))}
+          >
+            ✕
+          </button>
+        )}
         class="[&_.dumb-board-head]:text-base-content"
       >
         {(c) => (
           <article
-            class="flex h-full cursor-grab flex-col justify-center gap-0.5 overflow-hidden rounded-box border-l-4 bg-base-100 px-3 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing"
+            class="group relative flex h-full cursor-grab flex-col justify-center gap-0.5 overflow-hidden rounded-box border-l-4 bg-base-100 px-3 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing"
             style={{ 'border-left-color': HUE(Number(c.id.slice(1))) }}
           >
+            {/* `data-no-drag` — иначе жест начнётся с кнопки и удалить не выйдет:
+                нажатие уедет в перетаскивание, а клика не случится */}
+            <button
+              data-no-drag
+              class="btn btn-ghost btn-xs absolute top-1 right-1 opacity-0 group-hover:opacity-100"
+              title="удалить карточку"
+              onClick={() => dropCard(c.id, c.title)}
+            >
+              ✕
+            </button>
             <span class="text-[11.5px] text-base-content">{c.title}</span>
             <span class="text-lg leading-tight font-semibold text-base-content tabular-nums">
               {c.value}

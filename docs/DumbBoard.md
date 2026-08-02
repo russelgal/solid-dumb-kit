@@ -103,6 +103,20 @@ Keep sizes **outside the block objects** (a `id → {w,h}` map): a block object 
 survive a move between sections, and `{ ...item, w }` is a different object (see
 below).
 
+### Your own buttons on a block
+
+Anything inside a block that has to be clickable — delete, a menu, an input —
+needs `data-no-drag`, or the press turns into a drag and the click never
+happens. Buttons in the section header go through `sectionActions` and need no
+marker.
+
+Removal isn't the board's job: `sections` is your array, so dropping a block or
+a whole section from it and handing the result to `setSections` is yours to do.
+
+```tsx
+<button data-no-drag onClick={() => remove(item.id)}>✕</button>
+```
+
 ### One requirement on blocks
 
 Block objects must **survive the move**: the board carries the same object from

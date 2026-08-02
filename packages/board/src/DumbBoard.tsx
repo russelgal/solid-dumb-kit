@@ -805,6 +805,10 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     // с ручки ресайза драг не начинается: `draggable={false}` на ней сам по себе
     // жест не отменяет — блок-предок всё равно перетаскиваемый
     if (pressed?.closest?.('[data-board-block-resize]')) { ev.preventDefault(); return }
+    // то же для всего, что помечено `[data-no-drag]`: кнопки удаления, меню,
+    // поля ввода внутри блока. Признак общий с `DumbGrid`, чтобы потребителю не
+    // приходилось помнить два разных.
+    if (pressed?.closest?.('[data-no-drag]')) { ev.preventDefault(); return }
     setHeld(null)
     setHeldSection(null)
 

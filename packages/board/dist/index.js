@@ -999,6 +999,10 @@ function DumbBoard(props) {
       ev.preventDefault();
       return;
     }
+    if (pressed?.closest?.("[data-no-drag]")) {
+      ev.preventDefault();
+      return;
+    }
     setHeld(null);
     setHeldSection(null);
     const panel = closestOf(ev, "[data-board-section]");

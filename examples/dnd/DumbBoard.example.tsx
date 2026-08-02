@@ -92,6 +92,19 @@ export default function DumbBoardExample() {
   const [sizes, setSizes] = createSignal<Record<string, { w: number; h: number }>>({})
   const sizeOf = (w: Widget) => sizes()[w.id] ?? { w: w.w, h: w.h }
 
+  /**
+   * Удаление — на стороне потребителя: доска ничего не хранит, `sections` наш
+   * массив, и выбросить из него блок или секцию можно тем же `setSections`.
+   */
+  const dropBlock = (id: string, title: string) => {
+    setSections(sections().map((s) => ({ ...s, items: s.items.filter((w) => w.id !== id) })))
+    setLog(`«${title}» удалён`)
+  }
+  const dropSection = (id: string, title: string) => {
+    setSections(sections().filter((s) => s.id !== id))
+    setLog(`секция «${title}» удалена вместе с блоками`)
+  }
+
   // колонки внутри секций крутим снаружи — у широкой их вдвое больше
   const withCols = () =>
     sections().map((s) => ({ ...s, cols: s.id === 'archive' ? cols() * 2 : cols() }))
@@ -161,13 +174,32 @@ export default function DumbBoardExample() {
           setLog(`«${sections().find((s) => s.id === id)?.title}» — ${size.span} из 12 колонок, ${size.rows || '·'} строк`)}
         editable={edit()}
         animate={animate()}
+        sectionActions={(s) => (
+          <button
+            class="btn btn-ghost btn-xs"
+            title="удалить секцию вместе с блоками"
+            onClick={() => dropSection(s.id, String(s.title))}
+          >
+            ✕
+          </button>
+        )}
         class="[&_.dumb-board-head]:text-base-content"
       >
         {(w) => (
           <article
-            class="flex h-full cursor-grab flex-col justify-center gap-0.5 overflow-hidden rounded-box border-t-4 bg-base-100 px-2.5 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing"
+            class="group relative flex h-full cursor-grab flex-col justify-center gap-0.5 overflow-hidden rounded-box border-t-4 bg-base-100 px-2.5 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing"
             style={{ 'border-top-color': HUE(Number(w.id.slice(1))) }}
           >
+            {/* `data-no-drag` — иначе нажатие уедет в перетаскивание и клика не
+                случится: кнопка лежит внутри перетаскиваемого блока */}
+            <button
+              data-no-drag
+              class="btn btn-ghost btn-xs absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100"
+              title="удалить блок"
+              onClick={() => dropBlock(w.id, w.title)}
+            >
+              ✕
+            </button>
             <span class="text-[13.5px] font-medium text-base-content">{w.title}</span>
             <span class="text-[11.5px] text-base-content">{w.kind}</span>
             <span class="text-[11px] text-base-content">{sizeOf(w).w}×{sizeOf(w).h} ячеек</span>
