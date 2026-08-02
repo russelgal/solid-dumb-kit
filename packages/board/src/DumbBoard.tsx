@@ -506,6 +506,47 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     return out
   }
 
+  /** прямоугольник блока на экране — та же арифметика, что у `blockPlaces` */
+  const rectOf = (sectionId: string, blockId: string) => {
+    const s = sectionById(sectionId)
+    const origin = zoneAt[sectionId]
+    const p = cellOf(sectionId, blockId)
+    if (!s || !origin || !p) return null
+    const el = zoneEls.get(sectionId)
+    const pad = zonePad[sectionId] ?? { left: 0, top: 0 }
+    const r = cellRect(p, metricsOf(s))
+    return {
+      x: origin.left + pad.left - (el?.scrollLeft ?? 0) + r.x,
+      y: origin.top + pad.top - (el?.scrollTop ?? 0) + r.y,
+      width: r.width,
+      height: r.height,
+    }
+  }
+
+  /**
+   * Перешёл ли курсор СЕРЕДИНУ цели в ту сторону, куда едет.
+   *
+   * Без этого условия блоки разной ширины качаются: тащишь узкий на широкий,
+   * место меняется — и широкий встаёт ровно под курсор. Следующее же событие
+   * видит его целью и меняет обратно, потом снова, и так весь жест. Порог по
+   * середине даёт запас: сразу после обмена курсор оказывается ПЕРЕД серединой
+   * цели с той стороны, откуда пришёл, и обратный обмен требует уехать назад
+   * на пол-блока. Правило то же, что в SortableJS.
+   *
+   * Ось выбираем по тому, куда сдвинулся курсор сильнее: перестановка бывает и
+   * вертикальной, когда блок переезжает строкой ниже.
+   */
+  const crossedMid = (sectionId: string, overId: string, ev: DragEvent, dx: number, dy: number) => {
+    const r = rectOf(sectionId, overId)
+    if (!r) return true                        // геометрии нет — не мешаем жесту
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      const mid = r.x + r.width / 2
+      return dx > 0 ? ev.clientX > mid : ev.clientX < mid
+    }
+    const mid = r.y + r.height / 2
+    return dy > 0 ? ev.clientY > mid : ev.clientY < mid
+  }
+
   /** снимок «кто где лежал» до изменения — по нему считаются смещения FLIP */
   const snapshotPlaces = () => {
     const out = new Map<string, Slot>()
@@ -782,6 +823,8 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     // и при неподвижной мыши, а хиттест идёт по ВИДИМОЙ картинке — под курсор
     // подъезжает то одно, то другое, и порядок дёргается сам.
     if (ev.clientX === lastX && ev.clientY === lastY) return
+    const dx = ev.clientX - lastX
+    const dy = ev.clientY - lastY
     lastX = ev.clientX
     lastY = ev.clientY
 
@@ -813,6 +856,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
       if (!target) return
       const k = placeOf(target)
       if (from === zone.id && placeOf(item) === k) return
+      if (!crossedMid(zone.id, over, ev, dx, dy)) return
       moveBlock(item, zone.id, k)
       return
     }

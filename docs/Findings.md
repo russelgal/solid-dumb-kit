@@ -58,6 +58,8 @@ Verified claims, with how they were verified. Only things that cost time and are
 
 **An animation cut short has to be picked up where it actually is.** Computed by inverting the Bézier against its `currentTime`; no layout read.
 
+**Neighbours of unequal size oscillate if the swap fires on contact.** Drag a narrow block onto a wide one, the order changes — and the wide one lands exactly under the cursor. The very next event takes it as the target and swaps back, then again: one slow gesture flipped the order six times. The "target is animating" guard doesn't help — under slow movement the animation has time to finish. The fix is a threshold at the target's MIDPOINT in the direction of travel (the SortableJS rule): right after a swap the cursor sits before that midpoint on the side it came from, so swapping back means moving half a block backwards. The axis is whichever the cursor moved along more.
+
 **A target that is itself moving is a bad target.** It ended up under the cursor on its way somewhere else. Check `el.getAnimations().length` and skip it.
 
 **The cursor has to actually move.** The browser sends `dragover` with the mouse standing still, and the hit test follows the *visible* picture — one element after another slides under the cursor and the order starts twitching on its own. Compare `clientX/clientY` against the previous event.

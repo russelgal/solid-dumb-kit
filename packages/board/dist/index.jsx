@@ -981,6 +981,31 @@ function DumbBoard(props) {
     }
     return out;
   };
+  const rectOf = (sectionId, blockId) => {
+    const s = sectionById(sectionId);
+    const origin = zoneAt[sectionId];
+    const p = cellOf(sectionId, blockId);
+    if (!s || !origin || !p) return null;
+    const el = zoneEls.get(sectionId);
+    const pad = zonePad[sectionId] ?? { left: 0, top: 0 };
+    const r = cellRect(p, metricsOf(s));
+    return {
+      x: origin.left + pad.left - (el?.scrollLeft ?? 0) + r.x,
+      y: origin.top + pad.top - (el?.scrollTop ?? 0) + r.y,
+      width: r.width,
+      height: r.height
+    };
+  };
+  const crossedMid = (sectionId, overId, ev, dx, dy) => {
+    const r = rectOf(sectionId, overId);
+    if (!r) return true;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      const mid2 = r.x + r.width / 2;
+      return dx > 0 ? ev.clientX > mid2 : ev.clientX < mid2;
+    }
+    const mid = r.y + r.height / 2;
+    return dy > 0 ? ev.clientY > mid : ev.clientY < mid;
+  };
   const snapshotPlaces = () => {
     const out = /* @__PURE__ */ new Map();
     for (const s of props.sections) {
@@ -1205,6 +1230,8 @@ function DumbBoard(props) {
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
     scroller.move(ev.clientX, ev.clientY);
     if (ev.clientX === lastX && ev.clientY === lastY) return;
+    const dx = ev.clientX - lastX;
+    const dy = ev.clientY - lastY;
     lastX = ev.clientX;
     lastY = ev.clientY;
     const movingSection = heldSection();
@@ -1233,6 +1260,7 @@ function DumbBoard(props) {
       if (!target) return;
       const k = placeOf(target);
       if (from === zone.id && placeOf(item) === k) return;
+      if (!crossedMid(zone.id, over, ev, dx, dy)) return;
       moveBlock(item, zone.id, k);
       return;
     }
