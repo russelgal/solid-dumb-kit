@@ -111,8 +111,8 @@ export default function KanbanExample() {
   ) as Record<ColumnId, ReturnType<typeof group.list>>
 
   return (
-    <div class="kb-example">
-      <p class="intro">
+    <div class="p-5 text-base-content">
+      <p class="mb-2 text-[13px] text-base-content">
         Тащи карточку за <b>⠿</b> в любую колонку. Оригинал остаётся в потоке (прячется),
         поэтому колонки не схлопываются и высота не скачет, а за курсором летит клон
         в <b>top layer</b> — его не режет <code>overflow</code>, так что колонки спокойно
@@ -121,41 +121,44 @@ export default function KanbanExample() {
         перенести нельзя — это <code>accepts</code>.
       </p>
 
-      <div class="toolbar">
+      <div class="mb-3 flex min-h-5 items-center gap-3 text-[13px]">
         <span>{log()}</span>
-        <button class="btn" onClick={shuffleBoard}>перемешать</button>
+        <button class="btn btn-xs ml-auto" onClick={shuffleBoard}>перемешать</button>
       </div>
 
-      <div class="columns">
+      <div class="grid grid-cols-4 items-start gap-3">
         <For each={COLUMNS}>
           {(colId) => {
             const isActive = () => group.activeList() === colId && !!group.draggingId()
             return (
-              <section class="column" classList={{ active: isActive() }}>
+              <section
+                class="flex min-w-0 flex-col rounded-xl border border-base-300 bg-base-200 transition-colors [&>header]:flex [&>header]:items-center [&>header]:gap-1.5 [&>header]:px-3 [&>header]:pt-2.5 [&>header]:pb-1.5 [&>header]:text-[13px]"
+                classList={{ 'border-primary bg-primary/15': isActive() }}
+              >
                 <header>
                   <strong>{TITLES[colId]}</strong>
-                  <span class="count">{board()[colId].length}</span>
+                  <span class="text-xs text-base-content">{board()[colId].length}</span>
                 </header>
 
                 {/* сам скроллящийся контейнер зоны */}
-                <div class="cards" ref={lists[colId].container}>
+                <div class="flex max-h-[46vh] min-h-30 flex-col gap-2 overflow-x-hidden overflow-y-auto p-2" ref={lists[colId].container}>
                   <For each={board()[colId]}>
                     {(c) => (
                       <article
-                        class="card"
+                        class="flex items-start gap-2 rounded-box bg-base-100 p-2.5 text-[13px] ring-1 ring-base-300"
                         ref={lists[colId].bind(c.id)}
                         // имя нужно, чтобы браузер анимировал КАЖДУЮ карточку отдельно,
                         // а не делал кроссфейд всей доски
                         style={{ 'view-transition-name': `kanban-${c.id}` }}
                       >
-                        <button class="handle" data-drag-handle type="button" title="перетащить">⠿</button>
-                        <div class="body">
-                          <div class="title">{c.title}</div>
+                        <button class="cursor-grab border-none bg-none p-0 text-base/none text-base-content [touch-action:none]" data-drag-handle type="button" title="перетащить">⠿</button>
+                        <div class="min-w-0">
+                          <div class="font-medium">{c.title}</div>
                           {/* Цвет из данных — единственное, что остаётся инлайном.
                               Не готовая светлая плашка, а подмешивание оттенка в
                               фон темы: тогда метка живёт и в тёмной теме. */}
                           <span
-                            class="tag"
+                            class="mt-1 inline-block rounded-full px-1.5 py-px text-[11px]"
                             style={{
                               background: `color-mix(in oklch, oklch(0.7 0.13 ${c.hue}) 22%, var(--color-base-100))`,
                               color: `color-mix(in oklch, oklch(0.62 0.15 ${c.hue}) 65%, var(--color-base-content))`,
@@ -169,7 +172,7 @@ export default function KanbanExample() {
                   </For>
 
                   <Show when={!board()[colId].length}>
-                    <div class="empty">перетащи сюда</div>
+                    <div class="px-2 py-4.5 text-center text-xs text-base-content">перетащи сюда</div>
                   </Show>
                 </div>
               </section>
@@ -178,38 +181,6 @@ export default function KanbanExample() {
         </For>
       </div>
 
-      <style>{`
-        .kb-example { padding: 16px 20px; color: var(--color-base-content) }
-        .kb-example .intro { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content) }
-
-        .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
-                   font-size: 13px; min-height: 20px }
-        .btn { margin-left: auto; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--color-base-300);
-               background: var(--color-base-100); color: inherit; font: inherit; font-size: 12px; cursor: pointer }
-
-        .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: start }
-        .column { display: flex; flex-direction: column; min-width: 0; border-radius: 12px;
-                  border: 1px solid var(--color-base-300); background: var(--color-base-200);
-                  transition: background .15s, border-color .15s }
-        .column.active { border-color: var(--color-primary); background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)) }
-        .column header { padding: 10px 12px 6px; display: flex; align-items: center; gap: 6px;
-                         font-size: 13px }
-        .column .count { font-size: 12px; color: var(--color-base-content) }
-
-        .cards { display: flex; flex-direction: column; gap: 8px; padding: 8px;
-                 min-height: 120px; max-height: 46vh; overflow-y: auto; overflow-x: hidden }
-        .empty { padding: 18px 8px; text-align: center; color: var(--color-base-content); font-size: 12px }
-
-        .card { display: flex; align-items: flex-start; gap: 8px; padding: 10px;
-                border-radius: 10px; background: var(--color-base-100); font-size: 13px;
-                box-shadow: inset 0 0 0 1px var(--color-base-300) }
-        .card .handle { cursor: grab; border: none; background: none; padding: 0;
-                        color: var(--color-base-content); font-size: 16px; line-height: 1; touch-action: none }
-        .card .body { min-width: 0 }
-        .card .title { font-weight: 500 }
-        .card .tag { display: inline-block; margin-top: 4px; padding: 1px 7px;
-                     border-radius: 999px; font-size: 11px }
-      `}</style>
     </div>
   )
 }

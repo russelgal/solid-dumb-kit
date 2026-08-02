@@ -219,7 +219,7 @@ function Deck(props: DeckProps) {
 
   return (
     <div class="deck">
-      <div class="bar">
+      <div class="mb-3 flex flex-wrap items-center gap-2 [&_button]:cursor-pointer [&_button]:rounded-lg [&_button]:border [&_button]:border-base-300 [&_button]:bg-base-100 [&_button]:px-3 [&_button]:py-1.5 [&_button]:text-[13px] [&_button:hover]:bg-base-200 [&_label]:flex [&_label]:items-center [&_label]:gap-1.5 [&_label]:text-[13px]">
         <button type="button" onClick={shuffle}>Перемешать</button>
         <button type="button" onClick={rotate}>Сдвинуть на 1</button>
         <button type="button" onClick={reverse}>Наоборот</button>
@@ -232,7 +232,7 @@ function Deck(props: DeckProps) {
           <input type="checkbox" checked={auto()} onChange={(e) => setAuto(e.currentTarget.checked)} />
           автоскролл
         </label>
-        <span class="stat">
+        <span class="text-[13px] text-base-content">
           поехало: <b>{moved()}</b> из {props.count}
           {ready() ? '' : ' · места ещё снимаются'}
         </span>
@@ -243,8 +243,15 @@ function Deck(props: DeckProps) {
           иначе на двухстах карточках висело бы восемьсот. Кто под курсором,
           отвечает `ev.target.closest('[data-card]')`. */}
       <div
-        class="grid"
-        classList={{ scroller: props.scroll, list: props.list }}
+        class="grid gap-2"
+        classList={{
+          'grid-cols-[repeat(auto-fill,minmax(76px,1fr))]': !props.list,
+          'max-w-[560px] grid-cols-1 gap-1.5': props.list,
+          // контейнер со своей прокруткой: место под полосу резервируем заранее
+          // (`sd-scroll`), иначе её появление меняет ширину — и сетка
+          // пересчитывается посреди жеста
+          'sd-scroll max-h-90 content-start rounded-xl bg-base-200 p-2 ring-1 ring-base-300': props.scroll,
+        }}
         ref={box}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -254,12 +261,20 @@ function Deck(props: DeckProps) {
         <For each={cards()}>
           {(i) => (
             <div
-              class="card"
-              classList={{ held: held() === i }}
+              class="grid cursor-grab place-items-center rounded-box bg-base-100 font-semibold ring-1 ring-base-300 active:cursor-grabbing"
+              classList={{
+                'h-16 border-t-5 text-[15px]': !props.list,
+                'h-10.5 justify-items-start border-l-5 pl-3.5 text-sm font-medium': props.list,
+                // только прозрачность: спрятать оригинал совсем — оборвать жест
+                'opacity-35': held() === i,
+              }}
               data-card={i}
               draggable="true"
               ref={(el) => { els[i] = el }}
-              style={{ order: String(pos()[i]), '--hue': HUE(i) }}
+              style={{
+                order: String(pos()[i]),
+                [props.list ? 'border-left-color' : 'border-top-color']: HUE(i),
+              }}
             >
               {props.list ? `Строка ${i + 1}` : i + 1}
             </div>
@@ -267,7 +282,7 @@ function Deck(props: DeckProps) {
         </For>
       </div>
 
-      <p class="note small">
+      <p class="mb-2.5 max-w-[90ch] font-mono text-xs text-base-content">
         порядок на экране: {visual().slice(0, 24).join(' ')} …
       </p>
     </div>
@@ -276,16 +291,16 @@ function Deck(props: DeckProps) {
 
 export default function CssOrderExample() {
   return (
-    <div class="co-example">
-      <h3>CSS order + FLIP — сортировка без единой перестановки DOM</h3>
-      <p class="note">
+    <div class="p-5 text-base-content">
+      <h3 class="mb-1 text-lg font-semibold">CSS order + FLIP — сортировка без единой перестановки DOM</h3>
+      <p class="mb-2.5 max-w-[90ch] text-[13px] text-base-content">
         <b>Тяни карточки мышью</b> или жми кнопки — результат один: карточки в разметке всегда идут
         по порядку и никуда не переезжают, меняется только свойство <code>order</code>, раскладку
         делает сам браузер. Перетаскивание — голые нативные события (<code>dragstart</code>,{' '}
         <code>dragover</code>, <code>dragend</code>), где над чем курсор, решает тоже браузер:
         считать нечего.
       </p>
-      <p class="note">
+      <p class="mb-2.5 max-w-[90ch] text-[13px] text-base-content">
         Анимировать <code>order</code> нельзя — он дискретный, и без FLIP карточки просто
         телепортируются (сними галочку и сравни). FLIP догоняет перекладку: элемент уже на новом
         месте, мы стартуем его со старого. Позиции мест сняты <b>один раз</b> через{' '}
@@ -293,15 +308,15 @@ export default function CssOrderExample() {
         ничего — смещение это разница двух известных мест.
       </p>
 
-      <h4 class="sec">200 карточек, сетка во всю ширину</h4>
-      <p class="note">
+      <h4 class="mt-5 mb-2 text-sm text-base-content">200 карточек, сетка во всю ширину</h4>
+      <p class="mb-2.5 max-w-[90ch] text-[13px] text-base-content">
         Прокручиваемого предка у этой сетки нет, поэтому автопрокрутка возьмётся за саму страницу:
         подтащи карточку к нижней кромке окна.
       </p>
       <Deck count={200} autoScroll />
 
-      <h4 class="sec">Та же колода в контейнере с прокруткой</h4>
-      <p class="note">
+      <h4 class="mt-5 mb-2 text-sm text-base-content">Та же колода в контейнере с прокруткой</h4>
+      <p class="mb-2.5 max-w-[90ch] text-[13px] text-base-content">
         Секция со своим <code>overflow-y: auto</code>. Проверяется главное: места сняты в координатах
         экрана, но в дело идут только их <b>разности</b> — «отсюда дотуда», — а разность от прокрутки
         не зависит. Поэтому пересчитывать снимок при скролле не нужно вовсе, и порядок не врёт, на
@@ -312,54 +327,21 @@ export default function CssOrderExample() {
       </p>
       <Deck count={120} scroll autoScroll />
 
-      <h4 class="sec">Список — одна колонка, без прокрутки</h4>
-      <p class="note">
+      <h4 class="mt-5 mb-2 text-sm text-base-content">Список — одна колонка, без прокрутки</h4>
+      <p class="mb-2.5 max-w-[90ch] text-[13px] text-base-content">
         Тот же <code>Deck</code>, просто сетка шириной в один столбец: для движка ничего не меняется,
         места как были массивом координат, так и остались — соседи разъезжаются по вертикали, потому
         что так легли места. Прокручиваемого предка нет, поэтому автопрокрутка возьмётся за страницу.
       </p>
       <Deck count={40} list autoScroll />
 
-      <h4 class="sec">Список в контейнере с прокруткой</h4>
-      <p class="note">
+      <h4 class="mt-5 mb-2 text-sm text-base-content">Список в контейнере с прокруткой</h4>
+      <p class="mb-2.5 max-w-[90ch] text-[13px] text-base-content">
         Самый частый случай в жизни: длинный список в окне фиксированной высоты. Уведи строку к нижней
         кромке — листается сама; сними «автоскролл» и убедись, что без неё до конца не добраться.
       </p>
       <Deck count={120} scroll list autoScroll />
 
-      <style>{`
-        .co-example { padding: 16px 20px; color: var(--color-base-content) }
-        .co-example h3 { margin: 0 0 4px }
-        .co-example .sec { margin: 22px 0 8px; font-size: 14px; color: var(--color-base-content) }
-        .co-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
-        .co-example .note.small { font-size: 12px; font-family: ui-monospace, monospace; color: var(--color-base-content) }
-        .co-example .bar { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; flex-wrap: wrap }
-        .co-example .bar button { padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
-                                  border: 1px solid var(--color-base-300); border-radius: 8px; background: var(--color-base-100) }
-        .co-example .bar button:hover { background: var(--color-base-200) }
-        .co-example .bar label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--color-base-content) }
-        .co-example .stat { font-size: 13px; color: var(--color-base-content) }
-
-        .co-example .grid { display: grid; gap: 8px;
-                            grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)) }
-        .co-example .grid.list { grid-template-columns: 1fr; gap: 6px; max-width: 560px }
-        /* контейнер со своей прокруткой: место под полосу резервируем заранее,
-           иначе её появление меняет ширину — и сетка пересчитывается посреди жеста */
-        .co-example .grid.scroller { max-height: 360px; overflow-y: auto; scrollbar-gutter: stable;
-                                     align-content: start;
-                                     padding: 8px; border-radius: 12px; background: var(--color-base-200);
-                                     box-shadow: inset 0 0 0 1px var(--color-base-300) }
-        .co-example .card { display: grid; place-items: center; height: 64px; border-radius: 10px;
-                            cursor: grab; font-weight: 600; font-size: 15px; color: var(--color-base-content);
-                            background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300);
-                            border-top: 5px solid var(--hue) }
-        .co-example .grid.list .card { height: 42px; place-items: center start; padding-left: 14px;
-                                      font-weight: 500; font-size: 14px; border-top: none;
-                                      border-left: 5px solid var(--hue) }
-        .co-example .card:active { cursor: grabbing }
-        /* только прозрачность: спрятать оригинал совсем — оборвать жест */
-        .co-example .card.held { opacity: .35 }
-      `}</style>
     </div>
   )
 }
