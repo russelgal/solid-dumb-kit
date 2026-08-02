@@ -6,6 +6,7 @@ import SelectionAreaExample from "../../examples/pointer/SelectionArea.example";
 import DumbSortableExample from "../../examples/pointer/DumbSortable.example";
 import KanbanExample from "../../examples/pointer/Kanban.example";
 import ResizableGridExample from "../../examples/pointer/ResizableGrid.example";
+import DumbGalleryExample from "../../examples/pointer/DumbGallery.example";
 import DumbGridExample from "../../examples/pointer/DumbGrid.example";
 import BoardExample from "../../examples/pointer/Board.example";
 
@@ -69,6 +70,13 @@ const GROUPS: Array<Group> = [
         pkg: "sortable",
         hint: "между колонками",
         Comp: KanbanExample,
+      },
+      {
+        id: "gallery",
+        label: "DumbGallery",
+        pkg: "gallery",
+        hint: "картинки: выбор, порядок, заливка",
+        Comp: DumbGalleryExample,
       },
       {
         id: "grid",

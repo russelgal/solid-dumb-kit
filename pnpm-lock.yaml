@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@solid-primitives/upload':
+        specifier: ^0.1.5
+        version: 0.1.5(solid-js@1.9.14)
     devDependencies:
       '@changesets/cli':
         specifier: ^2.29.4
@@ -14,6 +18,9 @@ importers:
       '@solid-dumb-kit/board':
         specifier: workspace:*
         version: link:packages/board
+      '@solid-dumb-kit/gallery':
+        specifier: workspace:*
+        version: link:packages/gallery
       '@solid-dumb-kit/grid':
         specifier: workspace:*
         version: link:packages/grid
@@ -98,6 +105,22 @@ importers:
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
+
+  packages/gallery:
+    dependencies:
+      '@solid-primitives/upload':
+        specifier: ^0.1.5
+        version: 0.1.5(solid-js@1.9.14)
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@solid-dumb-kit/sortable':
+        specifier: workspace:*
+        version: link:../sortable
 
   packages/grid:
     dependencies:
@@ -878,6 +901,11 @@ packages:
         optional: true
       solid-start:
         optional: true
+
+  '@solid-primitives/upload@0.1.5':
+    resolution: {integrity: sha512-oUmLcN8vxtz838wK9egwk+PtftT7XYPEnKN8llqqIA2inlLuHp5Kx/lbWyUFK2IteqNukiQWfieUQPjGEodOog==}
+    peerDependencies:
+      solid-js: ^1.6.12
 
   '@solid-primitives/utils@6.4.1':
     resolution: {integrity: sha512-ISSB5QX1qP2ynrheIpYwc4oKR5Ny4siNuUyf1qZniy+Il+p/PtDB0QK1Dnle8noiHpwRD3gpPdubOC3qI/Zamg==}
@@ -2680,6 +2708,11 @@ snapshots:
     optional: true
 
   '@solid-primitives/storage@4.3.4(solid-js@1.9.14)':
+    dependencies:
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.14)
+      solid-js: 1.9.14
+
+  '@solid-primitives/upload@0.1.5(solid-js@1.9.14)':
     dependencies:
       '@solid-primitives/utils': 6.4.1(solid-js@1.9.14)
       solid-js: 1.9.14

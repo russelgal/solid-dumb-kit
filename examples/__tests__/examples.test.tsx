@@ -5,6 +5,7 @@ import { render } from 'solid-js/web'
 import SelectionAreaExample from '../pointer/SelectionArea.example'
 import DumbSortableExample from '../pointer/DumbSortable.example'
 import ResizableGridExample from '../pointer/ResizableGrid.example'
+import DumbGalleryExample from '../pointer/DumbGallery.example'
 import DumbTreeExample from '../data/DumbTree.example'
 import DumbTableExample from '../data/DumbTable.example'
 import DumbGridExample from '../pointer/DumbGrid.example'
@@ -46,6 +47,7 @@ const EXAMPLES = [
   ['DumbSortableDnd', DumbSortableDndExample],
   ['DumbBoard', DumbBoardExample],
   ['DumbBoardEven', DumbBoardEvenExample],
+  ['DumbGallery', DumbGalleryExample],
   ['CssOrder', CssOrderExample],
   ['RawDnd', RawDndExample],
   ['FlipBench', FlipBenchExample],
