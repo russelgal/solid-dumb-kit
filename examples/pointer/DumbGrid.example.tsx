@@ -183,37 +183,37 @@ export default function DumbGridExample() {
       <style>{`
         .dg-example { padding: 16px 20px }
         .dg-example h3 { margin: 0 0 4px }
-        .dg-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
+        .dg-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
         .dg-example [data-grid-remove] { border-radius: 8px }
-        .dg-example [data-grid-remove]:hover { opacity: 1 !important; color: #ef4444 }
+        .dg-example [data-grid-remove]:hover { opacity: 1 !important; color: var(--color-error) }
 
         .dg-example .card { height: 100%; display: flex; flex-direction: column;
                             box-sizing: border-box; overflow: hidden;
-                            border: 1px solid #e2e8f0; border-radius: 12px; background: #fff;
-                            box-shadow: 0 1px 2px rgba(15,23,42,.04) }
+                            border: 1px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-100);
+                            box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) 4%, transparent) }
         .dg-example .card-head { display: flex; align-items: center; gap: 8px;
                                  padding: 8px 10px; cursor: grab; user-select: none;
-                                 border-bottom: 1px solid #eef2f7;
-                                 background: color-mix(in srgb, var(--accent) 8%, #fff) }
+                                 border-bottom: 1px solid var(--color-base-200);
+                                 background: color-mix(in srgb, var(--accent) 8%, var(--color-base-100)) }
         .dg-example .card-head:active { cursor: grabbing }
-        .dg-example .grip { color: #94a3b8; font-size: 14px; line-height: 1 }
-        .dg-example .card-title { font-size: 13px; font-weight: 600; color: #0f172a;
+        .dg-example .grip { color: var(--color-base-content); font-size: 14px; line-height: 1 }
+        .dg-example .card-title { font-size: 13px; font-weight: 600; color: var(--color-base-content);
                                   padding-right: 20px }
         .dg-example .card-body { flex: 1; min-height: 0; padding: 10px; overflow: auto;
                                  scrollbar-gutter: stable }
 
         .dg-example .bars { display: flex; align-items: flex-end; gap: 4px; height: 100% }
         .dg-example .bars i { flex: 1; border-radius: 3px 3px 0 0;
-                              background: color-mix(in srgb, var(--accent) 70%, #fff) }
+                              background: color-mix(in srgb, var(--accent) 70%, var(--color-base-100)) }
         .dg-example .kpi { display: flex; flex-direction: column; justify-content: center; height: 100% }
-        .dg-example .kpi b { font-size: 22px; color: #0f172a }
-        .dg-example .kpi span { font-size: 12px; color: #64748b }
+        .dg-example .kpi b { font-size: 22px; color: var(--color-base-content) }
+        .dg-example .kpi span { font-size: 12px; color: var(--color-base-content) }
         .dg-example .list { margin: 0; padding: 0; list-style: none; font-size: 13px }
         .dg-example .list li { display: flex; justify-content: space-between;
-                               padding: 3px 0; border-bottom: 1px dashed #eef2f7 }
-        .dg-example .list b { color: #ef4444 }
+                               padding: 3px 0; border-bottom: 1px dashed var(--color-base-200) }
+        .dg-example .list b { color: var(--color-error) }
         .dg-example input { font: inherit; width: 100%; box-sizing: border-box;
-                            padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 8px }
+                            padding: 5px 8px; border: 1px solid var(--color-base-300); border-radius: 8px }
       `}</style>
     </div>
   )

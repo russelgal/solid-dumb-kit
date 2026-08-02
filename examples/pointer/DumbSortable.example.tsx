@@ -20,6 +20,9 @@ function shuffle<T>(list: Array<T>): Array<T> {
 
 // цвет — единственное, что остаётся инлайном: он вычисляется из данных
 const HUE = (i: number) => `oklch(0.75 0.13 ${(i * 37) % 360})`
+// текст на цветной плитке привязан к ЗАЛИВКЕ, а не к теме: заливка светлая
+// всегда, поэтому и надпись всегда тёмная — иначе в тёмной теме она пропадала
+const INK = (i: number) => `oklch(0.28 0.07 ${(i * 37) % 360})`
 
 const PILLS = [
   '⚡ 60fps @ 100s of items',
@@ -99,7 +102,7 @@ export default function DumbSortableExample() {
           <div class="scroller tiles">
             <DumbSortable items={tiles()} setItems={setTiles} id={(x) => x.id} axis="grid" animate={animate()}>
               {(item, i) => (
-                <div class="tile" style={{ background: HUE(Number(item.id.slice(1))) }}>
+                <div class="tile" style={{ background: HUE(Number(item.id.slice(1))), color: INK(Number(item.id.slice(1))) }}>
                   {i() + 1}
                 </div>
               )}
@@ -111,43 +114,43 @@ export default function DumbSortableExample() {
       <Promo />
 
       <style>{`
-        .ds-example { padding: 16px 20px; color: #0f172a;
+        .ds-example { padding: 16px 20px; color: var(--color-base-content);
                       display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap }
         .ds-example .demos { flex: 1; min-width: 320px; display: grid; gap: 28px }
 
         .section-head { display: flex; align-items: center; gap: 10px }
         .section-head h3 { margin: 0 0 4px }
-        .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
+        .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
 
-        .toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #64748b }
+        .toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-base-content) }
         .toggle input { margin: 0 }
-        .btn { padding: 3px 10px; border-radius: 6px; border: 1px solid #cbd5e1;
-               background: #fff; color: inherit; font: inherit; font-size: 12px; cursor: pointer }
+        .btn { padding: 3px 10px; border-radius: 6px; border: 1px solid var(--color-base-300);
+               background: var(--color-base-100); color: inherit; font: inherit; font-size: 12px; cursor: pointer }
 
         .scroller { max-height: 52vh; overflow-y: auto; overflow-x: hidden; padding: 10px;
-                    border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc }
+                    border: 1px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-200) }
         .list { display: grid; gap: 6px }
         .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px }
 
         .row { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-               border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1px #e2e8f0 }
+               border-radius: 10px; background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300) }
         .handle { cursor: grab; border: none; background: none; padding: 0 2px;
-                  font-size: 18px; color: #94a3b8; touch-action: none }
-        .num { width: 34px; font-size: 13px; color: #94a3b8; font-variant-numeric: tabular-nums }
+                  font-size: 18px; color: var(--color-base-content); touch-action: none }
+        .num { width: 34px; font-size: 13px; color: var(--color-base-content); font-variant-numeric: tabular-nums }
         .swatch { width: 14px; height: 14px; border-radius: 4px }
 
         .tile { aspect-ratio: 1; display: grid; place-items: center; border-radius: 10px;
-                cursor: grab; user-select: none; font-weight: 600; color: #1e293b }
+                cursor: grab; user-select: none; font-weight: 600 }
 
         .promo { width: 260px; flex-shrink: 0; position: sticky; top: 64px; padding: 18px;
-                 border-radius: 14px; color: #fff;
-                 background: linear-gradient(160deg, #4f46e5, #7c3aed 55%, #db2777);
+                 border-radius: 14px; color: var(--color-primary-content);
+                 background: linear-gradient(160deg, var(--color-primary), var(--color-secondary) 55%, var(--color-secondary));
                  box-shadow: 0 12px 28px -10px rgba(79,70,229,.55) }
         .promo-title { font-size: 18px; font-weight: 700; margin-bottom: 6px }
         .promo-text { font-size: 13px; opacity: .92; margin: 0 0 12px; line-height: 1.5 }
         .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px }
-        .pill { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.18) }
-        .promo-install { display: block; font-size: 11px; overflow-wrap: anywhere; background: rgba(0,0,0,.25);
+        .pill { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: color-mix(in oklch, var(--color-base-content) 18%, transparent) }
+        .promo-install { display: block; font-size: 11px; overflow-wrap: anywhere; background: color-mix(in oklch, var(--color-base-content) 25%, transparent);
                          padding: 8px 10px; border-radius: 8px; text-align: center }
       `}</style>
     </div>

@@ -403,32 +403,32 @@ export default function OrderKanbanExample() {
       </div>
 
       <style>{`
-        .ok-example { padding: 16px 20px; color: #0f172a }
+        .ok-example { padding: 16px 20px; color: var(--color-base-content) }
         .ok-example h3 { margin: 0 0 4px }
-        .ok-example .note { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 90ch }
-        .ok-example .bar { margin: 8px 0 12px; font-size: 13px; color: #64748b; min-height: 18px }
+        .ok-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
+        .ok-example .bar { margin: 8px 0 12px; font-size: 13px; color: var(--color-base-content); min-height: 18px }
 
         .ok-example .cols { display: grid; gap: 14px; align-items: start;
                             grid-template-columns: repeat(4, minmax(200px, 1fr)) }
         .ok-example .col-title { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
-                                 font-size: 13px; color: #475569; cursor: grab; user-select: none }
+                                 font-size: 13px; color: var(--color-base-content); cursor: grab; user-select: none }
         .ok-example .col-title:active { cursor: grabbing }
-        .ok-example .grip { color: #cbd5e1 }
+        .ok-example .grip { color: var(--color-base-content) }
         .ok-example .col.held { opacity: .35 }
         .ok-example .count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                             color: #64748b; background: #e2e8f0 }
+                             color: var(--color-base-content); background: var(--color-base-300) }
         /* сетка в одну колонку: сюда и смотрит order */
         .ok-example .zone { display: grid; grid-template-columns: 1fr; gap: 8px; align-content: start;
                             min-height: 120px; padding: 10px; border-radius: 12px;
-                            background: #f8fafc; box-shadow: inset 0 0 0 1px #e2e8f0 }
+                            background: var(--color-base-200); box-shadow: inset 0 0 0 1px var(--color-base-300) }
         .ok-example .card { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px;
-                            border-radius: 10px; cursor: grab; background: #fff;
-                            box-shadow: 0 1px 2px rgba(15,23,42,.06), inset 0 0 0 1px #e2e8f0;
+                            border-radius: 10px; cursor: grab; background: var(--color-base-100);
+                            box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) 6%, transparent), inset 0 0 0 1px var(--color-base-300);
                             border-left: 4px solid var(--hue) }
         .ok-example .card:active { cursor: grabbing }
         .ok-example .card.held { opacity: .35 }
         .ok-example .text { font-size: 13.5px; font-weight: 500 }
-        .ok-example .tag { font-size: 11.5px; color: #94a3b8 }
+        .ok-example .tag { font-size: 11.5px; color: var(--color-base-content) }
       `}</style>
     </div>
   )

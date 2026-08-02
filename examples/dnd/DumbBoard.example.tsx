@@ -97,7 +97,7 @@ export default function DumbBoardExample() {
     sections().map((s) => ({ ...s, cols: s.id === 'archive' ? cols() * 2 : cols() }))
 
   return (
-    <div class="p-5 text-slate-900">
+    <div class="p-5 text-base-content">
       <h3 class="mb-1 text-lg font-semibold">DumbBoard — секции, блоки и переносы между ними</h3>
       <p class="mb-2 max-w-[92ch] text-sm text-base-content">
         <b>Блоки живут на сетке ячеек</b> — размер целый: ширина колонками зоны
@@ -157,19 +157,19 @@ export default function DumbBoardExample() {
           setLog(`«${sections().find((s) => s.id === id)?.title}» — ${size.span} из 12 колонок, ${size.rows || '·'} строк`)}
         editable={edit()}
         animate={animate()}
-        class="[&_.dumb-board-head]:text-slate-800"
+        class="[&_.dumb-board-head]:text-base-content"
       >
         {(w) => (
           <article
-            class="flex h-full cursor-grab flex-col justify-center gap-0.5 overflow-hidden rounded-[10px] border-t-4 bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(15,23,42,.06),inset_0_0_0_1px_#e2e8f0] active:cursor-grabbing"
+            class="flex h-full cursor-grab flex-col justify-center gap-0.5 overflow-hidden rounded-box border-t-4 bg-base-100 px-2.5 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing"
             style={{ 'border-top-color': HUE(Number(w.id.slice(1))) }}
           >
-            <span class="text-[13.5px] font-medium text-slate-900">{w.title}</span>
-            <span class="text-[11.5px] text-slate-600">{w.kind}</span>
-            <span class="text-[11px] text-slate-700">{sizeOf(w).w}×{sizeOf(w).h} ячеек</span>
+            <span class="text-[13.5px] font-medium text-base-content">{w.title}</span>
+            <span class="text-[11.5px] text-base-content">{w.kind}</span>
+            <span class="text-[11px] text-base-content">{sizeOf(w).w}×{sizeOf(w).h} ячеек</span>
             {/* пределы — те же, что уходят в blockLimits: видно, докуда тянется
                 ресайз и с какой ширины блок готов ужиматься */}
-            <span class="text-[11px] leading-tight text-slate-600">
+            <span class="text-[11px] leading-tight text-base-content">
               Ш {range(w.minW, w.maxW)} · В {range(w.minH, w.maxH)}
               {w.minW === undefined ? '' : ' · ужимается'}
             </span>

@@ -147,39 +147,39 @@ export default function UtilsExample() {
       </section>
 
       <style>{`
-        .ut-example { padding: 16px 20px; color: #0f172a;
+        .ut-example { padding: 16px 20px; color: var(--color-base-content);
                       display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) }
-        .ut-example .card { padding: 14px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff }
+        .ut-example .card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--color-base-300); background: var(--color-base-100) }
         .ut-example .card.wide { grid-column: 1 / -1 }
         .ut-example h3 { margin: 0 0 4px; font-size: 14px }
-        .ut-example .note { margin: 0 0 10px; font-size: 12px; color: #64748b }
-        .ut-example .muted { color: #94a3b8 }
+        .ut-example .note { margin: 0 0 10px; font-size: 12px; color: var(--color-base-content) }
+        .ut-example .muted { color: var(--color-base-content) }
 
         .ut-example input, .ut-example select {
-          width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid #cbd5e1;
+          width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--color-base-300);
           font: inherit; box-sizing: border-box }
         .ut-example input.narrow { width: 100px }
         .ut-example input.file, .ut-example input[type=range] { border: none; padding: 0; font-size: 13px }
         .ut-example .controls { display: flex; gap: 8px; margin-top: 8px }
         .ut-example .controls select { width: auto }
-        .ut-example .range { display: block; margin-top: 10px; font-size: 12px; color: #64748b }
+        .ut-example .range { display: block; margin-top: 10px; font-size: 12px; color: var(--color-base-content) }
 
         .ut-example table { border-collapse: collapse; margin-top: 10px }
-        .ut-example th { text-align: left; font-weight: 600; color: #64748b; padding: 4px 8px 4px 0 }
+        .ut-example th { text-align: left; font-weight: 600; color: var(--color-base-content); padding: 4px 8px 4px 0 }
         .ut-example td { padding: 3px 8px 3px 0; font-size: 13px }
-        .ut-example td.call { color: #7c3aed; white-space: nowrap }
+        .ut-example td.call { color: color-mix(in oklch, var(--color-secondary) 55%, var(--color-base-content)); white-space: nowrap }
         .ut-example td.val { font-variant-numeric: tabular-nums }
 
         .ut-example .out { display: block; margin-top: 10px; padding: 8px 10px; border-radius: 8px;
-                           background: #0f172a; color: #e2e8f0; font-size: 13px; overflow-wrap: anywhere }
-        .ut-example .out.error { background: #7f1d1d }
+                           background: var(--color-neutral); color: var(--color-neutral-content); font-size: 13px; overflow-wrap: anywhere }
+        .ut-example .out.error { background: var(--color-error) }
 
         .ut-example .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
                               gap: 10px; margin-top: 8px }
         .ut-example figure { margin: 0; text-align: center }
         .ut-example figure img { width: 100%; height: 90px; object-fit: cover;
-                                 border-radius: 8px; background: #f1f5f9 }
-        .ut-example figcaption { font-size: 11px; color: #64748b; overflow-wrap: anywhere }
+                                 border-radius: 8px; background: var(--color-base-200) }
+        .ut-example figcaption { font-size: 11px; color: var(--color-base-content); overflow-wrap: anywhere }
       `}</style>
     </div>
   )

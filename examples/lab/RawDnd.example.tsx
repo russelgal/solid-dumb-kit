@@ -131,26 +131,26 @@ onDragOver:  ev.preventDefault(); переставить на место цел�
 onDragEnd:   забыть id`}</pre>
 
       <style>{`
-        .raw-example { padding: 16px 20px; color: #0f172a }
+        .raw-example { padding: 16px 20px; color: var(--color-base-content) }
         .raw-example h3 { margin: 0 0 4px }
-        .raw-example .note { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 90ch }
-        .raw-example .note.warn { color: #b45309 }
-        .raw-example .bar { margin: 0 0 12px; font-size: 13px; color: #64748b; min-height: 18px }
+        .raw-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
+        .raw-example .note.warn { color: color-mix(in oklch, var(--color-warning) 45%, var(--color-base-content)) }
+        .raw-example .bar { margin: 0 0 12px; font-size: 13px; color: var(--color-base-content); min-height: 18px }
 
         .raw-example .grid { display: grid; gap: 10px; max-width: 620px;
                              grid-template-columns: repeat(6, 1fr) }
         .raw-example .card { display: grid; place-items: center; height: 92px; border-radius: 12px;
-                             cursor: grab; font-weight: 600; font-size: 18px; color: #1e293b;
-                             background: #fff; box-shadow: inset 0 0 0 1px #e2e8f0;
+                             cursor: grab; font-weight: 600; font-size: 18px; color: var(--color-base-content);
+                             background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300);
                              border-top: 5px solid var(--hue) }
         .raw-example .card:active { cursor: grabbing }
         /* только прозрачность: спрятать оригинал совсем — оборвать жест */
         .raw-example .card.held { opacity: .35 }
 
         .raw-example .src { margin: 14px 0 0; padding: 10px 12px; max-width: 620px;
-                            font-size: 12px; line-height: 1.5; color: #475569;
-                            background: #f8fafc; border-radius: 10px;
-                            box-shadow: inset 0 0 0 1px #e2e8f0 }
+                            font-size: 12px; line-height: 1.5; color: var(--color-base-content);
+                            background: var(--color-base-200); border-radius: 10px;
+                            box-shadow: inset 0 0 0 1px var(--color-base-300) }
       `}</style>
     </div>
   )

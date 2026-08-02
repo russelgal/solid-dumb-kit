@@ -1480,7 +1480,7 @@ function mergeLayout(saved, items, cols, mode = "flow") {
   }
   return out;
 }
-var GRID_LINE = "rgba(100,116,139,.28)";
+var GRID_LINE = "var(--dumb-grid-line, rgba(100,116,139,.45))";
 function gridLinesBackground(args) {
   const { cols, gapX, rowH, gapY, line } = args;
   const col = `calc((100% - ${(cols - 1) * gapX}px) / ${cols})`;

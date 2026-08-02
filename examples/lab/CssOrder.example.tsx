@@ -328,17 +328,17 @@ export default function CssOrderExample() {
       <Deck count={120} scroll list autoScroll />
 
       <style>{`
-        .co-example { padding: 16px 20px; color: #0f172a }
+        .co-example { padding: 16px 20px; color: var(--color-base-content) }
         .co-example h3 { margin: 0 0 4px }
-        .co-example .sec { margin: 22px 0 8px; font-size: 14px; color: #334155 }
-        .co-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b; max-width: 90ch }
-        .co-example .note.small { font-size: 12px; font-family: ui-monospace, monospace; color: #94a3b8 }
+        .co-example .sec { margin: 22px 0 8px; font-size: 14px; color: var(--color-base-content) }
+        .co-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
+        .co-example .note.small { font-size: 12px; font-family: ui-monospace, monospace; color: var(--color-base-content) }
         .co-example .bar { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; flex-wrap: wrap }
         .co-example .bar button { padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
-                                  border: 1px solid #cbd5e1; border-radius: 8px; background: #fff }
-        .co-example .bar button:hover { background: #f1f5f9 }
-        .co-example .bar label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #475569 }
-        .co-example .stat { font-size: 13px; color: #64748b }
+                                  border: 1px solid var(--color-base-300); border-radius: 8px; background: var(--color-base-100) }
+        .co-example .bar button:hover { background: var(--color-base-200) }
+        .co-example .bar label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--color-base-content) }
+        .co-example .stat { font-size: 13px; color: var(--color-base-content) }
 
         .co-example .grid { display: grid; gap: 8px;
                             grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)) }
@@ -347,11 +347,11 @@ export default function CssOrderExample() {
            иначе её появление меняет ширину — и сетка пересчитывается посреди жеста */
         .co-example .grid.scroller { max-height: 360px; overflow-y: auto; scrollbar-gutter: stable;
                                      align-content: start;
-                                     padding: 8px; border-radius: 12px; background: #f8fafc;
-                                     box-shadow: inset 0 0 0 1px #e2e8f0 }
+                                     padding: 8px; border-radius: 12px; background: var(--color-base-200);
+                                     box-shadow: inset 0 0 0 1px var(--color-base-300) }
         .co-example .card { display: grid; place-items: center; height: 64px; border-radius: 10px;
-                            cursor: grab; font-weight: 600; font-size: 15px; color: #1e293b;
-                            background: #fff; box-shadow: inset 0 0 0 1px #e2e8f0;
+                            cursor: grab; font-weight: 600; font-size: 15px; color: var(--color-base-content);
+                            background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300);
                             border-top: 5px solid var(--hue) }
         .co-example .grid.list .card { height: 42px; place-items: center start; padding-left: 14px;
                                       font-weight: 500; font-size: 14px; border-top: none;

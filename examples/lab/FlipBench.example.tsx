@@ -255,23 +255,23 @@ export default function FlipBenchExample() {
       </div>
 
       <style>{`
-        .fb-example { padding: 16px 20px; color: #0f172a }
+        .fb-example { padding: 16px 20px; color: var(--color-base-content) }
         .fb-example h3 { margin: 0 0 4px }
-        .fb-example .note { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 90ch }
+        .fb-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
         .fb-example .bar { display: flex; align-items: center; gap: 14px; margin: 12px 0; flex-wrap: wrap }
-        .fb-example .bar label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #475569 }
+        .fb-example .bar label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--color-base-content) }
         .fb-example .bar button { padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
-                                  border: 1px solid #cbd5e1; border-radius: 8px; background: #fff }
+                                  border: 1px solid var(--color-base-300); border-radius: 8px; background: var(--color-base-100) }
         .fb-example .stats { display: flex; gap: 24px; margin: 0 0 14px; padding: 10px 14px;
-                             border-radius: 10px; background: #f8fafc; box-shadow: inset 0 0 0 1px #e2e8f0 }
-        .fb-example .stats > div { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: #475569 }
-        .fb-example .stats b { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: #94a3b8 }
+                             border-radius: 10px; background: var(--color-base-200); box-shadow: inset 0 0 0 1px var(--color-base-300) }
+        .fb-example .stats > div { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--color-base-content) }
+        .fb-example .stats b { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--color-base-content) }
 
         .fb-example .grid { display: grid; gap: 8px; align-content: start;
                             grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)) }
         .fb-example .card { display: grid; place-items: center; height: 64px; border-radius: 10px;
-                            cursor: grab; font-weight: 600; font-size: 15px; color: #1e293b;
-                            background: #fff; box-shadow: inset 0 0 0 1px #e2e8f0;
+                            cursor: grab; font-weight: 600; font-size: 15px; color: var(--color-base-content);
+                            background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300);
                             border-top: 5px solid var(--hue) }
         .fb-example .card:active { cursor: grabbing }
         .fb-example .card.held { opacity: .35 }

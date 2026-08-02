@@ -276,13 +276,13 @@ export default function OrderTableExample() {
       </table>
 
       <style>{`
-        .ot-example { padding: 16px 20px; color: #0f172a }
+        .ot-example { padding: 16px 20px; color: var(--color-base-content) }
         .ot-example h3 { margin: 0 0 4px }
-        .ot-example .note { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 92ch }
+        .ot-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 92ch }
         .ot-example .bar { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px;
-                           font-size: 13px; color: #64748b; min-height: 26px }
+                           font-size: 13px; color: var(--color-base-content); min-height: 26px }
         .ot-example .bar button { padding: 5px 10px; font: inherit; font-size: 12.5px; cursor: pointer;
-                                  border: 1px solid #cbd5e1; border-radius: 8px; background: #fff }
+                                  border: 1px solid var(--color-base-300); border-radius: 8px; background: var(--color-base-100) }
 
         /* ВОТ ОНО: таблица как сетка, строки как subgrid — только так работает order */
         .ot-example .grid-table { display: grid; width: 100%; max-width: 900px;
@@ -292,23 +292,23 @@ export default function OrderTableExample() {
                                   display: grid; grid-column: 1 / -1;
                                   grid-template-columns: subgrid }
         .ot-example th, .ot-example td { padding: 8px 10px; text-align: left;
-                                         border-bottom: 1px solid #eef2f7 }
-        .ot-example th { position: relative; font-size: 12px; font-weight: 600; color: #64748b;
-                         cursor: pointer; user-select: none; border-bottom: 1px solid #cbd5e1 }
+                                         border-bottom: 1px solid var(--color-base-200) }
+        .ot-example th { position: relative; font-size: 12px; font-weight: 600; color: var(--color-base-content);
+                         cursor: pointer; user-select: none; border-bottom: 1px solid var(--color-base-300) }
         .ot-example th.h-drag { cursor: default }
-        .ot-example tbody tr { background: #fff }
-        .ot-example tbody tr:hover { background: #f8fafc }
+        .ot-example tbody tr { background: var(--color-base-100) }
+        .ot-example tbody tr:hover { background: var(--color-base-200) }
         .ot-example tbody tr.held { opacity: .35 }
-        .ot-example .drag { color: #cbd5e1 }
+        .ot-example .drag { color: var(--color-base-content) }
         .ot-example .drag span { cursor: grab }
         .ot-example .drag span:active { cursor: grabbing }
         .ot-example .num { text-align: right; font-variant-numeric: tabular-nums }
-        .ot-example .dim { color: #94a3b8; font-variant-numeric: tabular-nums }
+        .ot-example .dim { color: var(--color-base-content); font-variant-numeric: tabular-nums }
         .ot-example .chip { padding: 2px 8px; border-radius: 999px; font-size: 11.5px;
-                            background: #eef2ff; color: #4338ca }
-        .ot-example .chip[data-status="оплачен"] { background: #ecfdf5; color: #047857 }
-        .ot-example .chip[data-status="отменён"] { background: #fef2f2; color: #b91c1c }
-        .ot-example .chip[data-status="в работе"] { background: #fffbeb; color: #b45309 }
+                            background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)); color: color-mix(in oklch, var(--color-primary) 50%, var(--color-base-content)) }
+        .ot-example .chip[data-status="оплачен"] { background: color-mix(in oklch, var(--color-success) 18%, var(--color-base-100)); color: color-mix(in oklch, var(--color-success) 50%, var(--color-base-content)) }
+        .ot-example .chip[data-status="отменён"] { background: color-mix(in oklch, var(--color-error) 18%, var(--color-base-100)); color: color-mix(in oklch, var(--color-error) 50%, var(--color-base-content)) }
+        .ot-example .chip[data-status="в работе"] { background: color-mix(in oklch, var(--color-warning) 18%, var(--color-base-100)); color: color-mix(in oklch, var(--color-warning) 50%, var(--color-base-content)) }
       `}</style>
     </div>
   )

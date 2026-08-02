@@ -92,32 +92,32 @@ export default function SelectionAreaExample() {
       />
 
       <style>{`
-        .sa-example { padding: 16px 20px; color: #0f172a }
-        .sa-example .intro { margin: 0 0 16px; font-size: 13px; color: #64748b }
+        .sa-example { padding: 16px 20px; color: var(--color-base-content) }
+        .sa-example .intro { margin: 0 0 16px; font-size: 13px; color: var(--color-base-content) }
 
         .board { margin-bottom: 28px }
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap }
         .toolbar h3 { margin: 0; font-size: 15px }
-        .toolbar .hint { font-size: 13px; color: #64748b }
+        .toolbar .hint { font-size: 13px; color: var(--color-base-content) }
         .toolbar .count { margin-left: auto; font-size: 14px }
 
-        .btn { padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1;
-               background: #fff; color: inherit; font: inherit; cursor: pointer }
-        .btn:disabled { color: #94a3b8; cursor: default }
-        .btn-danger:not(:disabled) { border-color: #dc2626; background: #dc2626; color: #fff }
+        .btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--color-base-300);
+               background: var(--color-base-100); color: inherit; font: inherit; cursor: pointer }
+        .btn:disabled { color: var(--color-base-content); cursor: default }
+        .btn-danger:not(:disabled) { border-color: var(--color-error); background: var(--color-error); color: var(--color-base-100) }
 
-        .surface { padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc }
+        .surface { padding: 12px; border: 1px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-200) }
         .surface-scroll { max-height: 60vh; overflow-y: auto; overflow-x: hidden }
 
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px }
 
         .card { display: flex; flex-direction: column; align-items: center; gap: 4px;
-                padding: 12px 6px; border-radius: 10px; background: #fff; cursor: default;
-                user-select: none; box-shadow: inset 0 0 0 1px #e2e8f0;
+                padding: 12px 6px; border-radius: 10px; background: var(--color-base-100); cursor: default;
+                user-select: none; box-shadow: inset 0 0 0 1px var(--color-base-300);
                 transition: background .1s, box-shadow .1s }
-        .card.on { background: #dbeafe; box-shadow: inset 0 0 0 2px #3b82f6 }
+        .card.on { background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)); box-shadow: inset 0 0 0 2px var(--color-primary) }
         .card .icon { font-size: 26px }
-        .card .name { font-size: 11px; color: #475569 }
+        .card .name { font-size: 11px; color: var(--color-base-content) }
       `}</style>
     </div>
   )

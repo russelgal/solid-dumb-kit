@@ -156,7 +156,7 @@ const CSS = `
           .dumb-board-head:active { cursor: grabbing }
           /* всё, что читают или хватают, — контрастное: блёклая ручка и серый по
              серому не читаются ни на проекторе, ни при ярком свете */
-          .dumb-board-grip { color: #64748b }
+          .dumb-board-grip { color: var(--dumb-board-grip, #64748b) }
           .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
           .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .85 }
           .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;

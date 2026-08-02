@@ -222,48 +222,48 @@ export default function Odata1CExample() {
       </section>
 
       <style>{`
-        .od-example { padding: 16px 20px; color: #0f172a;
+        .od-example { padding: 16px 20px; color: var(--color-base-content);
                       display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) }
-        .od-example .card { padding: 14px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff }
+        .od-example .card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--color-base-300); background: var(--color-base-100) }
         .od-example .card.wide { grid-column: 1 / -1 }
         .od-example h3 { margin: 0 0 4px; font-size: 14px }
-        .od-example .note { margin: 8px 0 0; font-size: 12px; color: #64748b }
+        .od-example .note { margin: 8px 0 0; font-size: 12px; color: var(--color-base-content) }
         .od-example code { font-size: 12px }
 
-        .od-example label { display: block; margin-top: 8px; font-size: 12px; color: #64748b }
+        .od-example label { display: block; margin-top: 8px; font-size: 12px; color: var(--color-base-content) }
         .od-example input {
-          width: 100%; padding: 7px 10px; margin-top: 3px; border-radius: 8px; border: 1px solid #cbd5e1;
-          font: inherit; font-size: 13px; box-sizing: border-box; color: #0f172a }
+          width: 100%; padding: 7px 10px; margin-top: 3px; border-radius: 8px; border: 1px solid var(--color-base-300);
+          font: inherit; font-size: 13px; box-sizing: border-box; color: var(--color-base-content) }
         .od-example .controls { display: flex; gap: 8px }
 
         .od-example .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px }
         .od-example .tabs button {
-          padding: 5px 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff;
-          font: inherit; font-size: 12px; cursor: pointer; color: #0f172a }
-        .od-example .tabs button.active { border-color: #3b82f6; background: #3b82f6; color: #fff }
+          padding: 5px 10px; border-radius: 8px; border: 1px solid var(--color-base-300); background: var(--color-base-100);
+          font: inherit; font-size: 12px; cursor: pointer; color: var(--color-base-content) }
+        .od-example .tabs button.active { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-base-100) }
 
         .od-example button.primary {
-          padding: 7px 14px; border-radius: 8px; border: none; background: #3b82f6; color: #fff;
+          padding: 7px 14px; border-radius: 8px; border: none; background: var(--color-primary); color: var(--color-base-100);
           font: inherit; font-size: 13px; cursor: pointer }
-        .od-example button.primary:disabled { background: #94a3b8; cursor: default }
+        .od-example button.primary:disabled { background: var(--color-base-300); cursor: default }
 
         .od-example table { border-collapse: collapse; margin-top: 10px; width: 100% }
         .od-example td { padding: 3px 8px 3px 0; font-size: 13px; vertical-align: top }
-        .od-example td.call { color: #7c3aed; white-space: nowrap }
+        .od-example td.call { color: color-mix(in oklch, var(--color-secondary) 55%, var(--color-base-content)); white-space: nowrap }
         .od-example td.val { overflow-wrap: anywhere }
 
         .od-example .url-head { display: flex; align-items: center; gap: 8px; margin-top: 12px }
         .od-example .url-label { font-size: 11px; text-transform: uppercase;
-                                 letter-spacing: .04em; color: #94a3b8 }
+                                 letter-spacing: .04em; color: var(--color-base-content) }
         .od-example .btn { margin-left: auto; padding: 2px 9px; border-radius: 6px;
-                           border: 1px solid #cbd5e1; background: #fff; color: inherit;
+                           border: 1px solid var(--color-base-300); background: var(--color-base-100); color: inherit;
                            font: inherit; font-size: 11px; cursor: pointer }
-        .od-example .btn:hover { border-color: #94a3b8 }
+        .od-example .btn:hover { border-color: var(--color-base-300) }
         .od-example .out { display: block; margin-top: 10px; padding: 8px 10px; border-radius: 8px;
-                           background: #0f172a; color: #e2e8f0; overflow-wrap: anywhere;
+                           background: var(--color-neutral); color: var(--color-neutral-content); overflow-wrap: anywhere;
                            white-space: pre-wrap }
-        .od-example .out.muted-out { background: #f1f5f9; color: #334155 }
-        .od-example .out.error { background: #7f1d1d; color: #fee2e2 }
+        .od-example .out.muted-out { background: var(--color-base-200); color: var(--color-base-content) }
+        .od-example .out.error { background: var(--color-error); color: color-mix(in oklch, var(--color-error) 18%, var(--color-base-100)) }
       `}</style>
     </div>
   )

@@ -99,25 +99,25 @@ export default function DumbGridDndExample() {
       </div>
 
       <style>{`
-        .dnd-example { padding: 16px 20px; color: #0f172a }
+        .dnd-example { padding: 16px 20px; color: var(--color-base-content) }
         .dnd-example h3 { margin: 0 0 4px }
-        .dnd-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
+        .dnd-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
         .dnd-example .bar { margin: 0 0 12px; font-size: 13px; min-height: 18px }
-        .dnd-example .log { color: #64748b }
+        .dnd-example .log { color: var(--color-base-content) }
 
         .dnd-example .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start }
-        .dnd-example .board { border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc;
+        .dnd-example .board { border: 1px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-200);
                               padding: 8px; transition: background .15s, border-color .15s }
-        .dnd-example .board.over { border-color: #6366f1; background: #eef2ff }
+        .dnd-example .board.over { border-color: var(--color-primary); background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)) }
         .dnd-example .board header { display: flex; gap: 8px; align-items: center;
                                      padding: 2px 4px 8px; font-size: 13px }
-        .dnd-example .count { color: #94a3b8; font-size: 12px }
+        .dnd-example .count { color: var(--color-base-content); font-size: 12px }
 
         .dnd-example .widget { height: 100%; box-sizing: border-box; display: flex; flex-direction: column;
                                justify-content: center; gap: 2px; padding: 8px 10px; border-radius: 10px;
-                               background: #fff; box-shadow: inset 0 0 0 1px #e2e8f0;
+                               background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300);
                                border-left: 3px solid oklch(0.7 0.13 var(--hue)) }
-        .dnd-example .wtitle { font-size: 12px; color: #64748b }
+        .dnd-example .wtitle { font-size: 12px; color: var(--color-base-content) }
         .dnd-example .wval { font-size: 17px; font-weight: 600 }
       `}</style>
     </div>

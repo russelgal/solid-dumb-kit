@@ -218,43 +218,43 @@ export default function BoardExample() {
       />
 
       <style>{`
-        .bd-example { padding: 16px 20px; color: #0f172a }
+        .bd-example { padding: 16px 20px; color: var(--color-base-content) }
         .bd-example h3 { margin: 0 0 4px }
-        .bd-example .note { margin: 0 0 10px; font-size: 13px; color: #64748b }
+        .bd-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
         .bd-example .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
                            margin: 0 0 12px; font-size: 13px }
         .bd-example .switch { display: inline-flex; gap: 6px; align-items: center;
-                              padding: 4px 10px; border: 1px solid #cbd5e1;
-                              border-radius: 999px; background: #fff }
-        .bd-example .bar button { font: inherit; padding: 4px 10px; border: 1px solid #cbd5e1;
-                                  border-radius: 8px; background: #fff; cursor: pointer }
+                              padding: 4px 10px; border: 1px solid var(--color-base-300);
+                              border-radius: 999px; background: var(--color-base-100) }
+        .bd-example .bar button { font: inherit; padding: 4px 10px; border: 1px solid var(--color-base-300);
+                                  border-radius: 8px; background: var(--color-base-100); cursor: pointer }
 
         .bd-example .section { height: 100%; display: flex; flex-direction: column; min-width: 0;
-                               box-sizing: border-box; border-radius: 12px; border: 1px solid #e2e8f0;
-                               background: #f8fafc; overflow: hidden }
+                               box-sizing: border-box; border-radius: 12px; border: 1px solid var(--color-base-300);
+                               background: var(--color-base-200); overflow: hidden }
         .bd-example .section header { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
                                       cursor: grab; user-select: none; font-size: 13px;
-                                      border-bottom: 1px solid #e9eef5; background: #fff }
+                                      border-bottom: 1px solid var(--color-base-200); background: var(--color-base-100) }
         .bd-example .section header:active { cursor: grabbing }
-        .bd-example .grip { color: #94a3b8; line-height: 1 }
-        .bd-example .count { font-size: 12px; color: #94a3b8 }
+        .bd-example .grip { color: var(--color-base-content); line-height: 1 }
+        .bd-example .count { font-size: 12px; color: var(--color-base-content) }
         .bd-example .add { margin-left: auto; margin-right: 18px; width: 20px; height: 20px;
                            display: grid; place-items: center; padding: 0; font: inherit;
-                           border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;
-                           color: #475569; cursor: pointer; line-height: 1 }
+                           border: 1px solid var(--color-base-300); border-radius: 6px; background: var(--color-base-100);
+                           color: var(--color-base-content); cursor: pointer; line-height: 1 }
 
         .bd-example .inner { flex: 1; min-height: 0; padding: 8px; overflow: auto;
                              scrollbar-gutter: stable; border-radius: 0 0 11px 11px;
                              transition: background .15s, box-shadow .15s }
-        .bd-example .inner.over { background: #eef2ff; box-shadow: inset 0 0 0 2px #6366f1 }
-        .bd-example .log { color: #64748b }
+        .bd-example .inner.over { background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)); box-shadow: inset 0 0 0 2px var(--color-primary) }
+        .bd-example .log { color: var(--color-base-content) }
 
         .bd-example .widget { height: 100%; box-sizing: border-box; display: flex;
                               flex-direction: column; justify-content: center; gap: 2px;
-                              padding: 8px 10px; border-radius: 10px; background: #fff;
-                              box-shadow: inset 0 0 0 1px #e2e8f0;
+                              padding: 8px 10px; border-radius: 10px; background: var(--color-base-100);
+                              box-shadow: inset 0 0 0 1px var(--color-base-300);
                               border-left: 3px solid oklch(0.7 0.13 var(--hue)) }
-        .bd-example .wtitle { font-size: 12px; color: #64748b }
+        .bd-example .wtitle { font-size: 12px; color: var(--color-base-content) }
         .bd-example .wval { font-size: 17px; font-weight: 600 }
       `}</style>
     </div>

@@ -221,42 +221,42 @@ export default function DumbTableExample() {
       </div>
 
       <style>{`
-        .dt-example { padding: 16px 20px; color: #0f172a }
-        .dt-example .intro { margin: 0 0 12px; font-size: 13px; color: #64748b }
+        .dt-example { padding: 16px 20px; color: var(--color-base-content) }
+        .dt-example .intro { margin: 0 0 12px; font-size: 13px; color: var(--color-base-content) }
 
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
                    font-size: 13px; min-height: 20px; flex-wrap: wrap }
         .toolbar .count { margin-left: auto }
 
-        .btn { padding: 3px 9px; border-radius: 6px; border: 1px solid #cbd5e1;
-               background: #fff; color: inherit; font: inherit; font-size: 12px; cursor: pointer }
-        .btn:disabled { color: #94a3b8; cursor: default }
-        .btn-danger:not(:disabled) { border-color: #dc2626; background: #dc2626; color: #fff }
-        .btn-buy.on { border-color: #16a34a; background: #16a34a; color: #fff }
+        .btn { padding: 3px 9px; border-radius: 6px; border: 1px solid var(--color-base-300);
+               background: var(--color-base-100); color: inherit; font: inherit; font-size: 12px; cursor: pointer }
+        .btn:disabled { color: var(--color-base-content); cursor: default }
+        .btn-danger:not(:disabled) { border-color: var(--color-error); background: var(--color-error); color: var(--color-base-100) }
+        .btn-buy.on { border-color: var(--color-success); background: var(--color-success); color: var(--color-base-100) }
 
-        .surface { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden }
-        .btn.on { border-color: #3b82f6; background: #3b82f6; color: #fff }
+        .surface { border: 1px solid var(--color-base-300); border-radius: 12px; overflow: hidden }
+        .btn.on { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-base-100) }
 
         .pager { margin-top: 12px }
-        .empty { padding: 24px; text-align: center; color: #94a3b8 }
+        .empty { padding: 24px; text-align: center; color: var(--color-base-content) }
 
-        .head th { background: #f8fafc; color: #475569; font-size: 12px; text-transform: uppercase;
-                   letter-spacing: .03em; border-bottom: 1px solid #e2e8f0 }
-        .row { border-bottom: 1px solid #f1f5f9 }
-        .row:hover { background: #f8fafc }
-        .row.in-cart { background: #f0fdf4 }
-        .row.selected { background: #eff6ff; box-shadow: inset 2px 0 0 #3b82f6 }
+        .head th { background: var(--color-base-200); color: var(--color-base-content); font-size: 12px; text-transform: uppercase;
+                   letter-spacing: .03em; border-bottom: 1px solid var(--color-base-300) }
+        .row { border-bottom: 1px solid var(--color-base-200) }
+        .row:hover { background: var(--color-base-200) }
+        .row.in-cart { background: color-mix(in oklch, var(--color-success) 18%, var(--color-base-100)) }
+        .row.selected { background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)); box-shadow: inset 2px 0 0 var(--color-primary) }
 
         .sku { font-size: 12px }
         .name { font-weight: 500 }
         .cell-input { width: 100%; padding: 3px 6px; border-radius: 6px; box-sizing: border-box;
                       border: 1px solid transparent; background: transparent;
                       font: inherit; font-size: 13px; color: inherit }
-        .cell-input:hover { border-color: #e2e8f0 }
-        .cell-input:focus { border-color: #3b82f6; background: #fff; outline: none }
-        .cell-input.num { text-align: right; font-variant-numeric: tabular-nums; color: #16a34a }
-        .cell-input.low { color: #d97706 }
-        .cell-input.out { color: #dc2626 }
+        .cell-input:hover { border-color: var(--color-base-300) }
+        .cell-input:focus { border-color: var(--color-primary); background: var(--color-base-100); outline: none }
+        .cell-input.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-success) }
+        .cell-input.low { color: var(--color-warning) }
+        .cell-input.out { color: var(--color-error) }
       `}</style>
     </div>
   )

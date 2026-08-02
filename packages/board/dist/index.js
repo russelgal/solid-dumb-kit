@@ -396,7 +396,7 @@ function snapSpan(args) {
     h: clamp(h, Math.max(1, lim.minH ?? 1), lim.maxH ?? Number.MAX_SAFE_INTEGER)
   };
 }
-var GRID_LINE = "rgba(100,116,139,.28)";
+var GRID_LINE = "var(--dumb-grid-line, rgba(100,116,139,.45))";
 function gridLinesBackground(args) {
   const {
     cols,
@@ -478,7 +478,7 @@ var CSS = `
           .dumb-board-head:active { cursor: grabbing }
           /* \u0432\u0441\u0451, \u0447\u0442\u043E \u0447\u0438\u0442\u0430\u044E\u0442 \u0438\u043B\u0438 \u0445\u0432\u0430\u0442\u0430\u044E\u0442, \u2014 \u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442\u043D\u043E\u0435: \u0431\u043B\u0451\u043A\u043B\u0430\u044F \u0440\u0443\u0447\u043A\u0430 \u0438 \u0441\u0435\u0440\u044B\u0439 \u043F\u043E
              \u0441\u0435\u0440\u043E\u043C\u0443 \u043D\u0435 \u0447\u0438\u0442\u0430\u044E\u0442\u0441\u044F \u043D\u0438 \u043D\u0430 \u043F\u0440\u043E\u0435\u043A\u0442\u043E\u0440\u0435, \u043D\u0438 \u043F\u0440\u0438 \u044F\u0440\u043A\u043E\u043C \u0441\u0432\u0435\u0442\u0435 */
-          .dumb-board-grip { color: #64748b }
+          .dumb-board-grip { color: var(--dumb-board-grip, #64748b) }
           .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
           .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .85 }
           .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;

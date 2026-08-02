@@ -654,58 +654,58 @@ export default function OrderBoardExample() {
       </div>
 
       <style>{`
-        .ob-example { padding: 16px 20px; color: #0f172a }
+        .ob-example { padding: 16px 20px; color: var(--color-base-content) }
         .ob-example h3 { margin: 0 0 4px }
-        .ob-example .note { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 90ch }
+        .ob-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
         .ob-example .panel-title { cursor: grab }
 
         .ob-example .wrap { display: grid; gap: 14px; align-items: start;
                             grid-template-columns: repeat(12, 1fr) }
         .ob-example .panel { position: relative; min-width: 0 }
-        .ob-example .panel.sizing { outline: 2px solid #6366f1; outline-offset: 4px; border-radius: 12px }
+        .ob-example .panel.sizing { outline: 2px solid var(--color-primary); outline-offset: 4px; border-radius: 12px }
         /* ручка на правом крае — единственное место, где жест идёт на указателе */
         .ob-example .grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
                               cursor: col-resize; touch-action: none }
         .ob-example .grip-x::after { content: ''; position: absolute; top: 8px; bottom: 8px;
-                                     left: 5px; width: 2px; border-radius: 2px; background: #e2e8f0 }
+                                     left: 5px; width: 2px; border-radius: 2px; background: var(--color-base-300) }
         .ob-example .grip-y { position: absolute; left: 12px; right: 12px; bottom: -9px; height: 12px;
                               cursor: row-resize; touch-action: none }
         .ob-example .grip-y::after { content: ''; position: absolute; left: 8px; right: 8px;
-                                     top: 5px; height: 2px; border-radius: 2px; background: #e2e8f0 }
+                                     top: 5px; height: 2px; border-radius: 2px; background: var(--color-base-300) }
         .ob-example .grip-xy { position: absolute; right: -9px; bottom: -9px; width: 16px; height: 16px;
                                cursor: nwse-resize; touch-action: none }
         .ob-example .grip-xy::after { content: ''; position: absolute; right: 4px; bottom: 4px;
-                                      width: 8px; height: 8px; border-right: 2px solid #cbd5e1;
-                                      border-bottom: 2px solid #cbd5e1; border-radius: 0 0 3px 0 }
-        .ob-example .grip-x:hover::after, .ob-example .grip-y:hover::after { background: #6366f1 }
-        .ob-example .grip-xy:hover::after { border-color: #6366f1 }
+                                      width: 8px; height: 8px; border-right: 2px solid var(--color-base-300);
+                                      border-bottom: 2px solid var(--color-base-300); border-radius: 0 0 3px 0 }
+        .ob-example .grip-x:hover::after, .ob-example .grip-y:hover::after { background: var(--color-primary) }
+        .ob-example .grip-xy:hover::after { border-color: var(--color-primary) }
         .ob-example .panel-title { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
-                                   font-size: 13px; color: #475569; cursor: grab; user-select: none }
+                                   font-size: 13px; color: var(--color-base-content); cursor: grab; user-select: none }
         .ob-example .head-text { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
-        .ob-example .head-sub { font-size: 11.5px; font-weight: 400; color: #94a3b8 }
+        .ob-example .head-sub { font-size: 11.5px; font-weight: 400; color: var(--color-base-content) }
         .ob-example .head-actions { margin-left: auto; display: flex; gap: 4px }
         .ob-example .head-btn { padding: 1px 6px; font: inherit; font-size: 12px; cursor: pointer;
-                                color: #94a3b8; border: 1px solid #e2e8f0; border-radius: 6px;
-                                background: #fff }
-        .ob-example .head-btn:hover { color: #4338ca; border-color: #c7d2fe }
+                                color: var(--color-base-content); border: 1px solid var(--color-base-300); border-radius: 6px;
+                                background: var(--color-base-100) }
+        .ob-example .head-btn:hover { color: var(--color-primary); border-color: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)) }
         .ob-example .panel-title:active { cursor: grabbing }
-        .ob-example .grip { color: #cbd5e1 }
+        .ob-example .grip { color: var(--color-base-content) }
         .ob-example .panel.held { opacity: .35 }
         .ob-example .count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                             color: #64748b; background: #e2e8f0 }
+                             color: var(--color-base-content); background: var(--color-base-300) }
         .ob-example .zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
-                            padding: 10px; border-radius: 12px; background: #f8fafc;
-                            box-shadow: inset 0 0 0 1px #e2e8f0; overflow-y: auto;
+                            padding: 10px; border-radius: 12px; background: var(--color-base-200);
+                            box-shadow: inset 0 0 0 1px var(--color-base-300); overflow-y: auto;
                             scrollbar-gutter: stable;
                             grid-template-columns: repeat(var(--cols), 1fr) }
         .ob-example .block { display: flex; flex-direction: column; justify-content: center; gap: 3px;
                              height: 68px; padding: 8px 10px; border-radius: 10px; cursor: grab;
-                             background: #fff; box-shadow: 0 1px 2px rgba(15,23,42,.06), inset 0 0 0 1px #e2e8f0;
+                             background: var(--color-base-100); box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) 6%, transparent), inset 0 0 0 1px var(--color-base-300);
                              border-top: 4px solid var(--hue) }
         .ob-example .block:active { cursor: grabbing }
         .ob-example .block.held { opacity: .35 }
         .ob-example .title { font-size: 13.5px; font-weight: 500 }
-        .ob-example .kind { font-size: 11.5px; color: #94a3b8 }
+        .ob-example .kind { font-size: 11.5px; color: var(--color-base-content) }
       `}</style>
     </div>
   )

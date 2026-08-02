@@ -151,12 +151,14 @@ export default function KanbanExample() {
                         <button class="handle" data-drag-handle type="button" title="перетащить">⠿</button>
                         <div class="body">
                           <div class="title">{c.title}</div>
-                          {/* цвет из данных — единственное, что остаётся инлайном */}
+                          {/* Цвет из данных — единственное, что остаётся инлайном.
+                              Не готовая светлая плашка, а подмешивание оттенка в
+                              фон темы: тогда метка живёт и в тёмной теме. */}
                           <span
                             class="tag"
                             style={{
-                              background: `oklch(0.93 0.05 ${c.hue})`,
-                              color: `oklch(0.42 0.13 ${c.hue})`,
+                              background: `color-mix(in oklch, oklch(0.7 0.13 ${c.hue}) 22%, var(--color-base-100))`,
+                              color: `color-mix(in oklch, oklch(0.62 0.15 ${c.hue}) 65%, var(--color-base-content))`,
                             }}
                           >
                             {c.tag}
@@ -177,32 +179,32 @@ export default function KanbanExample() {
       </div>
 
       <style>{`
-        .kb-example { padding: 16px 20px; color: #0f172a }
-        .kb-example .intro { margin: 0 0 8px; font-size: 13px; color: #64748b }
+        .kb-example { padding: 16px 20px; color: var(--color-base-content) }
+        .kb-example .intro { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content) }
 
         .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
                    font-size: 13px; min-height: 20px }
-        .btn { margin-left: auto; padding: 3px 10px; border-radius: 6px; border: 1px solid #cbd5e1;
-               background: #fff; color: inherit; font: inherit; font-size: 12px; cursor: pointer }
+        .btn { margin-left: auto; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--color-base-300);
+               background: var(--color-base-100); color: inherit; font: inherit; font-size: 12px; cursor: pointer }
 
         .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: start }
         .column { display: flex; flex-direction: column; min-width: 0; border-radius: 12px;
-                  border: 1px solid #e2e8f0; background: #f8fafc;
+                  border: 1px solid var(--color-base-300); background: var(--color-base-200);
                   transition: background .15s, border-color .15s }
-        .column.active { border-color: #6366f1; background: #eef2ff }
+        .column.active { border-color: var(--color-primary); background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)) }
         .column header { padding: 10px 12px 6px; display: flex; align-items: center; gap: 6px;
                          font-size: 13px }
-        .column .count { font-size: 12px; color: #94a3b8 }
+        .column .count { font-size: 12px; color: var(--color-base-content) }
 
         .cards { display: flex; flex-direction: column; gap: 8px; padding: 8px;
                  min-height: 120px; max-height: 46vh; overflow-y: auto; overflow-x: hidden }
-        .empty { padding: 18px 8px; text-align: center; color: #cbd5e1; font-size: 12px }
+        .empty { padding: 18px 8px; text-align: center; color: var(--color-base-content); font-size: 12px }
 
         .card { display: flex; align-items: flex-start; gap: 8px; padding: 10px;
-                border-radius: 10px; background: #fff; font-size: 13px;
-                box-shadow: inset 0 0 0 1px #e2e8f0 }
+                border-radius: 10px; background: var(--color-base-100); font-size: 13px;
+                box-shadow: inset 0 0 0 1px var(--color-base-300) }
         .card .handle { cursor: grab; border: none; background: none; padding: 0;
-                        color: #94a3b8; font-size: 16px; line-height: 1; touch-action: none }
+                        color: var(--color-base-content); font-size: 16px; line-height: 1; touch-action: none }
         .card .body { min-width: 0 }
         .card .title { font-weight: 500 }
         .card .tag { display: inline-block; margin-top: 4px; padding: 1px 7px;

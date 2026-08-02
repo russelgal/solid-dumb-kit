@@ -379,13 +379,13 @@ export default function OrderTreeExample() {
       </div>
 
       <style>{`
-        .tr-example { padding: 16px 20px; color: #0f172a }
+        .tr-example { padding: 16px 20px; color: var(--color-base-content) }
         .tr-example h3 { margin: 0 0 4px }
-        .tr-example .note { margin: 0 0 8px; font-size: 13px; color: #64748b; max-width: 92ch }
-        .tr-example .bar { margin: 8px 0 12px; font-size: 13px; color: #64748b; min-height: 18px }
+        .tr-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 92ch }
+        .tr-example .bar { margin: 8px 0 12px; font-size: 13px; color: var(--color-base-content); min-height: 18px }
 
         .tr-example .tree { max-width: 560px; overflow: hidden; border-radius: 12px;
-                            background: #fff; box-shadow: inset 0 0 0 1px #e2e8f0 }
+                            background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300) }
         /* каждый уровень — grid в одну колонку: сюда и смотрит order */
         /* Строки идут ВПЛОТНУЮ, без зазоров. Зазор — это дырка в хиттесте: курсор
            проваливается между строками на сам <ul>, а тот значит «в конец
@@ -394,18 +394,18 @@ export default function OrderTreeExample() {
                               margin: 0; padding: 0; list-style: none }
         .tr-example .item { display: grid; grid-template-columns: 1fr; gap: 0 }
         .tr-example .node { display: flex; align-items: center; gap: 8px; height: 30px;
-                            padding-right: 10px; cursor: grab; background: #fff;
-                            border-bottom: 1px solid #eef2f7 }
-        .tr-example .node:hover { background: #f8fafc }
+                            padding-right: 10px; cursor: grab; background: var(--color-base-100);
+                            border-bottom: 1px solid var(--color-base-200) }
+        .tr-example .node:hover { background: var(--color-base-200) }
         .tr-example .node:active { cursor: grabbing }
         /* приглушаем весь <li>: раз браузер тащит ветку целиком, пусть и
            видно будет, что уезжает именно ветка */
         .tr-example .item.held { opacity: .35 }
         .tr-example .twist { width: 18px; padding: 0; border: none; background: none; cursor: pointer;
-                             color: #94a3b8; font-size: 11px; line-height: 1 }
-        .tr-example .bullet { width: 18px; text-align: center; color: #cbd5e1; font-size: 12px }
+                             color: var(--color-base-content); font-size: 11px; line-height: 1 }
+        .tr-example .bullet { width: 18px; text-align: center; color: var(--color-base-content); font-size: 12px }
         .tr-example .label { font-size: 13.5px; font-weight: 500 }
-        .tr-example .kind { margin-left: auto; font-size: 11.5px; color: #94a3b8 }
+        .tr-example .kind { margin-left: auto; font-size: 11.5px; color: var(--color-base-content) }
       `}</style>
     </div>
   )

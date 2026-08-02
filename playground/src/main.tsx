@@ -1,6 +1,6 @@
 import "./app.css";
 import { render } from "solid-js/web";
-import { createSignal, For, Show, onCleanup, type JSX } from "solid-js";
+import { createEffect, createSignal, For, Show, onCleanup, type JSX } from "solid-js";
 
 import SelectionAreaExample from "../../examples/pointer/SelectionArea.example";
 import DumbSortableExample from "../../examples/pointer/DumbSortable.example";
@@ -219,8 +219,31 @@ const fromHash = (): string => {
   return TABS.some((t) => t.id === id) ? id : TABS[0].id;
 };
 
+/**
+ * Тема витрины. Две штуки нарочно: светлая `nord` и `dark` — на второй сразу
+ * видно захардкоженный светлый цвет, если он куда-то пролез.
+ *
+ * Пишем в `data-theme` на `<html>` (так daisyUI и переключает темы) и помним
+ * выбор в `localStorage`. Начальное значение читаем ДО первого рендера, иначе
+ * страница успевает моргнуть светлой.
+ */
+const THEMES = ["nord", "dark"] as const;
+type Theme = (typeof THEMES)[number];
+
+const readTheme = (): Theme => {
+  const saved = localStorage.getItem("sd-theme");
+  if (saved && THEMES.includes(saved as Theme)) return saved as Theme;
+  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "nord";
+};
+
 function App() {
   const [tab, setTab] = createSignal(fromHash());
+  const [theme, setTheme] = createSignal<Theme>(readTheme());
+
+  createEffect(() => {
+    document.documentElement.dataset.theme = theme();
+    localStorage.setItem("sd-theme", theme());
+  });
 
   const onHash = () => setTab(fromHash());
   window.addEventListener("hashchange", onHash);
@@ -229,16 +252,30 @@ function App() {
   return (
     <div class="flex min-h-screen items-start">
       <aside class="sticky top-0 h-screen w-60 shrink-0 overflow-y-auto border-r border-base-300 bg-base-200 [scrollbar-gutter:stable]">
-        <a
-          class="block px-4 pt-4 pb-2 text-base font-semibold no-underline"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            location.hash = TABS[0].id;
-          }}
-        >
-          solid-dumb-kit
-        </a>
+        <div class="flex items-center gap-2 px-4 pt-4 pb-2">
+          <a
+            class="min-w-0 flex-1 truncate text-base font-semibold no-underline"
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              location.hash = TABS[0].id;
+            }}
+          >
+            solid-dumb-kit
+          </a>
+
+          {/* Переключатель темы. Кнопка, а не `swap`: тем ровно две, и подпись
+              «что включится» понятнее иконки-состояния. */}
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            title={`Тема: ${theme()} — переключить`}
+            aria-label={`Тема ${theme()}, переключить`}
+            onClick={() => setTheme(theme() === "nord" ? "dark" : "nord")}
+          >
+            {theme() === "nord" ? "☀ nord" : "☾ dark"}
+          </button>
+        </div>
 
         <ul class="menu w-full gap-0.5 p-2">
           <For each={GROUPS}>
