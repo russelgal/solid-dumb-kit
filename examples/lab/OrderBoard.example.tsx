@@ -80,20 +80,20 @@ function PanelHead(props: PanelHeadProps) {
   return (
     <Show when={props.title}>
       <h4
-        class="panel-title"
+        class="mb-2 flex cursor-grab items-center gap-1.5 text-[13px] text-base-content select-none active:cursor-grabbing"
         data-panel-handle
         onDblClick={() => props.onToggle?.()}
         title="перетащить; двойной клик — во всю ширину и обратно"
       >
-        <Show when={props.grip !== false}><span class="grip">⠿</span></Show>
-        <span class="head-text">
+        <Show when={props.grip !== false}><span class="text-base-content">⠿</span></Show>
+        <span class="flex min-w-0 items-baseline gap-1.5">
           {props.title}
-          <Show when={props.subtitle}><span class="head-sub">{props.subtitle}</span></Show>
+          <Show when={props.subtitle}><span class="text-[11.5px] font-normal text-base-content">{props.subtitle}</span></Show>
         </span>
         <Show when={props.count !== undefined}>
-          <span class="count">{props.count}</span>
+          <span class="rounded-full bg-base-300 px-1.5 py-px text-[11px] text-base-content">{props.count}</span>
         </Show>
-        <Show when={props.actions}><span class="head-actions">{props.actions}</span></Show>
+        <Show when={props.actions}><span class="ml-auto flex gap-1">{props.actions}</span></Show>
       </h4>
     </Show>
   )
@@ -539,15 +539,15 @@ export default function OrderBoardExample() {
 
   return (
     <div
-      class="ob-example"
+      class="p-5 text-base-content"
       onPointerDown={remember}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={finish}
       onDrop={(ev) => { ev.preventDefault(); finish() }}
     >
-      <h3>Вложенные сетки на CSS order + FLIP</h3>
-      <p class="note">
+      <h3 class="mb-1 text-lg font-semibold">Вложенные сетки на CSS order + FLIP</h3>
+      <p class="mb-2 max-w-[90ch] text-[13px] text-base-content">
         <b>Секции сортируются и меняют размер</b>: за заголовок — перенос, за правый край — ширина,
         за нижний — высота, за угол — сразу оба, <b>двойной клик по заголовку</b> — во всю ширину и
         обратно. Панель сверху — общая с вкладкой <b>DumbGrid</b>:
@@ -559,7 +559,7 @@ export default function OrderBoardExample() {
         <code>order</code>. Перенос в соседнюю секцию, как и в канбане, — единственный случай, когда
         блок физически переходит в другой список.
       </p>
-      <p class="note">
+      <p class="mb-2 max-w-[90ch] text-[13px] text-base-content">
         Место здесь двумерное, и это вся разница с канбаном: <code>k</code> раскладывается на колонку
         и строку, а значит секции хватает <b>пяти чисел</b> — левый край, верх, шаг по X, шаг по Y и
         число колонок. Позиция любого места — арифметика по ним, и состав секций на них не влияет.
@@ -578,7 +578,7 @@ export default function OrderBoardExample() {
       </Bar>
 
       <div
-        class="wrap"
+        class="grid grid-cols-12 items-start gap-3.5"
         ref={(el) => { wrapEl = el }}
         onPointerDown={onGripDown}
         onPointerMove={onGripMove}
@@ -588,8 +588,11 @@ export default function OrderBoardExample() {
         <For each={ZONES}>
           {(zone) => (
             <section
-              class="panel"
-              classList={{ held: heldZone() === zone.id, sizing: sizing() === zone.id }}
+              class="relative min-w-0"
+              classList={{
+                'opacity-35': heldZone() === zone.id,
+                'rounded-xl outline-2 outline-offset-4 outline-primary': sizing() === zone.id,
+              }}
               data-panel={zone.id}
               draggable={edit()}
               ref={(el) => panelEls.set(zone.id, el)}
@@ -606,7 +609,7 @@ export default function OrderBoardExample() {
                 actions={
                   <Show when={edit()}>
                     <button
-                      class="head-btn"
+                      class="cursor-pointer rounded-md border border-base-300 bg-base-100 px-1.5 py-px text-xs text-base-content hover:border-primary/20 hover:text-primary"
                       type="button"
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={() => toggleWide(zone.id)}
@@ -617,7 +620,7 @@ export default function OrderBoardExample() {
                 }
               />
               <div
-                class="zone"
+                class="grid min-h-22 grid-cols-[repeat(var(--cols),1fr)] content-start gap-2 overflow-y-auto rounded-xl bg-base-200 p-2.5 ring-1 ring-base-300 [scrollbar-gutter:stable]"
                 data-zone={zone.id}
                 style={{
                   '--cols': String(colsOf(zone.id)),
@@ -628,15 +631,15 @@ export default function OrderBoardExample() {
                 <For each={board()[zone.id]}>
                   {(id) => (
                     <article
-                      class="block"
-                      classList={{ held: held() === id }}
+                      class="flex h-17 cursor-grab flex-col justify-center gap-0.5 rounded-box border-t-4 bg-base-100 px-2.5 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing"
+                      classList={{ 'opacity-35': held() === id }}
                       data-block={id}
                       draggable={edit()}
                       ref={(el) => blockEls.set(id, el)}
-                      style={{ order: String(place()[id]), '--hue': HUE(index(id)) }}
+                      style={{ order: String(place()[id]), 'border-top-color': HUE(index(id)) }}
                     >
-                      <span class="title">{byId(id).title}</span>
-                      <span class="kind">{byId(id).kind}</span>
+                      <span class="text-[13.5px] font-medium">{byId(id).title}</span>
+                      <span class="text-[11.5px] text-base-content">{byId(id).kind}</span>
                     </article>
                   )}
                 </For>
@@ -644,69 +647,15 @@ export default function OrderBoardExample() {
               {/* ручки ресайза: тянем указателем, размер считается в колонках и строках.
                   В режиме просмотра их нет вовсе — ни ручек, ни слушателей на них */}
               <Show when={edit()}>
-                <div class="grip-x" data-resize={zone.id} data-axis="x" title="ширина" />
-                <div class="grip-y" data-resize={zone.id} data-axis="y" title="высота" />
-                <div class="grip-xy" data-resize={zone.id} data-axis="xy" title="ширина и высота" />
+                <div class="absolute top-6.5 right-[-9px] bottom-3 w-3 cursor-col-resize [touch-action:none] after:absolute after:top-2 after:bottom-2 after:left-[5px] after:w-0.5 after:rounded-sm after:bg-base-300 after:content-[''] hover:after:bg-primary" data-resize={zone.id} data-axis="x" title="ширина" />
+                <div class="absolute right-3 bottom-[-9px] left-3 h-3 cursor-row-resize [touch-action:none] after:absolute after:top-[5px] after:right-2 after:left-2 after:h-0.5 after:rounded-sm after:bg-base-300 after:content-[''] hover:after:bg-primary" data-resize={zone.id} data-axis="y" title="высота" />
+                <div class="absolute right-[-9px] bottom-[-9px] size-4 cursor-nwse-resize [touch-action:none] after:absolute after:right-1 after:bottom-1 after:size-2 after:rounded-br-[3px] after:border-r-2 after:border-b-2 after:border-base-300 after:content-[''] hover:after:border-primary" data-resize={zone.id} data-axis="xy" title="ширина и высота" />
               </Show>
             </section>
           )}
         </For>
       </div>
 
-      <style>{`
-        .ob-example { padding: 16px 20px; color: var(--color-base-content) }
-        .ob-example h3 { margin: 0 0 4px }
-        .ob-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
-        .ob-example .panel-title { cursor: grab }
-
-        .ob-example .wrap { display: grid; gap: 14px; align-items: start;
-                            grid-template-columns: repeat(12, 1fr) }
-        .ob-example .panel { position: relative; min-width: 0 }
-        .ob-example .panel.sizing { outline: 2px solid var(--color-primary); outline-offset: 4px; border-radius: 12px }
-        /* ручка на правом крае — единственное место, где жест идёт на указателе */
-        .ob-example .grip-x { position: absolute; top: 26px; right: -9px; bottom: 12px; width: 12px;
-                              cursor: col-resize; touch-action: none }
-        .ob-example .grip-x::after { content: ''; position: absolute; top: 8px; bottom: 8px;
-                                     left: 5px; width: 2px; border-radius: 2px; background: var(--color-base-300) }
-        .ob-example .grip-y { position: absolute; left: 12px; right: 12px; bottom: -9px; height: 12px;
-                              cursor: row-resize; touch-action: none }
-        .ob-example .grip-y::after { content: ''; position: absolute; left: 8px; right: 8px;
-                                     top: 5px; height: 2px; border-radius: 2px; background: var(--color-base-300) }
-        .ob-example .grip-xy { position: absolute; right: -9px; bottom: -9px; width: 16px; height: 16px;
-                               cursor: nwse-resize; touch-action: none }
-        .ob-example .grip-xy::after { content: ''; position: absolute; right: 4px; bottom: 4px;
-                                      width: 8px; height: 8px; border-right: 2px solid var(--color-base-300);
-                                      border-bottom: 2px solid var(--color-base-300); border-radius: 0 0 3px 0 }
-        .ob-example .grip-x:hover::after, .ob-example .grip-y:hover::after { background: var(--color-primary) }
-        .ob-example .grip-xy:hover::after { border-color: var(--color-primary) }
-        .ob-example .panel-title { display: flex; align-items: center; gap: 6px; margin: 0 0 8px;
-                                   font-size: 13px; color: var(--color-base-content); cursor: grab; user-select: none }
-        .ob-example .head-text { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
-        .ob-example .head-sub { font-size: 11.5px; font-weight: 400; color: var(--color-base-content) }
-        .ob-example .head-actions { margin-left: auto; display: flex; gap: 4px }
-        .ob-example .head-btn { padding: 1px 6px; font: inherit; font-size: 12px; cursor: pointer;
-                                color: var(--color-base-content); border: 1px solid var(--color-base-300); border-radius: 6px;
-                                background: var(--color-base-100) }
-        .ob-example .head-btn:hover { color: var(--color-primary); border-color: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)) }
-        .ob-example .panel-title:active { cursor: grabbing }
-        .ob-example .grip { color: var(--color-base-content) }
-        .ob-example .panel.held { opacity: .35 }
-        .ob-example .count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                             color: var(--color-base-content); background: var(--color-base-300) }
-        .ob-example .zone { display: grid; gap: 8px; align-content: start; min-height: 88px;
-                            padding: 10px; border-radius: 12px; background: var(--color-base-200);
-                            box-shadow: inset 0 0 0 1px var(--color-base-300); overflow-y: auto;
-                            scrollbar-gutter: stable;
-                            grid-template-columns: repeat(var(--cols), 1fr) }
-        .ob-example .block { display: flex; flex-direction: column; justify-content: center; gap: 3px;
-                             height: 68px; padding: 8px 10px; border-radius: 10px; cursor: grab;
-                             background: var(--color-base-100); box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) 6%, transparent), inset 0 0 0 1px var(--color-base-300);
-                             border-top: 4px solid var(--hue) }
-        .ob-example .block:active { cursor: grabbing }
-        .ob-example .block.held { opacity: .35 }
-        .ob-example .title { font-size: 13.5px; font-weight: 500 }
-        .ob-example .kind { font-size: 11.5px; color: var(--color-base-content) }
-      `}</style>
     </div>
   )
 }

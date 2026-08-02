@@ -114,40 +114,42 @@ export default function Odata1CExample() {
   }
 
   return (
-    <div class="od-example">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4 p-5 text-base-content [&_code]:text-xs [&_label]:mt-2 [&_label]:block [&_label]:text-xs [&_label]:text-base-content [&_input]:mt-1 [&_input]:box-border [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-base-300 [&_input]:px-2.5 [&_input]:py-1.5 [&_input]:text-[13px] [&_table]:mt-2.5 [&_table]:w-full [&_table]:border-collapse [&_td]:pr-2 [&_td]:py-0.5 [&_td]:align-top [&_td]:text-[13px]">
       {/* ── подключение ── */}
-      <section class="card">
-        <h3>Подключение</h3>
-        <p class="note">
+      <section class="rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">Подключение</h3>
+        <p class="mt-2 text-xs text-base-content">
           Прямой адрес базы (<code>https://host/base/odata/standard.odata</code>) либо относительный путь
           прокси (<code>/odata</code>) — платформа 1С не отдаёт CORS-заголовки, поэтому из браузера ходят
           через свой прокси.
         </p>
         <label>baseUrl<input value={baseUrl()} onInput={(e) => setBaseUrl(e.currentTarget.value)} /></label>
-        <div class="controls">
+        <div class="flex gap-2">
           <label>логин<input value={login()} onInput={(e) => setLogin(e.currentTarget.value)} /></label>
           <label>пароль<input type="password" value={password()} onInput={(e) => setPassword(e.currentTarget.value)} /></label>
         </div>
         <table>
           <tbody>
             <tr>
-              <td class="call"><code>Authorization</code></td>
-              <td class="val">Basic {toBase64(`${login()}:${password()}`)}</td>
+              <td class="whitespace-nowrap text-secondary"><code>Authorization</code></td>
+              <td class="[overflow-wrap:anywhere]">Basic {toBase64(`${login()}:${password()}`)}</td>
             </tr>
           </tbody>
         </table>
-        <p class="note">
+        <p class="mt-2 text-xs text-base-content">
           base64 считается по UTF-8, поэтому кириллица в логине 1С не ломает Basic-заголовок.
         </p>
       </section>
 
       {/* ── запрос ── */}
-      <section class="card">
-        <h3>Запрос</h3>
-        <div class="tabs">
+      <section class="rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">Запрос</h3>
+        <div class="mb-1 flex flex-wrap gap-1.5">
           <For each={PRESETS}>
             {(p, i) => (
-              <button classList={{ active: preset() === i() }} onClick={() => usePreset(i())}>
+              <button
+                class="btn btn-xs"
+                classList={{ 'btn-primary': preset() === i() }} onClick={() => usePreset(i())}>
                 {p.label}
               </button>
             )}
@@ -155,33 +157,33 @@ export default function Odata1CExample() {
         </div>
         <label>ресурс<input value={resource()} onInput={(e) => setResource(e.currentTarget.value)} /></label>
         <label>$filter<input value={filter()} onInput={(e) => setFilter(e.currentTarget.value)} placeholder="без отбора" /></label>
-        <p class="note">{PRESETS[preset()]!.note}</p>
+        <p class="mt-2 text-xs text-base-content">{PRESETS[preset()]!.note}</p>
       </section>
 
       {/* ── что уходит в 1С ── */}
-      <section class="card wide">
-        <h3>URL, который уйдёт в 1С</h3>
+      <section class="col-span-full rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">URL, который уйдёт в 1С</h3>
 
-        <div class="url-head">
-          <span class="url-label">как уйдёт по проводу</span>
-          <button class="btn" onClick={() => copy(url(), 'raw')}>
+        <div class="mt-3 flex items-center gap-2">
+          <span class="text-[11px] uppercase tracking-wide text-base-content">как уйдёт по проводу</span>
+          <button class="btn btn-xs ml-auto" onClick={() => copy(url(), 'raw')}>
             {copied() === 'raw' ? 'скопировано' : 'копировать'}
           </button>
         </div>
-        <code class="out">{url()}</code>
-        <p class="note">
+        <code class="out mt-2.5 block rounded-lg bg-neutral px-2.5 py-2 whitespace-pre-wrap text-neutral-content [overflow-wrap:anywhere]">{url()}</code>
+        <p class="mt-2 text-xs text-base-content">
           <code>$format=application/json;odata=nometadata</code> клиент добавляет сам: без него в ответе
           светится внутренний адрес сервера 1С, а заголовок <code>Accept</code> платформа игнорирует.
         </p>
 
-        <div class="url-head">
-          <span class="url-label">читаемый (декодированный)</span>
-          <button class="btn" onClick={() => copy(readableUrl(), 'readable')}>
+        <div class="mt-3 flex items-center gap-2">
+          <span class="text-[11px] uppercase tracking-wide text-base-content">читаемый (декодированный)</span>
+          <button class="btn btn-xs ml-auto" onClick={() => copy(readableUrl(), 'readable')}>
             {copied() === 'readable' ? 'скопировано' : 'копировать'}
           </button>
         </div>
-        <code class="out muted-out">{readableUrl()}</code>
-        <p class="note">
+        <code class="out mt-2.5 block rounded-lg bg-base-200 px-2.5 py-2 whitespace-pre-wrap text-base-content [overflow-wrap:anywhere]">{readableUrl()}</code>
+        <p class="mt-2 text-xs text-base-content">
           Кириллица тут видна как есть — так проще сверять фильтр глазами. Отправлять нужно
           верхний вариант: 1С ждёт percent-encoding, а пробелы именно как <code>%20</code>,
           не <code>+</code>.
@@ -189,82 +191,44 @@ export default function Odata1CExample() {
       </section>
 
       {/* ── живой запрос ── */}
-      <section class="card wide">
-        <h3>Живой запрос</h3>
-        <p class="note">
+      <section class="col-span-full rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">Живой запрос</h3>
+        <p class="mt-2 text-xs text-base-content">
           Уйдёт по-настоящему — по нажатию и только на тот адрес, что указан выше. С демо на GitHub Pages
           сработает лишь если ваша 1С (или прокси перед ней) доступна из браузера.
         </p>
-        <button class="primary" disabled={busy()} onClick={run}>
+        <button class="btn btn-sm btn-primary" disabled={busy()} onClick={run}>
           {busy() ? 'Запрос…' : 'Выполнить list()'}
         </button>
         <Show when={result()}>
-          <code class="out" classList={{ error: failed() }}>{result()}</code>
+          <code
+            class="out mt-2.5 block rounded-lg px-2.5 py-2 whitespace-pre-wrap [overflow-wrap:anywhere]"
+            classList={{
+              'bg-neutral text-neutral-content': !failed(),
+              'bg-error text-error-content': failed(),
+            }}
+          >{result()}</code>
         </Show>
       </section>
 
       {/* ── экранирование ── */}
-      <section class="card wide">
-        <h3>odataString — апострофы в значениях</h3>
+      <section class="col-span-full rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">odataString — апострофы в значениях</h3>
         <table>
           <tbody>
             <For each={['Скотч', "Д'Артаньян", "ООО 'Рассвет'"]}>
               {(s) => (
                 <tr>
-                  <td class="call"><code>odataString({JSON.stringify(s)})</code></td>
-                  <td class="val"><code>{odataString(s)}</code></td>
+                  <td class="whitespace-nowrap text-secondary"><code>odataString({JSON.stringify(s)})</code></td>
+                  <td class="[overflow-wrap:anywhere]"><code>{odataString(s)}</code></td>
                 </tr>
               )}
             </For>
           </tbody>
         </table>
-        <p class="note">Апостроф внутри строки удваивается — иначе фильтр разъедется на полуслове.</p>
+        <p class="mt-2 text-xs text-base-content">Апостроф внутри строки удваивается — иначе фильтр разъедется на полуслове.</p>
       </section>
 
-      <style>{`
-        .od-example { padding: 16px 20px; color: var(--color-base-content);
-                      display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) }
-        .od-example .card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--color-base-300); background: var(--color-base-100) }
-        .od-example .card.wide { grid-column: 1 / -1 }
-        .od-example h3 { margin: 0 0 4px; font-size: 14px }
-        .od-example .note { margin: 8px 0 0; font-size: 12px; color: var(--color-base-content) }
-        .od-example code { font-size: 12px }
-
-        .od-example label { display: block; margin-top: 8px; font-size: 12px; color: var(--color-base-content) }
-        .od-example input {
-          width: 100%; padding: 7px 10px; margin-top: 3px; border-radius: 8px; border: 1px solid var(--color-base-300);
-          font: inherit; font-size: 13px; box-sizing: border-box; color: var(--color-base-content) }
-        .od-example .controls { display: flex; gap: 8px }
-
-        .od-example .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px }
-        .od-example .tabs button {
-          padding: 5px 10px; border-radius: 8px; border: 1px solid var(--color-base-300); background: var(--color-base-100);
-          font: inherit; font-size: 12px; cursor: pointer; color: var(--color-base-content) }
-        .od-example .tabs button.active { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-base-100) }
-
-        .od-example button.primary {
-          padding: 7px 14px; border-radius: 8px; border: none; background: var(--color-primary); color: var(--color-base-100);
-          font: inherit; font-size: 13px; cursor: pointer }
-        .od-example button.primary:disabled { background: var(--color-base-300); cursor: default }
-
-        .od-example table { border-collapse: collapse; margin-top: 10px; width: 100% }
-        .od-example td { padding: 3px 8px 3px 0; font-size: 13px; vertical-align: top }
-        .od-example td.call { color: color-mix(in oklch, var(--color-secondary) 55%, var(--color-base-content)); white-space: nowrap }
-        .od-example td.val { overflow-wrap: anywhere }
-
-        .od-example .url-head { display: flex; align-items: center; gap: 8px; margin-top: 12px }
-        .od-example .url-label { font-size: 11px; text-transform: uppercase;
-                                 letter-spacing: .04em; color: var(--color-base-content) }
-        .od-example .btn { margin-left: auto; padding: 2px 9px; border-radius: 6px;
-                           border: 1px solid var(--color-base-300); background: var(--color-base-100); color: inherit;
-                           font: inherit; font-size: 11px; cursor: pointer }
-        .od-example .btn:hover { border-color: var(--color-base-300) }
-        .od-example .out { display: block; margin-top: 10px; padding: 8px 10px; border-radius: 8px;
-                           background: var(--color-neutral); color: var(--color-neutral-content); overflow-wrap: anywhere;
-                           white-space: pre-wrap }
-        .od-example .out.muted-out { background: var(--color-base-200); color: var(--color-base-content) }
-        .od-example .out.error { background: var(--color-error); color: color-mix(in oklch, var(--color-error) 18%, var(--color-base-100)) }
-      `}</style>
     </div>
   )
 }
