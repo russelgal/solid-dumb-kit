@@ -15,6 +15,7 @@ import UtilsExample from '../data/utils.example'
 import Odata1CExample from '../data/Odata1C.example'
 import DumbSortableDndExample from '../dnd/DumbSortableDnd.example'
 import DumbBoardExample from '../dnd/DumbBoard.example'
+import DumbBoardEvenExample from '../dnd/DumbBoardEven.example'
 import CssOrderExample from '../lab/CssOrder.example'
 import RawDndExample from '../lab/RawDnd.example'
 import FlipBenchExample from '../lab/FlipBench.example'
@@ -44,6 +45,7 @@ const EXAMPLES = [
   ['DumbGridDnd', DumbGridDndExample],
   ['DumbSortableDnd', DumbSortableDndExample],
   ['DumbBoard', DumbBoardExample],
+  ['DumbBoardEven', DumbBoardEvenExample],
   ['CssOrder', CssOrderExample],
   ['RawDnd', RawDndExample],
   ['FlipBench', FlipBenchExample],

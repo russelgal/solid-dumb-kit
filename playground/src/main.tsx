@@ -12,6 +12,7 @@ import BoardExample from "../../examples/pointer/Board.example";
 import DumbGridDndExample from "../../examples/dnd/DumbGridDnd.example";
 import DumbSortableDndExample from "../../examples/dnd/DumbSortableDnd.example";
 import DumbBoardExample from "../../examples/dnd/DumbBoard.example";
+import DumbBoardEvenExample from "../../examples/dnd/DumbBoardEven.example";
 
 import DumbTreeExample from "../../examples/data/DumbTree.example";
 import DumbTableExample from "../../examples/data/DumbTable.example";
@@ -116,6 +117,13 @@ const GROUPS: Array<Group> = [
         pkg: "board",
         hint: "секции, блоки, ресайз",
         Comp: DumbBoardExample,
+      },
+      {
+        id: "dashboard2",
+        label: "Дашборд на DumbBoard",
+        pkg: "board",
+        hint: "карточки одной высоты",
+        Comp: DumbBoardEvenExample,
       },
     ],
   },
