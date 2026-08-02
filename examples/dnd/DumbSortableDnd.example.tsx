@@ -77,8 +77,10 @@ export default function DumbSortableDndExample() {
         <section class="min-w-0">
           <h4 class="mb-2 text-sm font-medium text-base-content">Список — 300 строк</h4>
 
+          {/* daisyUI `list`: контейнер — flex-колонка, значит CSS `order` на нём
+              действует, а строки получают готовую сетку колонок. */}
           <DumbSortableDnd
-            class="sd-list"
+            class="list sd-scroll rounded-box bg-base-100 shadow-sm"
             items={rows()}
             setItems={(next) => {
               setRows(next)
@@ -87,13 +89,18 @@ export default function DumbSortableDndExample() {
             id={(r) => r.id}
           >
             {(row, i) => (
-              <article class={`sd-row ${EDGE_L[row.n % EDGE_L.length]} ${row.tall ? 'min-h-17' : 'min-h-9'}`}>
+              <article
+                class={`list-row items-center border-l-4 ${EDGE_L[row.n % EDGE_L.length]} ${row.tall ? 'min-h-17' : ''}`}
+              >
                 <button class="sd-handle" data-drag-handle type="button" title="перетащить">
                   ⠿
                 </button>
-                <div class="min-w-0 flex-1">
-                  <div class="sd-title text-sm font-medium">{row.label}</div>
-                  <div class="text-xs text-base-content">
+                {/* растёт именно эта колонка — иначе длинное название вытолкнет
+                    номер за край строки */}
+                <div class="list-col-grow min-w-0">
+                  <div class="sd-title font-medium">{row.label}</div>
+                  {/* без прозрачности: приписка должна читаться, а не угадываться */}
+                  <div class="text-xs font-semibold uppercase text-base-content">
                     {row.tall ? 'двойная высота' : 'обычная строка'}
                   </div>
                 </div>

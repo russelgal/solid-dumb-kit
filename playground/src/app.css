@@ -66,13 +66,8 @@
   .dumb-board-grip-xy:hover::after { @apply border-primary }
 
   /* контейнер обязан быть flex или grid: на этом держится CSS `order` */
-  .sd-list { @apply sd-scroll flex flex-col gap-2 }
   .sd-grid { @apply sd-scroll grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 }
 
-  .sd-row {
-    @apply flex items-center gap-3 rounded-box border-l-4 bg-base-100 px-3 py-2.5;
-    @apply shadow-sm ring-1 ring-base-300;
-  }
   .sd-tile {
     @apply grid h-18 cursor-grab place-items-center rounded-box border-t-4 bg-base-100;
     @apply font-semibold shadow-sm ring-1 ring-base-300 active:cursor-grabbing;
