@@ -6,8 +6,8 @@ import { Rub0, Rub2, Rub4, Rub0R, RubR2, fmtNum, fmtPrice, fmtDate, fmtDateTime,
 function Row(props: { call: string; value: string }) {
   return (
     <tr>
-      <td class="call"><code>{props.call}</code></td>
-      <td class="val">{props.value || <i class="muted">пусто</i>}</td>
+      <td class="whitespace-nowrap text-secondary"><code>{props.call}</code></td>
+      <td class="tabular-nums">{props.value || <i class="text-base-content">пусто</i>}</td>
     </tr>
   )
 }
@@ -46,12 +46,12 @@ export default function UtilsExample() {
   }
 
   return (
-    <div class="ut-example">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4 p-5 text-base-content [&_input]:box-border [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-base-300 [&_input]:px-2.5 [&_input]:py-1.5 [&_select]:box-border [&_select]:w-auto [&_select]:rounded-lg [&_select]:border [&_select]:border-base-300 [&_select]:px-2.5 [&_select]:py-1.5 [&_table]:mt-2.5 [&_table]:border-collapse [&_th]:pr-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-base-content [&_td]:pr-2 [&_td]:py-0.5 [&_td]:text-[13px] [&_figure]:m-0 [&_figure]:text-center [&_figure_img]:h-22.5 [&_figure_img]:w-full [&_figure_img]:rounded-lg [&_figure_img]:bg-base-200 [&_figure_img]:object-cover [&_figcaption]:text-[11px] [&_figcaption]:text-base-content [&_figcaption]:[overflow-wrap:anywhere]">
 
       {/* ── numbers ── */}
-      <section class="card">
-        <h3>fmt — numbers</h3>
-        <p class="note">Hard-wired to <code>ru-RU</code> and ₽. Group separator is a non-breaking space.</p>
+      <section class="rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">fmt — numbers</h3>
+        <p class="mb-2.5 text-xs text-base-content">Hard-wired to <code>ru-RU</code> and ₽. Group separator is a non-breaking space.</p>
         <input value={num()} onInput={(e) => setNum(e.currentTarget.value)} placeholder="1234.5 · '' · abc" />
         <table>
           <thead><tr><th>call</th><th>result</th></tr></thead>
@@ -68,9 +68,9 @@ export default function UtilsExample() {
       </section>
 
       {/* ── dates ── */}
-      <section class="card">
-        <h3>fmt — dates & size</h3>
-        <p class="note">Anything invalid comes back empty, never <code>Invalid Date</code>.</p>
+      <section class="rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">fmt — dates & size</h3>
+        <p class="mb-2.5 text-xs text-base-content">Anything invalid comes back empty, never <code>Invalid Date</code>.</p>
         <input value={date()} onInput={(e) => setDate(e.currentTarget.value)} placeholder="ISO date" />
         <table>
           <tbody>
@@ -82,7 +82,7 @@ export default function UtilsExample() {
             <Row call="timeAgo(v)" value={timeAgo(date())} />
           </tbody>
         </table>
-        <label class="range">
+        <label class="mt-2.5 block text-xs text-base-content">
           fmtSize — {fmtSize(bytes())}
           <input type="range" min="0" max="26" step="1" value={Math.round(Math.log2(bytes() || 1))}
                  onInput={(e) => setBytes(2 ** Number(e.currentTarget.value))} />
@@ -90,25 +90,25 @@ export default function UtilsExample() {
       </section>
 
       {/* ── slug ── */}
-      <section class="card">
-        <h3>genSlug</h3>
-        <p class="note">
+      <section class="rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">genSlug</h3>
+        <p class="mb-2.5 text-xs text-base-content">
           Cyrillic transliteration + diacritics stripping. Try <code>Café Ürün</code> or <code>Сёмга слабосолёная</code>.
         </p>
         <input value={name()} onInput={(e) => setName(e.currentTarget.value)} />
-        <code class="out">{genSlug(name()) || '—'}</code>
+        <code class="out mt-2.5 block rounded-lg bg-neutral px-2.5 py-2 text-[13px] text-neutral-content [overflow-wrap:anywhere]">{genSlug(name()) || '—'}</code>
       </section>
 
       {/* ── imgproxy ── */}
-      <section class="card">
-        <h3>imgproxyUrl</h3>
-        <p class="note">
+      <section class="rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">imgproxyUrl</h3>
+        <p class="mb-2.5 text-xs text-base-content">
           Configured with <code>{'{ baseUrl: "https://img.example.com", bucket: "demo" }'}</code> — so
           <code> /media/…</code> folds into <code>s3://demo/…</code> before encoding.
         </p>
         <input value={src()} onInput={(e) => setSrc(e.currentTarget.value)} />
-        <div class="controls">
-          <input class="narrow" type="number" value={w()} min="0" step="100"
+        <div class="mt-2 flex gap-2">
+          <input class="!w-25" type="number" value={w()} min="0" step="100"
                  onInput={(e) => setW(Number(e.currentTarget.value))} />
           <select value={fmt()} onChange={(e) => setFmt(e.currentTarget.value as 'webp')}>
             <option value="webp">webp</option>
@@ -116,29 +116,29 @@ export default function UtilsExample() {
             <option value="jpg">jpg</option>
           </select>
         </div>
-        <code class="out">{imgproxyUrl(src(), { w: w(), fit: 'fill', q: 85, format: fmt() })}</code>
+        <code class="out mt-2.5 block rounded-lg bg-neutral px-2.5 py-2 text-[13px] text-neutral-content [overflow-wrap:anywhere]">{imgproxyUrl(src(), { w: w(), fit: 'fill', q: 85, format: fmt() })}</code>
       </section>
 
       {/* ── zip ── */}
-      <section class="card wide">
-        <h3>extractImagesFromZip</h3>
-        <p class="note">
+      <section class="col-span-full rounded-xl border border-base-300 bg-base-100 px-4 py-3.5">
+        <h3 class="mb-1 text-sm">extractImagesFromZip</h3>
+        <p class="mb-2.5 text-xs text-base-content">
           Drop in a <code>.zip</code> with images — you get a <code>FileList</code> ready for an
           upload input. <code>__MACOSX/</code>, dot-files and non-images are filtered out, paths are
           flattened. <code>fflate</code> only loads when you actually pick a file.
         </p>
-        <input class="file" type="file" accept=".zip,application/zip" onChange={onZip} />
+        <input class="!border-none !p-0 text-[13px]" type="file" accept=".zip,application/zip" onChange={onZip} />
         <Show when={zipErr()}>
-          <code class="out error">{zipErr()}</code>
+          <code class="out mt-2.5 block rounded-lg bg-error px-2.5 py-2 text-[13px] text-neutral-content [overflow-wrap:anywhere]">{zipErr()}</code>
         </Show>
         <Show when={files().length}>
-          <div class="note">{files().length} image(s) extracted</div>
-          <div class="thumbs">
+          <div class="mb-2.5 text-xs text-base-content">{files().length} image(s) extracted</div>
+          <div class="mt-2 grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2.5">
             <For each={files()}>
               {(f) => (
                 <figure>
                   <img src={f.url} alt={f.name} />
-                  <figcaption>{f.name}<br /><span class="muted">{f.type}</span></figcaption>
+                  <figcaption>{f.name}<br /><span class="text-base-content">{f.type}</span></figcaption>
                 </figure>
               )}
             </For>
@@ -146,41 +146,6 @@ export default function UtilsExample() {
         </Show>
       </section>
 
-      <style>{`
-        .ut-example { padding: 16px 20px; color: var(--color-base-content);
-                      display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) }
-        .ut-example .card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--color-base-300); background: var(--color-base-100) }
-        .ut-example .card.wide { grid-column: 1 / -1 }
-        .ut-example h3 { margin: 0 0 4px; font-size: 14px }
-        .ut-example .note { margin: 0 0 10px; font-size: 12px; color: var(--color-base-content) }
-        .ut-example .muted { color: var(--color-base-content) }
-
-        .ut-example input, .ut-example select {
-          width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--color-base-300);
-          font: inherit; box-sizing: border-box }
-        .ut-example input.narrow { width: 100px }
-        .ut-example input.file, .ut-example input[type=range] { border: none; padding: 0; font-size: 13px }
-        .ut-example .controls { display: flex; gap: 8px; margin-top: 8px }
-        .ut-example .controls select { width: auto }
-        .ut-example .range { display: block; margin-top: 10px; font-size: 12px; color: var(--color-base-content) }
-
-        .ut-example table { border-collapse: collapse; margin-top: 10px }
-        .ut-example th { text-align: left; font-weight: 600; color: var(--color-base-content); padding: 4px 8px 4px 0 }
-        .ut-example td { padding: 3px 8px 3px 0; font-size: 13px }
-        .ut-example td.call { color: color-mix(in oklch, var(--color-secondary) 55%, var(--color-base-content)); white-space: nowrap }
-        .ut-example td.val { font-variant-numeric: tabular-nums }
-
-        .ut-example .out { display: block; margin-top: 10px; padding: 8px 10px; border-radius: 8px;
-                           background: var(--color-neutral); color: var(--color-neutral-content); font-size: 13px; overflow-wrap: anywhere }
-        .ut-example .out.error { background: var(--color-error) }
-
-        .ut-example .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                              gap: 10px; margin-top: 8px }
-        .ut-example figure { margin: 0; text-align: center }
-        .ut-example figure img { width: 100%; height: 90px; object-fit: cover;
-                                 border-radius: 8px; background: var(--color-base-200) }
-        .ut-example figcaption { font-size: 11px; color: var(--color-base-content); overflow-wrap: anywhere }
-      `}</style>
     </div>
   )
 }

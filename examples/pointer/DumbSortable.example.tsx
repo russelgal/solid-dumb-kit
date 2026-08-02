@@ -1,6 +1,6 @@
 // DumbSortable — drag-reorder at scale: a 100-row list (drag by handle, auto-scrolls)
-// and a 100-tile grid (drag the whole tile). The kit needs no CSS — everything
-// in the <style> block below is just this example's looks.
+// and a 100-tile grid (drag the whole tile). The kit needs no CSS of its own —
+// every class here is this example's looks, nothing the kit asks for.
 import { createSignal, For } from 'solid-js'
 import { DumbSortable } from '@solid-dumb-kit/sortable'
 
@@ -39,18 +39,18 @@ const PILLS = [
 
 function Promo() {
   return (
-    <aside class="promo">
-      <div class="promo-title">DumbSortable ✨</div>
-      <p class="promo-text">
+    <aside class="sticky top-16 w-65 shrink-0 rounded-2xl bg-linear-160 from-primary via-secondary via-55% to-secondary p-4.5 text-primary-content shadow-xl">
+      <div class="mb-1.5 text-lg font-bold">DumbSortable ✨</div>
+      <p class="mb-3 text-[13px]/normal opacity-95">
         Blazing-fast, zero-dep FLIP reorder for SolidJS. Cell bounds read <b>once</b> via
         <b> IntersectionObserver</b> (off the main thread, <b>zero reflow</b>), then only GPU
         <code> transform</code>s — stays at 60fps with hundreds of rows. No per-frame
         <code> getBoundingClientRect</code> like dnd-kit.
       </p>
-      <div class="pills">
-        <For each={PILLS}>{(t) => <span class="pill">{t}</span>}</For>
+      <div class="mb-3.5 flex flex-wrap gap-1.5">
+        <For each={PILLS}>{(t) => <span class="rounded-full bg-base-content/20 px-2 py-1 text-xs">{t}</span>}</For>
       </div>
-      <code class="promo-install">pnpm add github:russelgal/solid-dumb-kit</code>
+      <code class="block rounded-lg bg-base-content/25 px-2.5 py-2 text-center text-[11px] [overflow-wrap:anywhere]">pnpm add github:russelgal/solid-dumb-kit</code>
     </aside>
   )
 }
@@ -63,27 +63,27 @@ export default function DumbSortableExample() {
   const [animate, setAnimate] = createSignal(true)
 
   return (
-    <div class="ds-example">
-      <div class="demos">
+    <div class="flex flex-wrap items-start gap-5 p-5 text-base-content">
+      <div class="grid min-w-80 flex-1 gap-7">
         {/* Vertical list: drag by the ⠿ handle; container scrolls while dragging */}
         <section>
-          <header class="section-head">
+          <header class="flex items-center gap-2.5 [&_h3]:mb-1 [&_h3]:text-base [&_h3]:font-semibold">
             <h3>List — drag by the handle</h3>
-            <button class="btn" onClick={() => setList(shuffle(list()))}>перемешать</button>
-            <label class="toggle">
+            <button class="btn btn-xs" onClick={() => setList(shuffle(list()))}>перемешать</button>
+            <label class="flex items-center gap-1 text-xs text-base-content">
               <input type="checkbox" checked={animate()} onChange={(e) => setAnimate(e.currentTarget.checked)} />
               анимации
             </label>
           </header>
-          <p class="note">100 rows, fixed-height scroll area — drag near an edge and it auto-scrolls.</p>
+          <p class="mb-2.5 text-[13px] text-base-content">100 rows, fixed-height scroll area — drag near an edge and it auto-scrolls.</p>
 
-          <div class="scroller list">
+          <div class="grid max-h-[52vh] gap-1.5 overflow-x-hidden overflow-y-auto rounded-xl border border-base-300 bg-base-200 p-2.5">
             <DumbSortable items={list()} setItems={setList} id={(x) => x.id} animate={animate()}>
               {(item, i) => (
-                <div class="row">
-                  <button class="handle" data-drag-handle title="drag">⠿</button>
-                  <span class="num">{i() + 1}</span>
-                  <span class="swatch" style={{ background: HUE(Number(item.id.slice(1))) }} />
+                <div class="flex items-center gap-2.5 rounded-box bg-base-100 px-3 py-2.5 ring-1 ring-base-300">
+                  <button class="cursor-grab border-none bg-none px-0.5 text-lg text-base-content [touch-action:none]" data-drag-handle title="drag">⠿</button>
+                  <span class="w-8.5 text-[13px] text-base-content tabular-nums">{i() + 1}</span>
+                  <span class="size-3.5 rounded" style={{ background: HUE(Number(item.id.slice(1))) }} />
                   <span>{item.label}</span>
                 </div>
               )}
@@ -93,16 +93,16 @@ export default function DumbSortableExample() {
 
         {/* Grid: axis="grid", drag the whole tile (no handle) */}
         <section>
-          <header class="section-head">
+          <header class="flex items-center gap-2.5 [&_h3]:mb-1 [&_h3]:text-base [&_h3]:font-semibold">
             <h3>Grid — drag the tile</h3>
-            <button class="btn" onClick={() => setTiles(shuffle(tiles()))}>перемешать</button>
+            <button class="btn btn-xs" onClick={() => setTiles(shuffle(tiles()))}>перемешать</button>
           </header>
-          <p class="note">100 tiles, <code>axis="grid"</code> — items reflow in 2D and jump across rows.</p>
+          <p class="mb-2.5 text-[13px] text-base-content">100 tiles, <code>axis="grid"</code> — items reflow in 2D and jump across rows.</p>
 
-          <div class="scroller tiles">
+          <div class="grid max-h-[52vh] grid-cols-[repeat(auto-fill,minmax(64px,1fr))] gap-2 overflow-x-hidden overflow-y-auto rounded-xl border border-base-300 bg-base-200 p-2.5">
             <DumbSortable items={tiles()} setItems={setTiles} id={(x) => x.id} axis="grid" animate={animate()}>
               {(item, i) => (
-                <div class="tile" style={{ background: HUE(Number(item.id.slice(1))), color: INK(Number(item.id.slice(1))) }}>
+                <div class="grid aspect-square cursor-grab place-items-center rounded-box font-semibold select-none" style={{ background: HUE(Number(item.id.slice(1))), color: INK(Number(item.id.slice(1))) }}>
                   {i() + 1}
                 </div>
               )}
@@ -113,46 +113,6 @@ export default function DumbSortableExample() {
 
       <Promo />
 
-      <style>{`
-        .ds-example { padding: 16px 20px; color: var(--color-base-content);
-                      display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap }
-        .ds-example .demos { flex: 1; min-width: 320px; display: grid; gap: 28px }
-
-        .section-head { display: flex; align-items: center; gap: 10px }
-        .section-head h3 { margin: 0 0 4px }
-        .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
-
-        .toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-base-content) }
-        .toggle input { margin: 0 }
-        .btn { padding: 3px 10px; border-radius: 6px; border: 1px solid var(--color-base-300);
-               background: var(--color-base-100); color: inherit; font: inherit; font-size: 12px; cursor: pointer }
-
-        .scroller { max-height: 52vh; overflow-y: auto; overflow-x: hidden; padding: 10px;
-                    border: 1px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-200) }
-        .list { display: grid; gap: 6px }
-        .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px }
-
-        .row { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-               border-radius: 10px; background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300) }
-        .handle { cursor: grab; border: none; background: none; padding: 0 2px;
-                  font-size: 18px; color: var(--color-base-content); touch-action: none }
-        .num { width: 34px; font-size: 13px; color: var(--color-base-content); font-variant-numeric: tabular-nums }
-        .swatch { width: 14px; height: 14px; border-radius: 4px }
-
-        .tile { aspect-ratio: 1; display: grid; place-items: center; border-radius: 10px;
-                cursor: grab; user-select: none; font-weight: 600 }
-
-        .promo { width: 260px; flex-shrink: 0; position: sticky; top: 64px; padding: 18px;
-                 border-radius: 14px; color: var(--color-primary-content);
-                 background: linear-gradient(160deg, var(--color-primary), var(--color-secondary) 55%, var(--color-secondary));
-                 box-shadow: 0 12px 28px -10px rgba(79,70,229,.55) }
-        .promo-title { font-size: 18px; font-weight: 700; margin-bottom: 6px }
-        .promo-text { font-size: 13px; opacity: .92; margin: 0 0 12px; line-height: 1.5 }
-        .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px }
-        .pill { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: color-mix(in oklch, var(--color-base-content) 18%, transparent) }
-        .promo-install { display: block; font-size: 11px; overflow-wrap: anywhere; background: color-mix(in oklch, var(--color-base-content) 25%, transparent);
-                         padding: 8px 10px; border-radius: 8px; text-align: center }
-      `}</style>
     </div>
   )
 }
