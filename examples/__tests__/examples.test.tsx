@@ -499,7 +499,7 @@ describe('Board.example — вложенные сетки', () => {
       Array.from(host.querySelectorAll<HTMLElement>('.section')).map((s) => s.querySelectorAll('.widget').length)
 
     const before = counts()
-    Array.from(host.querySelectorAll<HTMLButtonElement>('.add'))[0].click()
+    Array.from(host.querySelectorAll<HTMLButtonElement>('[data-add-widget]'))[0].click()
 
     expect(counts()).toEqual([before[0] + 1, before[1]])
   })

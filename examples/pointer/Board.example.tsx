@@ -128,23 +128,27 @@ export default function BoardExample() {
         h: 1,
         minW: 2,
         content: () => (
-          <div class="widget" style={{ '--hue': String(w.hue) }}>
-            <span class="wtitle">{w.title}</span>
-            <span class="wval">{((w.hue * 137) % 900) + 100}</span>
+          <div
+            class="widget flex h-full box-border flex-col justify-center gap-0.5 rounded-box border-l-[3px] bg-base-100 px-2.5 py-2 ring-1 ring-base-300"
+            style={{ 'border-left-color': `oklch(0.7 0.13 ${w.hue})` }}
+          >
+            <span class="text-xs text-base-content">{w.title}</span>
+            <span class="text-[17px] font-semibold">{((w.hue * 137) % 900) + 100}</span>
           </div>
         ),
       })),
     )
 
     return (
-      <section class="section">
+      <section class="section flex h-full min-w-0 box-border flex-col overflow-hidden rounded-xl border border-base-300 bg-base-200 [&>header]:flex [&>header]:cursor-grab [&>header]:items-center [&>header]:gap-2 [&>header]:border-b [&>header]:border-base-200 [&>header]:bg-base-100 [&>header]:px-2.5 [&>header]:py-2 [&>header]:text-[13px] [&>header]:select-none [&>header:active]:cursor-grabbing">
         {/* шапка — ручка внешней сетки: за неё двигается вся секция */}
         <header data-drag-handle>
-          <span class="grip">⠿</span>
+          <span class="leading-none text-base-content">⠿</span>
           <strong>{p.section.title}</strong>
-          <span class="count">{items().length}</span>
+          <span class="text-xs text-base-content">{items().length}</span>
           <button
-            class="add"
+            data-add-widget
+            class="mr-4.5 ml-auto grid size-5 cursor-pointer place-items-center rounded-md border border-base-300 bg-base-100 p-0 leading-none text-base-content"
             data-no-drag
             type="button"
             onClick={() => addWidget(p.section.id)}
@@ -155,7 +159,13 @@ export default function BoardExample() {
         </header>
 
         {/* ВЛОЖЕННАЯ сетка: свои колонки, свой шаг строки, своя раскладка */}
-        <div class="inner" classList={{ over: group.over() === p.section.id && group.active()?.grid !== p.section.id }}>
+        <div
+          class="min-h-0 flex-1 overflow-auto rounded-b-xl p-2 transition-colors [scrollbar-gutter:stable]"
+          classList={{
+            'bg-primary/15 ring-2 ring-primary ring-inset':
+              group.over() === p.section.id && group.active()?.grid !== p.section.id,
+          }}
+        >
           <DumbGrid
             group={group}
             name={p.section.id}
@@ -186,22 +196,22 @@ export default function BoardExample() {
   )
 
   return (
-    <div class="bd-example">
-      <h3>Вложенные сетки</h3>
-      <p class="note">
+    <div class="p-5 text-base-content">
+      <h3 class="mb-1 text-lg font-semibold">Вложенные сетки</h3>
+      <p class="mb-2.5 text-[13px] text-base-content">
         Каждый блок внешней сетки — <b>сам DumbGrid</b>, и все внутренние сетки состоят в одной
         <b> группе</b>: виджет перетаскивается <b>из секции в секцию</b>, как карточка в канбане, только
         это полноценный блок — со своим размером и ресайзом. Секцию двигаешь за её <b>⠿</b>, виджет — за
         тело. Приёмник подсвечивается, <b>Esc</b> отменяет перенос.
       </p>
 
-      <div class="bar">
-        <label class="switch">
+      <div class="mb-3 flex flex-wrap items-center gap-3 text-[13px] [&_button]:cursor-pointer [&_button]:rounded-lg [&_button]:border [&_button]:border-base-300 [&_button]:bg-base-100 [&_button]:px-2.5 [&_button]:py-1">
+        <label class="inline-flex items-center gap-1.5 rounded-full border border-base-300 bg-base-100 px-2.5 py-1">
           <input type="checkbox" checked={edit()} onChange={(e) => setEdit(e.currentTarget.checked)} />
           <b>edit mode</b>
         </label>
         <button onClick={addSection}>+ секция</button>
-        <span class="log">{log()}</span>
+        <span class="text-base-content">{log()}</span>
       </div>
 
       <DumbGrid
@@ -217,46 +227,6 @@ export default function BoardExample() {
         blockStyle={{ cursor: 'default' }}
       />
 
-      <style>{`
-        .bd-example { padding: 16px 20px; color: var(--color-base-content) }
-        .bd-example h3 { margin: 0 0 4px }
-        .bd-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
-        .bd-example .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-                           margin: 0 0 12px; font-size: 13px }
-        .bd-example .switch { display: inline-flex; gap: 6px; align-items: center;
-                              padding: 4px 10px; border: 1px solid var(--color-base-300);
-                              border-radius: 999px; background: var(--color-base-100) }
-        .bd-example .bar button { font: inherit; padding: 4px 10px; border: 1px solid var(--color-base-300);
-                                  border-radius: 8px; background: var(--color-base-100); cursor: pointer }
-
-        .bd-example .section { height: 100%; display: flex; flex-direction: column; min-width: 0;
-                               box-sizing: border-box; border-radius: 12px; border: 1px solid var(--color-base-300);
-                               background: var(--color-base-200); overflow: hidden }
-        .bd-example .section header { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-                                      cursor: grab; user-select: none; font-size: 13px;
-                                      border-bottom: 1px solid var(--color-base-200); background: var(--color-base-100) }
-        .bd-example .section header:active { cursor: grabbing }
-        .bd-example .grip { color: var(--color-base-content); line-height: 1 }
-        .bd-example .count { font-size: 12px; color: var(--color-base-content) }
-        .bd-example .add { margin-left: auto; margin-right: 18px; width: 20px; height: 20px;
-                           display: grid; place-items: center; padding: 0; font: inherit;
-                           border: 1px solid var(--color-base-300); border-radius: 6px; background: var(--color-base-100);
-                           color: var(--color-base-content); cursor: pointer; line-height: 1 }
-
-        .bd-example .inner { flex: 1; min-height: 0; padding: 8px; overflow: auto;
-                             scrollbar-gutter: stable; border-radius: 0 0 11px 11px;
-                             transition: background .15s, box-shadow .15s }
-        .bd-example .inner.over { background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)); box-shadow: inset 0 0 0 2px var(--color-primary) }
-        .bd-example .log { color: var(--color-base-content) }
-
-        .bd-example .widget { height: 100%; box-sizing: border-box; display: flex;
-                              flex-direction: column; justify-content: center; gap: 2px;
-                              padding: 8px 10px; border-radius: 10px; background: var(--color-base-100);
-                              box-shadow: inset 0 0 0 1px var(--color-base-300);
-                              border-left: 3px solid oklch(0.7 0.13 var(--hue)) }
-        .bd-example .wtitle { font-size: 12px; color: var(--color-base-content) }
-        .bd-example .wval { font-size: 17px; font-weight: 600 }
-      `}</style>
     </div>
   )
 }

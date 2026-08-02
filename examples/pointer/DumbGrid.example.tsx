@@ -13,23 +13,32 @@ const STORAGE_KEY = 'example:dumb-grid'
 // Заголовок с ручкой: [data-drag-handle] внутри блока = тянем только за него,
 // остальное содержимое блока остаётся кликабельным.
 const Card = (p: { title: string; accent?: string; children?: any }) => (
-  <div class="card" style={{ '--accent': p.accent ?? '#3b82f6' }}>
-    <div class="card-head" data-drag-handle>
-      <span class="grip">⠿</span>
-      <span class="card-title">{p.title}</span>
+  <div
+    class="flex h-full box-border flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm"
+    style={{ '--accent': p.accent ?? '#3b82f6' }}
+  >
+    {/* фон шапки — оттенок карточки: `--accent` каскадит от неё, поэтому цвет
+        считается прямо здесь, а не заводится классом на каждый оттенок */}
+    <div
+      class="flex cursor-grab items-center gap-2 border-b border-base-200 px-2.5 py-2 select-none active:cursor-grabbing"
+      style={{ background: 'color-mix(in srgb, var(--accent) 8%, var(--color-base-100))' }}
+      data-drag-handle
+    >
+      <span class="text-sm/none text-base-content">⠿</span>
+      <span class="pr-5 text-[13px] font-semibold text-base-content">{p.title}</span>
     </div>
-    <div class="card-body">{p.children}</div>
+    <div class="min-h-0 flex-1 overflow-auto p-2.5 [scrollbar-gutter:stable]">{p.children}</div>
   </div>
 )
 
 const bars = (values: Array<number>) => (
-  <div class="bars">
+  <div class="flex h-full items-end gap-1 [&>i]:flex-1 [&>i]:rounded-t-[3px] [&>i]:bg-[color-mix(in_srgb,var(--accent)_70%,var(--color-base-100))]">
     <For each={values}>{(v) => <i style={{ height: `${v}%` }} />}</For>
   </div>
 )
 
 const kpi = (value: string, label: string) => (
-  <div class="kpi">
+  <div class="flex h-full flex-col justify-center [&>b]:text-[22px] [&>b]:text-base-content [&>span]:text-xs [&>span]:text-base-content">
     <b>{value}</b>
     <span>{label}</span>
   </div>
@@ -47,7 +56,7 @@ const initialItems = (): Array<DumbGridItem> => [
   { id: 'refunds', w: 'quarter', h: 1, content: () => <Card title="Refunds" accent="#f97316">{kpi('37', 'this week')}</Card> },
   { id: 'stock', w: 'quarter', h: 2, minH: 2, content: () => (
     <Card title="Low stock" accent="#ef4444">
-      <ul class="list">
+      <ul class="m-0 list-none p-0 text-[13px] [&>li]:flex [&>li]:justify-between [&>li]:border-b [&>li]:border-dashed [&>li]:border-base-200 [&>li]:py-0.5 [&_b]:text-error">
         <For each={['Chair Oak', 'Table Pine', 'Lamp Brass', 'Rug Wool', 'Shelf Ash']}>
           {(name, i) => <li><span>{name}</span><b>{5 - i()}</b></li>}
         </For>
@@ -61,7 +70,7 @@ const initialItems = (): Array<DumbGridItem> => [
   ) },
   { id: 'notes', w: '1/4', h: 1, content: () => (
     <Card title="Note (has an input)" accent="#64748b">
-      <input placeholder="type here — drag still works from ⠿" />
+      <input class="box-border w-full rounded-lg border border-base-300 px-2 py-1.5" placeholder="type here — drag still works from ⠿" />
     </Card>
   ) },
   { id: 'pinned', w: 'quarter', h: 1, locked: true, removable: false, content: () => (
@@ -113,9 +122,9 @@ export default function DumbGridExample() {
   }
 
   return (
-    <div class="dg-example">
-      <h3>DumbGrid</h3>
-      <p class="note">
+    <div class="p-5 [&_[data-grid-remove]]:rounded-lg [&_[data-grid-remove]:hover]:!opacity-100 [&_[data-grid-remove]:hover]:text-error">
+      <h3 class="mb-1 text-lg font-semibold">DumbGrid</h3>
+      <p class="mb-2.5 text-[13px] text-base-content">
         Drag a block by its <b>⠿</b> header, resize from the <b>bottom-right corner</b> — both snap to
         whole columns and rows. In <b>free</b> mode you can drop a block anywhere, including the empty
         space below; a red frame means the spot is taken and the drop is refused. Layout is saved to
@@ -180,41 +189,6 @@ export default function DumbGridExample() {
         />
       </Show>
 
-      <style>{`
-        .dg-example { padding: 16px 20px }
-        .dg-example h3 { margin: 0 0 4px }
-        .dg-example .note { margin: 0 0 10px; font-size: 13px; color: var(--color-base-content) }
-        .dg-example [data-grid-remove] { border-radius: 8px }
-        .dg-example [data-grid-remove]:hover { opacity: 1 !important; color: var(--color-error) }
-
-        .dg-example .card { height: 100%; display: flex; flex-direction: column;
-                            box-sizing: border-box; overflow: hidden;
-                            border: 1px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-100);
-                            box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) 4%, transparent) }
-        .dg-example .card-head { display: flex; align-items: center; gap: 8px;
-                                 padding: 8px 10px; cursor: grab; user-select: none;
-                                 border-bottom: 1px solid var(--color-base-200);
-                                 background: color-mix(in srgb, var(--accent) 8%, var(--color-base-100)) }
-        .dg-example .card-head:active { cursor: grabbing }
-        .dg-example .grip { color: var(--color-base-content); font-size: 14px; line-height: 1 }
-        .dg-example .card-title { font-size: 13px; font-weight: 600; color: var(--color-base-content);
-                                  padding-right: 20px }
-        .dg-example .card-body { flex: 1; min-height: 0; padding: 10px; overflow: auto;
-                                 scrollbar-gutter: stable }
-
-        .dg-example .bars { display: flex; align-items: flex-end; gap: 4px; height: 100% }
-        .dg-example .bars i { flex: 1; border-radius: 3px 3px 0 0;
-                              background: color-mix(in srgb, var(--accent) 70%, var(--color-base-100)) }
-        .dg-example .kpi { display: flex; flex-direction: column; justify-content: center; height: 100% }
-        .dg-example .kpi b { font-size: 22px; color: var(--color-base-content) }
-        .dg-example .kpi span { font-size: 12px; color: var(--color-base-content) }
-        .dg-example .list { margin: 0; padding: 0; list-style: none; font-size: 13px }
-        .dg-example .list li { display: flex; justify-content: space-between;
-                               padding: 3px 0; border-bottom: 1px dashed var(--color-base-200) }
-        .dg-example .list b { color: var(--color-error) }
-        .dg-example input { font: inherit; width: 100%; box-sizing: border-box;
-                            padding: 5px 8px; border: 1px solid var(--color-base-300); border-radius: 8px }
-      `}</style>
     </div>
   )
 }
