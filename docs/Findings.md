@@ -86,6 +86,14 @@ Computing the slot from the layout WITHOUT the dragged block is tempting (it doe
 
 **`git+file://` fetches the committed tree, not the working one.** Testing an edit that isn't committed measures the old code.
 
+## Uploading to S3
+
+**A presigned PUT breaks on the checksum.** From its 2025 versions on, `@aws-sdk/client-s3` puts `x-amz-sdk-checksum-algorithm` and `x-amz-checksum-crc32` into the signature by default. The browser doesn't compute them, so the store answers `400 InvalidDigest: Failed to validate checksum for algorithm Crc32`. The cure is `requestChecksumCalculation: 'WHEN_REQUIRED'` on the signing client. Verified against a live Garage (sdk 3.1101): without the line `400`, with it `200` and the object reads back.
+
+**`fetch` has no upload progress.** A `ReadableStream` request body isn't supported everywhere, and where it is you need HTTP/2 and `duplex: 'half'`. Only `XMLHttpRequest.upload.onprogress` will drive a progress bar.
+
+**The `@solid-primitives/upload` dropzone also listens to `dragstart`.** Put anything draggable inside it — a native-DnD grid, say — and the "drop files here" highlight lights up when you drag an element. Tell them apart through `dataTransfer.types`: files carry `Files`.
+
 ## Slugs
 
 `genSlug` from `utils` is `slug(name)`, and it **does not match** the common transliterate-then-slug pairing: `й` → `j` against `i`, `ы` → `y` against `i`. `klej-karandash-15g` against `klei-karandash-15g`. For a fresh catalogue that's irrelevant; if slugs are already in a database with live URLs on them, swapping the function changes addresses.

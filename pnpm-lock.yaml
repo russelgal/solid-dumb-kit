@@ -115,12 +115,12 @@ importers:
         specifier: ^1.8.0
         version: 1.9.14
     devDependencies:
+      '@solid-dumb-kit/grid-dnd':
+        specifier: workspace:*
+        version: link:../grid-dnd
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
-      '@solid-dumb-kit/sortable':
-        specifier: workspace:*
-        version: link:../sortable
 
   packages/grid:
     dependencies:

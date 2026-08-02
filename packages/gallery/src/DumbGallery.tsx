@@ -1,9 +1,13 @@
 // Галерея: выбрать файлы, посмотреть, переставить, залить.
 //
 // Состоит из готового: выбор и перетаскивание файлов в окно — примитив
-// `@solid-primitives/upload`, перестановка — `DumbSortable` (указательный, то
-// есть работает и пальцем), заливка — очередь из `uploadQueue` с транспортом,
-// который даёшь ты.
+// `@solid-primitives/upload`, сетка и перестановка — `DumbGridDnd`, заливка —
+// очередь из `uploadQueue` с транспортом, который даёшь ты.
+//
+// Сетка даёт плиткам РАЗМЕР: снимок можно растянуть на две колонки и две
+// строки, порядок при этом остаётся порядком. Расплата — жест нативный, а
+// значит ПАЛЬЦЕМ ПЕРЕСТАВИТЬ НЕЛЬЗЯ: HTML5 drag-and-drop на тачскрине не
+// существует. Выбор файлов, просмотр и удаление пальцем работают.
 //
 // Три вещи, из которых складывается поведение:
 //
@@ -19,7 +23,7 @@
 
 import { Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
 import { createDropzone, createFileUploader, type UploadFile } from '@solid-primitives/upload'
-import { DumbSortable } from '@solid-dumb-kit/sortable'
+import { DumbGridDnd, type DumbGridDndItem, type SpanValue } from '@solid-dumb-kit/grid-dnd'
 import { injectStyle } from '@solid-dumb-kit/shared'
 import { createUploadQueue, type Uploader } from './uploadQueue'
 
@@ -46,6 +50,10 @@ export type GalleryItem = {
   error?: string
   /** ключ в хранилище — приходит из транспорта */
   key?: string
+  /** ширина плитки: число колонок или доля сетки (`'half'`, `'1/3'`) */
+  w?: SpanValue
+  /** высота плитки в строках */
+  h?: number
 }
 
 export type DumbGalleryProps = {
@@ -69,8 +77,12 @@ export type DumbGalleryProps = {
   /** больше стольких не принимать; не задан — без предела */
   max?: number
 
-  /** ширина плитки, css; по умолчанию `minmax(120px, 1fr)` */
-  tile?: string
+  /** колонок в сетке; по умолчанию 6 */
+  cols?: number
+  /** высота строки, px; по умолчанию 120 */
+  rowHeight?: number
+  /** зазор сетки, px; по умолчанию 10 */
+  gap?: number
   /** правка: без неё нет ни выбора, ни перестановки, ни удаления */
   editable?: boolean
   /** анимировать перестановку; по умолчанию да, но не при prefers-reduced-motion */
@@ -90,9 +102,8 @@ export type DumbGalleryProps = {
  * один раз на документ. Всё остальное оформление твоё.
  */
 const CSS = `
-          .dumb-gallery { display: grid; gap: 10px;
-                          grid-template-columns: repeat(auto-fill, var(--dumb-gallery-tile)) }
-          .dumb-gallery-tile { position: relative; overflow: hidden; aspect-ratio: 1;
+          /* сетку рисует DumbGridDnd; плитка занимает ячейку целиком */
+          .dumb-gallery-tile { position: relative; overflow: hidden; height: 100%;
                                border-radius: 10px; background: rgb(0 0 0 / .04) }
           .dumb-gallery-tile img { width: 100%; height: 100%; object-fit: cover; display: block }
           /* пока файл едет — приглушаем и показываем полосу */
@@ -116,7 +127,6 @@ export function DumbGallery(props: DumbGalleryProps) {
 
   const editable = () => props.editable !== false
   const accept = () => props.accept ?? 'image/*'
-  const tile = () => props.tile ?? 'minmax(120px, 1fr)'
 
   const [dragOver, setDragOver] = createSignal(false)
 
@@ -173,10 +183,9 @@ export function DumbGallery(props: DumbGalleryProps) {
 
   const picker = createFileUploader({ accept: accept(), multiple: props.multiple !== false })
   const dropzone = createDropzone({
+    // подсветкой рулим сами (см. `withFiles`): дропзона не отличает файлы от
+    // перетаскиваемой плитки
     onDrop: (files) => { setDragOver(false); accepted(files) },
-    // сеттеры возвращают значение, а примитив ждёт void — оборачиваем
-    onDragOver: () => { setDragOver(true) },
-    onDragLeave: () => { setDragOver(false) },
   })
 
   /** выбросить плитку: отменить заливку, отпустить `objectURL` */
@@ -201,52 +210,103 @@ export function DumbGallery(props: DumbGalleryProps) {
     return { up, bad }
   })
 
+  /** живой элемент по id: плитка читает его отсюда и не пересоздаётся */
+  const byId = createMemo(() => new Map(props.items.map((it) => [it.id, it])))
+
+  /**
+   * Блоки для сетки. Объект блока переиспользуется, пока не сменился РАЗМЕР:
+   * `DumbGridDnd` итерирует `<For>` по ссылкам, и новый объект на каждый тик
+   * прогресса пересоздавал бы все плитки разом — а прогресс идёт десятками
+   * событий в секунду.
+   */
+  const blocks = new Map<string, DumbGridDndItem>()
+  const gridItems = createMemo<Array<DumbGridDndItem>>(() =>
+    props.items.map((it) => {
+      const key = `${it.id}|${String(it.w ?? 1)}|${it.h ?? 1}`
+      let block = blocks.get(key)
+      if (!block) {
+        block = {
+          id: it.id,
+          w: it.w ?? 1,
+          h: it.h ?? 1,
+          content: () => tile(it.id),
+        }
+        blocks.set(key, block)
+      }
+      return block
+    }),
+  )
+
+  /** плитка: всё внутри читается из `byId`, поэтому переживает любые правки */
+  const tile = (id: string) => {
+    const it = () => byId().get(id)
+    return (
+      <Show when={it()}>
+        {(item) => (
+          <figure
+            class="dumb-gallery-tile"
+            data-status={item().status ?? 'local'}
+            title={item().error ?? item().name}
+            onClick={() => props.onOpen?.(item(), props.items.findIndex((x) => x.id === id))}
+          >
+            <img src={item().preview ?? item().url} alt={item().name ?? ''} draggable={false} />
+            <Show when={editable()}>
+              {/* с кнопки жест не начнётся: сетка стартует драг только с блока,
+                  а `stopPropagation` не пускает клик дальше */}
+              <button
+                type="button"
+                data-no-drag
+                draggable={false}
+                title="убрать"
+                onClick={(ev) => { ev.stopPropagation(); remove(item()) }}
+              >
+                ✕
+              </button>
+            </Show>
+            <Show when={item().status === 'uploading' || item().status === 'queued'}>
+              <span class="dumb-gallery-bar">
+                <i style={{ width: `${Math.round((item().progress ?? 0) * 100)}%` }} />
+              </span>
+            </Show>
+          </figure>
+        )}
+      </Show>
+    ) as JSX.Element
+  }
+
+  function reorder(from: number, to: number) {
+    const next = props.items.slice()
+    next.splice(to, 0, next.splice(from, 1)[0])
+    props.setItems(next)
+  }
+
+  /**
+   * Подсветка «брось файлы сюда» — по СВОИМ слушателям, а не по дропзоне.
+   *
+   * Дропзона примитива вешается и на `dragstart`, поэтому загоралась бы и при
+   * перетаскивании плитки: перестановка в сетке — тоже нативный drag-and-drop.
+   * Отличаем по `dataTransfer.types`: у файлов там `Files`, у плитки нет.
+   */
+  const withFiles = (ev: DragEvent) => !!ev.dataTransfer?.types?.includes('Files')
+
   return (
     <div
       class={`dumb-gallery-drop ${props.class ?? ''}`}
       data-over={dragOver() && editable() ? '1' : undefined}
       ref={dropzone.setRef}
       style={props.style}
+      onDragOver={(ev) => { if (withFiles(ev)) setDragOver(true) }}
+      onDragLeave={(ev) => { if (!ev.relatedTarget) setDragOver(false) }}
+      onDrop={() => setDragOver(false)}
     >
-      <div class="dumb-gallery" style={{ '--dumb-gallery-tile': tile() }}>
-        <DumbSortable
-          items={props.items}
-          setItems={props.setItems}
-          id={(it) => it.id}
-          axis="grid"
-          disabled={() => !editable()}
-          animate={props.animate}
-        >
-          {(item, i) =>
-            props.children?.(item, i) ?? (
-              <figure
-                class="dumb-gallery-tile"
-                data-status={item.status ?? 'local'}
-                title={item.error ?? item.name}
-                onClick={() => props.onOpen?.(item, i())}
-              >
-                <img src={item.preview ?? item.url} alt={item.name ?? ''} draggable={false} />
-                <Show when={editable()}>
-                  {/* кнопка: жест с неё не начнётся — `DumbSortable` пропускает
-                      интерактивные цели сам, отдельной метки не нужно */}
-                  <button
-                    type="button"
-                    title="убрать"
-                    onClick={(ev) => { ev.stopPropagation(); remove(item) }}
-                  >
-                    ✕
-                  </button>
-                </Show>
-                <Show when={item.status === 'uploading' || item.status === 'queued'}>
-                  <span class="dumb-gallery-bar">
-                    <i style={{ width: `${Math.round((item.progress ?? 0) * 100)}%` }} />
-                  </span>
-                </Show>
-              </figure>
-            )
-          }
-        </DumbSortable>
-      </div>
+      <DumbGridDnd
+        items={gridItems()}
+        cols={props.cols ?? 6}
+        rowHeight={props.rowHeight ?? 120}
+        gap={props.gap ?? 10}
+        disabled={!editable()}
+        onReorder={reorder}
+      />
 
       <Show when={editable()}>
         <button type="button" onClick={() => picker.selectFiles(accepted)}>
@@ -256,7 +316,7 @@ export function DumbGallery(props: DumbGalleryProps) {
       <Show when={stats().up || stats().bad}>
         <span data-gallery-stats>
           {stats().up ? `заливается: ${stats().up}` : ''}
-          {stats().bad ? ` · с ошибкой: ${stats().bad}` : ''}
+          {stats().bad ? ` \u00b7 с ошибкой: ${stats().bad}` : ''}
         </span>
       </Show>
     </div>

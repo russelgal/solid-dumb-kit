@@ -8,7 +8,12 @@
 // показывать это в статичной витрине нечем. Как выглядит настоящий, написано
 // прямо на странице.
 import { createSignal, Show } from 'solid-js'
-import { DumbGallery, type GalleryItem, type Uploader } from '@solid-dumb-kit/gallery'
+import {
+  DumbGallery,
+  createPresignedUploader,
+  type GalleryItem,
+  type Uploader,
+} from '@solid-dumb-kit/gallery'
 import { Bar, Switch, Check, Pick, Btn, Note } from '../_controls'
 
 /**
@@ -52,7 +57,26 @@ export default function DumbGalleryExample() {
 
   // транспорт создаётся ОДИН раз, а режим падений читается в момент заливки
   const fake = fakeUploader({ failEvery: () => (failing() ? 3 : 0), ms: 2200 })
-  const uploader = () => (mode() === 'upload' ? fake : undefined)
+
+  /**
+   * Настоящее хранилище — по адресу подписывающей ручки в строке запроса:
+   * `?sign=http://localhost:8787/api/sign#gallery`.
+   *
+   * Именно в `search`, а не в хеше: хеш витрина разбирает как имя вкладки, и
+   * параметр в нём сломал бы навигацию. Нет параметра — поддельный транспорт.
+   */
+  const signUrl = new URLSearchParams(location.search).get('sign')
+  const real =
+    signUrl &&
+    createPresignedUploader({
+      sign: (file) =>
+        fetch(signUrl, {
+          method: 'POST',
+          body: JSON.stringify({ name: file.name, type: file.type }),
+        }).then((r) => r.json()),
+    })
+
+  const uploader = () => (mode() === 'upload' ? real || fake : undefined)
 
   const done = () => items().filter((i) => i.status === 'done').length
   const bad = () => items().filter((i) => i.status === 'error').length
@@ -95,7 +119,7 @@ export default function DumbGalleryExample() {
           value={mode()}
           options={[
             { value: 'local', label: 'никуда — локально' },
-            { value: 'upload', label: 'в поддельное хранилище' },
+            { value: 'upload', label: real ? 'в настоящее хранилище' : 'в поддельное хранилище' },
           ]}
           onChange={(v) => setMode(v as 'local' | 'upload')}
         />
@@ -122,7 +146,8 @@ export default function DumbGalleryExample() {
         upload={uploader()}
         concurrency={conc()}
         editable={edit()}
-        tile="minmax(140px, 1fr)"
+        cols={6}
+        rowHeight={130}
         class="max-w-[92ch] rounded-box border border-dashed border-base-300 p-3
                [&_.dumb-gallery-tile]:ring-1 [&_.dumb-gallery-tile]:ring-base-300
                [&_.dumb-gallery-tile]:cursor-grab [&_.dumb-gallery-tile]:bg-base-200

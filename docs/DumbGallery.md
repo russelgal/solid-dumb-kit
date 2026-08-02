@@ -6,8 +6,13 @@ Images: pick, look, reorder, upload.
 
 Assembled from things that already exist: file picking and drop-into-window come
 from [`@solid-primitives/upload`](https://primitives.solidjs.community/package/upload),
-reordering from [`DumbSortable`](DumbSortable.md) (the pointer engine, so it
-works with a finger too), uploading from a queue with a transport you supply.
+the grid and reordering from [`DumbGridDnd`](DumbGridDnd.md), uploading from a
+queue with a transport you supply.
+
+**Tiles have a size.** A shot can span several columns and rows (`w`, `h`) while
+the order stays an order. The price is that the gesture is native, so **you
+can't reorder with a finger**: HTML5 drag-and-drop doesn't exist on touch.
+Picking, viewing and removing all work with a finger.
 
 ## How it works
 
@@ -61,9 +66,40 @@ const url = await getSignedUrl(
 return { url, key, publicUrl: `${PUBLIC_BASE}/${key}` }
 ```
 
+### The `requestChecksumCalculation` trap
+
+A recent `@aws-sdk/client-s3` (verified on 3.1101) adds checksum headers to the
+signature by default — `x-amz-sdk-checksum-algorithm` and
+`x-amz-checksum-crc32`. The browser doesn't compute them, so the store answers:
+
+```
+400 InvalidDigest: Failed to validate checksum for algorithm Crc32
+```
+
+One line on the signing client fixes it:
+
+```ts
+const s3 = new S3Client({
+  endpoint, region, credentials,
+  forcePathStyle: true,
+  requestChecksumCalculation: 'WHEN_REQUIRED',   // ← without this a presigned PUT fails
+})
+```
+
+Verified against a live Garage: without the line `400 InvalidDigest`, with it
+`200` and the object reads back.
+
 **Headers that went into the signature must be repeated exactly.** If you signed
 `ContentType`, the browser has to send precisely that `Content-Type` or the
 store answers `403`. That's what `headers` in the response is for.
+
+### After upload the tile shows the REMOTE address
+
+As soon as a file arrives, the local `objectURL` is released and the item's
+`url` switches to whatever the transport returned. If `publicUrl` is configured
+wrongly the tile goes blank — deliberately: a blank tile says the address
+doesn't work, rather than hiding the mistake behind a local copy the consumer
+won't have after a reload.
 
 ### Why XHR and not fetch
 
@@ -100,7 +136,9 @@ Progress won't move here (see above); everything else works as usual.
 | `accept` | `string` | what to allow, defaults to `image/*` |
 | `multiple` | `boolean` | allow picking several at once |
 | `max` | `number` | take no more than this many |
-| `tile` | `string` | tile width, css; defaults to `minmax(120px, 1fr)` |
+| `cols` | `number` | grid columns, defaults to `6` |
+| `rowHeight` | `number` | row height in px, defaults to `120` |
+| `gap` | `number` | grid gap in px, defaults to `10` |
 | `editable` | `boolean` | edit mode; `false` means no picking, no reorder, no removal |
 | `animate` | `boolean` | animate reordering |
 | `onOpen` | `(item, index) => void` | tile click |
@@ -118,6 +156,24 @@ Progress won't move here (see above); everything else works as usual.
 | `progress` | `0…1` while uploading |
 | `error` | the message if it failed |
 | `key` | storage key — comes from the transport |
+| `w`, `h` | tile size in grid cells; defaults to `1×1` |
+
+## Dropped a file or dragged a tile
+
+Both gestures are native drag-and-drop and have to be told apart. The gallery
+does it through `dataTransfer.types`: files carry `Files`, a tile doesn't. That's
+why the "drop here" outline doesn't light up when you're merely reordering.
+
+Worth knowing if you draw your own tile: the primitive's dropzone also listens
+to `dragstart`, and without that check it would react to reordering.
+
+## Progress doesn't rebuild the tiles
+
+An upload fires dozens of progress events a second, each of them changing
+`items`. The grid blocks are reused as long as a tile's **size** hasn't changed:
+`DumbGridDnd` iterates by reference, so a fresh object per tick would rebuild
+every node at once. Verified: across a full four-file upload the tile nodes stay
+the same ones.
 
 ## The queue on its own
 

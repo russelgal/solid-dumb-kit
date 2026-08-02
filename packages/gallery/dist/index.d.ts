@@ -1,4 +1,5 @@
 import { JSX } from 'solid-js';
+import { SpanValue } from '@solid-dumb-kit/grid-dnd';
 
 /** чем заливаем: своё дело потребителя, галерея транспорт не выбирает */
 type Uploader = (file: File, ctx: {
@@ -59,6 +60,10 @@ type GalleryItem = {
     error?: string;
     /** ключ в хранилище — приходит из транспорта */
     key?: string;
+    /** ширина плитки: число колонок или доля сетки (`'half'`, `'1/3'`) */
+    w?: SpanValue;
+    /** высота плитки в строках */
+    h?: number;
 };
 type DumbGalleryProps = {
     items: Array<GalleryItem>;
@@ -78,8 +83,12 @@ type DumbGalleryProps = {
     multiple?: boolean;
     /** больше стольких не принимать; не задан — без предела */
     max?: number;
-    /** ширина плитки, css; по умолчанию `minmax(120px, 1fr)` */
-    tile?: string;
+    /** колонок в сетке; по умолчанию 6 */
+    cols?: number;
+    /** высота строки, px; по умолчанию 120 */
+    rowHeight?: number;
+    /** зазор сетки, px; по умолчанию 10 */
+    gap?: number;
     /** правка: без неё нет ни выбора, ни перестановки, ни удаления */
     editable?: boolean;
     /** анимировать перестановку; по умолчанию да, но не при prefers-reduced-motion */
