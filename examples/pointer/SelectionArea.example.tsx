@@ -34,31 +34,42 @@ function Board(props: {
   }
 
   return (
-    <section class="board">
-      <div class="toolbar">
+    <section class="mb-7">
+      <div class="mb-2 flex flex-wrap items-center gap-3 [&_h3]:text-[15px]">
         <h3>{props.title}</h3>
-        <span class="hint">{props.hint}</span>
-        <span class="count">выделено <b>{selected().size}</b> / {items().length}</span>
-        <button class="btn" onClick={() => setSelected(new Set())} disabled={!selected().size}>
+        <span class="text-[13px] text-base-content">{props.hint}</span>
+        <span class="ml-auto text-sm">выделено <b>{selected().size}</b> / {items().length}</span>
+        <button class="btn btn-sm" onClick={() => setSelected(new Set())} disabled={!selected().size}>
           сбросить
         </button>
-        <button class="btn btn-danger" onClick={removeSelected} disabled={!selected().size}>
+        <button class="btn btn-sm btn-error" onClick={removeSelected} disabled={!selected().size}>
           удалить выделенное
         </button>
       </div>
 
       <SelectionArea
-        class={props.scroll ? 'surface surface-scroll' : 'surface'}
+        // Прокрутка вешается на САМ контейнер выделения — иначе рамка не
+        // поедет вместе со списком. Классом, а не `classList`: компонент
+        // принимает только `class` и `style`, остальное до элемента не дойдёт.
+        // `surface-scroll` — метка без стилей, за неё держится смоук-тест.
+        class={
+          'surface rounded-xl border border-base-300 bg-base-200 p-3' +
+          (props.scroll ? ' surface-scroll max-h-[60vh] overflow-x-hidden overflow-y-auto' : '')
+        }
         selectables=".card"
         selected={selected}
         onChange={setSelected}
       >
-        <div class="grid">
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-2.5">
           <For each={items()}>
             {(f) => (
-              <div class="card" classList={{ on: selected().has(f.id) }} data-key={f.id}>
-                <span class="icon">{f.icon}</span>
-                <span class="name">{f.name}</span>
+              <div
+                class="card flex cursor-default flex-col items-center gap-1 rounded-box bg-base-100 px-1.5 py-3 ring-1 ring-base-300 transition-colors select-none"
+                classList={{ 'bg-primary/15 ring-2 ring-primary': selected().has(f.id) }}
+                data-key={f.id}
+              >
+                <span class="text-[26px]">{f.icon}</span>
+                <span class="text-[11px] text-base-content">{f.name}</span>
               </div>
             )}
           </For>
@@ -70,8 +81,8 @@ function Board(props: {
 
 export default function SelectionAreaExample() {
   return (
-    <div class="sa-example">
-      <p class="intro">
+    <div class="p-5 text-base-content">
+      <p class="mb-4 text-[13px] text-base-content">
         Тяни рамку по пустому месту. <kbd>Shift</kbd>/<kbd>⌘</kbd> — добавить к выделению
         (по уже выделенному рамка не гасит). Клик выделяет один элемент, с модификатором —
         переключает, клик мимо — сбрасывает. Позиции снимаются один раз за жест, в кадре
@@ -91,34 +102,6 @@ export default function SelectionAreaExample() {
         items={LONG}
       />
 
-      <style>{`
-        .sa-example { padding: 16px 20px; color: var(--color-base-content) }
-        .sa-example .intro { margin: 0 0 16px; font-size: 13px; color: var(--color-base-content) }
-
-        .board { margin-bottom: 28px }
-        .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap }
-        .toolbar h3 { margin: 0; font-size: 15px }
-        .toolbar .hint { font-size: 13px; color: var(--color-base-content) }
-        .toolbar .count { margin-left: auto; font-size: 14px }
-
-        .btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--color-base-300);
-               background: var(--color-base-100); color: inherit; font: inherit; cursor: pointer }
-        .btn:disabled { color: var(--color-base-content); cursor: default }
-        .btn-danger:not(:disabled) { border-color: var(--color-error); background: var(--color-error); color: var(--color-base-100) }
-
-        .surface { padding: 12px; border: 1px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-200) }
-        .surface-scroll { max-height: 60vh; overflow-y: auto; overflow-x: hidden }
-
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px }
-
-        .card { display: flex; flex-direction: column; align-items: center; gap: 4px;
-                padding: 12px 6px; border-radius: 10px; background: var(--color-base-100); cursor: default;
-                user-select: none; box-shadow: inset 0 0 0 1px var(--color-base-300);
-                transition: background .1s, box-shadow .1s }
-        .card.on { background: color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)); box-shadow: inset 0 0 0 2px var(--color-primary) }
-        .card .icon { font-size: 26px }
-        .card .name { font-size: 11px; color: var(--color-base-content) }
-      `}</style>
     </div>
   )
 }

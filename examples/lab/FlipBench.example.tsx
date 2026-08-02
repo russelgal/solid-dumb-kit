@@ -188,9 +188,9 @@ export default function FlipBenchExample() {
   const ms = (v: number) => `${v.toFixed(2)} мс`
 
   return (
-    <div class="fb-example">
-      <h3>Замер на лету против снимка — сколько стоит «просто померить»</h3>
-      <p class="note">
+    <div class="p-5 text-base-content">
+      <h3 class="mb-1 text-lg font-semibold">Замер на лету против снимка — сколько стоит «просто померить»</h3>
+      <p class="mb-2 max-w-[90ch] text-[13px] text-base-content">
         Оба способа дают одинаковую картинку, отличается цена. <b>Замер до/после</b> — учебный FLIP:
         прочитать <code>getBoundingClientRect</code> у всех карточек, поменять <code>order</code>,
         прочитать снова. Второе чтение обязано дождаться новой раскладки, то есть это{' '}
@@ -198,12 +198,12 @@ export default function FlipBenchExample() {
         CSS order + FLIP: позиции сняты один раз через <code>IntersectionObserver</code>, смещение
         считается вычитанием, чтений ноль.
       </p>
-      <p class="note">
+      <p class="mb-2 max-w-[90ch] text-[13px] text-base-content">
         Тащи карточку и следи за панелью: цифры — про ОДНУ перекладку, а их за жест столько, сколько
         раз ты пересёк соседа. Переключи режим и протащи так же.
       </p>
 
-      <div class="bar">
+      <div class="my-3 flex flex-wrap items-center gap-3.5 [&_label]:flex [&_label]:items-center [&_label]:gap-1.5 [&_label]:text-[13px] [&_button]:cursor-pointer [&_button]:rounded-lg [&_button]:border [&_button]:border-base-300 [&_button]:bg-base-100 [&_button]:px-3 [&_button]:py-1.5 [&_button]:text-[13px]">
         <label>
           <input type="radio" name="fb" checked={mode() === 'live'} onChange={() => setMode('live')} />
           замер до/после (учебный FLIP)
@@ -216,7 +216,7 @@ export default function FlipBenchExample() {
         <button type="button" onClick={reset}>По порядку</button>
       </div>
 
-      <div class="stats">
+      <div class="mb-3.5 flex gap-6 rounded-box bg-base-200 px-3.5 py-2.5 ring-1 ring-base-300 [&>div]:flex [&>div]:flex-col [&>div]:gap-0.5 [&>div]:text-[12.5px] [&_b]:text-[11px] [&_b]:uppercase [&_b]:tracking-wider">
         <div>
           <b>последняя перекладка</b>
           <span>замеров: {last().reads}</span>
@@ -231,7 +231,7 @@ export default function FlipBenchExample() {
       </div>
 
       <div
-        class="grid"
+        class="grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] content-start gap-2"
         ref={box}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -241,12 +241,12 @@ export default function FlipBenchExample() {
         <For each={CARDS}>
           {(i) => (
             <div
-              class="card"
-              classList={{ held: held() === i }}
+              class="card grid h-16 cursor-grab place-items-center rounded-box border-t-5 bg-base-100 text-[15px] font-semibold ring-1 ring-base-300 active:cursor-grabbing"
+              classList={{ 'opacity-35': held() === i }}
               data-card={i}
               draggable="true"
               ref={(el) => { els[i] = el }}
-              style={{ order: String(pos()[i]), '--hue': HUE(i) }}
+              style={{ order: String(pos()[i]), 'border-top-color': HUE(i) }}
             >
               {i + 1}
             </div>
@@ -254,28 +254,6 @@ export default function FlipBenchExample() {
         </For>
       </div>
 
-      <style>{`
-        .fb-example { padding: 16px 20px; color: var(--color-base-content) }
-        .fb-example h3 { margin: 0 0 4px }
-        .fb-example .note { margin: 0 0 8px; font-size: 13px; color: var(--color-base-content); max-width: 90ch }
-        .fb-example .bar { display: flex; align-items: center; gap: 14px; margin: 12px 0; flex-wrap: wrap }
-        .fb-example .bar label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--color-base-content) }
-        .fb-example .bar button { padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
-                                  border: 1px solid var(--color-base-300); border-radius: 8px; background: var(--color-base-100) }
-        .fb-example .stats { display: flex; gap: 24px; margin: 0 0 14px; padding: 10px 14px;
-                             border-radius: 10px; background: var(--color-base-200); box-shadow: inset 0 0 0 1px var(--color-base-300) }
-        .fb-example .stats > div { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--color-base-content) }
-        .fb-example .stats b { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--color-base-content) }
-
-        .fb-example .grid { display: grid; gap: 8px; align-content: start;
-                            grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)) }
-        .fb-example .card { display: grid; place-items: center; height: 64px; border-radius: 10px;
-                            cursor: grab; font-weight: 600; font-size: 15px; color: var(--color-base-content);
-                            background: var(--color-base-100); box-shadow: inset 0 0 0 1px var(--color-base-300);
-                            border-top: 5px solid var(--hue) }
-        .fb-example .card:active { cursor: grabbing }
-        .fb-example .card.held { opacity: .35 }
-      `}</style>
     </div>
   )
 }
