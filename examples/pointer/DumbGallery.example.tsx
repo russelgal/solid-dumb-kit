@@ -92,9 +92,11 @@ export default function DumbGalleryExample() {
       <h3 class="mb-1 text-lg font-semibold">DumbGallery — картинки: выбрать, переставить, залить</h3>
       <p class="mb-2 max-w-[92ch] text-sm text-base-content">
         Выбор файлов и перетаскивание их в окно — примитив{' '}
-        <code>@solid-primitives/upload</code>; перестановка — <b>DumbSortable</b>, тот же
-        указательный движок, что и на вкладке рядом, поэтому работает и пальцем. Картинка
-        показывается <b>сразу</b>, из <code>objectURL</code>, ещё до всякой заливки.
+        <code>@solid-primitives/upload</code>; перестановка — <b>DumbSortableDnd</b>: порядок
+        задаётся CSS <code>order</code>, и разметка за жест не шевелится ни на узел. Картинка
+        показывается <b>сразу</b>, из <code>objectURL</code>, ещё до всякой заливки. Жест
+        нативный, значит <b>пальцем переставить нельзя</b> — HTML5 drag-and-drop на тачскрине не
+        существует; выбор, просмотр и удаление пальцем работают.
       </p>
       <p class="mb-2 max-w-[92ch] text-sm text-base-content">
         Заливка идёт <b>очередью</b>: два-три файла разом, остальные ждут. Так и должно быть —
