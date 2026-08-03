@@ -59,13 +59,19 @@ export default function DumbGalleryExample() {
   const fake = fakeUploader({ failEvery: () => (failing() ? 3 : 0), ms: 2200 })
 
   /**
-   * Настоящее хранилище — по адресу подписывающей ручки в строке запроса:
-   * `?sign=http://localhost:8787/api/sign#gallery`.
+   * Настоящее хранилище — ТОЛЬКО В ДЕВЕ.
    *
-   * Именно в `search`, а не в хеше: хеш витрина разбирает как имя вкладки, и
-   * параметр в нём сломал бы навигацию. Нет параметра — поддельный транспорт.
+   * Витрина в деве поднимает у себя ручку `/api/sign` (плагин `devSign`,
+   * `apply: 'serve'`), которая подписывает ссылку ключами из локального `.env`.
+   * В собранной витрине и на Pages никакого сервера нет, значит нет и подписи —
+   * там вкладка честно работает на поддельном транспорте.
+   *
+   * Свою ручку можно подсунуть параметром `?sign=<url>` — именно в `search`, а
+   * не в хеше: хеш витрина разбирает как имя вкладки.
    */
-  const signUrl = new URLSearchParams(location.search).get('sign')
+  const signUrl =
+    new URLSearchParams(location.search).get('sign') ??
+    (import.meta.env.DEV ? '/api/sign' : null)
   const real =
     signUrl &&
     createPresignedUploader({

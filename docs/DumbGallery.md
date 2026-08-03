@@ -113,6 +113,33 @@ everywhere, and where it is you need HTTP/2 and `duplex: 'half'`.
 `XMLHttpRequest.upload.onprogress` works everywhere and exists for exactly this.
 That's what `createPresignedUploader` uses.
 
+## Trying it against a live store
+
+The kit's showcase already has this wired up — **for development only**. The dev
+server exposes `/api/sign` (the `playground/devSign.ts` plugin, `apply: 'serve'`)
+which signs a URL with keys from the root `.env`. The built showcase and Pages
+have no server, hence no signing: there the tab honestly runs on the fake
+transport.
+
+```bash
+cp .env.example .env      # fill in S3_ENDPOINT, S3_BUCKET, the keys
+pnpm demo                 # the console prints «дев-подпись: <bucket> on <endpoint>»
+```
+
+Everything goes under the `dumb-kit-dev/` prefix so it can be told apart and
+swept away:
+
+```bash
+pnpm dev:s3:clean         # look
+pnpm dev:s3:clean --yes   # delete
+```
+
+The script touches **that prefix only** — it won't hurt anything else even if
+`.env` points at a production bucket.
+
+Verified against a live Garage: Cyrillic file names survive, both images land,
+and the public address serves them.
+
 ## Your own transport
 
 `upload` is an ordinary function. If you post to your own endpoint rather than
