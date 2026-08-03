@@ -1,5 +1,5 @@
 import { delegateEvents, use, insert, createComponent, effect, className, setStyleProperty, setAttribute, memo, style, template } from 'solid-js/web';
-import { createMemo, createSignal, onCleanup, onMount, createEffect, Show, For } from 'solid-js';
+import { createMemo, createSignal, onCleanup, createEffect, untrack, Show, For } from 'solid-js';
 import { Temporal as Temporal$1 } from 'temporal-polyfill';
 
 // src/DumbTimeline.tsx
@@ -453,7 +453,7 @@ function DumbTimeline(props) {
   const spanIds = createMemo(() => props.spans.map((s) => s.id));
   const rulesOf = (rowId) => {
     const r = rowMap().get(rowId);
-    const hourly = !dayGrid();
+    const hourly = !dayGrid() && unitOf(rowId) === "hour";
     return {
       minMin: r?.minMin,
       gapMin: r?.gapMin ?? props.gapMin,
@@ -468,6 +468,16 @@ function DumbTimeline(props) {
     return sc.stepMin >= Math.max(1, sc.dayEnd - sc.dayStart);
   };
   const canResize = (rowId) => !(dayGrid() && unitOf(rowId) === "hour");
+  createMemo(() => {
+    const sc = scale();
+    const win = Math.max(1, sc.dayEnd - sc.dayStart);
+    return {
+      ...sc,
+      stepMin: win,
+      snapMin: void 0,
+      colW: sc.colW * win / sc.stepMin
+    };
+  });
   const free = (next) => !props.spans.some((s) => s.id !== next.id && s.row === next.row && conflicts(next, s, scale(), gapOf(next.row)));
   const settle = (want) => {
     if (free(want)) return want;
@@ -580,13 +590,13 @@ function DumbTimeline(props) {
     scrollToNow: () => api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange
   };
-  onMount(() => {
+  createEffect(() => untrack(() => {
     props.ref?.(api);
     if (!viewport) return;
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
     ro.observe(viewport);
     onCleanup(() => ro.disconnect());
-  });
+  }));
   createEffect(() => {
     scale();
     if (vpW() > 0) props.onVisibleRange?.(visibleRange());

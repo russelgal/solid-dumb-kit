@@ -14,7 +14,7 @@
 // Драг и ресайз идут по СНАПУ в сутки: полоса прыгает по дням, а не ползёт за
 // курсором попиксельно. Так и бронируют — в сутках, а не в пикселях.
 
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount, type JSX } from 'solid-js'
+import { For, Show, createEffect, createMemo, createSignal, onCleanup, untrack, type JSX } from 'solid-js'
 import { injectStyle, suppressTextSelection, restoreTextSelection } from '@solid-dumb-kit/shared'
 import { Temporal } from './temporal'
 import type { Span } from './timelineMath'
@@ -421,7 +421,8 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
    */
   const rulesOf = (rowId: string): RowRules => {
     const r = rowMap().get(rowId)
-    const hourly = !dayGrid()
+    // окно — свойство ПОЧАСОВОГО ресурса: у номера «работает с 14:00» не бывает
+    const hourly = !dayGrid() && unitOf(rowId) === 'hour'
     return {
       minMin: r?.minMin,
       gapMin: r?.gapMin ?? props.gapMin,
@@ -446,6 +447,31 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
    * жеста просто не та; менять время у такой брони надо в форме, а не мышью.
    */
   const canResize = (rowId: string) => !(dayGrid() && unitOf(rowId) === 'hour')
+
+  /**
+   * Та же шкала, но с колонкой в СУТКИ. Пиксель на минуту у них общий
+   * (`colW / stepMin` не меняется), поэтому нарисованное остаётся на месте —
+   * меняется только крупность жеста.
+   */
+  const daily = createMemo(() => {
+    const sc = scale()
+    const win = Math.max(1, sc.dayEnd - sc.dayStart)
+    // `snapMin` снимаем: получасовой шаг площадок к суткам отношения не имеет
+    return { ...sc, stepMin: win, snapMin: undefined, colW: (sc.colW * win) / sc.stepMin }
+  })
+
+  /**
+   * Шкала, по которой считается ЖЕСТ на этой строке.
+   *
+   * Сетка одна на всех, а торгуют строки по-разному, и шаг у них разный: баня
+   * ходит получасом, номер — сутками. На почасовой сетке общий шаг превращал
+   * перенос брони номера в «заезд 18:00, выезд 14:00» — время, которого в
+   * гостинице не существует. Поэтому суточной строке отдаём суточную шкалу:
+   * тогда снап, минимум (ночь, а не колонка) и отметки заезда-выезда считаются
+   * теми же ветками, что и на суточной сетке, — второй реализации не нужно.
+   */
+  const scaleOf = (rowId: string) =>
+    !dayGrid() && unitOf(rowId) === 'day' ? daily() : scale()
 
   /** свободно ли место с учётом зазора на уборку — у каждой строки он свой */
   const free = (next: S) =>
@@ -616,13 +642,18 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
       api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange,
   }
-  onMount(() => {
-    props.ref?.(api)
-    if (!viewport) return
-    const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0))
-    ro.observe(viewport)
-    onCleanup(() => ro.disconnect())
-  })
+  // НЕ onMount: Solid 2 его не экспортирует, а JSX кита компилирует компилятор
+  // потребителя (экспорт-условие "solid"). Эффект с untrack — то же самое
+  // «один раз после монтирования» и существует в обеих линиях Solid
+  createEffect(() =>
+    untrack(() => {
+      props.ref?.(api)
+      if (!viewport) return
+      const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0))
+      ro.observe(viewport)
+      onCleanup(() => ro.disconnect())
+    }),
+  )
   // диапазон меняется не только прокруткой: сменили `from`/`days`/шаг или
   // ширину окна — потребителю нужен свежий диапазон для догрузки
   createEffect(() => {

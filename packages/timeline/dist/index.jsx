@@ -1,5 +1,5 @@
 // src/DumbTimeline.tsx
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js";
 
 // ../shared/dist/index.js
 var done = /* @__PURE__ */ new Set();
@@ -429,7 +429,7 @@ function DumbTimeline(props) {
   const spanIds = createMemo(() => props.spans.map((s) => s.id));
   const rulesOf = (rowId) => {
     const r = rowMap().get(rowId);
-    const hourly = !dayGrid();
+    const hourly = !dayGrid() && unitOf(rowId) === "hour";
     return {
       minMin: r?.minMin,
       gapMin: r?.gapMin ?? props.gapMin,
@@ -444,6 +444,12 @@ function DumbTimeline(props) {
     return sc.stepMin >= Math.max(1, sc.dayEnd - sc.dayStart);
   };
   const canResize = (rowId) => !(dayGrid() && unitOf(rowId) === "hour");
+  const daily = createMemo(() => {
+    const sc = scale();
+    const win = Math.max(1, sc.dayEnd - sc.dayStart);
+    return { ...sc, stepMin: win, snapMin: void 0, colW: sc.colW * win / sc.stepMin };
+  });
+  const scaleOf = (rowId) => !dayGrid() && unitOf(rowId) === "day" ? daily() : scale();
   const free = (next) => !props.spans.some(
     (s) => s.id !== next.id && s.row === next.row && conflicts(next, s, scale(), gapOf(next.row))
   );
@@ -540,13 +546,15 @@ function DumbTimeline(props) {
     scrollToNow: () => api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange
   };
-  onMount(() => {
-    props.ref?.(api);
-    if (!viewport) return;
-    const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
-    ro.observe(viewport);
-    onCleanup(() => ro.disconnect());
-  });
+  createEffect(
+    () => untrack(() => {
+      props.ref?.(api);
+      if (!viewport) return;
+      const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
+      ro.observe(viewport);
+      onCleanup(() => ro.disconnect());
+    })
+  );
   createEffect(() => {
     scale();
     if (vpW() > 0) props.onVisibleRange?.(visibleRange());
