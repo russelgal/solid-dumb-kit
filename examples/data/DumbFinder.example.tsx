@@ -14,6 +14,9 @@ import {
   createMemorySource,
   createS3Source,
 } from "@solid-dumb-kit/finder";
+import { DumbLightbox } from "@solid-dumb-kit/lightbox";
+import { DumbToaster, toast } from "@solid-dumb-kit/toast";
+import { DumbContextMenu } from "@solid-dumb-kit/context-menu";
 import { Bar, Switch, Note } from "../_controls";
 
 /**
@@ -77,6 +80,14 @@ const fakeSource = () =>
 
 export default function DumbFinderExample() {
   const [edit, setEdit] = createSignal(true)
+  // что выделено — по нему строится контекстное меню
+  const [picked, setPicked] = createSignal<Set<string>>(new Set());
+  let box: HTMLDivElement | undefined;
+
+  // картинки текущей папки и то, что открыто в просмотрщике
+  const [shots, setShots] = createSignal<Array<{ url: string; title?: string }>>([]);
+  const [shown, setShown] = createSignal<number | null>(null);
+
   // ОДИН кегль на весь файндер: дерево слева, строки списка, подписи плиток
   const [treeSize, setTreeSize] = createSignal("13px");
   const [note, setNote] = createSignal<string | null>(null);
@@ -142,8 +153,11 @@ export default function DumbFinderExample() {
         </Note>
       </Bar>
 
+      <div ref={box}>
       <DumbFinder
         source={source()}
+        selected={picked()}
+        onSelectionChange={setPicked}
         editable={edit()}
         height="58vh"
         style={{ "--dumb-finder-size": treeSize() }}
@@ -155,11 +169,65 @@ export default function DumbFinderExample() {
                [&_.dumb-finder-bar>button]:btn [&_.dumb-finder-bar>button]:btn-xs
                [&_.dumb-finder-bar_input]:input [&_.dumb-finder-bar_input]:input-xs
                [&_.dumb-finder-body]:rounded-box [&_.dumb-finder-body]:bg-base-100"
-        onOpen={(entry) =>
-          entry.url && window.open(entry.url, "_blank", "noopener")
-        }
-        onError={(msg) => setNote(msg)}
+        onOpen={(entry) => {
+          // картинку показываем в просмотрщике, всё остальное отдаём браузеру
+          if (!entry.url) return;
+          if (!/\.(jpe?g|png|gif|webp|avif|svg)$/i.test(entry.name)) {
+            window.open(entry.url, "_blank", "noopener");
+            return;
+          }
+          setShots([{ url: entry.url, title: entry.name }]);
+          setShown(0);
+        }}
+        onError={(msg) => {
+          setNote(msg);
+          toast.error(msg);
+        }}
       />
+
+      </div>
+
+      {/*
+        Меню — отдельный пакет: в top layer через Popover API, место выбирает
+        браузер через anchor positioning. Пункты пересчитываются на каждое
+        открытие, поэтому зависят от того, что выделено.
+      */}
+      <DumbContextMenu
+        target={() => box ?? null}
+        items={() => {
+          const keys = [...picked()];
+          return [
+            {
+              label: keys.length > 1 ? `Открыть ${keys.length}` : "Открыть",
+              icon: "icon-[solar--eye-bold]",
+              disabled: keys.length !== 1,
+              run: () => toast.info(`открыть: ${keys[0]}`),
+            },
+            {
+              label: "Копировать путь",
+              icon: "icon-[solar--copy-bold]",
+              hint: "⌘C",
+              disabled: !keys.length,
+              run: () => {
+                navigator.clipboard?.writeText(keys.join("\n"));
+                toast.success("путь скопирован");
+              },
+            },
+            { kind: "separator" as const },
+            {
+              label: keys.length > 1 ? `Удалить ${keys.length}` : "Удалить",
+              icon: "icon-[solar--trash-bin-trash-bold]",
+              hint: "Del",
+              danger: true,
+              disabled: !keys.length,
+              run: () => toast.error("удаление из меню в витрине выключено"),
+            },
+          ];
+        }}
+      />
+
+      <DumbLightbox items={shots()} index={shown} onIndexChange={setShown} />
+      <DumbToaster />
     </div>
   );
 }

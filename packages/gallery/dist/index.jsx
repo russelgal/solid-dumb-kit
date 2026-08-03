@@ -693,6 +693,46 @@ function reason(body) {
   const m = body && /<Message>([^<]+)<\/Message>/.exec(body);
   return m ? `: ${m[1]}` : "";
 }
+function readDropEntries(dt) {
+  if (!dt) return Promise.resolve([]);
+  const entries = [];
+  const plain = [];
+  for (const item of Array.from(dt.items ?? [])) {
+    if (item.kind !== "file") continue;
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+    else {
+      const f = item.getAsFile();
+      if (f) plain.push(f);
+    }
+  }
+  if (!entries.length) {
+    const files = plain.length ? plain : Array.from(dt.files ?? []);
+    return Promise.resolve(files.map((file) => ({ file, path: file.name })));
+  }
+  return Promise.all(entries.map((e) => walk(e, ""))).then((lists) => lists.flat());
+}
+async function walk(entry, prefix) {
+  if (entry.isFile) {
+    const file = await new Promise(
+      (ok) => entry.file ? entry.file(ok, () => ok(null)) : ok(null)
+    );
+    return file ? [{ file, path: `${prefix}${file.name}` }] : [];
+  }
+  if (!entry.isDirectory || !entry.createReader) return [];
+  const reader = entry.createReader();
+  const kids = [];
+  for (; ; ) {
+    const part = await new Promise(
+      (ok) => reader.readEntries(ok, () => ok([]))
+    );
+    if (!part.length) break;
+    kids.push(...part);
+  }
+  const inner = `${prefix}${entry.name}/`;
+  const lists = await Promise.all(kids.map((k) => walk(k, inner)));
+  return lists.flat();
+}
 
 // src/DumbGallery.tsx
 var CSS = `
@@ -718,6 +758,16 @@ var CSS = `
             content: ''; position: absolute; inset: -6px; border-radius: 12px;
             outline: 2px dashed currentColor; pointer-events: none }
         `;
+function matchesAccept(file, accept) {
+  if (!accept || accept === "*") return true;
+  return accept.split(",").some((rule) => {
+    const r = rule.trim().toLowerCase();
+    if (!r) return false;
+    if (r.endsWith("/*")) return file.type.toLowerCase().startsWith(r.slice(0, -1));
+    if (r.startsWith(".")) return file.name.toLowerCase().endsWith(r);
+    return file.type.toLowerCase() === r;
+  });
+}
 function DumbGallery(props) {
   injectStyle("gallery", CSS);
   const editable = () => props.editable !== false;
@@ -771,6 +821,23 @@ function DumbGallery(props) {
       accepted(files);
     }
   });
+  async function acceptDrop(ev) {
+    setDragOver(false);
+    if (!editable()) return;
+    const dropped = await readDropEntries(ev.dataTransfer);
+    if (!dropped.length) return;
+    const want = accept();
+    const fit = dropped.map((d) => d.file).filter((f) => matchesAccept(f, want));
+    if (!fit.length) return;
+    accepted(
+      fit.map((file) => ({
+        source: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
+        file
+      }))
+    );
+  }
   function remove(item) {
     queue.cancel(item.id);
     if (item.preview) URL.revokeObjectURL(item.preview);
@@ -803,7 +870,12 @@ function DumbGallery(props) {
     onDragLeave={(ev) => {
       if (!ev.relatedTarget) setDragOver(false);
     }}
-    onDrop={() => setDragOver(false)}
+    onDrop={(ev) => {
+      if (withFiles(ev)) {
+        ev.preventDefault();
+        void acceptDrop(ev);
+      } else setDragOver(false);
+    }}
   >
       {
     /* контейнер обязан быть grid или flex — на этом держится CSS `order` */

@@ -1,0 +1,44 @@
+{
+  "name": "@solid-dumb-kit/context-menu",
+  "version": "0.1.0",
+  "description": "Контекстное меню по правому клику: без замеров, с клавиатурой",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/russelgal/solid-dumb-kit",
+    "directory": "packages/context-menu"
+  },
+  "homepage": "https://github.com/russelgal/solid-dumb-kit#readme",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "solid-dumb-kit-source": "./src/index.tsx",
+      "solid": "./dist/index.jsx",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup --config ../../configs/tsup.ts",
+    "dev": "tsup --config ../../configs/tsup.ts --watch"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.8.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@solid-dumb-kit/shared": "workspace:*"
+  }
+}

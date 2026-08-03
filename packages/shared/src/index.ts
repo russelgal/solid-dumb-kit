@@ -90,3 +90,51 @@ export {
   type Presigned,
   type PresignedOptions,
 } from './presigned'
+
+/**
+ * Виртуализация без единого замера элемента: размер строки заявлен, окно
+ * считается арифметикой, из DOM берётся только `scrollTop` и (через
+ * `ResizeObserver`) высота скроллера.
+ */
+export {
+  createVirtualizer,
+  scrollOffsetFor,
+  type Virtual,
+  type VirtualOptions,
+  type VirtualRange,
+} from './virtual'
+
+/**
+ * Бросок ПАПКИ, а не только файлов: `dataTransfer.files` плоский, дерево лежит
+ * в `webkitGetAsEntry()`, и забрать его надо синхронно, до первого `await`.
+ */
+export { readDropEntries, hasDirectories, type DroppedFile } from './dropEntries'
+
+/**
+ * Отмена действия. Стек хранит пары «сделать/отменить», а не снимки состояния:
+ * шаг, который отменить нельзя (удаление без корзины), помечается честно.
+ */
+export {
+  createUndoStack,
+  type UndoStack,
+  type UndoStep,
+  type UndoOptions,
+} from './undo'
+
+/** Клавиатура по списку и сетке: куда уводит стрелка и что становится выделено. */
+export { moveIndex, moveSelection, isMoveKey, type MoveArgs, type MoveKey } from './roving'
+
+/** Правка подписи на месте: Enter сохраняет, Esc забывает, ошибка не съедает набранное. */
+export { createInlineEdit, type InlineEdit, type InlineEditOptions } from './inlineEdit'
+
+/**
+ * Заливка большого файла частями: обрыв стоит одного куска, а не всего файла.
+ * Подписи и сборка — на твоём сервере.
+ */
+export {
+  uploadMultipart,
+  shouldSplit,
+  type MultipartOptions,
+  type MultipartHandshake,
+  type UploadedPart,
+} from './multipart'

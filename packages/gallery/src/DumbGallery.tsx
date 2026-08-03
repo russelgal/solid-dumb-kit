@@ -28,7 +28,9 @@
 import { Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
 import { createDropzone, createFileUploader, type UploadFile } from '@solid-primitives/upload'
 import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
-import { injectStyle, createUploadQueue, type Uploader } from '@solid-dumb-kit/shared'
+import {
+  createUploadQueue, injectStyle, readDropEntries, type Uploader,
+} from '@solid-dumb-kit/shared'
 
 export type GalleryStatus =
   /** транспорта нет: файл живёт только в браузере */
@@ -123,6 +125,22 @@ const CSS = `
             outline: 2px dashed currentColor; pointer-events: none }
         `
 
+/**
+ * Подходит ли файл под `accept`. Браузер это проверяет сам только в диалоге
+ * выбора; для брошенной папки фильтровать приходится руками, иначе в галерею
+ * картинок приедут `.DS_Store` и `Thumbs.db`.
+ */
+function matchesAccept(file: File, accept: string): boolean {
+  if (!accept || accept === '*') return true
+  return accept.split(',').some((rule) => {
+    const r = rule.trim().toLowerCase()
+    if (!r) return false
+    if (r.endsWith('/*')) return file.type.toLowerCase().startsWith(r.slice(0, -1))
+    if (r.startsWith('.')) return file.name.toLowerCase().endsWith(r)
+    return file.type.toLowerCase() === r
+  })
+}
+
 export function DumbGallery(props: DumbGalleryProps) {
   injectStyle('gallery', CSS)
 
@@ -202,6 +220,34 @@ export function DumbGallery(props: DumbGalleryProps) {
     onDrop: (files) => { setDragOver(false); accepted(files) },
   })
 
+  /**
+   * Бросок ПАПКИ. `dataTransfer.files` плоский — папка в нём либо теряется,
+   * либо приезжает пустышкой; дерево лежит в `webkitGetAsEntry()`, и забрать
+   * его надо синхронно, до первого `await`. Этим и занят `readDropEntries`.
+   *
+   * Структура папок галерее не нужна — она плоская; берём только сами файлы и
+   * отсеиваем то, что не подходит под `accept`.
+   */
+  async function acceptDrop(ev: DragEvent) {
+    setDragOver(false)
+    if (!editable()) return
+    const dropped = await readDropEntries(ev.dataTransfer)
+    if (!dropped.length) return
+    const want = accept()
+    const fit = dropped
+      .map((d) => d.file)
+      .filter((f) => matchesAccept(f, want))
+    if (!fit.length) return
+    accepted(
+      fit.map((file) => ({
+        source: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
+        file,
+      })) as Array<UploadFile>,
+    )
+  }
+
   /** выбросить плитку: отменить заливку, отпустить `objectURL` */
   function remove(item: GalleryItem) {
     queue.cancel(item.id)
@@ -245,7 +291,13 @@ export function DumbGallery(props: DumbGalleryProps) {
       style={props.style}
       onDragOver={(ev) => { if (withFiles(ev)) setDragOver(true) }}
       onDragLeave={(ev) => { if (!ev.relatedTarget) setDragOver(false) }}
-      onDrop={() => setDragOver(false)}
+      onDrop={(ev) => {
+        // папку принимаем сами: примитив умеет только плоский список файлов
+        if (withFiles(ev)) {
+          ev.preventDefault()
+          void acceptDrop(ev)
+        } else setDragOver(false)
+      }}
     >
       {/* контейнер обязан быть grid или flex — на этом держится CSS `order` */}
       <DumbSortableDnd

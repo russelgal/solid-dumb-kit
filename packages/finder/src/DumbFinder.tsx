@@ -33,7 +33,10 @@ import {
 import { createFileUploader, type UploadFile } from '@solid-primitives/upload'
 import { SelectionArea } from '@solid-dumb-kit/selection'
 import { ResizableGrid } from '@solid-dumb-kit/resizable-grid'
-import { createUploadQueue, injectStyle } from '@solid-dumb-kit/shared'
+import {
+  createUploadQueue, createUndoStack, injectStyle, isMoveKey, moveIndex, moveSelection,
+  readDropEntries,
+} from '@solid-dumb-kit/shared'
 import { fmtSize, fmtDateTimeShort } from '@solid-dumb-kit/utils'
 import {
   ICONS, canMove, crumbs, joinPrefix, kindOf, nameOf, parentOf, sortEntries,
@@ -87,7 +90,7 @@ export type DumbFinderProps = {
       | 'dir' | 'dirOpen'
       | 'twist'
       /* кнопки тулбара */
-      | 'refresh' | 'viewGrid' | 'viewList' | 'mkdir' | 'upload' | 'remove',
+      | 'refresh' | 'viewGrid' | 'viewList' | 'mkdir' | 'upload' | 'remove' | 'undo',
       string
     >
   >
@@ -327,6 +330,8 @@ export function DumbFinder(props: DumbFinderProps) {
     batch(() => {
       setOwnPath(next)
       setSelection(new Set())
+      setCursor(-1)
+      setAnchor(-1)
       props.onPathChange?.(next)
       props.onSelectionChange?.(new Set())
     })
@@ -395,6 +400,8 @@ export function DumbFinder(props: DumbFinderProps) {
   }
 
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc))
+  // вид сменился — число колонок другое
+  createEffect(on(view, () => queueMicrotask(measureCols), { defer: true }))
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])))
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)))
 
@@ -636,17 +643,41 @@ export function DumbFinder(props: DumbFinderProps) {
     setDropAt(null)
     setOverFiles(false)
 
-    const files = [...(ev.dataTransfer?.files ?? [])]
-    if (files.length) {
-      enqueue(files.map((f) => ({ name: f.name, file: f })), to)
-      return
+    // Файлы разбираем через `readDropEntries`: `dataTransfer.files` плоский, и
+    // брошенная папка в нём либо теряется, либо приезжает пустышкой. Забрать
+    // записи надо СИНХРОННО — внутри и сделано.
+    if (ev.dataTransfer?.types?.includes('Files')) {
+      const dropped = await readDropEntries(ev.dataTransfer)
+      if (dropped.length) {
+        // путь внутри брошенной папки сохраняем: `фото/2026/море.jpg` ляжет
+        // в подпапки, а не свалится одной кучей
+        for (const d of dropped) {
+          const sub = d.path.slice(0, d.path.length - d.file.name.length)
+          enqueue([{ name: d.file.name, file: d.file }], `${to}${sub}`)
+        }
+        return
+      }
     }
 
     const keys = dragging().filter((k) => canMove(k, to))
     setDragging([])
     if (!keys.length || !props.source.move) return
+    const back = new Map(keys.map((k) => [k, parentOf(k)]))
     try {
       await props.source.move(keys, to)
+      undoStack.push({
+        label: `перенос ${keys.length} шт.`,
+        // назад по одному: у каждого ключа свой прежний родитель
+        undo: async () => {
+          for (const [key, home] of back) {
+            const moved = `${to}${nameOf(key)}${key.endsWith('/') ? '/' : ''}`
+            await props.source.move!([moved], home)
+          }
+          bumpTree()
+          setSub({})
+          await reload()
+        },
+      })
       setSelection(new Set())
       bumpTree()
       setSub({})
@@ -666,6 +697,27 @@ export function DumbFinder(props: DumbFinderProps) {
     ev.stopPropagation()
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = files ? 'copy' : 'move'
     setDropAt(to)
+  }
+
+  /* ─── отмена ────────────────────────────────────────────────────────────── */
+
+  /**
+   * Стек отмены. Перенос откатывается обратным переносом, создание папки — её
+   * удалением. Удаление НЕ откатывается: корзины у хранилища нет, и делать вид,
+   * что вернём, — обманывать.
+   */
+  const [undoTick, bumpUndo] = createSignal(0, { equals: false })
+  const undoStack = createUndoStack({
+    onChange: () => bumpUndo(0),
+    onError: (err) => fail(err),
+  })
+  const canUndo = () => {
+    undoTick()
+    return undoStack.canUndo()
+  }
+  const undoLabel = () => {
+    undoTick()
+    return undoStack.peekUndo()?.label ?? ''
   }
 
   /* ─── удаление, папка, переименование ───────────────────────────────────── */
@@ -705,6 +757,8 @@ export function DumbFinder(props: DumbFinderProps) {
     if (!keys.length || !props.source.remove) return
     void run(async () => {
       await props.source.remove!(keys)
+      // без отмены: корзины у хранилища нет, и врать кнопкой не будем
+      undoStack.push({ label: `удаление ${keys.length} шт.`, undo: null })
       setSelection(new Set())
     })
   }
@@ -714,7 +768,20 @@ export function DumbFinder(props: DumbFinderProps) {
     // слэш ВНУТРИ имени осмысленный, им создают сразу вложенную
     const clean = name.trim().replace(/^\/+|\/+$/g, '')
     if (!clean || !props.source.mkdir) return closeAsk()
-    void run(() => props.source.mkdir!(`${joinPrefix(path(), clean)}/`))
+    const made = `${joinPrefix(path(), clean)}/`
+    void run(async () => {
+      await props.source.mkdir!(made)
+      if (props.source.remove) {
+        undoStack.push({
+          label: `папка «${clean}»`,
+          undo: async () => {
+            await props.source.remove!([made])
+            bumpTree()
+            await reload()
+          },
+        })
+      }
+    })
   }
 
   const doAsk = () => {
@@ -724,7 +791,58 @@ export function DumbFinder(props: DumbFinderProps) {
 
   /* ─── клавиши ───────────────────────────────────────────────────────────── */
 
+  /**
+   * Курсор клавиатуры и якорь диапазона. Отдельно от выделения: Ctrl+стрелка
+   * двигает курсор, ничего не выделяя, а Shift растягивает ОТ ЯКОРЯ, который
+   * при этом не уползает.
+   */
+  const [cursor, setCursor] = createSignal(-1)
+  const [anchor, setAnchor] = createSignal(-1)
+
+  /** сколько плиток в ряду — для стрелок вверх/вниз в сетке */
+  const [cols, setCols] = createSignal(1)
+  let itemsBox: HTMLDivElement | undefined
+  const measureCols = () => {
+    // читаем не элементы, а вычисленный шаблон сетки: количество треков в
+    // `grid-template-columns` браузер уже посчитал, это не forced layout
+    if (!itemsBox) return
+    const t = getComputedStyle(itemsBox).gridTemplateColumns
+    setCols(view() === 'list' ? 1 : Math.max(1, t.split(' ').filter(Boolean).length))
+  }
+
   function onKey(ev: KeyboardEvent) {
+    // стрелки: курсор ходит, выделение следует за ним по правилам модификаторов
+    if (isMoveKey(ev.key)) {
+      const list = rows().map((r) => r.e.key)
+      const next = moveIndex(ev.key, {
+        from: cursor(),
+        count: list.length,
+        columns: cols(),
+        page: 6,
+      })
+      if (next === null) return
+      ev.preventDefault()
+      const res = moveSelection({
+        keys: list,
+        anchor: anchor(),
+        next,
+        current: selected(),
+        shift: ev.shiftKey,
+        ctrl: ev.metaKey || ev.ctrlKey,
+      })
+      batch(() => {
+        setCursor(next)
+        setAnchor(res.anchor)
+        setSelection(res.selected)
+      })
+      // Строка под курсором должна остаться видимой. Ищем по ПОРЯДКУ, а не по
+      // селектору с ключом: ключ — это путь, в нём бывает что угодно, и
+      // экранировать его пришлось бы вручную (`CSS.escape` тут занят именем
+      // константы со стилями).
+      const el = itemsBox?.children[next] as HTMLElement | undefined
+      el?.scrollIntoView({ block: 'nearest' })
+      return
+    }
     if (ev.key === 'Escape') return setSelection(new Set())
     if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'a') {
       ev.preventDefault()
@@ -980,7 +1098,13 @@ export function DumbFinder(props: DumbFinderProps) {
               </div>
             </Show>
   
-            <div class="dumb-finder-items">
+            <div
+            class="dumb-finder-items"
+            ref={(el) => {
+              itemsBox = el
+              queueMicrotask(measureCols)
+            }}
+          >
               <For each={rows()}>
                 {(row) => {
                   const entry = row.e
@@ -1205,6 +1329,11 @@ export function DumbFinder(props: DumbFinderProps) {
         <Show when={canWrite() && props.source.upload}>
           <BarButton icon={props.icons?.upload} onClick={pickFiles}>
             Залить
+          </BarButton>
+        </Show>
+        <Show when={canWrite() && canUndo()}>
+          <BarButton icon={props.icons?.undo} onClick={() => void undoStack.undo()}>
+            Отменить: {undoLabel()}
           </BarButton>
         </Show>
         <Show when={canWrite() && props.source.remove && picked().length > 0}>

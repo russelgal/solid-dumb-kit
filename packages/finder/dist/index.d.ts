@@ -130,7 +130,7 @@ type DumbFinderProps = {
      * из этих строк CSS. Не задан — рисуем эмодзи, чтобы пакет работал и без
      * иконочного набора вовсе.
      */
-    icons?: Partial<Record<FileKind | 'dir' | 'dirOpen' | 'twist' | 'refresh' | 'viewGrid' | 'viewList' | 'mkdir' | 'upload' | 'remove', string>>;
+    icons?: Partial<Record<FileKind | 'dir' | 'dirOpen' | 'twist' | 'refresh' | 'viewGrid' | 'viewList' | 'mkdir' | 'upload' | 'remove' | 'undo', string>>;
     /**
      * Правка. Без неё файндер только смотрит: ни заливки, ни удаления, ни
      * переноса — даже если `source` всё это умеет.

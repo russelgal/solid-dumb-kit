@@ -209,4 +209,218 @@ declare function putWithProgress(file: File, p: Presigned, ctx: {
     signal: AbortSignal;
 }): Promise<UploadResult>;
 
-export { ACCEL, type AutoScroller, EDGE, type Flip, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, type Presigned, type PresignedOptions, type PressGate, type PressGateOptions, type QueueEvents, type StableOrder, type UploadQueue, type UploadResult, type Uploader, type ViewGeom, autoScrollSpeed, createAutoScroller, createFlip, createPresignedUploader, createPressGate, createStableOrder, createUploadQueue, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, putWithProgress, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
+type VirtualRange = {
+    /** первый индекс, который надо нарисовать */
+    start: number;
+    /** последний + 1 */
+    end: number;
+    /** насколько сдвинуть нарисованное вниз, px */
+    offset: number;
+    /** высота всего списка, px — под неё растягивается распорка */
+    total: number;
+};
+type VirtualOptions = {
+    /** сколько всего элементов */
+    count: () => number;
+    /** высота строки (или плитки) вместе с зазором, px */
+    itemSize: () => number;
+    /** сколько элементов в ряду; 1 — обычный список */
+    columns?: () => number;
+    /** что прокручивается */
+    scroller: () => HTMLElement | null;
+    /**
+     * Сколько рядов рисовать сверх видимого — по одному запасному экрану сверху
+     * и снизу мало кому мало. Меньше двух рядов брать не стоит: при быстрой
+     * прокрутке появляется белая полоса.
+     */
+    overscan?: number;
+    /** окно изменилось */
+    onChange: (range: VirtualRange) => void;
+};
+type Virtual = {
+    /** пересчитать принудительно: сменилось число элементов или размер строки */
+    refresh: () => void;
+    destroy: () => void;
+};
+declare function createVirtualizer(opts: VirtualOptions): Virtual;
+/**
+ * Куда прокрутить, чтобы элемент оказался в окне. Отдельно от движка, потому
+ * что это чистая арифметика и её удобно проверять тестом.
+ *
+ * Возвращает `null`, если элемент и так виден: лишняя прокрутка к уже видимой
+ * строке выглядит как дёрганье.
+ */
+declare function scrollOffsetFor(args: {
+    index: number;
+    itemSize: number;
+    columns?: number;
+    viewHeight: number;
+    scrollTop: number;
+    /** прижать к краю, даже если элемент виден */
+    force?: boolean;
+}): number | null;
+
+/** файл вместе с путём внутри брошенной папки */
+type DroppedFile = {
+    file: File;
+    /**
+     * Путь относительно места броска: `фото/2026/море.jpg`. У файла, брошенного
+     * поодиночке, — просто имя.
+     */
+    path: string;
+};
+/**
+ * Разобрать брошенное в плоский список файлов с путями.
+ *
+ * Зовётся ПРЯМО в обработчике `drop`, без `await` перед ней:
+ *
+ * ```ts
+ * onDrop={(ev) => {
+ *   ev.preventDefault()
+ *   readDropEntries(ev.dataTransfer).then((files) => …)
+ * }}
+ * ```
+ *
+ * Папок в браузере может не оказаться (Safari до 11.1, старый Firefox) — тогда
+ * возвращаются обычные файлы, без путей. Это не ошибка, это меньше данных.
+ */
+declare function readDropEntries(dt: DataTransfer | null): Promise<Array<DroppedFile>>;
+/** есть ли в брошенном хоть одна папка — чтобы предупредить, что будет долго */
+declare function hasDirectories(dt: DataTransfer | null): boolean;
+
+type UndoStep = {
+    /** что писать в кнопке и в подсказке: «перенос 3 шт.» */
+    label: string;
+    /**
+     * Как вернуть как было. `null` — вернуть нельзя: удаление без корзины,
+     * перезапись файла. Такой шаг обрывает всю цепочку отмены за собой.
+     */
+    undo: (() => Promise<void>) | null;
+    /** как повторить после отмены; не задан — повтор недоступен */
+    redo?: () => Promise<void>;
+};
+type UndoStack = {
+    /** запомнить сделанное */
+    push: (step: UndoStep) => void;
+    undo: () => Promise<void>;
+    redo: () => Promise<void>;
+    /** что отменится следующим; `null` — нечего или нельзя */
+    peekUndo: () => UndoStep | null;
+    peekRedo: () => UndoStep | null;
+    canUndo: () => boolean;
+    canRedo: () => boolean;
+    clear: () => void;
+};
+type UndoOptions = {
+    /** сколько шагов помнить; по умолчанию 50 */
+    limit?: number;
+    /** стек изменился — перерисовать кнопки */
+    onChange?: () => void;
+    /** отмена сорвалась */
+    onError?: (err: unknown, step: UndoStep) => void;
+};
+declare function createUndoStack(opts?: UndoOptions): UndoStack;
+
+type MoveKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight' | 'Home' | 'End' | 'PageUp' | 'PageDown';
+type MoveArgs = {
+    /** откуда идём; `-1` — курсора ещё нет */
+    from: number;
+    count: number;
+    /** колонок в ряду; 1 — список */
+    columns?: number;
+    /** сколько рядов в экране — для PageUp/PageDown */
+    page?: number;
+};
+/**
+ * Куда уводит клавиша. `null` — эта клавиша не про перемещение, обрабатывать
+ * её не надо (и, что важнее, не надо гасить событие).
+ */
+declare function moveIndex(key: string, args: MoveArgs): number | null;
+/**
+ * Выделение после нажатия. Три случая, и все три знакомы по любому файловому
+ * менеджеру: просто стрелка переносит выделение, Shift растягивает диапазон от
+ * якоря, Ctrl/Cmd только двигает курсор, ничего не трогая.
+ */
+declare function moveSelection<T>(args: {
+    keys: Array<T>;
+    /** индекс, с которого начался диапазон */
+    anchor: number;
+    next: number;
+    current: Set<T>;
+    shift: boolean;
+    ctrl: boolean;
+}): {
+    selected: Set<T>;
+    anchor: number;
+};
+/** относится ли клавиша к перемещению — чтобы решить, гасить ли событие */
+declare const isMoveKey: (key: string) => key is MoveKey;
+
+type InlineEdit = {
+    /** что правим сейчас; `null` — ничего */
+    editing: () => string | null;
+    /** текущее содержимое поля */
+    value: () => string;
+    /** идёт сохранение */
+    busy: () => boolean;
+    /** ошибка последнего сохранения */
+    error: () => string | null;
+    start: (id: string, initial: string) => void;
+    input: (next: string) => void;
+    /** сохранить; вернёт `true`, если действительно сохраняли */
+    commit: () => Promise<boolean>;
+    cancel: () => void;
+};
+type InlineEditOptions = {
+    /** собственно сохранение */
+    save: (id: string, value: string) => Promise<void>;
+    /** привести введённое к виду хранилища: обрезать пробелы, убрать слэши */
+    clean?: (value: string) => string;
+    /** состояние изменилось — перерисовать */
+    onChange?: () => void;
+};
+declare function createInlineEdit(opts: InlineEditOptions): InlineEdit;
+
+type MultipartHandshake = {
+    /** идентификатор заливки от хранилища */
+    uploadId: string;
+    /** ключ объекта */
+    key: string;
+};
+type MultipartOptions = {
+    /** начать: вернуть `uploadId` и ключ */
+    begin: (file: File, prefix: string) => Promise<MultipartHandshake>;
+    /** подписать один кусок; номера с ЕДИНИЦЫ, так требует S3 */
+    signPart: (h: MultipartHandshake, partNumber: number) => Promise<string>;
+    /** собрать объект из кусков */
+    complete: (h: MultipartHandshake, parts: Array<UploadedPart>) => Promise<void>;
+    /** выбросить недособранное */
+    abort: (h: MultipartHandshake) => Promise<void>;
+    /**
+     * Размер куска, байт. По умолчанию 8 МиБ: у S3 минимум 5 МиБ на все куски,
+     * кроме последнего, а мельче — это лишние подписи и лишние запросы.
+     */
+    partSize?: number;
+    /** сколько кусков слать разом; по умолчанию 3 */
+    concurrency?: number;
+};
+type UploadedPart = {
+    partNumber: number;
+    /** ETag куска — по нему хранилище собирает объект */
+    etag: string;
+};
+/**
+ * Залить файл частями. Прогресс общий по файлу, а не по кускам: считаем
+ * отданные байты каждого куска и делим на размер файла.
+ */
+declare function uploadMultipart(file: File, ctx: {
+    prefix: string;
+    onProgress: (fraction: number) => void;
+    signal: AbortSignal;
+}, opts: MultipartOptions): Promise<{
+    key: string;
+}>;
+/** стоит ли лить частями: мелкие файлы этого не окупают */
+declare const shouldSplit: (file: File, partSize?: number) => boolean;
+
+export { ACCEL, type AutoScroller, type DroppedFile, EDGE, type Flip, type InlineEdit, type InlineEditOptions, LONGPRESS, MAX_SPEED, MOVE_TOL, type MoveArgs, type MoveKey, type MultipartHandshake, type MultipartOptions, NO_DRAG, type Presigned, type PresignedOptions, type PressGate, type PressGateOptions, type QueueEvents, type StableOrder, type UndoOptions, type UndoStack, type UndoStep, type UploadQueue, type UploadResult, type UploadedPart, type Uploader, type ViewGeom, type Virtual, type VirtualOptions, type VirtualRange, autoScrollSpeed, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin };

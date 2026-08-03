@@ -1,4 +1,4 @@
-import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, addEventListener, use, isServer, template } from 'solid-js/web';
+import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, use, addEventListener, isServer, template } from 'solid-js/web';
 import { createSignal, createEffect, on, onCleanup, createMemo, untrack, batch, For, Show, onMount, createUniqueId } from 'solid-js';
 import { createFileUploader } from '@solid-primitives/upload';
 import { reconcile } from 'solid-js/store';
@@ -1139,6 +1139,150 @@ function reason(body) {
   const m = body && /<Message>([^<]+)<\/Message>/.exec(body);
   return m ? `: ${m[1]}` : "";
 }
+function readDropEntries(dt) {
+  if (!dt) return Promise.resolve([]);
+  const entries = [];
+  const plain = [];
+  for (const item of Array.from(dt.items ?? [])) {
+    if (item.kind !== "file") continue;
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+    else {
+      const f = item.getAsFile();
+      if (f) plain.push(f);
+    }
+  }
+  if (!entries.length) {
+    const files = plain.length ? plain : Array.from(dt.files ?? []);
+    return Promise.resolve(files.map((file) => ({ file, path: file.name })));
+  }
+  return Promise.all(entries.map((e) => walk(e, ""))).then((lists) => lists.flat());
+}
+async function walk(entry, prefix) {
+  if (entry.isFile) {
+    const file = await new Promise(
+      (ok) => entry.file ? entry.file(ok, () => ok(null)) : ok(null)
+    );
+    return file ? [{ file, path: `${prefix}${file.name}` }] : [];
+  }
+  if (!entry.isDirectory || !entry.createReader) return [];
+  const reader = entry.createReader();
+  const kids = [];
+  for (; ; ) {
+    const part = await new Promise(
+      (ok) => reader.readEntries(ok, () => ok([]))
+    );
+    if (!part.length) break;
+    kids.push(...part);
+  }
+  const inner = `${prefix}${entry.name}/`;
+  const lists = await Promise.all(kids.map((k) => walk(k, inner)));
+  return lists.flat();
+}
+function createUndoStack(opts = {}) {
+  const limit = opts.limit ?? 50;
+  let done2 = [];
+  let undone = [];
+  let busy = false;
+  const changed = () => opts.onChange?.();
+  return {
+    push(step) {
+      done2.push(step);
+      if (done2.length > limit) done2 = done2.slice(-limit);
+      undone = [];
+      changed();
+    },
+    async undo() {
+      if (busy) return;
+      const step = done2[done2.length - 1];
+      if (!step?.undo) return;
+      busy = true;
+      try {
+        await step.undo();
+        done2.pop();
+        undone.push(step);
+      } catch (err) {
+        opts.onError?.(err, step);
+      } finally {
+        busy = false;
+        changed();
+      }
+    },
+    async redo() {
+      if (busy) return;
+      const step = undone[undone.length - 1];
+      if (!step?.redo) return;
+      busy = true;
+      try {
+        await step.redo();
+        undone.pop();
+        done2.push(step);
+      } catch (err) {
+        opts.onError?.(err, step);
+      } finally {
+        busy = false;
+        changed();
+      }
+    },
+    peekUndo: () => {
+      const step = done2[done2.length - 1];
+      return step?.undo ? step : null;
+    },
+    peekRedo: () => {
+      const step = undone[undone.length - 1];
+      return step?.redo ? step : null;
+    },
+    canUndo: () => !!done2[done2.length - 1]?.undo && !busy,
+    canRedo: () => !!undone[undone.length - 1]?.redo && !busy,
+    clear: () => {
+      done2 = [];
+      undone = [];
+      changed();
+    }
+  };
+}
+function moveIndex(key, args) {
+  const { from, count } = args;
+  if (count <= 0) return null;
+  const cols = Math.max(1, args.columns ?? 1);
+  const page = Math.max(1, args.page) * cols;
+  const cur = from < 0 ? key === "ArrowUp" || key === "End" ? count : -1 : from;
+  const clamp2 = (i) => Math.max(0, Math.min(count - 1, i));
+  switch (key) {
+    case "ArrowRight":
+      return clamp2(cur + 1);
+    case "ArrowLeft":
+      return clamp2(cur - 1);
+    case "ArrowDown":
+      return clamp2(cur + cols);
+    case "ArrowUp":
+      return clamp2(cur - cols);
+    case "PageDown":
+      return clamp2(cur + page);
+    case "PageUp":
+      return clamp2(cur - page);
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}
+function moveSelection(args) {
+  const { keys, next, current, shift, ctrl } = args;
+  if (ctrl && !shift) return { selected: new Set(current), anchor: next };
+  if (shift) {
+    const from = args.anchor < 0 ? next : args.anchor;
+    const [a, b] = from <= next ? [from, next] : [next, from];
+    const selected = /* @__PURE__ */ new Set();
+    for (let i = a; i <= b; i++) if (keys[i] !== void 0) selected.add(keys[i]);
+    return { selected, anchor: from };
+  }
+  const one = keys[next];
+  return { selected: one === void 0 ? /* @__PURE__ */ new Set() : /* @__PURE__ */ new Set([one]), anchor: next };
+}
+var isMoveKey = (key) => key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight" || key === "Home" || key === "End" || key === "PageUp" || key === "PageDown";
 var initialMulticharmap = {
   // multibyte devanagari characters (hindi, sanskrit, etc.)
   \u092B\u093C: "Fi",
@@ -2094,6 +2238,8 @@ function DumbFinder(props) {
     batch(() => {
       setOwnPath(next);
       setSelection(/* @__PURE__ */ new Set());
+      setCursor(-1);
+      setAnchor(-1);
       props.onPathChange?.(next);
       props.onSelectionChange?.(/* @__PURE__ */ new Set());
     });
@@ -2155,6 +2301,9 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
+  createEffect(on(view, () => queueMicrotask(measureCols), {
+    defer: true
+  }));
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)));
   const [tree, setTree] = createSignal({});
@@ -2268,16 +2417,16 @@ function DumbFinder(props) {
       depth: 0
     }));
     const out = [];
-    const walk = (list, depth) => {
+    const walk2 = (list, depth) => {
       for (const e of sortEntries(list, sort().key, sort().desc)) {
         out.push({
           e,
           depth
         });
-        if (e.dir && openRows().has(e.key)) walk(sub()[e.key] ?? [], depth + 1);
+        if (e.dir && openRows().has(e.key)) walk2(sub()[e.key] ?? [], depth + 1);
       }
     };
-    walk(entries(), 0);
+    walk2(entries(), 0);
     return out;
   });
   const [pending, setPending] = createSignal([]);
@@ -2354,19 +2503,38 @@ function DumbFinder(props) {
     ev.preventDefault();
     setDropAt(null);
     setOverFiles(false);
-    const files = [...ev.dataTransfer?.files ?? []];
-    if (files.length) {
-      enqueue(files.map((f) => ({
-        name: f.name,
-        file: f
-      })), to);
-      return;
+    if (ev.dataTransfer?.types?.includes("Files")) {
+      const dropped = await readDropEntries(ev.dataTransfer);
+      if (dropped.length) {
+        for (const d of dropped) {
+          const sub2 = d.path.slice(0, d.path.length - d.file.name.length);
+          enqueue([{
+            name: d.file.name,
+            file: d.file
+          }], `${to}${sub2}`);
+        }
+        return;
+      }
     }
     const keys = dragging().filter((k) => canMove(k, to));
     setDragging([]);
     if (!keys.length || !props.source.move) return;
+    const back = new Map(keys.map((k) => [k, parentOf(k)]));
     try {
       await props.source.move(keys, to);
+      undoStack.push({
+        label: `\u043F\u0435\u0440\u0435\u043D\u043E\u0441 ${keys.length} \u0448\u0442.`,
+        // назад по одному: у каждого ключа свой прежний родитель
+        undo: async () => {
+          for (const [key, home] of back) {
+            const moved = `${to}${nameOf(key)}${key.endsWith("/") ? "/" : ""}`;
+            await props.source.move([moved], home);
+          }
+          bumpTree();
+          setSub({});
+          await reload();
+        }
+      });
       setSelection(/* @__PURE__ */ new Set());
       bumpTree();
       setSub({});
@@ -2384,6 +2552,21 @@ function DumbFinder(props) {
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = files ? "copy" : "move";
     setDropAt(to);
   }
+  const [undoTick, bumpUndo] = createSignal(0, {
+    equals: false
+  });
+  const undoStack = createUndoStack({
+    onChange: () => bumpUndo(0),
+    onError: (err) => fail(err)
+  });
+  const canUndo = () => {
+    undoTick();
+    return undoStack.canUndo();
+  };
+  const undoLabel = () => {
+    undoTick();
+    return undoStack.peekUndo()?.label ?? "";
+  };
   const [busy, setBusy] = createSignal(false);
   const [confirming, setConfirming] = createSignal(false);
   const [asking, setAsking] = createSignal(null);
@@ -2410,19 +2593,74 @@ function DumbFinder(props) {
     if (!keys.length || !props.source.remove) return;
     void run(async () => {
       await props.source.remove(keys);
+      undoStack.push({
+        label: `\u0443\u0434\u0430\u043B\u0435\u043D\u0438\u0435 ${keys.length} \u0448\u0442.`,
+        undo: null
+      });
       setSelection(/* @__PURE__ */ new Set());
     });
   };
   const doMkdir = (name) => {
     const clean = name.trim().replace(/^\/+|\/+$/g, "");
     if (!clean || !props.source.mkdir) return closeAsk();
-    void run(() => props.source.mkdir(`${joinPrefix(path(), clean)}/`));
+    const made = `${joinPrefix(path(), clean)}/`;
+    void run(async () => {
+      await props.source.mkdir(made);
+      if (props.source.remove) {
+        undoStack.push({
+          label: `\u043F\u0430\u043F\u043A\u0430 \xAB${clean}\xBB`,
+          undo: async () => {
+            await props.source.remove([made]);
+            bumpTree();
+            await reload();
+          }
+        });
+      }
+    });
   };
   const doAsk = () => {
     const a = asking();
     if (a) doMkdir(a.value);
   };
+  const [cursor, setCursor] = createSignal(-1);
+  const [anchor, setAnchor] = createSignal(-1);
+  const [cols, setCols] = createSignal(1);
+  let itemsBox;
+  const measureCols = () => {
+    if (!itemsBox) return;
+    const t = getComputedStyle(itemsBox).gridTemplateColumns;
+    setCols(view() === "list" ? 1 : Math.max(1, t.split(" ").filter(Boolean).length));
+  };
   function onKey(ev) {
+    if (isMoveKey(ev.key)) {
+      const list = rows().map((r) => r.e.key);
+      const next = moveIndex(ev.key, {
+        from: cursor(),
+        count: list.length,
+        columns: cols(),
+        page: 6
+      });
+      if (next === null) return;
+      ev.preventDefault();
+      const res = moveSelection({
+        keys: list,
+        anchor: anchor(),
+        next,
+        current: selected(),
+        shift: ev.shiftKey,
+        ctrl: ev.metaKey || ev.ctrlKey
+      });
+      batch(() => {
+        setCursor(next);
+        setAnchor(res.anchor);
+        setSelection(res.selected);
+      });
+      const el = itemsBox?.children[next];
+      el?.scrollIntoView({
+        block: "nearest"
+      });
+      return;
+    }
     if (ev.key === "Escape") return setSelection(/* @__PURE__ */ new Set());
     if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "a") {
       ev.preventDefault();
@@ -2681,6 +2919,10 @@ function DumbFinder(props) {
           return _el$12;
         }
       }), _el$21);
+      use((el) => {
+        itemsBox = el;
+        queueMicrotask(measureCols);
+      }, _el$21);
       insert(_el$21, createComponent(For, {
         get each() {
           return rows();
@@ -3001,6 +3243,22 @@ function DumbFinder(props) {
           },
           onClick: pickFiles,
           children: "\u0417\u0430\u043B\u0438\u0442\u044C"
+        });
+      }
+    }), null);
+    insert(_el$47, createComponent(Show, {
+      get when() {
+        return memo(() => !!canWrite())() && canUndo();
+      },
+      get children() {
+        return createComponent(BarButton, {
+          get icon() {
+            return props.icons?.undo;
+          },
+          onClick: () => void undoStack.undo(),
+          get children() {
+            return ["\u041E\u0442\u043C\u0435\u043D\u0438\u0442\u044C: ", memo(() => undoLabel())];
+          }
         });
       }
     }), null);

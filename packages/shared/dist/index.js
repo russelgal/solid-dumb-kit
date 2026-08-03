@@ -526,4 +526,382 @@ function reason(body) {
   return m ? `: ${m[1]}` : "";
 }
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createPresignedUploader, createPressGate, createStableOrder, createUploadQueue, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, putWithProgress, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
+// src/virtual.ts
+function createVirtualizer(opts) {
+  const overscan = opts.overscan ?? 3;
+  let viewH = 0;
+  let raf = 0;
+  let last = null;
+  let dead = false;
+  const el = () => opts.scroller();
+  function compute() {
+    const size = Math.max(1, opts.itemSize());
+    const cols = Math.max(1, opts.columns?.() ?? 1);
+    const count = Math.max(0, opts.count());
+    const rows = Math.ceil(count / cols);
+    const node2 = el();
+    const scrolled = node2 ? node2.scrollTop : 0;
+    const firstRow = Math.max(0, Math.floor(scrolled / size) - overscan);
+    const visibleRows = Math.ceil(viewH / size) + overscan * 2;
+    const lastRow = Math.min(rows, firstRow + visibleRows);
+    return {
+      start: firstRow * cols,
+      end: Math.min(count, lastRow * cols),
+      offset: firstRow * size,
+      total: rows * size
+    };
+  }
+  function emit() {
+    if (dead) return;
+    const next = compute();
+    if (last && last.start === next.start && last.end === next.end && last.total === next.total) {
+      return;
+    }
+    last = next;
+    opts.onChange(next);
+  }
+  function onScroll() {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      emit();
+    });
+  }
+  const ro = new ResizeObserver((entries) => {
+    for (const e of entries) viewH = e.contentRect.height;
+    emit();
+  });
+  const node = el();
+  if (node) {
+    viewH = node.clientHeight;
+    node.addEventListener("scroll", onScroll, { passive: true });
+    ro.observe(node);
+  }
+  emit();
+  return {
+    refresh: () => {
+      last = null;
+      emit();
+    },
+    destroy: () => {
+      dead = true;
+      if (raf) cancelAnimationFrame(raf);
+      ro.disconnect();
+      el()?.removeEventListener("scroll", onScroll);
+    }
+  };
+}
+function scrollOffsetFor(args) {
+  const cols = Math.max(1, args.columns ?? 1);
+  const row = Math.floor(args.index / cols);
+  const top = row * args.itemSize;
+  const bottom = top + args.itemSize;
+  if (args.force) return Math.max(0, top);
+  if (top >= args.scrollTop && bottom <= args.scrollTop + args.viewHeight) return null;
+  if (top < args.scrollTop) return top;
+  return bottom - args.viewHeight;
+}
+
+// src/dropEntries.ts
+function readDropEntries(dt) {
+  if (!dt) return Promise.resolve([]);
+  const entries = [];
+  const plain = [];
+  for (const item of Array.from(dt.items ?? [])) {
+    if (item.kind !== "file") continue;
+    const entry = item.webkitGetAsEntry?.();
+    if (entry) entries.push(entry);
+    else {
+      const f = item.getAsFile();
+      if (f) plain.push(f);
+    }
+  }
+  if (!entries.length) {
+    const files = plain.length ? plain : Array.from(dt.files ?? []);
+    return Promise.resolve(files.map((file) => ({ file, path: file.name })));
+  }
+  return Promise.all(entries.map((e) => walk(e, ""))).then((lists) => lists.flat());
+}
+async function walk(entry, prefix) {
+  if (entry.isFile) {
+    const file = await new Promise(
+      (ok) => entry.file ? entry.file(ok, () => ok(null)) : ok(null)
+    );
+    return file ? [{ file, path: `${prefix}${file.name}` }] : [];
+  }
+  if (!entry.isDirectory || !entry.createReader) return [];
+  const reader = entry.createReader();
+  const kids = [];
+  for (; ; ) {
+    const part = await new Promise(
+      (ok) => reader.readEntries(ok, () => ok([]))
+    );
+    if (!part.length) break;
+    kids.push(...part);
+  }
+  const inner = `${prefix}${entry.name}/`;
+  const lists = await Promise.all(kids.map((k) => walk(k, inner)));
+  return lists.flat();
+}
+function hasDirectories(dt) {
+  if (!dt) return false;
+  for (const item of Array.from(dt.items ?? [])) {
+    if (item.kind !== "file") continue;
+    if (item.webkitGetAsEntry?.()?.isDirectory) return true;
+  }
+  return false;
+}
+
+// src/undo.ts
+function createUndoStack(opts = {}) {
+  const limit = opts.limit ?? 50;
+  let done2 = [];
+  let undone = [];
+  let busy = false;
+  const changed = () => opts.onChange?.();
+  return {
+    push(step) {
+      done2.push(step);
+      if (done2.length > limit) done2 = done2.slice(-limit);
+      undone = [];
+      changed();
+    },
+    async undo() {
+      if (busy) return;
+      const step = done2[done2.length - 1];
+      if (!step?.undo) return;
+      busy = true;
+      try {
+        await step.undo();
+        done2.pop();
+        undone.push(step);
+      } catch (err) {
+        opts.onError?.(err, step);
+      } finally {
+        busy = false;
+        changed();
+      }
+    },
+    async redo() {
+      if (busy) return;
+      const step = undone[undone.length - 1];
+      if (!step?.redo) return;
+      busy = true;
+      try {
+        await step.redo();
+        undone.pop();
+        done2.push(step);
+      } catch (err) {
+        opts.onError?.(err, step);
+      } finally {
+        busy = false;
+        changed();
+      }
+    },
+    peekUndo: () => {
+      const step = done2[done2.length - 1];
+      return step?.undo ? step : null;
+    },
+    peekRedo: () => {
+      const step = undone[undone.length - 1];
+      return step?.redo ? step : null;
+    },
+    canUndo: () => !!done2[done2.length - 1]?.undo && !busy,
+    canRedo: () => !!undone[undone.length - 1]?.redo && !busy,
+    clear: () => {
+      done2 = [];
+      undone = [];
+      changed();
+    }
+  };
+}
+
+// src/roving.ts
+function moveIndex(key, args) {
+  const { from, count } = args;
+  if (count <= 0) return null;
+  const cols = Math.max(1, args.columns ?? 1);
+  const page = Math.max(1, args.page ?? 1) * cols;
+  const cur = from < 0 ? key === "ArrowUp" || key === "End" ? count : -1 : from;
+  const clamp2 = (i) => Math.max(0, Math.min(count - 1, i));
+  switch (key) {
+    case "ArrowRight":
+      return clamp2(cur + 1);
+    case "ArrowLeft":
+      return clamp2(cur - 1);
+    case "ArrowDown":
+      return clamp2(cur + cols);
+    case "ArrowUp":
+      return clamp2(cur - cols);
+    case "PageDown":
+      return clamp2(cur + page);
+    case "PageUp":
+      return clamp2(cur - page);
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}
+function moveSelection(args) {
+  const { keys, next, current, shift, ctrl } = args;
+  if (ctrl && !shift) return { selected: new Set(current), anchor: next };
+  if (shift) {
+    const from = args.anchor < 0 ? next : args.anchor;
+    const [a, b] = from <= next ? [from, next] : [next, from];
+    const selected = /* @__PURE__ */ new Set();
+    for (let i = a; i <= b; i++) if (keys[i] !== void 0) selected.add(keys[i]);
+    return { selected, anchor: from };
+  }
+  const one = keys[next];
+  return { selected: one === void 0 ? /* @__PURE__ */ new Set() : /* @__PURE__ */ new Set([one]), anchor: next };
+}
+var isMoveKey = (key) => key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight" || key === "Home" || key === "End" || key === "PageUp" || key === "PageDown";
+
+// src/inlineEdit.ts
+function createInlineEdit(opts) {
+  const clean = opts.clean ?? ((v) => v.trim());
+  let id = null;
+  let initial = "";
+  let value = "";
+  let busy = false;
+  let error = null;
+  const changed = () => opts.onChange?.();
+  return {
+    editing: () => id,
+    value: () => value,
+    busy: () => busy,
+    error: () => error,
+    start(next, text) {
+      if (busy) return;
+      id = next;
+      initial = text;
+      value = text;
+      error = null;
+      changed();
+    },
+    input(next) {
+      value = next;
+      changed();
+    },
+    async commit() {
+      if (!id || busy) return false;
+      const next = clean(value);
+      if (!next || next === clean(initial)) {
+        this.cancel();
+        return false;
+      }
+      busy = true;
+      error = null;
+      changed();
+      try {
+        await opts.save(id, next);
+        id = null;
+        value = "";
+        return true;
+      } catch (err) {
+        error = err instanceof Error ? err.message : String(err);
+        return false;
+      } finally {
+        busy = false;
+        changed();
+      }
+    },
+    cancel() {
+      if (busy) return;
+      id = null;
+      value = "";
+      error = null;
+      changed();
+    }
+  };
+}
+
+// src/multipart.ts
+async function uploadMultipart(file, ctx, opts) {
+  const partSize = opts.partSize ?? 8 * 1024 * 1024;
+  const lanes = Math.max(1, opts.concurrency ?? 3);
+  const total = Math.max(1, file.size);
+  const count = Math.max(1, Math.ceil(file.size / partSize));
+  const handshake = await opts.begin(file, ctx.prefix);
+  const sent = new Array(count).fill(0);
+  const done2 = [];
+  const report = () => {
+    let acc = 0;
+    for (const n of sent) acc += n;
+    ctx.onProgress(Math.min(1, acc / total));
+  };
+  let next = 0;
+  let failed = null;
+  async function lane() {
+    for (; ; ) {
+      if (failed || ctx.signal.aborted) return;
+      const i = next++;
+      if (i >= count) return;
+      const from = i * partSize;
+      const chunk = file.slice(from, Math.min(file.size, from + partSize));
+      const partNumber = i + 1;
+      try {
+        const url = await opts.signPart(handshake, partNumber);
+        const etag = await putPart(url, chunk, ctx.signal, (bytes) => {
+          sent[i] = bytes;
+          report();
+        });
+        sent[i] = chunk.size;
+        report();
+        done2.push({ partNumber, etag });
+      } catch (err) {
+        failed = err;
+        return;
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(lanes, count) }, lane));
+  if (failed || ctx.signal.aborted) {
+    await opts.abort(handshake).catch(() => {
+    });
+    throw failed ?? new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E");
+  }
+  done2.sort((a, b) => a.partNumber - b.partNumber);
+  await opts.complete(handshake, done2);
+  ctx.onProgress(1);
+  return { key: handshake.key };
+}
+function putPart(url, chunk, signal, onBytes) {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E"));
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url, true);
+    const onAbort = () => xhr.abort();
+    signal.addEventListener("abort", onAbort, { once: true });
+    const off = () => signal.removeEventListener("abort", onAbort);
+    xhr.upload.onprogress = (ev) => ev.lengthComputable && onBytes(ev.loaded);
+    xhr.onload = () => {
+      off();
+      if (xhr.status < 200 || xhr.status >= 300) {
+        return reject(new Error(`\u043A\u0443\u0441\u043E\u043A \u043D\u0435 \u043F\u0440\u0438\u043D\u044F\u0442: ${xhr.status}`));
+      }
+      const etag = xhr.getResponseHeader("ETag");
+      if (!etag) {
+        return reject(
+          new Error("\u0445\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u043D\u0435 \u043E\u0442\u0434\u0430\u043B\u043E ETag \u043A\u0443\u0441\u043A\u0430 \u2014 \u043F\u0440\u043E\u0432\u0435\u0440\u044C Access-Control-Expose-Headers")
+        );
+      }
+      resolve(etag.replaceAll('"', ""));
+    };
+    xhr.onerror = () => {
+      off();
+      reject(new Error("\u0441\u0435\u0442\u044C \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430"));
+    };
+    xhr.onabort = () => {
+      off();
+      reject(new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E"));
+    };
+    xhr.send(chunk);
+  });
+}
+var shouldSplit = (file, partSize = 8 * 1024 * 1024) => file.size > partSize;
+
+export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin };

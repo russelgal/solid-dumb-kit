@@ -7,6 +7,9 @@ import DumbSortableExample from "../../examples/pointer/DumbSortable.example";
 import KanbanExample from "../../examples/pointer/Kanban.example";
 import ResizableGridExample from "../../examples/pointer/ResizableGrid.example";
 import DumbGalleryExample from "../../examples/pointer/DumbGallery.example";
+import DumbLightboxExample from "../../examples/pointer/DumbLightbox.example";
+import ContextMenuExample from "../../examples/pointer/ContextMenu.example";
+import DumbTimelineExample from "../../examples/pointer/DumbTimeline.example";
 import DumbGridExample from "../../examples/pointer/DumbGrid.example";
 import BoardExample from "../../examples/pointer/Board.example";
 
@@ -18,6 +21,8 @@ import DumbBoardEvenExample from "../../examples/dnd/DumbBoardEven.example";
 import DumbTreeExample from "../../examples/data/DumbTree.example";
 import DumbTableExample from "../../examples/data/DumbTable.example";
 import DumbFinderExample from "../../examples/data/DumbFinder.example";
+import VirtualExample from "../../examples/data/virtual.example";
+import PrimitivesExample from "../../examples/data/primitives.example";
 import Odata1CExample from "../../examples/data/Odata1C.example";
 import UtilsExample from "../../examples/data/utils.example";
 
@@ -78,6 +83,27 @@ const GROUPS: Array<Group> = [
         pkg: "gallery",
         hint: "картинки: выбор, порядок, заливка",
         Comp: DumbGalleryExample,
+      },
+      {
+        id: "lightbox",
+        label: "DumbLightbox",
+        pkg: "lightbox",
+        hint: "просмотр во весь экран",
+        Comp: DumbLightboxExample,
+      },
+      {
+        id: "menu",
+        label: "DumbContextMenu",
+        pkg: "context-menu",
+        hint: "правый клик + тосты",
+        Comp: ContextMenuExample,
+      },
+      {
+        id: "timeline",
+        label: "DumbTimeline",
+        pkg: "timeline",
+        hint: "шахматка: брони по дням",
+        Comp: DumbTimelineExample,
       },
       {
         id: "grid",
@@ -160,6 +186,20 @@ const GROUPS: Array<Group> = [
         pkg: "finder",
         hint: "файлы в хранилище",
         Comp: DumbFinderExample,
+      },
+      {
+        id: "virtual",
+        label: "createVirtualizer",
+        pkg: "shared",
+        hint: "10 000 строк без замеров",
+        Comp: VirtualExample,
+      },
+      {
+        id: "primitives",
+        label: "Примитивы",
+        pkg: "shared",
+        hint: "отмена, клавиатура, правка",
+        Comp: PrimitivesExample,
       },
       {
         id: "odata1c",

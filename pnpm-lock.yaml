@@ -33,6 +33,12 @@ importers:
       '@solid-dumb-kit/board':
         specifier: workspace:*
         version: link:packages/board
+      '@solid-dumb-kit/context-menu':
+        specifier: workspace:*
+        version: link:packages/context-menu
+      '@solid-dumb-kit/date-range':
+        specifier: workspace:*
+        version: link:packages/date-range
       '@solid-dumb-kit/finder':
         specifier: workspace:*
         version: link:packages/finder
@@ -45,6 +51,12 @@ importers:
       '@solid-dumb-kit/grid-dnd':
         specifier: workspace:*
         version: link:packages/grid-dnd
+      '@solid-dumb-kit/lightbox':
+        specifier: workspace:*
+        version: link:packages/lightbox
+      '@solid-dumb-kit/modal':
+        specifier: workspace:*
+        version: link:packages/modal
       '@solid-dumb-kit/odata-1c':
         specifier: workspace:*
         version: link:packages/odata-1c
@@ -66,6 +78,12 @@ importers:
       '@solid-dumb-kit/table':
         specifier: workspace:*
         version: link:packages/table
+      '@solid-dumb-kit/timeline':
+        specifier: workspace:*
+        version: link:packages/timeline
+      '@solid-dumb-kit/toast':
+        specifier: workspace:*
+        version: link:packages/toast
       '@solid-dumb-kit/tree':
         specifier: workspace:*
         version: link:packages/tree
@@ -123,6 +141,26 @@ importers:
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
+
+  packages/context-menu:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  packages/date-range:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/finder:
     dependencies:
@@ -187,6 +225,26 @@ importers:
       '@solid-dumb-kit/grid':
         specifier: workspace:*
         version: link:../grid
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  packages/lightbox:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  packages/modal:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+    devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
@@ -260,6 +318,29 @@ importers:
       '@solid-dumb-kit/sortable':
         specifier: workspace:*
         version: link:../sortable
+
+  packages/timeline:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+      temporal-polyfill:
+        specifier: ^1.0.3
+        version: 1.0.3
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  packages/toast:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/tree:
     dependencies:
@@ -2099,6 +2180,15 @@ packages:
   tapable@2.3.3:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
     engines: {node: '>=6'}
+
+  temporal-polyfill@1.0.3:
+    resolution: {integrity: sha512-U8vuzZBc+dfMIfl8wXWcedfI7AJCxJjjVBIRpJUvIz5+UAp555UJDHguKsfZqHWaHRSdVUThm7mqqIWhN/xPBQ==}
+
+  temporal-spec@1.0.1:
+    resolution: {integrity: sha512-wxVoanmDeavXie1vu2JaQ3WIc3JZnWAOYFBsJyATaVsXsycKYUflGsyBmrRSnoCpZJpwPyr38VpgSUlQ8CbFxg==}
+
+  temporal-utils@1.0.1:
+    resolution: {integrity: sha512-HAixuesxFQIUaQk3ptX2jhfO/FsOkgVkDDMawvp6n/fkB1q6BKfs3lURw9I+pK/2e2e/q/vrLrxmeqauBoyGMQ==}
 
   term-size@2.2.1:
     resolution: {integrity: sha512-wK0Ri4fOGjv/XPy8SBHZChl8CM7uMc5VML7SqiQ0zG7+J5Vr+RMQDoHa2CNT6KHUnTGIXH34UDMkPzAUyapBZg==}
@@ -4132,6 +4222,15 @@ snapshots:
   tailwindcss@4.3.3: {}
 
   tapable@2.3.3: {}
+
+  temporal-polyfill@1.0.3:
+    dependencies:
+      temporal-spec: 1.0.1
+      temporal-utils: 1.0.1
+
+  temporal-spec@1.0.1: {}
+
+  temporal-utils@1.0.1: {}
 
   term-size@2.2.1: {}
 

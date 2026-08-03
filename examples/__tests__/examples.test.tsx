@@ -15,6 +15,11 @@ import KanbanExample from '../pointer/Kanban.example'
 import UtilsExample from '../data/utils.example'
 import Odata1CExample from '../data/Odata1C.example'
 import DumbFinderExample from '../data/DumbFinder.example'
+import VirtualExample from '../data/virtual.example'
+import PrimitivesExample from '../data/primitives.example'
+import DumbLightboxExample from '../pointer/DumbLightbox.example'
+import ContextMenuExample from '../pointer/ContextMenu.example'
+import DumbTimelineExample from '../pointer/DumbTimeline.example'
 import DumbSortableDndExample from '../dnd/DumbSortableDnd.example'
 import DumbBoardExample from '../dnd/DumbBoard.example'
 import DumbBoardEvenExample from '../dnd/DumbBoardEven.example'
@@ -69,6 +74,11 @@ const EXAMPLES = [
   ['utils', UtilsExample],
   ['Odata1C', Odata1CExample],
   ['DumbFinder', DumbFinderExample],
+  ['virtual', VirtualExample],
+  ['primitives', PrimitivesExample],
+  ['DumbLightbox', DumbLightboxExample],
+  ['ContextMenu', ContextMenuExample],
+  ['DumbTimeline', DumbTimelineExample],
 ] as const
 
 describe('examples — монтируются и рендерят разметку', () => {

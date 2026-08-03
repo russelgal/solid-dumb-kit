@@ -14,6 +14,9 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[DumbGrid](docs/DumbGrid.md)** — dashboard grid: blocks sized in whole columns/rows, drag and resize in grid steps, three layout modes (`flow` / `dense` / free `{x,y}`), optional visible grid, layout persisted. No element measurements during a gesture.
 - **[utils](docs/utils.md)** — framework-free helpers: `ru-RU` number/date/size formatting, slugs, image extraction from a ZIP, imgproxy URLs.
 - **[DumbFinder](docs/DumbFinder.md)** — a file manager over someone else's storage: folders, rubber-band selection, upload by dropping, move by dragging. Knows nothing about S3 — it talks to a `source` adapter, so anything can sit behind it.
+- **[DumbTimeline](docs/DumbTimeline.md)** — a booking chart: resource rows × time columns. Nights, hours and day-long rentals on one grid; no measurements during a drag, and overlapping neighbours is impossible by construction.
+- **[DumbDateRange](docs/DumbDateRange.md)** — a calendar for a day or a range, with occupancy shown before the click. Dates are strings, so timezones can't shift a night.
+- **[DumbModal](docs/DumbModal.md)** · **[DumbLightbox](docs/DumbLightbox.md)** · **[DumbContextMenu](docs/DumbContextMenu.md)** · **[DumbToast](docs/DumbToast.md)** — the top-layer family: native `<dialog>` and the Popover API with anchor positioning, so nothing fights over `z-index`.
 - **[Odata1C](docs/Odata1C.md)** — framework-free client for the 1C standard OData interface: Basic auth, request building, and the platform's quirks handled for you. Runs in the browser and in Node.
 
 **🔗 Live demo:** https://russelgal.github.io/solid-dumb-kit/ · runnable source in [`examples/`](examples/).
@@ -78,6 +81,12 @@ Packages split by **how the gesture is driven**. That's the one division that ma
 | --- | --- | --- |
 | `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
 | `@solid-dumb-kit/tree` | `DumbTree` — tree and flat list | `@solid-primitives/storage` |
+| `@solid-dumb-kit/timeline` | `DumbTimeline` — booking chart: nights, hours, day rentals | — |
+| `@solid-dumb-kit/date-range` | `DumbDateRange` — calendar for a day or a range | — |
+| `@solid-dumb-kit/modal` | `DumbModal` — native `<dialog>` in the top layer | — |
+| `@solid-dumb-kit/lightbox` | `DumbLightbox` — full-screen image viewer | — |
+| `@solid-dumb-kit/context-menu` | `DumbContextMenu`, `DumbPopover` — right click and cards at a point | — |
+| `@solid-dumb-kit/toast` | `DumbToaster`, `toast` — messages and questions | — |
 | `@solid-dumb-kit/finder` | `DumbFinder` — files in a store: folders, selection, upload, move | `@solid-primitives/upload` |
 | `@solid-dumb-kit/odata-1c` | 1C OData client — no Solid needed | — |
 | `@solid-dumb-kit/utils` | format, slug, zip, imgproxy | `fflate`, `slug` |
