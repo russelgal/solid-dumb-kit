@@ -26,16 +26,18 @@
 // Reflow: ни одного замера. Позиции для рамки снимает `SelectionArea`, всё
 // остальное — обычная разметка, которую мы не измеряем вовсе.
 
+// batch и watch — из shared/solidCompat: в Solid 2 `batch` и `on` не экспортируются,
+// а JSX кита компилируется у потребителя
 import {
-  For, Show, batch, createEffect, createMemo, createSignal, on, onCleanup, untrack,
+  For, Show, createEffect, createMemo, createSignal, onCleanup, untrack,
   type JSX,
 } from 'solid-js'
 import { createFileUploader, type UploadFile } from '@solid-primitives/upload'
 import { SelectionArea } from '@solid-dumb-kit/selection'
 import { ResizableGrid } from '@solid-dumb-kit/resizable-grid'
 import {
-  createUploadQueue, createUndoStack, injectStyle, isMoveKey, moveIndex, moveSelection,
-  readDropEntries,
+  batch, createUploadQueue, createUndoStack, injectStyle, isMoveKey, moveIndex,
+  moveSelection, readDropEntries, watch,
 } from '@solid-dumb-kit/shared'
 import { fmtSize, fmtDateTimeShort } from '@solid-dumb-kit/utils'
 import {
@@ -390,7 +392,7 @@ export function DumbFinder(props: DumbFinderProps) {
       }
     }
   }
-  createEffect(on(path, (p) => void reload(p)))
+  watch(path, (p) => void reload(p))
   onCleanup(() => listing?.abort())
 
   function fail(err: unknown) {
@@ -401,7 +403,7 @@ export function DumbFinder(props: DumbFinderProps) {
 
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc))
   // вид сменился — число колонок другое
-  createEffect(on(view, () => queueMicrotask(measureCols), { defer: true }))
+  watch(view, () => queueMicrotask(measureCols), { defer: true })
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])))
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)))
 
@@ -522,7 +524,7 @@ export function DumbFinder(props: DumbFinderProps) {
     })
 
   // ушли в другую папку — раскрытое здесь больше не про что
-  createEffect(on(path, () => batch(() => { setOpenRows(new Set<string>()); setSub({}) }), { defer: true }))
+  watch(path, () => batch(() => { setOpenRows(new Set<string>()); setSub({}) }), { defer: true })
   // содержимое перечитали — раскрытые ветки тоже
   createEffect(() => {
     const cache = sub()

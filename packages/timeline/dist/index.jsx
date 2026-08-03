@@ -1,7 +1,12 @@
 // src/DumbTimeline.tsx
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js";
+import { For, Show, createEffect as createEffect2, createMemo, createSignal, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -546,16 +551,14 @@ function DumbTimeline(props) {
     scrollToNow: () => api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange
   };
-  createEffect(
-    () => untrack(() => {
-      props.ref?.(api);
-      if (!viewport) return;
-      const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
-      ro.observe(viewport);
-      onCleanup(() => ro.disconnect());
-    })
-  );
-  createEffect(() => {
+  onMounted(() => {
+    props.ref?.(api);
+    if (!viewport) return;
+    const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
+    ro.observe(viewport);
+    onCleanup(() => ro.disconnect());
+  });
+  createEffect2(() => {
     scale();
     if (vpW() > 0) props.onVisibleRange?.(visibleRange());
   });

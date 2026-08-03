@@ -11,6 +11,9 @@
 /** Анимации: анимировать или молча выключиться при prefers-reduced-motion. */
 export { prefersReducedMotion, shouldAnimate } from './motion'
 
+// совместимость Solid 1 ↔ Solid 2: пропавшие в Solid 2 API берём только отсюда
+export { batch, onMounted, watch } from './solidCompat'
+
 /** Разовый инжект стилей в `<head>` — переживает размонтирование компонента. */
 export { injectStyle } from './injectStyle'
 

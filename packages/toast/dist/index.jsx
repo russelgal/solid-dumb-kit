@@ -1,7 +1,12 @@
 // src/DumbToaster.tsx
-import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createEffect as createEffect2, createSignal, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -193,7 +198,7 @@ function DumbToaster(props) {
   const bus = () => props.bus ?? toast;
   const [tick, bump] = createSignal(0, { equals: false });
   let box;
-  onMount(() => {
+  onMounted(() => {
     const off = bus().subscribe(() => bump(0));
     onCleanup(() => {
       off();
@@ -201,7 +206,7 @@ function DumbToaster(props) {
     });
   });
   let was = 0;
-  createEffect(() => {
+  createEffect2(() => {
     const n = shown().length;
     if (!n) {
       if (box?.matches(":popover-open")) box.hidePopover();
@@ -220,7 +225,7 @@ function DumbToaster(props) {
   const stacked = () => shown().filter((t) => !t.at);
   const anchored = () => shown().filter((t) => t.at);
   const [pointer, setPointer] = createSignal({ x: 0, y: 0 });
-  onMount(() => {
+  onMounted(() => {
     const track = (ev) => setPointer({ x: ev.clientX, y: ev.clientY });
     window.addEventListener("pointermove", track, { passive: true });
     window.addEventListener("pointerdown", track, { passive: true });
@@ -276,7 +281,7 @@ function DumbToaster(props) {
     </div>;
   function AtToast(p) {
     let el;
-    onMount(() => {
+    onMounted(() => {
       queueMicrotask(() => el?.showPopover?.());
       onCleanup(() => {
         if (el?.matches(":popover-open")) el.hidePopover();

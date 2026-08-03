@@ -1,15 +1,16 @@
 import { delegateEvents, use, insert, createComponent, setAttribute, effect, style, memo, setStyleProperty, className, template } from 'solid-js/web';
-import { createMemo, createSignal, createEffect, onCleanup, onMount, For, Show } from 'solid-js';
+import { createMemo, createSignal, createEffect, onCleanup, For, Show, untrack } from 'solid-js';
 
 // src/DumbBoard.tsx
-
-// ../shared/dist/index.js
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -666,7 +667,7 @@ function DumbBoard(props) {
     }
   }) : null;
   onCleanup(() => sizes?.disconnect());
-  onMount(() => {
+  onMounted(() => {
     measure();
     if (!sizes) return;
     sizes.observe(wrapEl);

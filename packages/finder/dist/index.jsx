@@ -2,19 +2,20 @@
 import {
   For as For2,
   Show as Show2,
-  batch,
-  createEffect,
+  createEffect as createEffect3,
   createMemo,
   createSignal as createSignal2,
-  on,
   onCleanup as onCleanup2,
-  untrack as untrack2
+  untrack as untrack4
 } from "solid-js";
 import { createFileUploader } from "@solid-primitives/upload";
 
 // ../selection/dist/index.js
 import { use, insert, effect, className, style, template } from "solid-js/web";
-import { onCleanup, onMount } from "solid-js";
+import { onCleanup, createEffect, untrack } from "solid-js";
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -380,7 +381,7 @@ function createSelectionArea(opts) {
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
 function SelectionArea(props) {
   let containerRef;
-  onMount(() => {
+  onMounted(() => {
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,
@@ -420,7 +421,7 @@ import { delegateEvents, use as use2, insert as insert2, createComponent, effect
 import { createSignal, For, Show } from "solid-js";
 
 // ../../node_modules/.pnpm/@solid-primitives+storage@4.3.4_solid-js@1.9.14/node_modules/@solid-primitives/storage/dist/persisted.js
-import { createUniqueId, untrack } from "solid-js";
+import { createUniqueId, untrack as untrack2 } from "solid-js";
 import { isServer, isDev } from "solid-js/web";
 import { reconcile } from "solid-js/store";
 function makePersisted(signal, options = {}) {
@@ -458,7 +459,7 @@ function makePersisted(signal, options = {}) {
   if (typeof options.sync?.[0] === "function") {
     const get = typeof signal[0] === "function" ? signal[0] : () => signal[0];
     options.sync[0]((data) => {
-      if (data.key !== name || !isServer && (data.url || globalThis.location.href) !== globalThis.location.href || data.newValue === serialize(untrack(get))) {
+      if (data.key !== name || !isServer && (data.url || globalThis.location.href) !== globalThis.location.href || data.newValue === serialize(untrack2(get))) {
         return;
       }
       set(data.newValue);
@@ -478,7 +479,7 @@ function makePersisted(signal, options = {}) {
       return output;
     } : (...args) => {
       signal[1](...args);
-      const value = serialize(untrack(() => signal[0]));
+      const value = serialize(untrack2(() => signal[0]));
       options.sync?.[1](name, value);
       storage.setItem(name, value, storageOptions);
       unchanged = false;
@@ -1054,6 +1055,21 @@ if (typeof document !== "undefined" && !stylesInjected) {
 delegateEvents(["mousedown"]);
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect as createEffect2, untrack as untrack3 } from "solid-js";
+var batch2 = solid.batch ?? ((fn) => fn());
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  createEffect2(() => {
+    const value = dep();
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack3(() => fn(value, before));
+  });
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -2434,7 +2450,7 @@ function DumbFinder(props) {
   const [ownPath, setOwnPath] = createSignal2("");
   const path = () => props.path ?? ownPath();
   const goto = (next) => {
-    batch(() => {
+    batch2(() => {
       setOwnPath(next);
       setSelection(/* @__PURE__ */ new Set());
       setCursor(-1);
@@ -2461,7 +2477,7 @@ function DumbFinder(props) {
   const [loading, setLoading] = createSignal2(false);
   const [error, setError] = createSignal2(null);
   let listing = null;
-  async function reload(prefix = untrack2(path)) {
+  async function reload(prefix = untrack4(path)) {
     listing?.abort();
     const ctrl = new AbortController();
     listing = ctrl;
@@ -2469,7 +2485,7 @@ function DumbFinder(props) {
     try {
       const got = await props.source.list(prefix, { signal: ctrl.signal });
       if (ctrl.signal.aborted) return;
-      batch(() => {
+      batch2(() => {
         setEntries(got);
         setError(null);
       });
@@ -2484,7 +2500,7 @@ function DumbFinder(props) {
       }
     }
   }
-  createEffect(on(path, (p) => void reload(p)));
+  watch(path, (p) => void reload(p));
   onCleanup2(() => listing?.abort());
   function fail(err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2492,7 +2508,7 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
-  createEffect(on(view, () => queueMicrotask(measureCols), { defer: true }));
+  watch(view, () => queueMicrotask(measureCols), { defer: true });
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)));
   const [tree, setTree] = createSignal2({});
@@ -2502,7 +2518,7 @@ function DumbFinder(props) {
     setWhole(null);
   };
   async function ensure(prefix) {
-    if (inflight.has(prefix) || prefix in untrack2(tree)) return;
+    if (inflight.has(prefix) || prefix in untrack4(tree)) return;
     inflight.add(prefix);
     try {
       const got = await props.source.list(prefix, { signal: new AbortController().signal });
@@ -2527,7 +2543,7 @@ function DumbFinder(props) {
       wholeFlight = false;
     }
   }
-  createEffect(() => {
+  createEffect3(() => {
     if (props.sidebar === false) return;
     if (props.source.tree) {
       if (whole() === null) void loadWhole();
@@ -2536,7 +2552,7 @@ function DumbFinder(props) {
     tree();
     const here = path();
     for (const c of crumbs(here)) void ensure(c.prefix);
-    const kids = untrack2(tree)[here] ?? [];
+    const kids = untrack4(tree)[here] ?? [];
     if (kids.length <= 24) for (const k of kids) void ensure(k.key);
   });
   const weights = createMemo(() => {
@@ -2549,7 +2565,7 @@ function DumbFinder(props) {
   const [sub, setSub] = createSignal2({});
   const subFlight = /* @__PURE__ */ new Set();
   async function ensureSub(prefix) {
-    if (subFlight.has(prefix) || prefix in untrack2(sub)) return;
+    if (subFlight.has(prefix) || prefix in untrack4(sub)) return;
     subFlight.add(prefix);
     try {
       const got = await props.source.list(prefix, { signal: new AbortController().signal });
@@ -2561,7 +2577,7 @@ function DumbFinder(props) {
       subFlight.delete(prefix);
     }
   }
-  const toggleRow = (key) => batch(() => {
+  const toggleRow = (key) => batch2(() => {
     setOpenRows((was) => {
       const next = new Set(was);
       next.has(key) ? next.delete(key) : next.add(key);
@@ -2569,11 +2585,11 @@ function DumbFinder(props) {
     });
     void ensureSub(key);
   });
-  createEffect(on(path, () => batch(() => {
+  watch(path, () => batch2(() => {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
-  }), { defer: true }));
-  createEffect(() => {
+  }), { defer: true });
+  createEffect3(() => {
     const cache = sub();
     for (const k of openRows()) if (!(k in cache)) void ensureSub(k);
   });
@@ -2596,7 +2612,7 @@ function DumbFinder(props) {
     (file, ctx) => {
       const up = props.source.upload;
       if (!up) return Promise.reject(new Error("\u0437\u0430\u043B\u0438\u0432\u043A\u0430 \u043D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0430"));
-      const to = dest.get(file) ?? untrack2(path);
+      const to = dest.get(file) ?? untrack4(path);
       return up(file, { prefix: to, onProgress: ctx.onProgress, signal: ctx.signal }).then(() => ({
         // очереди нужен `url`, а файндеру он не нужен: список всё равно
         // перечитывается — хранилище отдаст и размер, и дату, и адрес
@@ -2634,7 +2650,7 @@ function DumbFinder(props) {
   }
   const picker = createFileUploader({ accept: props.accept ?? "*", multiple: true });
   const pickFiles = () => picker.selectFiles(
-    (files) => enqueue(files.map((f) => ({ name: f.name, file: f.file })), untrack2(path))
+    (files) => enqueue(files.map((f) => ({ name: f.name, file: f.file })), untrack4(path))
   );
   const ghosts = createMemo(() => pending().filter((p) => p.prefix === path()));
   const [dragging, setDragging] = createSignal2([]);
@@ -2791,7 +2807,7 @@ function DumbFinder(props) {
         shift: ev.shiftKey,
         ctrl: ev.metaKey || ev.ctrlKey
       });
-      batch(() => {
+      batch2(() => {
         setCursor(next);
         setAnchor(res.anchor);
         setSelection(res.selected);

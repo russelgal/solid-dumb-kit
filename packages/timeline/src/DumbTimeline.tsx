@@ -14,8 +14,8 @@
 // Драг и ресайз идут по СНАПУ в сутки: полоса прыгает по дням, а не ползёт за
 // курсором попиксельно. Так и бронируют — в сутках, а не в пикселях.
 
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, untrack, type JSX } from 'solid-js'
-import { injectStyle, suppressTextSelection, restoreTextSelection } from '@solid-dumb-kit/shared'
+import { For, Show, createEffect, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { injectStyle, onMounted, suppressTextSelection, restoreTextSelection } from '@solid-dumb-kit/shared'
 import { Temporal } from './temporal'
 import type { Span } from './timelineMath'
 import {
@@ -642,18 +642,14 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
       api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange,
   }
-  // НЕ onMount: Solid 2 его не экспортирует, а JSX кита компилирует компилятор
-  // потребителя (экспорт-условие "solid"). Эффект с untrack — то же самое
-  // «один раз после монтирования» и существует в обеих линиях Solid
-  createEffect(() =>
-    untrack(() => {
-      props.ref?.(api)
-      if (!viewport) return
-      const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0))
-      ro.observe(viewport)
-      onCleanup(() => ro.disconnect())
-    }),
-  )
+  // onMounted, а не onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
+  onMounted(() => {
+    props.ref?.(api)
+    if (!viewport) return
+    const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0))
+    ro.observe(viewport)
+    onCleanup(() => ro.disconnect())
+  })
   // диапазон меняется не только прокруткой: сменили `from`/`days`/шаг или
   // ширину окна — потребителю нужен свежий диапазон для догрузки
   createEffect(() => {

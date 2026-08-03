@@ -1,4 +1,7 @@
-import { onMount, type JSX } from 'solid-js'
+// onMounted вместо onMount: в Solid 2 onMount не экспортируется, а JSX кита
+// компилируется у потребителя (см. shared/solidCompat)
+import { type JSX } from 'solid-js'
+import { onMounted } from '@solid-dumb-kit/shared'
 import { createSelectionArea } from './solid'
 import type { IntersectMode } from './selectionMath'
 
@@ -52,7 +55,7 @@ export type SelectionAreaProps = {
 export function SelectionArea(props: SelectionAreaProps) {
   let containerRef!: HTMLDivElement
 
-  onMount(() => {
+  onMounted(() => {
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,

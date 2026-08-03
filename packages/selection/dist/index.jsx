@@ -1,10 +1,9 @@
-// src/SelectionArea.tsx
-import { onMount } from "solid-js";
-
-// src/solid.ts
-import { onCleanup } from "solid-js";
-
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -87,6 +86,9 @@ function restoreTextSelection() {
   s.userSelect = "";
   s.webkitUserSelect = "";
 }
+
+// src/solid.ts
+import { onCleanup } from "solid-js";
 
 // src/selectionMath.ts
 function areaFrom(x1, y1, x2, y2) {
@@ -378,7 +380,7 @@ function createSelectionArea(opts) {
 // src/SelectionArea.tsx
 function SelectionArea(props) {
   let containerRef;
-  onMount(() => {
+  onMounted(() => {
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,

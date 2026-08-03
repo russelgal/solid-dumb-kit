@@ -9,8 +9,9 @@
 // Стили структурные, инжектом; цвета — переменные с контрастными фолбэками:
 // сообщение об ошибке обязано читаться в любой теме, а не сливаться с фоном.
 
-import { For, Show, createEffect, createSignal, onCleanup, onMount, type JSX } from 'solid-js'
-import { injectStyle } from '@solid-dumb-kit/shared'
+// onMounted вместо onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
+import { For, Show, createEffect, createSignal, onCleanup, type JSX } from 'solid-js'
+import { injectStyle, onMounted } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 
 export type DumbToasterProps = {
@@ -92,7 +93,7 @@ export function DumbToaster(props: DumbToasterProps) {
 
   let box!: HTMLDivElement
 
-  onMount(() => {
+  onMounted(() => {
     // шина живёт вне реактивности — подписка и есть мост
     const off = bus().subscribe(() => bump(0))
     onCleanup(() => {
@@ -140,7 +141,7 @@ export function DumbToaster(props: DumbToasterProps) {
    * раскладка элементов, читать их можно сколько угодно.
    */
   const [pointer, setPointer] = createSignal({ x: 0, y: 0 })
-  onMount(() => {
+  onMounted(() => {
     const track = (ev: PointerEvent) => setPointer({ x: ev.clientX, y: ev.clientY })
     window.addEventListener('pointermove', track, { passive: true })
     window.addEventListener('pointerdown', track, { passive: true })
@@ -206,7 +207,7 @@ export function DumbToaster(props: DumbToasterProps) {
   function AtToast(p: { t: Toast }) {
     let el!: HTMLDivElement
     // popover открываем ПОСЛЕ вставки: на элементе не в документе метод бросает
-    onMount(() => {
+    onMounted(() => {
       queueMicrotask(() => el?.showPopover?.())
       onCleanup(() => {
         if (el?.matches(':popover-open')) el.hidePopover()

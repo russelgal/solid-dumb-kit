@@ -1,3 +1,6 @@
+import * as solid from 'solid-js';
+import { createEffect, untrack } from 'solid-js';
+
 // src/motion.ts
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -5,6 +8,22 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+var batch2 = solid.batch ?? ((fn) => fn());
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  createEffect(() => {
+    const value = dep();
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  });
 }
 
 // src/injectStyle.ts
@@ -904,4 +923,4 @@ function putPart(url, chunk, signal, onBytes) {
 }
 var shouldSplit = (file, partSize = 8 * 1024 * 1024) => file.size > partSize;
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin };
+export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };

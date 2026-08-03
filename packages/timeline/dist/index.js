@@ -1,10 +1,11 @@
 import { delegateEvents, use, insert, createComponent, effect, className, setStyleProperty, setAttribute, memo, style, template } from 'solid-js/web';
-import { createMemo, createSignal, onCleanup, createEffect, untrack, Show, For } from 'solid-js';
+import { createMemo, createSignal, onCleanup, createEffect, Show, For, untrack } from 'solid-js';
 import { Temporal as Temporal$1 } from 'temporal-polyfill';
 
 // src/DumbTimeline.tsx
-
-// ../shared/dist/index.js
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -590,13 +591,13 @@ function DumbTimeline(props) {
     scrollToNow: () => api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange
   };
-  createEffect(() => untrack(() => {
+  onMounted(() => {
     props.ref?.(api);
     if (!viewport) return;
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
     ro.observe(viewport);
     onCleanup(() => ro.disconnect());
-  }));
+  });
   createEffect(() => {
     scale();
     if (vpW() > 0) props.onVisibleRange?.(visibleRange());

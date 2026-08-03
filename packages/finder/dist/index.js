@@ -1,9 +1,13 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, use, addEventListener, isServer, template } from 'solid-js/web';
-import { createSignal, createEffect, on, onCleanup, createMemo, untrack, batch, For, Show, onMount, createUniqueId } from 'solid-js';
+import * as solid from 'solid-js';
+import { createSignal, onCleanup, createMemo, createEffect, untrack, For, Show, createUniqueId } from 'solid-js';
 import { createFileUploader } from '@solid-primitives/upload';
 import { reconcile } from 'solid-js/store';
 
 // src/DumbFinder.tsx
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -369,7 +373,7 @@ function createSelectionArea(opts) {
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
 function SelectionArea(props) {
   let containerRef;
-  onMount(() => {
+  onMounted(() => {
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,
@@ -1028,8 +1032,19 @@ if (typeof document !== "undefined" && !stylesInjected) {
   document.head.appendChild(style2);
 }
 delegateEvents(["mousedown"]);
-
-// ../shared/dist/index.js
+var batch2 = solid.batch ?? ((fn) => fn());
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  createEffect(() => {
+    const value = dep();
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  });
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -2235,7 +2250,7 @@ function DumbFinder(props) {
   const [ownPath, setOwnPath] = createSignal("");
   const path = () => props.path ?? ownPath();
   const goto = (next) => {
-    batch(() => {
+    batch2(() => {
       setOwnPath(next);
       setSelection(/* @__PURE__ */ new Set());
       setCursor(-1);
@@ -2278,7 +2293,7 @@ function DumbFinder(props) {
         signal: ctrl.signal
       });
       if (ctrl.signal.aborted) return;
-      batch(() => {
+      batch2(() => {
         setEntries(got);
         setError(null);
       });
@@ -2293,7 +2308,7 @@ function DumbFinder(props) {
       }
     }
   }
-  createEffect(on(path, (p) => void reload(p)));
+  watch(path, (p) => void reload(p));
   onCleanup(() => listing?.abort());
   function fail(err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2301,9 +2316,9 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
-  createEffect(on(view, () => queueMicrotask(measureCols), {
+  watch(view, () => queueMicrotask(measureCols), {
     defer: true
-  }));
+  });
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)));
   const [tree, setTree] = createSignal({});
@@ -2393,7 +2408,7 @@ function DumbFinder(props) {
       subFlight.delete(prefix);
     }
   }
-  const toggleRow = (key) => batch(() => {
+  const toggleRow = (key) => batch2(() => {
     setOpenRows((was) => {
       const next = new Set(was);
       next.has(key) ? next.delete(key) : next.add(key);
@@ -2401,12 +2416,12 @@ function DumbFinder(props) {
     });
     void ensureSub(key);
   });
-  createEffect(on(path, () => batch(() => {
+  watch(path, () => batch2(() => {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
   }), {
     defer: true
-  }));
+  });
   createEffect(() => {
     const cache = sub();
     for (const k of openRows()) if (!(k in cache)) void ensureSub(k);
@@ -2650,7 +2665,7 @@ function DumbFinder(props) {
         shift: ev.shiftKey,
         ctrl: ev.metaKey || ev.ctrlKey
       });
-      batch(() => {
+      batch2(() => {
         setCursor(next);
         setAnchor(res.anchor);
         setSelection(res.selected);

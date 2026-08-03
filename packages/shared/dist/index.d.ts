@@ -2,6 +2,18 @@ declare function prefersReducedMotion(): boolean;
 /** анимировать ли: undefined → да, но с оглядкой на системную настройку */
 declare function shouldAnimate(explicit?: boolean): boolean;
 
+/** `solid.batch`, где он есть (Solid 1); в Solid 2 обновления батчатся сами */
+declare const batch: <T>(fn: () => T) => T;
+/** `onMount` из Solid 1: эффект, выполненный один раз после монтирования */
+declare function onMounted(fn: () => void): void;
+/**
+ * `createEffect(on(dep, fn, { defer: true }))` из Solid 1: следим за ОДНИМ
+ * источником, тело не трекается; `defer` пропускает первый прогон.
+ */
+declare function watch<T>(dep: () => T, fn: (value: T, prev: T | undefined) => void, opts?: {
+    defer?: boolean;
+}): void;
+
 /**
  * Вставить стили один раз на документ.
  *
@@ -423,4 +435,4 @@ declare function uploadMultipart(file: File, ctx: {
 /** стоит ли лить частями: мелкие файлы этого не окупают */
 declare const shouldSplit: (file: File, partSize?: number) => boolean;
 
-export { ACCEL, type AutoScroller, type DroppedFile, EDGE, type Flip, type InlineEdit, type InlineEditOptions, LONGPRESS, MAX_SPEED, MOVE_TOL, type MoveArgs, type MoveKey, type MultipartHandshake, type MultipartOptions, NO_DRAG, type Presigned, type PresignedOptions, type PressGate, type PressGateOptions, type QueueEvents, type StableOrder, type UndoOptions, type UndoStack, type UndoStep, type UploadQueue, type UploadResult, type UploadedPart, type Uploader, type ViewGeom, type Virtual, type VirtualOptions, type VirtualRange, autoScrollSpeed, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin };
+export { ACCEL, type AutoScroller, type DroppedFile, EDGE, type Flip, type InlineEdit, type InlineEditOptions, LONGPRESS, MAX_SPEED, MOVE_TOL, type MoveArgs, type MoveKey, type MultipartHandshake, type MultipartOptions, NO_DRAG, type Presigned, type PresignedOptions, type PressGate, type PressGateOptions, type QueueEvents, type StableOrder, type UndoOptions, type UndoStack, type UndoStep, type UploadQueue, type UploadResult, type UploadedPart, type Uploader, type ViewGeom, type Virtual, type VirtualOptions, type VirtualRange, autoScrollSpeed, batch, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };

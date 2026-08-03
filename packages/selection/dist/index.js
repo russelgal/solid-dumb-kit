@@ -1,9 +1,10 @@
 import { use, insert, effect, className, style, template } from 'solid-js/web';
-import { onCleanup, onMount } from 'solid-js';
+import { onCleanup, createEffect, untrack } from 'solid-js';
 
 // src/SelectionArea.tsx
-
-// ../shared/dist/index.js
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -377,7 +378,7 @@ function createSelectionArea(opts) {
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
 function SelectionArea(props) {
   let containerRef;
-  onMount(() => {
+  onMounted(() => {
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,

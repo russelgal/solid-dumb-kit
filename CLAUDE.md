@@ -167,6 +167,25 @@ pnpm test           # vitest run (утилиты + смоук-монтирова
 
 Когда выйдет Solid 2 — линии разводим (ветка `solid-1` для поддержки 0.x либо мажорка `1.0.0` под Solid 2); до этого момента поднимаем только minor/patch внутри `0.x`.
 
+## ЖЕЛЕЗНОЕ ПРАВИЛО: НИКАКИХ ИМПОРТОВ, КОТОРЫХ НЕТ В SOLID 2
+
+Кит отдаёт потребителю JSX-исходник (экспорт-условие `"solid"`), то есть код
+линкуется с solid-js **потребителя** — а bluefable уже живёт на Solid 2 beta.
+Именованный импорт экспорта, которого в Solid 2 нет, роняет его сборку целиком
+(`MISSING_EXPORT`), даже если код до этого места не доходит. Уже горело: один
+`onMount` в таймлайне валил `vite build` bluefable.
+
+В `packages/*/src` **запрещены** именованные импорты из `solid-js`:
+`onMount`, `batch`, `on`, `createResource`, `createComputed`, `createDeferred`,
+`createSelector`, `mergeProps`, `splitProps`, `Index`, `Suspense`,
+`ErrorBoundary` — и импорты из `solid-js/web` (сабпуть в Solid 2 удалён).
+
+Замены лежат в `packages/shared/src/solidCompat.ts` и берутся ТОЛЬКО оттуда:
+`onMounted` (бывший `onMount`), `batch` (namespace-фолбэк), `watch`
+(бывший `createEffect(on(...))`). Нужен ещё какой-то пропавший API — добавляй
+замену туда же, а не именованный импорт. Проверка совместимости — сборка
+bluefable: `cd /Volumes/sites/_booking/research/app && npm run build`.
+
 ## Документация: две языковые версии, зеркально
 `docs/*.md` — английский, `docs/ru/*.md` — русский; в корне `README.md` и `README.ru.md`. У каждого файла в первой строке переключатель языка.
 

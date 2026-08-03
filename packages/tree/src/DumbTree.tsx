@@ -12,8 +12,9 @@
 // (`icons`), цвета — CSS-переменными с контрастными фолбэками. Ни Tailwind, ни
 // daisyUI не требуются, но и не мешают.
 
-import { createEffect, createMemo, createSignal, For, Show, on, type JSX } from 'solid-js'
-import { injectStyle } from '@solid-dumb-kit/shared'
+// watch вместо createEffect(on(...)): в Solid 2 `on` не экспортируется (shared/solidCompat)
+import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
+import { injectStyle, watch } from '@solid-dumb-kit/shared'
 
 export type TreeNode = {
   id: string
@@ -202,14 +203,12 @@ function Branch(p: {
   // уходит ровно тогда, когда в неё полезли.
   if (!p.nodes) load()
   // сменился ключ обновления — перечитываем то, что уже тянули
-  createEffect(
-    on(
-      () => p.tree.refreshKey?.(),
-      () => {
-        if (loaded()) load()
-      },
-      { defer: true },
-    ),
+  watch(
+    () => p.tree.refreshKey?.(),
+    () => {
+      if (loaded()) load()
+    },
+    { defer: true },
   )
 
   const list = createMemo(() => {

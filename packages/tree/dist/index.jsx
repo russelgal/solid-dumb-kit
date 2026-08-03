@@ -1,7 +1,21 @@
 // src/DumbTree.tsx
-import { createEffect, createMemo, createSignal, For, Show, on } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  createEffect(() => {
+    const value = dep();
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  });
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -96,14 +110,12 @@ function Branch(p) {
     fn(p.parentId).then(setLoaded).catch(() => setLoaded([])).finally(() => setBusy(false));
   };
   if (!p.nodes) load();
-  createEffect(
-    on(
-      () => p.tree.refreshKey?.(),
-      () => {
-        if (loaded()) load();
-      },
-      { defer: true }
-    )
+  watch(
+    () => p.tree.refreshKey?.(),
+    () => {
+      if (loaded()) load();
+    },
+    { defer: true }
   );
   const list = createMemo(() => {
     const all = p.nodes ?? loaded() ?? [];

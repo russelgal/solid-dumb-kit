@@ -1,9 +1,10 @@
 import { delegateEvents, use, insert, createComponent, effect, setAttribute, className, setStyleProperty, template } from 'solid-js/web';
-import { createSignal, onMount, onCleanup, createEffect, For, Show } from 'solid-js';
+import { createSignal, createEffect, For, Show, untrack, onCleanup } from 'solid-js';
 
 // src/DumbToaster.tsx
-
-// ../shared/dist/index.js
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -205,7 +206,7 @@ function DumbToaster(props) {
     equals: false
   });
   let box;
-  onMount(() => {
+  onMounted(() => {
     const off = bus().subscribe(() => bump(0));
     onCleanup(() => {
       off();
@@ -235,7 +236,7 @@ function DumbToaster(props) {
     x: 0,
     y: 0
   });
-  onMount(() => {
+  onMounted(() => {
     const track = (ev) => setPointer({
       x: ev.clientX,
       y: ev.clientY
@@ -333,7 +334,7 @@ function DumbToaster(props) {
   })();
   function AtToast(p) {
     let el;
-    onMount(() => {
+    onMounted(() => {
       queueMicrotask(() => el?.showPopover?.());
       onCleanup(() => {
         if (el?.matches(":popover-open")) el.hidePopover();

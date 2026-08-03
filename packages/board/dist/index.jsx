@@ -1,13 +1,18 @@
 // src/DumbBoard.tsx
-import { For as For2, Show as Show2, createEffect, createMemo as createMemo2, createSignal as createSignal2, onCleanup as onCleanup2, onMount } from "solid-js";
+import { For as For2, Show as Show2, createEffect as createEffect2, createMemo as createMemo2, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function onMounted(fn) {
+  createEffect(() => untrack(fn));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -864,7 +869,7 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  createEffect(() => {
+  createEffect2(() => {
     flip = createFlip(shouldAnimate(props.animate));
   });
   const scroller = createAutoScroller();
@@ -915,7 +920,7 @@ function DumbBoard(props) {
     }
   }) : null;
   onCleanup2(() => sizes?.disconnect());
-  onMount(() => {
+  onMounted(() => {
     measure();
     if (!sizes) return;
     sizes.observe(wrapEl);
