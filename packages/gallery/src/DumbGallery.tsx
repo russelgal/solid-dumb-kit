@@ -28,8 +28,7 @@
 import { Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
 import { createDropzone, createFileUploader, type UploadFile } from '@solid-primitives/upload'
 import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
-import { injectStyle } from '@solid-dumb-kit/shared'
-import { createUploadQueue, type Uploader } from './uploadQueue'
+import { injectStyle, createUploadQueue, type Uploader } from '@solid-dumb-kit/shared'
 
 export type GalleryStatus =
   /** транспорта нет: файл живёт только в браузере */

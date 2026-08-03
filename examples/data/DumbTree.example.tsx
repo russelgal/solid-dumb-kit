@@ -1,140 +1,153 @@
-// DumbTree — sidebar tree (hierarchy by `parent`) and a flat, drag-reorderable list.
+// DumbTree — дерево: вложенные узлы, ленивая подгрузка ветки, поиск, выбор.
 //
-// DumbTree is the one component in the kit that renders Tailwind + daisyUI class
-// names. In a daisyUI app you need nothing extra. This example is standalone, so
-// it ships a ~60-line shim below that fakes just the classes DumbTree touches —
-// delete it in a real app.
+// Показаны оба способа кормления. Слева дерево знает всё сразу (`roots`), справа
+// не знает ничего: ветка тянется `loadChildren` в момент раскрытия — так
+// открывается каталог на десять тысяч узлов, из которого читают три.
+//
+// Значки — Solar через iconify, КЛАССАМИ: своих иконок кит не несёт.
 import { createSignal, For } from 'solid-js'
-import { DumbTree, type DumbTreeNode } from '@solid-dumb-kit/tree'
+import { DumbTree, type TreeNode } from '@solid-dumb-kit/tree'
+import { Bar, Check, Note } from '../_controls'
 
-// ── эмодзи-иконки: в настоящем приложении тут твой icon-set ──
-//
-// Раньше здесь лежал шестидесятистрочный шим, подделывавший классы daisyUI
-// своими цветами. В витрине daisyUI подключён по-настоящему, а Tailwind видит
-// `examples/` через `@source` — шим только перебивал тему захардкоженным белым
-// и в тёмной теме светился. Осталось то, чего не даёт ни тот, ни другой.
-const SHIM = `
-.dt-demo .ic::before{display:block;line-height:1;font-size:14px}
-.dt-demo .ic-folder::before{content:"📁"}.dt-demo .ic-folder-open::before{content:"📂"}
-.dt-demo .ic-leaf::before{content:"📄"}.dt-demo .ic-down::before{content:"▾"}
-.dt-demo .ic-right::before{content:"▸"}.dt-demo .ic-search::before{content:"🔍"}
-.dt-demo .ic-sort-index::before{content:"🔢"}.dt-demo .ic-sort-name::before{content:"🔤"}
-.dt-demo .ic-drag::before{content:"⠿"}
-`
-
-// In a real app these are your icon-set classes (iconify, Solar, Lucide…).
 const icons = {
-  folder: 'ic ic-folder',
-  folderOpen: 'ic ic-folder-open',
-  leaf: 'ic ic-leaf',
-  expanded: 'ic ic-down',
-  collapsed: 'ic ic-right',
-  search: 'ic ic-search',
-  sortIndex: 'ic ic-sort-index',
-  sortName: 'ic ic-sort-name',
-  dragHandle: 'ic ic-drag',
+  twist: 'icon-[solar--alt-arrow-right-outline]',
+  folder: 'icon-[solar--folder-bold] text-sky-600',
+  folderOpen: 'icon-[solar--folder-open-bold] text-sky-600',
+  leaf: 'icon-[solar--document-text-outline] text-slate-500',
 }
 
-type Cat = DumbTreeNode & { count: number; hidden?: boolean }
-
-// parent points at the id of the parent node; the root is the one whose parent
-// is outside the set (here: -1).
-const CATS: Cat[] = [
-  { id: 0, parent: -1, title: 'Catalogue', index: 0, count: 0 },
-  { id: 1, parent: 0, title: 'Accommodation', index: 0, count: 42, meta: 'stay' },
-  { id: 11, parent: 1, title: 'A-frames', index: 0, count: 8 },
-  { id: 12, parent: 1, title: 'Guest houses', index: 1, count: 15 },
-  { id: 13, parent: 1, title: 'Hotel rooms', index: 2, count: 19, meta: 'rooms' },
-  { id: 2, parent: 0, title: 'Food', index: 1, count: 31 },
-  { id: 21, parent: 2, title: 'Cold starters', index: 0, count: 12 },
-  { id: 22, parent: 2, title: 'Hot dishes', index: 1, count: 14 },
-  { id: 23, parent: 2, title: 'Desserts', index: 2, count: 5, hidden: true },
-  { id: 3, parent: 0, title: 'Activities', index: 2, count: 17, meta: 'fun' },
-  { id: 31, parent: 3, title: 'Outdoors', index: 0, count: 9 },
-  { id: 32, parent: 3, title: 'Indoors', index: 1, count: 8 },
-  { id: 4, parent: 0, title: 'Events', index: 3, count: 11 },
-  { id: 41, parent: 4, title: 'Weddings', index: 0, count: 6 },
-  { id: 42, parent: 4, title: 'Corporate', index: 1, count: 5, hidden: true },
+/** дерево целиком: так его отдаёт обычный ответ сервера — уже вложенным */
+const ROOTS: Array<TreeNode> = [
+  {
+    id: 'catalog',
+    label: 'Каталог',
+    isFolder: true,
+    badge: 128,
+    children: [
+      {
+        id: 'kitchen',
+        label: 'Кухни',
+        isFolder: true,
+        badge: 64,
+        children: [
+          { id: 'kitchen-corner', label: 'Угловые', badge: 21 },
+          { id: 'kitchen-straight', label: 'Прямые', badge: 43 },
+        ],
+      },
+      {
+        id: 'closet',
+        label: 'Шкафы',
+        isFolder: true,
+        badge: 64,
+        children: [
+          { id: 'closet-coupe', label: 'Купе', badge: 30 },
+          { id: 'closet-swing', label: 'Распашные', badge: 34 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'pages',
+    label: 'Страницы',
+    isFolder: true,
+    badge: 3,
+    children: [
+      { id: 'about', label: 'О компании' },
+      { id: 'delivery', label: 'Доставка и оплата' },
+      { id: 'contacts', label: 'Контакты' },
+    ],
+  },
 ]
 
-const FLAT: Cat[] = CATS.filter((c) => c.parent !== -1 && String(c.id).length === 1)
-  .map((c, i) => ({ ...c, parent: -1, index: i }))
-
-export default function DumbTreeExample() {
-  const [active, setActive] = createSignal<number | string | null>(13)
-  const [flat, setFlat] = createSignal<Cat[]>(FLAT)
-  const [log, setLog] = createSignal('click a row →')
-
-  const badge = (n: Cat) => (
-    <span class="text-[11px] text-base-content tabular-nums">
-      {n.count || ''}
-    </span>
+/**
+ * Ленивая ветка. Настоящий `loadChildren` ходит на сервер; здесь он выдумывает
+ * детей на лету и отвечает с задержкой — чтобы было видно, что ветка тянется
+ * именно в момент раскрытия, а не заранее.
+ */
+const loadChildren = (parentId: string): Promise<Array<TreeNode>> =>
+  new Promise((ok) =>
+    setTimeout(() => {
+      const depth = parentId ? parentId.split('/').length : 0
+      ok(
+        Array.from({ length: depth >= 3 ? 0 : 4 }, (_, i) => ({
+          id: `${parentId ? `${parentId}/` : ''}узел-${i + 1}`,
+          label: `Узел ${depth + 1}.${i + 1}`,
+          // на последнем уровне — листья, выше — ветки
+          isFolder: i < 3 && depth < 2,
+          badge: (depth + 1) * (i + 1),
+        })),
+      )
+    }, 350),
   )
 
-  return (
-    <div class="dt-demo p-5 text-base-content">
-      <style>{SHIM}</style>
+export default function DumbTreeExample() {
+  const [chosen, setChosen] = createSignal<string | null>(null)
+  const [q, setQ] = createSignal('')
+  const [stripes, setStripes] = createSignal(true)
+  const [size, setSize] = createSignal('13px')
 
-      <p class="mb-4 text-[13px] text-base-content">
-        Type in the search box (fuzzy — <code>gst hs</code> finds “Guest houses”), toggle the sort
-        mode, collapse folders and reload the page: expanded folders and sort mode are persisted
-        per <code>storageKey</code>. Hidden items are dimmed via <code>rowClass</code>, counts come
-        from <code>rowExtra</code> — the kit itself knows nothing about those fields.
+  return (
+    <div class="p-5 text-base-content">
+      <h3 class="mb-1 text-lg font-semibold">DumbTree — дерево с ленивой веткой</h3>
+      <p class="mb-3 max-w-[92ch] text-sm text-base-content">
+        Узлы задаются <b>вложенно</b> (<code>children</code>) — так их и отдаёт сервер. Ветку можно
+        не грузить заранее: <code>loadChildren(id)</code> зовётся в момент раскрытия. Полосы —
+        одним градиентом с шагом в строку (<code>1lh</code>), поэтому при раскрытии вложенных они
+        не сбиваются с ритма. Стрелка одна на оба состояния, раскрытая просто повёрнута.
       </p>
 
-      <div class="flex flex-wrap items-start gap-6">
+      <Bar>
+        <input
+          class="input input-sm"
+          placeholder="поиск по названию"
+          value={q()}
+          onInput={(e) => setQ(e.currentTarget.value)}
+        />
+        <Check checked={stripes()} onChange={setStripes}>полосы</Check>
+        <div class="join">
+          <For each={[['12px', 'S'], ['13px', 'M'], ['15px', 'L']] as const}>
+            {([value, label]) => (
+              <button
+                class={`btn join-item btn-xs ${size() === value ? 'btn-active' : 'btn-ghost'}`}
+                onClick={() => setSize(value)}
+              >
+                {label}
+              </button>
+            )}
+          </For>
+        </div>
+        <Note>{chosen() ? `выбран: ${chosen()}` : 'кликни по строке'}</Note>
+      </Bar>
+
+      <div class="grid max-w-[92ch] gap-4 sm:grid-cols-2">
         <section>
-          <h3 class="mb-2 text-sm">Tree — hierarchy by <code>parent</code></h3>
+          <h4 class="mb-1 text-sm font-semibold">Всё дерево сразу</h4>
           <DumbTree
-            nodes={CATS}
-            title="CATALOGUE"
-            storageKey="demo:tree"
+            roots={ROOTS}
             icons={icons}
-            activeId={active}
-            onSelect={(id, node) => { setActive(id); setLog(`onSelect(${id}, "${node.title}")`) }}
-            placeholder="Search…"
-            labels={{ search: 'Search', sortIndex: 'Index', sortName: 'Name' }}
-            rowExtra={badge}
-            rowClass={(n) => (n.hidden ? 'dt-dim' : undefined)}
-            rowTitle={(n) => `${n.title} — ${n.count} items`}
+            size={size()}
+            stripes={stripes()}
+            query={q}
+            selected={chosen}
+            onSelect={(n) => setChosen(n.id)}
+            storageKey="demo-tree"
+            class="rounded-box border border-base-300 p-2"
           />
         </section>
 
         <section>
-          <h3 class="mb-2 text-sm">Flat + <code>sortable</code> — drag by ⠿</h3>
+          <h4 class="mb-1 text-sm font-semibold">Ветка тянется при раскрытии</h4>
           <DumbTree
-            nodes={flat()}
-            flat
-            title="SECTIONS"
-            storageKey="demo:flat"
+            loadChildren={loadChildren}
             icons={icons}
-            hideSort
-            placeholder="Filter…"
-            labels={{ search: 'Filter' }}
-            rowExtra={badge}
-            sortable={(from, to) => {
-              const next = flat().slice()
-              next.splice(to, 0, next.splice(from, 1)[0])
-              setFlat(next)
-              setLog(`sortable(${from} → ${to})`)
-            }}
+            size={size()}
+            stripes={stripes()}
+            selected={chosen}
+            onSelect={(n) => setChosen(n.id)}
+            class="rounded-box border border-base-300 p-2"
           />
-        </section>
-
-        <section class="min-w-60 flex-1">
-          <h3 class="mb-2 text-sm">Callbacks</h3>
-          <code class="block rounded-box bg-neutral px-3 py-2.5 text-[13px] text-neutral-content">{log()}</code>
-          <p class="text-[13px]/relaxed text-base-content">
-            Current order:<br />
-            <For each={flat()}>{(n, i) => <span>{i() > 0 ? ' · ' : ''}{n.title}</span>}</For>
-          </p>
-          <p class="text-xs text-base-content">
-            Drag-reorder is flat-only, and switches off while a filter is typed — the displayed
-            order no longer maps to the source one.
-          </p>
         </section>
       </div>
-
     </div>
   )
 }

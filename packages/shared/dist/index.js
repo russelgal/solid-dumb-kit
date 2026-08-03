@@ -421,4 +421,109 @@ function createPressGate(opts = {}) {
   };
 }
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, createStableOrder, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
+// src/uploadQueue.ts
+function createUploadQueue(upload, events = {}, concurrency = 3) {
+  const waiting = [];
+  const running = /* @__PURE__ */ new Map();
+  let dead = false;
+  function pump() {
+    while (!dead && running.size < concurrency && waiting.length) {
+      const next = waiting.shift();
+      start(next.id, next.file);
+    }
+  }
+  function start(id, file) {
+    const ctrl = new AbortController();
+    running.set(id, ctrl);
+    events.onStart?.(id);
+    upload(file, {
+      signal: ctrl.signal,
+      onProgress: (f) => {
+        if (running.get(id) === ctrl) events.onProgress?.(id, clamp(f));
+      }
+    }).then((res) => {
+      if (running.get(id) !== ctrl) return;
+      running.delete(id);
+      events.onDone?.(id, res);
+    }).catch((err) => {
+      if (running.get(id) !== ctrl) return;
+      running.delete(id);
+      events.onError?.(id, message(err));
+    }).finally(pump);
+  }
+  return {
+    add(id, file) {
+      if (dead) return;
+      waiting.push({ id, file });
+      pump();
+    },
+    cancel(id) {
+      const i = waiting.findIndex((w) => w.id === id);
+      if (i >= 0) {
+        waiting.splice(i, 1);
+        return;
+      }
+      const ctrl = running.get(id);
+      if (!ctrl) return;
+      running.delete(id);
+      ctrl.abort();
+      pump();
+    },
+    destroy() {
+      dead = true;
+      waiting.length = 0;
+      for (const ctrl of running.values()) ctrl.abort();
+      running.clear();
+    },
+    pending: () => waiting.length + running.size
+  };
+}
+var clamp = (f) => f < 0 ? 0 : f > 1 ? 1 : f;
+function message(err) {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+// src/presigned.ts
+function createPresignedUploader(opts) {
+  return (file, ctx) => opts.sign(file).then((p) => putWithProgress(file, p, ctx));
+}
+function putWithProgress(file, p, ctx) {
+  return new Promise((resolve, reject) => {
+    if (ctx.signal.aborted) return reject(new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E"));
+    const xhr = new XMLHttpRequest();
+    xhr.open(p.method ?? "PUT", p.url, true);
+    for (const [k, v] of Object.entries(p.headers ?? {})) xhr.setRequestHeader(k, v);
+    const onAbort = () => xhr.abort();
+    ctx.signal.addEventListener("abort", onAbort, { once: true });
+    const done2 = () => ctx.signal.removeEventListener("abort", onAbort);
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) ctx.onProgress(ev.loaded / ev.total);
+    };
+    xhr.onload = () => {
+      done2();
+      if (xhr.status >= 200 && xhr.status < 300) {
+        ctx.onProgress(1);
+        resolve({ url: p.publicUrl ?? stripQuery(p.url), key: p.key });
+      } else {
+        reject(new Error(`\u0445\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u043E\u0442\u0432\u0435\u0442\u0438\u043B\u043E ${xhr.status}${reason(xhr.responseText)}`));
+      }
+    };
+    xhr.onerror = () => {
+      done2();
+      reject(new Error("\u0441\u0435\u0442\u044C \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430"));
+    };
+    xhr.onabort = () => {
+      done2();
+      reject(new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E"));
+    };
+    xhr.send(file);
+  });
+}
+var stripQuery = (url) => url.split("?")[0];
+function reason(body) {
+  const m = body && /<Message>([^<]+)<\/Message>/.exec(body);
+  return m ? `: ${m[1]}` : "";
+}
+
+export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, createAutoScroller, createFlip, createPresignedUploader, createPressGate, createStableOrder, createUploadQueue, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, putWithProgress, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };

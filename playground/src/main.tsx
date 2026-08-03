@@ -17,6 +17,7 @@ import DumbBoardEvenExample from "../../examples/dnd/DumbBoardEven.example";
 
 import DumbTreeExample from "../../examples/data/DumbTree.example";
 import DumbTableExample from "../../examples/data/DumbTable.example";
+import DumbFinderExample from "../../examples/data/DumbFinder.example";
 import Odata1CExample from "../../examples/data/Odata1C.example";
 import UtilsExample from "../../examples/data/utils.example";
 
@@ -152,6 +153,13 @@ const GROUPS: Array<Group> = [
         pkg: "table",
         hint: "TanStack + драг строк",
         Comp: DumbTableExample,
+      },
+      {
+        id: "finder",
+        label: "DumbFinder",
+        pkg: "finder",
+        hint: "файлы в хранилище",
+        Comp: DumbFinderExample,
       },
       {
         id: "odata1c",

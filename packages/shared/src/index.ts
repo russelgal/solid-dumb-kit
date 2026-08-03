@@ -66,3 +66,27 @@ export {
   type PressGate,
   type PressGateOptions,
 } from './gesture'
+
+/**
+ * Очередь заливки: без DOM и без фреймворка. Живёт здесь, а не в галерее,
+ * потому что заливают файлы и другие пакеты (`finder`), а к плиткам очередь
+ * не привязана ничем.
+ */
+export {
+  createUploadQueue,
+  type UploadQueue,
+  type Uploader,
+  type UploadResult,
+  type QueueEvents,
+} from './uploadQueue'
+
+/**
+ * Заливка по подписанной ссылке — то, чем это делается с S3-совместимым
+ * хранилищем. Ключей от бакета браузер не видит: их место на сервере.
+ */
+export {
+  createPresignedUploader,
+  putWithProgress,
+  type Presigned,
+  type PresignedOptions,
+} from './presigned'

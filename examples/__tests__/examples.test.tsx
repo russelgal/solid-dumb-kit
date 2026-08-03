@@ -1,6 +1,6 @@
 // Смоук-тест витрины: каждый пример должен монтироваться без падения и что-то
 // рисовать. Ловит опечатки в пропсах и рассинхрон примеров с API кита.
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, afterAll, beforeAll, vi } from 'vitest'
 import { render } from 'solid-js/web'
 import SelectionAreaExample from '../pointer/SelectionArea.example'
 import DumbSortableExample from '../pointer/DumbSortable.example'
@@ -14,6 +14,7 @@ import DumbGridDndExample from '../dnd/DumbGridDnd.example'
 import KanbanExample from '../pointer/Kanban.example'
 import UtilsExample from '../data/utils.example'
 import Odata1CExample from '../data/Odata1C.example'
+import DumbFinderExample from '../data/DumbFinder.example'
 import DumbSortableDndExample from '../dnd/DumbSortableDnd.example'
 import DumbBoardExample from '../dnd/DumbBoard.example'
 import DumbBoardEvenExample from '../dnd/DumbBoardEven.example'
@@ -24,6 +25,15 @@ import OrderKanbanExample from '../lab/OrderKanban.example'
 import OrderBoardExample from '../lab/OrderBoard.example'
 import OrderTableExample from '../lab/OrderTable.example'
 import OrderTreeExample from '../lab/OrderTree.example'
+
+// Сеть в смоуке не нужна и вредна: DumbFinder на монтировании идёт за списком
+// файлов, и в happy-dom это оседает в логе как «socket hang up». Отдаём пустую
+// папку — проверяем-то мы разметку, а не хранилище.
+beforeAll(() => {
+  vi.stubGlobal('fetch', async () =>
+    new Response('{"entries":[]}', { headers: { 'content-type': 'application/json' } }))
+})
+afterAll(() => vi.unstubAllGlobals())
 
 const mounted: Array<() => void> = []
 afterEach(() => { mounted.splice(0).forEach((dispose) => dispose()) })
@@ -58,6 +68,7 @@ const EXAMPLES = [
   ['Kanban', KanbanExample],
   ['utils', UtilsExample],
   ['Odata1C', Odata1CExample],
+  ['DumbFinder', DumbFinderExample],
 ] as const
 
 describe('examples — монтируются и рендерят разметку', () => {
@@ -180,26 +191,27 @@ describe('Kanban.example — перемешивание', () => {
 })
 
 describe('DumbTree.example — дерево реально построилось', () => {
-  it('рисует корневые категории и вложенных детей', () => {
+  it('рисует корни и раскрытые ветки', () => {
     const host = mount(DumbTreeExample)
     const text = host.textContent ?? ''
-    // корневые узлы дерева
-    expect(text).toContain('Accommodation')
-    expect(text).toContain('Events')
-    // счётчики из rowExtra
-    expect(text).toContain('42')
+    expect(text).toContain('Каталог')
+    expect(text).toContain('Страницы')
+    // бейдж узла
+    expect(text).toContain('128')
   })
 
-  it('поле поиска и переключатель сортировки на месте', () => {
+  it('ветка сворачивается стрелкой, а не ссылкой', () => {
     const host = mount(DumbTreeExample)
-    expect(host.querySelectorAll('input').length).toBeGreaterThanOrEqual(2) // поиск в дереве + фильтр в flat
-    expect(host.textContent).toContain('Index')
-    expect(host.textContent).toContain('Name')
+    const rows = host.querySelectorAll('.dumb-tree-row')
+    expect(rows.length).toBeGreaterThan(0)
+    // у ветки есть кнопка-стрелка, у листа — распорка вместо неё
+    expect(host.querySelectorAll('button.dumb-tree-twist').length).toBeGreaterThan(0)
   })
 
-  it('flat-список отдаёт ручки перетаскивания', () => {
+  it('второе дерево грузит ветку по требованию, поэтому стартует пустым', () => {
     const host = mount(DumbTreeExample)
-    expect(host.querySelectorAll('[data-drag-handle]').length).toBeGreaterThan(0)
+    // два дерева на странице: с готовыми узлами и с ленивой подгрузкой
+    expect(host.querySelectorAll('.dumb-tree').length).toBe(2)
   })
 })
 

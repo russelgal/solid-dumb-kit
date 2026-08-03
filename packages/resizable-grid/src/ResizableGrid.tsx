@@ -322,25 +322,36 @@ if (typeof document !== 'undefined' && !stylesInjected) {
   stylesInjected = true
   const style = document.createElement('style')
   style.textContent = `
+/* Ручку видно СРАЗУ, без наведения: прозрачная полоса — это ручка, которую
+   находят мышью наугад. Полоса рисуется линией по центру, цвет перекрывается
+   переменной, но дефолт обязан читаться (см. правило контраста в CLAUDE.md). */
 .resizable-grid-handle-col {
   cursor: col-resize;
-  background: transparent;
-  transition: background 0.15s;
+  background: linear-gradient(to right,
+    transparent calc(50% - 0.5px),
+    var(--dumb-grid-handle, #64748b) calc(50% - 0.5px),
+    var(--dumb-grid-handle, #64748b) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px));
+  transition: background-color 0.15s;
   z-index: 1;
 }
 .resizable-grid-handle-col:hover,
 .resizable-grid-handle-col:active {
-  background: oklch(from currentColor l c h / 0.15);
+  background: oklch(from currentColor l c h / 0.2);
 }
 .resizable-grid-handle-row {
   cursor: row-resize;
-  background: transparent;
-  transition: background 0.15s;
+  background: linear-gradient(to bottom,
+    transparent calc(50% - 0.5px),
+    var(--dumb-grid-handle, #64748b) calc(50% - 0.5px),
+    var(--dumb-grid-handle, #64748b) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px));
+  transition: background-color 0.15s;
   z-index: 1;
 }
 .resizable-grid-handle-row:hover,
 .resizable-grid-handle-row:active {
-  background: oklch(from currentColor l c h / 0.15);
+  background: oklch(from currentColor l c h / 0.2);
 }`
   document.head.appendChild(style)
 }

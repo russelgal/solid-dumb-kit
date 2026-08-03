@@ -13,6 +13,7 @@
 - **[DumbBoard](docs/ru/DumbBoard.md)** — доска секций: блоки переносятся между секциями, сами секции переставляются и меняют размер. Внутри секции DOM не трогается — двигается только CSS `order`, а переезды доигрывает FLIP.
 - **[DumbGrid](docs/ru/DumbGrid.md)** — дашборд-сетка: блоки размером в целое число колонок и строк, перетаскивание и ресайз кратно сетке, три режима раскладки (`flow` / `dense` / свободный `{x,y}`), видимая разметка сетки, персист раскладки. Ни одного замера элементов за жест.
 - **[Утилиты](docs/ru/utils.md)** — хелперы без фреймворка: форматирование чисел/дат/размеров под `ru-RU`, слаги, извлечение картинок из ZIP, URL для imgproxy.
+- **[DumbFinder](docs/ru/DumbFinder.md)** — файловый менеджер по чужому хранилищу: папки, выделение рамкой, заливка броском, перенос перетаскиванием. Про S3 ничего не знает — говорит с адаптером `source`, за которым может стоять что угодно.
 - **[Odata1C](docs/ru/Odata1C.md)** — клиент стандартного интерфейса OData 1С без привязки к фреймворку: Basic-авторизация, сборка запросов и обход капризов платформы. Работает и в браузере, и в Node.
 
 **🔗 Живое демо:** https://russelgal.github.io/solid-dumb-kit/ · запускаемые исходники в [`examples/`](examples/).
@@ -77,6 +78,7 @@ pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 | --- | --- | --- |
 | `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
 | `@solid-dumb-kit/tree` | `DumbTree` — дерево и плоский список | `@solid-primitives/storage` |
+| `@solid-dumb-kit/finder` | `DumbFinder` — файлы в хранилище: папки, выделение, заливка, перенос | `@solid-primitives/upload` |
 | `@solid-dumb-kit/odata-1c` | клиент OData 1С — без Solid | — |
 | `@solid-dumb-kit/utils` | формат, slug, zip, imgproxy | `fflate`, `slug` |
 

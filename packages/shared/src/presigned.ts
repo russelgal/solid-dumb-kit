@@ -46,7 +46,12 @@ export function createPresignedUploader(opts: PresignedOptions): Uploader {
     opts.sign(file).then((p) => putWithProgress(file, p, ctx))
 }
 
-function putWithProgress(
+/**
+ * Положить файл по подписанной ссылке, показывая прогресс. Отдельно от
+ * `createPresignedUploader`, потому что подпись просят по-разному: галерее
+ * хватает файла, файндеру нужен ещё и префикс, куда класть.
+ */
+export function putWithProgress(
   file: File,
   p: Presigned,
   ctx: { onProgress: (f: number) => void; signal: AbortSignal },

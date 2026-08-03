@@ -49,15 +49,6 @@ const fakeUploader = (opts: { failEvery: () => number; ms: number }): Uploader =
 }
 
 export default function DumbGalleryExample() {
-  const [items, setItems] = createSignal<Array<GalleryItem>>([])
-  const [mode, setMode] = createSignal<'local' | 'upload'>('local')
-  const [failing, setFailing] = createSignal(false)
-  const [edit, setEdit] = createSignal(true)
-  const [conc, setConc] = createSignal(2)
-
-  // транспорт создаётся ОДИН раз, а режим падений читается в момент заливки
-  const fake = fakeUploader({ failEvery: () => (failing() ? 3 : 0), ms: 2200 })
-
   /**
    * Настоящее хранилище — ТОЛЬКО В ДЕВЕ.
    *
@@ -81,6 +72,17 @@ export default function DumbGalleryExample() {
           body: JSON.stringify({ name: file.name, type: file.type }),
         }).then((r) => r.json()),
     })
+
+  const [items, setItems] = createSignal<Array<GalleryItem>>([])
+  // есть настоящее хранилище — сразу в него: в деве проверять надо именно его,
+  // а не поддельную полосу
+  const [mode, setMode] = createSignal<'local' | 'upload'>(real ? 'upload' : 'local')
+  const [failing, setFailing] = createSignal(false)
+  const [edit, setEdit] = createSignal(true)
+  const [conc, setConc] = createSignal(2)
+
+  // транспорт создаётся ОДИН раз, а режим падений читается в момент заливки
+  const fake = fakeUploader({ failEvery: () => (failing() ? 3 : 0), ms: 2200 })
 
   const uploader = () => (mode() === 'upload' ? real || fake : undefined)
 
@@ -132,7 +134,10 @@ export default function DumbGalleryExample() {
           onChange={(v) => setMode(v as 'local' | 'upload')}
         />
         <Show when={mode() === 'upload'}>
-          <Check checked={failing()} onChange={setFailing}>ронять каждую третью</Check>
+          {/* ронять умеет только подделка — настоящее хранилище падает само, когда захочет */}
+          <Show when={!real}>
+            <Check checked={failing()} onChange={setFailing}>ронять каждую третью</Check>
+          </Show>
           <Pick
             label="одновременно"
             value={conc()}

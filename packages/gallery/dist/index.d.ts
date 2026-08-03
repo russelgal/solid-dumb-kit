@@ -1,44 +1,6 @@
 import { JSX } from 'solid-js';
-
-/** чем заливаем: своё дело потребителя, галерея транспорт не выбирает */
-type Uploader = (file: File, ctx: {
-    /** 0…1; зовётся часто, дёргать состояние на каждый вызов не стоит */
-    onProgress: (fraction: number) => void;
-    /** отменили — брось запрос */
-    signal: AbortSignal;
-}) => Promise<UploadResult>;
-type UploadResult = {
-    /** чем показывать картинку после заливки */
-    url: string;
-    /** ключ в хранилище — если он нужен потребителю для удаления */
-    key?: string;
-};
-type QueueEvents = {
-    /**
-     * Заливка ФАКТИЧЕСКИ началась, а не просто встала в очередь.
-     *
-     * Без этого события все поставленные файлы показывались бы «идущими», из
-     * которых реально едет только часть, — то самое враньё, ради которого
-     * очередь и заводилась.
-     */
-    onStart?: (id: string) => void;
-    onProgress?: (id: string, fraction: number) => void;
-    onDone?: (id: string, result: UploadResult) => void;
-    onError?: (id: string, message: string) => void;
-};
-type UploadQueue = {
-    /** поставить файл в очередь; id — тот же, что у элемента галереи */
-    add: (id: string, file: File) => void;
-    /** снять с очереди: ждущего выбросить, идущего прервать */
-    cancel: (id: string) => void;
-    /** снять всё разом — на размонтировании */
-    destroy: () => void;
-    /** сколько ещё не доехало: и в работе, и в ожидании */
-    pending: () => number;
-};
-declare function createUploadQueue(upload: Uploader, events?: QueueEvents, 
-/** сколько тянуть одновременно; больше шести смысла не имеет */
-concurrency?: number): UploadQueue;
+import { Uploader } from '@solid-dumb-kit/shared';
+export { Presigned, PresignedOptions, QueueEvents, UploadQueue, UploadResult, Uploader, createPresignedUploader, createUploadQueue } from '@solid-dumb-kit/shared';
 
 type GalleryStatus = 
 /** транспорта нет: файл живёт только в браузере */
@@ -96,30 +58,4 @@ type DumbGalleryProps = {
 };
 declare function DumbGallery(props: DumbGalleryProps): JSX.Element;
 
-/** Что должен вернуть твой сервер на просьбу подписать */
-type Presigned = {
-    /** куда класть — подписанная ссылка */
-    url: string;
-    /** каким методом; по умолчанию PUT */
-    method?: 'PUT' | 'POST';
-    /** заголовки, вошедшие в подпись: их обязательно повторить один в один */
-    headers?: Record<string, string>;
-    /** ключ объекта в бакете — вернётся потребителю как есть */
-    key?: string;
-    /** по какому адресу файл будет виден потом; не задан — берём `url` без query */
-    publicUrl?: string;
-};
-type PresignedOptions = {
-    /**
-     * Спросить у своего сервера подпись. Единственное место, где галерея ходит
-     * наружу за чем-то, кроме самого файла.
-     */
-    sign: (file: File) => Promise<Presigned>;
-};
-/**
- * Транспорт для `DumbGallery`: спрашивает подпись, кладёт файл по ней,
- * отдаёт публичный адрес.
- */
-declare function createPresignedUploader(opts: PresignedOptions): Uploader;
-
-export { DumbGallery, type DumbGalleryProps, type GalleryItem, type GalleryStatus, type Presigned, type PresignedOptions, type QueueEvents, type UploadQueue, type UploadResult, type Uploader, createPresignedUploader, createUploadQueue };
+export { DumbGallery, type DumbGalleryProps, type GalleryItem, type GalleryStatus };

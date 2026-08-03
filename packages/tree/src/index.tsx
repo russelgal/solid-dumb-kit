@@ -1,7 +1,1 @@
-export {
-  DumbTree,
-  type DumbTreeProps,
-  type DumbTreeNode,
-  type DumbTreeIcons,
-  type DumbTreeLabels,
-} from './DumbTree'
+export { DumbTree, type DumbTreeProps, type DumbTreeIcons, type TreeNode } from './DumbTree'

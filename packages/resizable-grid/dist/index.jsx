@@ -253,25 +253,36 @@ if (typeof document !== "undefined" && !stylesInjected) {
   stylesInjected = true;
   const style = document.createElement("style");
   style.textContent = `
+/* \u0420\u0443\u0447\u043A\u0443 \u0432\u0438\u0434\u043D\u043E \u0421\u0420\u0410\u0417\u0423, \u0431\u0435\u0437 \u043D\u0430\u0432\u0435\u0434\u0435\u043D\u0438\u044F: \u043F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u0430\u044F \u043F\u043E\u043B\u043E\u0441\u0430 \u2014 \u044D\u0442\u043E \u0440\u0443\u0447\u043A\u0430, \u043A\u043E\u0442\u043E\u0440\u0443\u044E
+   \u043D\u0430\u0445\u043E\u0434\u044F\u0442 \u043C\u044B\u0448\u044C\u044E \u043D\u0430\u0443\u0433\u0430\u0434. \u041F\u043E\u043B\u043E\u0441\u0430 \u0440\u0438\u0441\u0443\u0435\u0442\u0441\u044F \u043B\u0438\u043D\u0438\u0435\u0439 \u043F\u043E \u0446\u0435\u043D\u0442\u0440\u0443, \u0446\u0432\u0435\u0442 \u043F\u0435\u0440\u0435\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F
+   \u043F\u0435\u0440\u0435\u043C\u0435\u043D\u043D\u043E\u0439, \u043D\u043E \u0434\u0435\u0444\u043E\u043B\u0442 \u043E\u0431\u044F\u0437\u0430\u043D \u0447\u0438\u0442\u0430\u0442\u044C\u0441\u044F (\u0441\u043C. \u043F\u0440\u0430\u0432\u0438\u043B\u043E \u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442\u0430 \u0432 CLAUDE.md). */
 .resizable-grid-handle-col {
   cursor: col-resize;
-  background: transparent;
-  transition: background 0.15s;
+  background: linear-gradient(to right,
+    transparent calc(50% - 0.5px),
+    var(--dumb-grid-handle, #64748b) calc(50% - 0.5px),
+    var(--dumb-grid-handle, #64748b) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px));
+  transition: background-color 0.15s;
   z-index: 1;
 }
 .resizable-grid-handle-col:hover,
 .resizable-grid-handle-col:active {
-  background: oklch(from currentColor l c h / 0.15);
+  background: oklch(from currentColor l c h / 0.2);
 }
 .resizable-grid-handle-row {
   cursor: row-resize;
-  background: transparent;
-  transition: background 0.15s;
+  background: linear-gradient(to bottom,
+    transparent calc(50% - 0.5px),
+    var(--dumb-grid-handle, #64748b) calc(50% - 0.5px),
+    var(--dumb-grid-handle, #64748b) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px));
+  transition: background-color 0.15s;
   z-index: 1;
 }
 .resizable-grid-handle-row:hover,
 .resizable-grid-handle-row:active {
-  background: oklch(from currentColor l c h / 0.15);
+  background: oklch(from currentColor l c h / 0.2);
 }`;
   document.head.appendChild(style);
 }

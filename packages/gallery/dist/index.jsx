@@ -592,8 +592,6 @@ function injectStyle(id, css) {
   el.textContent = css;
   document.head.appendChild(el);
 }
-
-// src/uploadQueue.ts
 function createUploadQueue(upload, events = {}, concurrency = 3) {
   const waiting = [];
   const running = /* @__PURE__ */ new Map();
@@ -654,6 +652,46 @@ var clamp = (f) => f < 0 ? 0 : f > 1 ? 1 : f;
 function message(err) {
   if (err instanceof Error) return err.message;
   return String(err);
+}
+function createPresignedUploader(opts) {
+  return (file, ctx) => opts.sign(file).then((p) => putWithProgress(file, p, ctx));
+}
+function putWithProgress(file, p, ctx) {
+  return new Promise((resolve, reject) => {
+    if (ctx.signal.aborted) return reject(new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E"));
+    const xhr = new XMLHttpRequest();
+    xhr.open(p.method ?? "PUT", p.url, true);
+    for (const [k, v] of Object.entries(p.headers ?? {})) xhr.setRequestHeader(k, v);
+    const onAbort = () => xhr.abort();
+    ctx.signal.addEventListener("abort", onAbort, { once: true });
+    const done2 = () => ctx.signal.removeEventListener("abort", onAbort);
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) ctx.onProgress(ev.loaded / ev.total);
+    };
+    xhr.onload = () => {
+      done2();
+      if (xhr.status >= 200 && xhr.status < 300) {
+        ctx.onProgress(1);
+        resolve({ url: p.publicUrl ?? stripQuery(p.url), key: p.key });
+      } else {
+        reject(new Error(`\u0445\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u043E\u0442\u0432\u0435\u0442\u0438\u043B\u043E ${xhr.status}${reason(xhr.responseText)}`));
+      }
+    };
+    xhr.onerror = () => {
+      done2();
+      reject(new Error("\u0441\u0435\u0442\u044C \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430"));
+    };
+    xhr.onabort = () => {
+      done2();
+      reject(new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E"));
+    };
+    xhr.send(file);
+  });
+}
+var stripQuery = (url) => url.split("?")[0];
+function reason(body) {
+  const m = body && /<Message>([^<]+)<\/Message>/.exec(body);
+  return m ? `: ${m[1]}` : "";
 }
 
 // src/DumbGallery.tsx
@@ -827,48 +865,6 @@ function DumbGallery(props) {
         </span>
       </Show>
     </div>;
-}
-
-// src/presigned.ts
-function createPresignedUploader(opts) {
-  return (file, ctx) => opts.sign(file).then((p) => putWithProgress(file, p, ctx));
-}
-function putWithProgress(file, p, ctx) {
-  return new Promise((resolve, reject) => {
-    if (ctx.signal.aborted) return reject(new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E"));
-    const xhr = new XMLHttpRequest();
-    xhr.open(p.method ?? "PUT", p.url, true);
-    for (const [k, v] of Object.entries(p.headers ?? {})) xhr.setRequestHeader(k, v);
-    const onAbort = () => xhr.abort();
-    ctx.signal.addEventListener("abort", onAbort, { once: true });
-    const done2 = () => ctx.signal.removeEventListener("abort", onAbort);
-    xhr.upload.onprogress = (ev) => {
-      if (ev.lengthComputable) ctx.onProgress(ev.loaded / ev.total);
-    };
-    xhr.onload = () => {
-      done2();
-      if (xhr.status >= 200 && xhr.status < 300) {
-        ctx.onProgress(1);
-        resolve({ url: p.publicUrl ?? stripQuery(p.url), key: p.key });
-      } else {
-        reject(new Error(`\u0445\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u043E\u0442\u0432\u0435\u0442\u0438\u043B\u043E ${xhr.status}${reason(xhr.responseText)}`));
-      }
-    };
-    xhr.onerror = () => {
-      done2();
-      reject(new Error("\u0441\u0435\u0442\u044C \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430"));
-    };
-    xhr.onabort = () => {
-      done2();
-      reject(new Error("\u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E"));
-    };
-    xhr.send(file);
-  });
-}
-var stripQuery = (url) => url.split("?")[0];
-function reason(body) {
-  const m = body && /<Message>([^<]+)<\/Message>/.exec(body);
-  return m ? `: ${m[1]}` : "";
 }
 export {
   DumbGallery,

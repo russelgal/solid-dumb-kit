@@ -1,300 +1,327 @@
-import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
-import { makePersisted } from '@solid-primitives/storage'
-import { createDumbSortable } from '@solid-dumb-kit/sortable'
-
-// Раскрывающееся дерево (иерархия по parent) ИЛИ плоский список (flat) с нечётким
-// поиском, сортировкой (индекс/название) и опциональным drag-reorder (наш sortableCore).
-// Styled-but-configurable: даёт готовый daisyUI-вид, но иконки/строки/классы и доп.
-// контент строки переопределяются пропсами. Прикладные поля узла (published/count/…)
-// в кит НЕ протекают — выражай их через rowExtra/rowClass/titleClass/rowTitle.
+// Дерево: вложенные узлы, ленивая подгрузка ветки, зебра и выбор.
 //
-//   <DumbTree nodes={cats()} title="Каталог" storageKey="cat"
-//     activeId={() => active()} onSelect={id => go(id)} />
+// Узлы задаются ВЛОЖЕННО (`children`), а не плоским списком с `parent`: дерево
+// почти всегда приходит из хранилища уже вложенным, и разворачивать его в
+// плоский массив только ради компонента — лишняя работа на каждом ответе.
+//
+// Ветку можно не грузить заранее: `loadChildren(id)` зовётся в момент
+// раскрытия. Так дерево на десять тысяч узлов открывается мгновенно и тянет
+// только то, куда полезли. Есть и то, и другое — `children` побеждает.
+//
+// Своих иконок и цветов компонент не несёт: значки приходят КЛАССАМИ
+// (`icons`), цвета — CSS-переменными с контрастными фолбэками. Ни Tailwind, ни
+// daisyUI не требуются, но и не мешают.
 
-export type DumbTreeNode = {
-  id: number | string
-  parent: number | string
-  title: string
-  /** порядок среди соседей (для сортировки «по индексу») */
-  index?: number
-  /** доп. строка для поиска/тултипа (бренд категории и т.п.) */
-  meta?: string | null
-}
+import { createEffect, createMemo, createSignal, For, Show, on, type JSX } from 'solid-js'
+import { injectStyle } from '@solid-dumb-kit/shared'
 
-type Id = number | string
-
-// Нечёткий матч: подстрока ИЛИ подпоследовательность (регистронезависимо).
-function fuzzy(q: string, text: string): boolean {
-  if (!q) return true
-  q = q.toLowerCase()
-  text = (text || '').toLowerCase()
-  if (text.includes(q)) return true
-  let i = 0
-  for (const ch of text) {
-    if (ch === q[i]) i++
-    if (i === q.length) return true
-  }
-  return false
-}
-
-// Классы иконок передаёт ПОТРЕБИТЕЛЬ — кит не завязан на конкретный набор
-// (Solar/Lucide/…). Так строки `icon-[…]` живут в исходниках приложения, и его
-// собственный Tailwind/iconify компилирует CSS — без сканирования node_modules.
-export type DumbTreeIcons = {
-  /** папка свёрнута */
-  folder: string
-  /** папка раскрыта */
-  folderOpen: string
-  /** лист (flat-режим / узел без детей) */
-  leaf: string
-  /** стрелка раскрытой папки */
-  expanded: string
-  /** стрелка свёрнутой папки */
-  collapsed: string
-  search: string
-  sortIndex: string
-  sortName: string
-  dragHandle: string
-}
-
-export type DumbTreeLabels = Partial<{
-  search: string
-  sortIndex: string
-  sortName: string
-}>
-
-export type DumbTreeProps<T extends DumbTreeNode> = {
-  /** плоский массив узлов (иерархия по parent). undefined → спиннер загрузки */
-  nodes?: Array<T>
-  /** заголовок сайдбара */
-  title?: string
-  /** активный (выбранный) id — реактивный аксессор */
-  activeId?: () => Id | null | undefined
-  /** клик по строке */
-  onSelect?: (id: T['id'], node: T) => void
-
-  /** плоский список без иерархии/сворачивания */
-  flat?: boolean
-
-  /** скрыть поле поиска */
-  hideSearch?: boolean
-  placeholder?: string
-  /** свой матчер поиска (по умолчанию fuzzy по title/meta/id) */
-  match?: (node: T, query: string) => boolean
-
-  /** скрыть тоггл сортировки и держать порядок строго по index */
-  hideSort?: boolean
-  /** локаль для сравнения названий (по умолчанию — браузерная) */
-  locale?: string
-  /** ключ localStorage для раскрытых папок и режима сортировки */
-  storageKey?: string
-
-  /** drag-reorder flat-списка: переставить from→to в порядке отображения */
-  sortable?: (from: number, to: number) => void
-  /** анимировать перестановку; по умолчанию да, но не при prefers-reduced-motion */
-  animate?: boolean
-
-  /** доп. контент справа в строке (бейджи/иконки статуса) */
-  rowExtra?: (node: T) => JSX.Element
-  /** доп. класс на строку-ссылку (напр. opacity-50 для скрытых) */
-  rowClass?: (node: T) => string | undefined
-  /** доп. класс на текст строки (напр. line-through) */
-  titleClass?: (node: T) => string | undefined
-  /** свой tooltip строки (по умолчанию «title · meta · id N») */
-  rowTitle?: (node: T) => string
-
-  /** доп. класс на корневой <aside> */
+export type TreeNode = {
+  id: string
+  label: string
+  /** свой класс значка; не задан — берётся из `icons` по виду узла */
+  icon?: string
+  /** ветка ли это. Узел с `children` веткой считается и без флага */
+  isFolder?: boolean
+  children?: Array<TreeNode>
+  /** мелким справа: счётчик, размер, статус — что угодно */
+  badge?: string | number
+  /** строка станет ссылкой; навигацию делает потребитель */
+  href?: string
+  /** доп. класс на строку */
   class?: string
-  /** классы иконок (обязательно — кит не несёт свой набор) */
-  icons: DumbTreeIcons
-  labels?: DumbTreeLabels
 }
 
-const DEFAULT_LABELS: Required<DumbTreeLabels> = {
-  search: 'Поиск',
-  sortIndex: 'Индекс',
-  sortName: 'Название',
+/** Классы значков. Кит не завязан на набор — Solar, Phosphor, Lucide, эмодзи. */
+export type DumbTreeIcons = {
+  /** стрелка ветки; ОДНА на оба состояния — раскрытая поворачивается на 90° */
+  twist?: string
+  folder?: string
+  folderOpen?: string
+  leaf?: string
 }
 
-export function DumbTree<T extends DumbTreeNode>(props: DumbTreeProps<T>) {
-  const nodes = () => props.nodes
-  const icons = () => props.icons
-  const labels = (): Required<DumbTreeLabels> => ({ ...DEFAULT_LABELS, ...props.labels })
-  const activeId = () => props.activeId?.()
-  const [q, setQ] = createSignal('')
+export type DumbTreeProps = {
+  /** корни дерева; не заданы — тянем через `loadChildren('')` */
+  roots?: Array<TreeNode>
+  /**
+   * Содержимое ветки по требованию. Зовётся при первом раскрытии и повторно —
+   * когда сменился `refreshKey`.
+   */
+  loadChildren?: (parentId: string) => Promise<Array<TreeNode>>
 
-  const key = props.storageKey ?? 'dumb-tree'
-  const [expanded, setExpanded] = makePersisted(createSignal<Set<Id>>(new Set()), {
-    name: `${key}:expanded`,
-    serialize: (s: Set<Id>) => JSON.stringify([...s]),
-    deserialize: (str: string) => new Set<Id>(JSON.parse(str)),
-  })
+  /** выбранный узел */
+  selected?: () => string | null | undefined
+  onSelect?: (node: TreeNode) => void
+  /** правый клик по строке */
+  onContextMenu?: (ev: MouseEvent, node: TreeNode) => void
 
-  // режим сортировки: по индексу (порядок в дереве) | по названию. Персист в localStorage.
-  const [sort, setSort] = makePersisted(createSignal<'index' | 'name'>('index'), {
-    name: `${key}:sort`,
-    serialize: (vv: 'index' | 'name') => vv,
-    deserialize: (s: string) => (s === 'name' ? 'name' : 'index'),
-  })
-  const sortMode = () => (props.hideSort ? 'index' : sort())
-  // компаратор: основной ключ по режиму, второй — для стабильности
-  const cmp = (a: T, b: T) =>
-    sortMode() === 'name'
-      ? a.title.localeCompare(b.title, props.locale) || (a.index ?? 0) - (b.index ?? 0)
-      : (a.index ?? 0) - (b.index ?? 0) || a.title.localeCompare(b.title, props.locale)
+  /** ключ localStorage для раскрытых веток; не задан — не помним */
+  storageKey?: string
+  /** сменился — раскрытые ветки перечитываются */
+  refreshKey?: () => number | string
 
-  const byId = createMemo(() => new Map((nodes() ?? []).map(n => [n.id, n])))
-  const childrenOf = createMemo(() => {
-    const m = new Map<Id, Array<T>>()
-    for (const n of nodes() ?? []) {
-      let a = m.get(n.parent)
-      if (!a) { a = []; m.set(n.parent, a) }
-      a.push(n)
+  /** фильтр по названию: показываем совпавшие и дорогу к ним */
+  query?: () => string
+  /** свой матчер; по умолчанию подстрока без учёта регистра */
+  match?: (node: TreeNode, query: string) => boolean
+
+  icons?: DumbTreeIcons
+  /** размер дерева одним кеглем: высота строк и отступы едут следом */
+  size?: string
+  /** полосы через строку; по умолчанию есть */
+  stripes?: boolean
+
+  /** свой контент справа в строке (кнопки, бейджи) */
+  renderAction?: (node: TreeNode) => JSX.Element
+  /** узел можно тащить: что вернули — то и уедет в `dataTransfer` */
+  getDragData?: (node: TreeNode) => { type: string; id: string; label: string } | null
+
+  class?: string
+  style?: JSX.CSSProperties
+}
+
+/**
+ * Структурные стили. Полосы рисуются ОДНИМ градиентом на всё дерево с шагом в
+ * строку (`1lh`), а не классом на каждую вторую: при раскрытии вложенных счёт
+ * начинался бы заново внутри каждого уровня и сбивался с общего ритма.
+ * `background-attachment: local` — чтобы полосы ехали вместе с прокруткой.
+ *
+ * Отсюда же требование к строке: её высота — ровно 1lh. Меняешь размер —
+ * меняется кегль, а высота, полосы и отступы едут следом сами.
+ */
+const CSS = `
+  .dumb-tree { list-style: none; margin: 0; padding: 0; line-height: 1.4;
+               font-size: var(--dumb-tree-size, 13px);
+               color: var(--dumb-tree-fg, inherit); user-select: none }
+  .dumb-tree[data-stripes="1"] {
+    background-image: repeating-linear-gradient(to bottom,
+      transparent 0, transparent 1lh,
+      var(--dumb-tree-zebra, rgb(0 0 0 / .035)) 1lh,
+      var(--dumb-tree-zebra, rgb(0 0 0 / .035)) 2lh);
+    background-attachment: local }
+  .dumb-tree ul { list-style: none; margin: 0; padding-left: 1rem }
+  .dumb-tree-row { display: flex; align-items: center; gap: .375rem; height: 1lh;
+                   padding: 0 4px; border-radius: 3px; cursor: pointer;
+                   text-decoration: none; color: inherit }
+  .dumb-tree-row:hover { background: var(--dumb-tree-hover, rgb(0 0 0 / .06)) }
+  .dumb-tree-row[aria-current="true"] { font-weight: 500;
+                                        color: var(--dumb-tree-accent, #2563eb);
+                                        background: var(--dumb-tree-sel, rgb(37 99 235 / .14)) }
+  .dumb-tree-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+                     white-space: nowrap }
+  .dumb-tree-badge { flex: none; font-size: .82em; font-variant-numeric: tabular-nums;
+                     color: var(--dumb-tree-dim, #475569) }
+  /* стрелка одна на оба состояния: раскрытая — та же, повёрнутая */
+  .dumb-tree-twist { flex: none; width: 13px; height: 1lh; padding: 0; border: 0;
+                     display: grid; place-items: center; background: none; cursor: pointer;
+                     color: var(--dumb-tree-dim, #475569); font-size: .8em }
+  .dumb-tree-twist > span { width: 10px; height: 10px; transition: transform .12s }
+  .dumb-tree-row[data-open="1"] .dumb-tree-twist > span { transform: rotate(90deg) }
+  .dumb-tree-icon { flex: none; width: 15px; height: 15px }
+  .dumb-tree-wait { flex: none; width: 13px; text-align: center; opacity: .6 }
+`
+
+/** раскрытые ветки: помним между заходами, если дали ключ */
+function createOpened(key?: string) {
+  const read = () => {
+    if (!key) return new Set<string>()
+    try {
+      return new Set<string>(JSON.parse(localStorage.getItem(key) ?? '[]'))
+    } catch {
+      return new Set<string>()
     }
-    for (const a of m.values()) a.sort(cmp)
-    return m
-  })
-  const rootId = createMemo<Id>(() => {
-    const ns = nodes() ?? []
-    if (!ns.length) return 0
-    const ids = new Set(ns.map(n => n.id))
-    return (ns.find(n => !ids.has(n.parent)) ?? ns[0]).id
-  })
-
-  const matches = (n: T, query: string) =>
-    props.match
-      ? props.match(n, query)
-      : fuzzy(query, n.title) || (!!n.meta && fuzzy(query, n.meta)) || String(n.id).includes(query)
-
-  // при поиске — множество видимых узлов (совпадения + их предки)
-  const visible = createMemo<Set<Id> | null>(() => {
-    const query = q().trim().toLowerCase()
-    if (!query) return null
-    const ids = byId()
-    const show = new Set<Id>()
-    for (const n of nodes() ?? []) {
-      if (matches(n, query)) {
-        let cur: T | undefined = n
-        while (cur) { show.add(cur.id); cur = ids.get(cur.parent) }
-      }
+  }
+  const [ids, setIds] = createSignal<Set<string>>(read())
+  const save = (next: Set<string>) => {
+    if (!key) return
+    try {
+      localStorage.setItem(key, JSON.stringify([...next]))
+    } catch {
+      /* приватный режим — не беда: это удобство, а не данные */
     }
-    return show
-  })
+  }
+  return {
+    has: (id: string) => ids().has(id),
+    toggle: (id: string) =>
+      setIds((was) => {
+        const next = new Set(was)
+        next.has(id) ? next.delete(id) : next.add(id)
+        save(next)
+        return next
+      }),
+  }
+}
 
-  // плоский список: фильтр поиском + сортировка по выбранному режиму
-  const flatList = createMemo(() => {
-    const query = q().trim().toLowerCase()
-    return (nodes() ?? []).filter(n => !query || matches(n, query)).sort(cmp)
-  })
+type Opened = ReturnType<typeof createOpened>
 
-  // drag-reorder flat-списка (отключаем во время поиска — порядок отображения ≠ исходный)
-  const fs = createDumbSortable({
-    order: () => flatList().map(n => String(n.id)),
-    disabled: () => !!q().trim(),
-    get animate() { return props.animate },
-    onEnd: (from, to) => props.sortable?.(from, to),
-  })
+export function DumbTree(props: DumbTreeProps) {
+  injectStyle('tree', CSS)
 
-  const toggle = (id: Id) =>
-    setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const opened = createOpened(props.storageKey)
+  const query = () => props.query?.().trim().toLowerCase() ?? ''
+  const matches = (n: TreeNode) =>
+    props.match ? props.match(n, query()) : n.label.toLowerCase().includes(query())
 
-  const defaultTitle = (n: T) =>
-    `${n.title}${n.meta ? ' · ' + n.meta : ''} · id ${n.id}`
-
-  const RowLink = (p: { node: T; icon: string }) => (
-    <a
-      class={`flex items-center gap-1.5 flex-1 min-w-0 cursor-pointer rounded px-1.5 py-0.5 ${activeId() === p.node.id ? 'bg-primary/10 text-primary' : 'hover:bg-base-200'} ${props.rowClass?.(p.node) ?? ''}`}
-      onClick={() => props.onSelect?.(p.node.id, p.node)}
-      title={props.rowTitle ? props.rowTitle(p.node) : defaultTitle(p.node)}
+  return (
+    <ul
+      class={`dumb-tree ${props.class ?? ''}`}
+      data-stripes={props.stripes === false ? undefined : '1'}
+      style={{ ...(props.size ? { '--dumb-tree-size': props.size } : {}), ...props.style }}
     >
-      <span class={`size-4 shrink-0 ${p.icon}`} />
-      <span class={`truncate ${props.titleClass?.(p.node) ?? ''}`}>{p.node.title}</span>
-      <Show when={props.rowExtra}>
-        <span class="ml-auto shrink-0 flex items-center gap-1">{props.rowExtra!(p.node)}</span>
-      </Show>
-    </a>
+      <Branch parentId="" nodes={props.roots} opened={opened} tree={props} matches={matches} />
+    </ul>
+  )
+}
+
+/**
+ * Ветка. Узлы либо приходят готовыми, либо тянутся `loadChildren` — и то и
+ * другое обрабатывается здесь, чтобы у строки не было двух разных путей.
+ */
+function Branch(p: {
+  parentId: string
+  nodes?: Array<TreeNode>
+  opened: Opened
+  tree: DumbTreeProps
+  matches: (n: TreeNode) => boolean
+}): JSX.Element {
+  const [loaded, setLoaded] = createSignal<Array<TreeNode> | null>(null)
+  const [busy, setBusy] = createSignal(false)
+
+  const load = () => {
+    const fn = p.tree.loadChildren
+    if (!fn || p.nodes) return
+    setBusy(true)
+    fn(p.parentId)
+      .then(setLoaded)
+      .catch(() => setLoaded([]))
+      .finally(() => setBusy(false))
+  }
+
+  // Тянем при создании ветки. Для корней это старт, для вложенных — момент
+  // первого раскрытия: ветка рендерится только раскрытой, значит и запрос
+  // уходит ровно тогда, когда в неё полезли.
+  if (!p.nodes) load()
+  // сменился ключ обновления — перечитываем то, что уже тянули
+  createEffect(
+    on(
+      () => p.tree.refreshKey?.(),
+      () => {
+        if (loaded()) load()
+      },
+      { defer: true },
+    ),
   )
 
-  function Node(p: { id: Id }) {
-    const node = () => byId().get(p.id)
-    const kids = () => childrenOf().get(p.id) ?? []
-    const isExpanded = () => (visible() ? true : expanded().has(p.id))
-    return (
-      <Show when={node() && (!visible() || visible()!.has(p.id))}>
-        <li>
-          <div class="flex items-center">
-            <Show when={kids().length} fallback={<span class="w-5 shrink-0" />}>
-              <button class="btn btn-ghost btn-xs btn-square" onClick={() => toggle(p.id)}>
-                <span class={`size-4 ${isExpanded() ? icons().expanded : icons().collapsed}`} />
-              </button>
-            </Show>
-            <RowLink
-              node={node()!}
-              icon={isExpanded() && kids().length ? icons().folderOpen : icons().folder}
-            />
-          </div>
-          <Show when={isExpanded() && kids().length}>
-            <ul class="pl-3 border-l border-base-200 ml-3">
-              <For each={kids()}>{k => <Node id={k.id} />}</For>
-            </ul>
-          </Show>
-        </li>
+  const list = createMemo(() => {
+    const all = p.nodes ?? loaded() ?? []
+    const q = p.tree.query?.().trim()
+    if (!q) return all
+    // узел виден, если совпал сам или совпало что-то внутри него
+    const fits = (n: TreeNode): boolean =>
+      p.matches(n) || (n.children ?? []).some(fits)
+    return all.filter(fits)
+  })
+
+  return (
+    <>
+      <Show when={busy() && !p.parentId}>
+        <li class="dumb-tree-wait">…</li>
       </Show>
-    )
+      <For each={list()}>
+        {(node) => (
+          <Row node={node} opened={p.opened} tree={p.tree} matches={p.matches} />
+        )}
+      </For>
+    </>
+  )
+}
+
+function Row(p: {
+  node: TreeNode
+  opened: Opened
+  tree: DumbTreeProps
+  matches: (n: TreeNode) => boolean
+}): JSX.Element {
+  const kids = () => p.node.children
+  const branch = () => !!p.node.isFolder || !!kids()?.length
+  // при поиске раскрываем всё: иначе совпадение остаётся спрятанным в ветке
+  const open = () => p.opened.has(p.node.id) || !!p.tree.query?.().trim()
+  const chosen = () => p.tree.selected?.() === p.node.id
+
+  const icon = () =>
+    p.node.icon ??
+    (branch()
+      ? open()
+        ? p.tree.icons?.folderOpen ?? p.tree.icons?.folder
+        : p.tree.icons?.folder
+      : p.tree.icons?.leaf)
+
+  const drag = () => p.tree.getDragData?.(p.node) ?? null
+
+  const inner = (
+    <>
+      <Show when={branch()} fallback={<span class="dumb-tree-twist" />}>
+        <button
+          type="button"
+          class="dumb-tree-twist"
+          data-no-select
+          title={open() ? 'свернуть' : 'развернуть'}
+          onClick={(ev) => {
+            ev.preventDefault()
+            ev.stopPropagation()
+            p.opened.toggle(p.node.id)
+          }}
+        >
+          <Show when={p.tree.icons?.twist} fallback={open() ? '▾' : '▸'}>
+            <span class={p.tree.icons!.twist} />
+          </Show>
+        </button>
+      </Show>
+      <Show when={icon()}>
+        <span class={`dumb-tree-icon ${icon()}`} />
+      </Show>
+      <span class="dumb-tree-label">{p.node.label}</span>
+      <Show when={p.tree.renderAction}>{p.tree.renderAction!(p.node)}</Show>
+      <Show when={p.node.badge !== undefined && p.node.badge !== ''}>
+        <span class="dumb-tree-badge">{p.node.badge}</span>
+      </Show>
+    </>
+  )
+
+  const rowProps = {
+    class: `dumb-tree-row ${p.node.class ?? ''}`,
+    'aria-current': chosen(),
+    'data-open': open() ? '1' : undefined,
+    'data-id': p.node.id,
+    draggable: !!drag(),
+    onDragStart: (ev: DragEvent) => {
+      const d = drag()
+      if (!d || !ev.dataTransfer) return
+      ev.dataTransfer.setData('application/json', JSON.stringify(d))
+      ev.dataTransfer.effectAllowed = 'copy'
+    },
+    onClick: () => p.tree.onSelect?.(p.node),
+    onContextMenu: (ev: MouseEvent) => p.tree.onContextMenu?.(ev, p.node),
   }
 
   return (
-    <aside class={`w-64 shrink-0 sticky top-0 self-start max-h-screen overflow-y-auto ${props.class ?? ''}`}>
-      <Show when={props.title}>
-        <div class="text-xs opacity-50 mb-2 px-1">{props.title}</div>
+    <li>
+      <Show when={p.node.href} fallback={<div {...rowProps}>{inner}</div>}>
+        <a {...rowProps} href={p.node.href}>
+          {inner}
+        </a>
       </Show>
-      <Show when={!props.hideSearch}>
-        <label class="input input-sm input-bordered flex items-center gap-2 mb-2 w-full">
-          <span class={`size-4 opacity-50 ${icons().search}`} />
-          <input value={q()} onInput={e => setQ(e.currentTarget.value)} placeholder={props.placeholder ?? labels().search} class="grow" />
-        </label>
-      </Show>
-      <Show when={!props.hideSort}>
-        <div class="join mb-2 w-full">
-          <button
-            class={`btn btn-xs join-item grow gap-1 ${sort() === 'index' ? 'btn-active btn-primary' : 'btn-ghost'}`}
-            onClick={() => setSort('index')}
-            title={labels().sortIndex}
-          >
-            <span class={`size-3.5 ${icons().sortIndex}`} />
-            {labels().sortIndex}
-          </button>
-          <button
-            class={`btn btn-xs join-item grow gap-1 ${sort() === 'name' ? 'btn-active btn-primary' : 'btn-ghost'}`}
-            onClick={() => setSort('name')}
-            title={labels().sortName}
-          >
-            <span class={`size-3.5 ${icons().sortName}`} />
-            {labels().sortName}
-          </button>
-        </div>
-      </Show>
-      <Show when={nodes()} fallback={<span class="loading loading-spinner" />}>
-        <ul class="bg-base-100 rounded-box shadow w-full text-sm p-2 max-h-[80vh] overflow-auto">
-          <Show
-            when={props.flat}
-            fallback={<For each={childrenOf().get(rootId()) ?? []}>{n => <Node id={n.id} />}</For>}
-          >
-            <For each={flatList()}>
-              {n => (
-                <li ref={props.sortable ? fs.bind(String(n.id)) : undefined} class="flex items-center">
-                  <Show when={props.sortable}>
-                    <button data-drag-handle type="button" class="cursor-grab text-base-content/30 hover:text-base-content shrink-0" title="Перетащить">
-                      <span class={`size-4 ${icons().dragHandle}`} />
-                    </button>
-                  </Show>
-                  <RowLink node={n} icon={icons().leaf} />
-                </li>
-              )}
-            </For>
-          </Show>
+      <Show when={branch() && open()}>
+        <ul>
+          <Branch
+            parentId={p.node.id}
+            nodes={kids()}
+            opened={p.opened}
+            tree={p.tree}
+            matches={p.matches}
+          />
         </ul>
       </Show>
-    </aside>
+    </li>
   )
 }

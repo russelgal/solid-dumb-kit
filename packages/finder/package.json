@@ -1,13 +1,13 @@
 {
-  "name": "@solid-dumb-kit/tree",
-  "version": "0.5.0",
-  "description": "Дерево и плоский список с поиском",
+  "name": "@solid-dumb-kit/finder",
+  "version": "0.1.0",
+  "description": "Файловый менеджер по чужому хранилищу: папки, выделение рамкой, заливка, перенос",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/russelgal/solid-dumb-kit",
-    "directory": "packages/tree"
+    "directory": "packages/finder"
   },
   "homepage": "https://github.com/russelgal/solid-dumb-kit#readme",
   "sideEffects": false,
@@ -32,6 +32,9 @@
     "build": "tsup --config ../../configs/tsup.ts",
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
+  "dependencies": {
+    "@solid-primitives/upload": "^0.1.5"
+  },
   "peerDependencies": {
     "solid-js": "^1.8.0"
   },
@@ -39,7 +42,9 @@
     "access": "public"
   },
   "devDependencies": {
+    "@solid-dumb-kit/resizable-grid": "workspace:*",
+    "@solid-dumb-kit/selection": "workspace:*",
     "@solid-dumb-kit/shared": "workspace:*",
-    "@solid-dumb-kit/sortable": "workspace:*"
+    "@solid-dumb-kit/utils": "workspace:*"
   }
 }

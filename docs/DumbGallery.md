@@ -116,7 +116,7 @@ That's what `createPresignedUploader` uses.
 ## Trying it against a live store
 
 The kit's showcase already has this wired up — **for development only**. The dev
-server exposes `/api/sign` (the `playground/devSign.ts` plugin, `apply: 'serve'`)
+server exposes `/api/sign` (the `playground/devS3.ts` plugin, `apply: 'serve'`)
 which signs a URL with keys from the root `.env`. The built showcase and Pages
 have no server, hence no signing: there the tab honestly runs on the fake
 transport.

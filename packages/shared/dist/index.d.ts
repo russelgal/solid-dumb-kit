@@ -134,4 +134,79 @@ type PressGate = {
  */
 declare function createPressGate(opts?: PressGateOptions): PressGate;
 
-export { ACCEL, type AutoScroller, EDGE, type Flip, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, type PressGate, type PressGateOptions, type StableOrder, type ViewGeom, autoScrollSpeed, createAutoScroller, createFlip, createPressGate, createStableOrder, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
+/** чем заливаем: своё дело потребителя, галерея транспорт не выбирает */
+type Uploader = (file: File, ctx: {
+    /** 0…1; зовётся часто, дёргать состояние на каждый вызов не стоит */
+    onProgress: (fraction: number) => void;
+    /** отменили — брось запрос */
+    signal: AbortSignal;
+}) => Promise<UploadResult>;
+type UploadResult = {
+    /** чем показывать картинку после заливки */
+    url: string;
+    /** ключ в хранилище — если он нужен потребителю для удаления */
+    key?: string;
+};
+type QueueEvents = {
+    /**
+     * Заливка ФАКТИЧЕСКИ началась, а не просто встала в очередь.
+     *
+     * Без этого события все поставленные файлы показывались бы «идущими», из
+     * которых реально едет только часть, — то самое враньё, ради которого
+     * очередь и заводилась.
+     */
+    onStart?: (id: string) => void;
+    onProgress?: (id: string, fraction: number) => void;
+    onDone?: (id: string, result: UploadResult) => void;
+    onError?: (id: string, message: string) => void;
+};
+type UploadQueue = {
+    /** поставить файл в очередь; id — тот же, что у элемента галереи */
+    add: (id: string, file: File) => void;
+    /** снять с очереди: ждущего выбросить, идущего прервать */
+    cancel: (id: string) => void;
+    /** снять всё разом — на размонтировании */
+    destroy: () => void;
+    /** сколько ещё не доехало: и в работе, и в ожидании */
+    pending: () => number;
+};
+declare function createUploadQueue(upload: Uploader, events?: QueueEvents, 
+/** сколько тянуть одновременно; больше шести смысла не имеет */
+concurrency?: number): UploadQueue;
+
+/** Что должен вернуть твой сервер на просьбу подписать */
+type Presigned = {
+    /** куда класть — подписанная ссылка */
+    url: string;
+    /** каким методом; по умолчанию PUT */
+    method?: 'PUT' | 'POST';
+    /** заголовки, вошедшие в подпись: их обязательно повторить один в один */
+    headers?: Record<string, string>;
+    /** ключ объекта в бакете — вернётся потребителю как есть */
+    key?: string;
+    /** по какому адресу файл будет виден потом; не задан — берём `url` без query */
+    publicUrl?: string;
+};
+type PresignedOptions = {
+    /**
+     * Спросить у своего сервера подпись. Единственное место, где галерея ходит
+     * наружу за чем-то, кроме самого файла.
+     */
+    sign: (file: File) => Promise<Presigned>;
+};
+/**
+ * Транспорт для `DumbGallery`: спрашивает подпись, кладёт файл по ней,
+ * отдаёт публичный адрес.
+ */
+declare function createPresignedUploader(opts: PresignedOptions): Uploader;
+/**
+ * Положить файл по подписанной ссылке, показывая прогресс. Отдельно от
+ * `createPresignedUploader`, потому что подпись просят по-разному: галерее
+ * хватает файла, файндеру нужен ещё и префикс, куда класть.
+ */
+declare function putWithProgress(file: File, p: Presigned, ctx: {
+    onProgress: (f: number) => void;
+    signal: AbortSignal;
+}): Promise<UploadResult>;
+
+export { ACCEL, type AutoScroller, EDGE, type Flip, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, type Presigned, type PresignedOptions, type PressGate, type PressGateOptions, type QueueEvents, type StableOrder, type UploadQueue, type UploadResult, type Uploader, type ViewGeom, autoScrollSpeed, createAutoScroller, createFlip, createPresignedUploader, createPressGate, createStableOrder, createUploadQueue, doScroll, focusInside, injectStyle, measure, prefersReducedMotion, putWithProgress, restoreTextSelection, scrollOf, scrollParent, shouldAnimate, suppressTextSelection, targetIsInteractive, viewOrigin };
