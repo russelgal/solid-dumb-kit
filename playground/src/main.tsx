@@ -11,6 +11,9 @@ import ResizableGridExample from "../../examples/pointer/ResizableGrid.example";
 import DumbGalleryExample from "../../examples/pointer/DumbGallery.example";
 import DumbLightboxExample from "../../examples/pointer/DumbLightbox.example";
 import ContextMenuExample from "../../examples/pointer/ContextMenu.example";
+import DumbModalExample from "../../examples/pointer/DumbModal.example";
+import DumbToastExample from "../../examples/pointer/DumbToast.example";
+import DumbDateRangeExample from "../../examples/pointer/DumbDateRange.example";
 import DumbTimelineExample from "../../examples/pointer/DumbTimeline.example";
 import DumbGridExample from "../../examples/pointer/DumbGrid.example";
 import BoardExample from "../../examples/pointer/Board.example";
@@ -101,6 +104,27 @@ const GROUPS: Array<Group> = [
         pkg: "context-menu",
         hint: "правый клик + тосты",
         Comp: ContextMenuExample,
+      },
+      {
+        id: "modal",
+        label: "DumbModal",
+        pkg: "modal",
+        hint: "нативный dialog в top layer",
+        Comp: DumbModalExample,
+      },
+      {
+        id: "toast",
+        label: "DumbToast",
+        pkg: "toast",
+        hint: "очередь сообщений и вопрос",
+        Comp: DumbToastExample,
+      },
+      {
+        id: "daterange",
+        label: "DumbDateRange",
+        pkg: "date-range",
+        hint: "период с занятостью",
+        Comp: DumbDateRangeExample,
       },
       {
         id: "timeline",

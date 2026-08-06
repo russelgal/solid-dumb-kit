@@ -20,6 +20,11 @@ import PrimitivesExample from '../data/primitives.example'
 import DumbLightboxExample from '../pointer/DumbLightbox.example'
 import ContextMenuExample from '../pointer/ContextMenu.example'
 import DumbTimelineExample from '../pointer/DumbTimeline.example'
+import DumbModalExample from '../pointer/DumbModal.example'
+import DumbToastExample from '../pointer/DumbToast.example'
+import DumbDateRangeExample from '../pointer/DumbDateRange.example'
+import DumbPropsTableExample from '../data/DumbPropsTable.example'
+import DumbUserManagerExample from '../data/DumbUserManager.example'
 import DumbSortableDndExample from '../dnd/DumbSortableDnd.example'
 import DumbBoardExample from '../dnd/DumbBoard.example'
 import DumbBoardEvenExample from '../dnd/DumbBoardEven.example'
@@ -79,6 +84,11 @@ const EXAMPLES = [
   ['DumbLightbox', DumbLightboxExample],
   ['ContextMenu', ContextMenuExample],
   ['DumbTimeline', DumbTimelineExample],
+  ['DumbModal', DumbModalExample],
+  ['DumbToast', DumbToastExample],
+  ['DumbDateRange', DumbDateRangeExample],
+  ['DumbPropsTable', DumbPropsTableExample],
+  ['DumbUserManager', DumbUserManagerExample],
 ] as const
 
 describe('examples — монтируются и рендерят разметку', () => {
