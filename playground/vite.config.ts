@@ -13,7 +13,10 @@ import { devS3 } from './devS3'
 export default defineConfig({
   // `.env` лежит в корне репы, а корень витрины — `playground/`
   envDir: '..',
-  base: '/solid-dumb-kit/', // project Pages: https://<user>.github.io/solid-dumb-kit/
+  // Витрина живёт по двум адресам, и корень у них разный: на GitHub Pages это
+  // подпуть проекта (`/solid-dumb-kit/`), на Vercel — сам домен. Отсюда база из
+  // окружения: `VERCEL` там выставлен всегда, гадать не приходится.
+  base: process.env.VERCEL ? '/' : '/solid-dumb-kit/',
   // `devS3` — ручки к хранилищу для вкладок DumbGallery и DumbFinder (подпись
   // на заливку, листинг, удаление, перенос), только в дев: у плагина
   // `apply: 'serve'`, в сборку он не попадает.

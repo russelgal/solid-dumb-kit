@@ -83,6 +83,9 @@ the machine at all:
 claude mcp add --transport http solid-dumb-kit https://solid-dumb-kit.vercel.app/mcp
 ```
 
+The component playground lives on the same domain (`/`), the server on `/mcp`,
+and a landing page with this command on `/mcp-info`.
+
 Its data there is a snapshot of the repo (`mcp/snapshot.json`) built at deploy
 time: there is no disk with the repository on a host. The snapshot is rebuilt on
 every push to `main`, so the answers keep up with the repo on their own. It

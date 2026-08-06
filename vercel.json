@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "echo 'зависимостей у сервера нет — ставить нечего'",
-  "buildCommand": "node mcp/snapshot.mjs",
-  "outputDirectory": "public",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "node mcp/snapshot.mjs && pnpm demo:build",
+  "outputDirectory": "playground/dist",
   "functions": {
     "api/mcp.mjs": {
       "includeFiles": "mcp/**",
@@ -11,5 +11,6 @@
   },
   "rewrites": [
     { "source": "/mcp", "destination": "/api/mcp" }
-  ]
+  ],
+  "cleanUrls": true
 }

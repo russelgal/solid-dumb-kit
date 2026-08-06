@@ -21,7 +21,7 @@
 - **[Длинные списки](docs/ru/Virtual.md)** — `createVirtualizer`: окно списка считается арифметикой по заявленному размеру строки, элементы не измеряются ни разу. Рядом `createRowIndex` — сортировка и фильтр миллиона строк в воркере, порциями и с отменой устаревшего запроса.
 - **[Odata1C](docs/ru/Odata1C.md)** — клиент стандартного интерфейса OData 1С без привязки к фреймворку: Basic-авторизация, сборка запросов и обход капризов платформы. Работает и в браузере, и в Node.
 
-**🔗 Живое демо:** https://russelgal.github.io/solid-dumb-kit/ · запускаемые исходники в [`examples/`](examples/).
+**🔗 Живое демо:** https://solid-dumb-kit.vercel.app/ (зеркало на GitHub Pages: https://russelgal.github.io/solid-dumb-kit/) · запускаемые исходники в [`examples/`](examples/).
 
 Ветка `0.x` рассчитана на **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 

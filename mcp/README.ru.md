@@ -81,6 +81,9 @@ claude mcp add solid-dumb-kit -- node ~/.solid-dumb-kit/mcp/server.mjs
 claude mcp add --transport http solid-dumb-kit https://solid-dumb-kit.vercel.app/mcp
 ```
 
+Витрина компонентов живёт на том же домене (`/`), сервер — на `/mcp`, а
+страница-визитка с этой командой — на `/mcp-info`.
+
 Данные там — снимок репы (`mcp/snapshot.json`), собираемый на деплое: диска с
 репозиторием на хостинге нет. Снимок пересобирается на каждый пуш в `main`,
 поэтому ответы догоняют репу сами. Невыпущенных правок он, разумеется, не

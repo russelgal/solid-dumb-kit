@@ -21,7 +21,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[Long lists](docs/Virtual.md)** — `createVirtualizer`: the list window is arithmetic over a declared row size, elements are never measured. Next to it `createRowIndex` — sorting and filtering a million rows in a worker, in chunks, cancelling stale requests.
 - **[Odata1C](docs/Odata1C.md)** — framework-free client for the 1C standard OData interface: Basic auth, request building, and the platform's quirks handled for you. Runs in the browser and in Node.
 
-**🔗 Live demo:** https://russelgal.github.io/solid-dumb-kit/ · runnable source in [`examples/`](examples/).
+**🔗 Live demo:** https://solid-dumb-kit.vercel.app/ (mirrored on GitHub Pages: https://russelgal.github.io/solid-dumb-kit/) · runnable source in [`examples/`](examples/).
 
 Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
