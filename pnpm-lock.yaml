@@ -60,6 +60,9 @@ importers:
       '@solid-dumb-kit/odata-1c':
         specifier: workspace:*
         version: link:packages/odata-1c
+      '@solid-dumb-kit/props-table':
+        specifier: workspace:*
+        version: link:packages/props-table
       '@solid-dumb-kit/resizable-grid':
         specifier: workspace:*
         version: link:packages/resizable-grid
@@ -251,6 +254,12 @@ importers:
 
   packages/odata-1c: {}
 
+  packages/props-table:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+
   packages/resizable-grid:
     dependencies:
       '@solid-primitives/storage':
@@ -354,6 +363,16 @@ importers:
       '@solid-dumb-kit/sortable':
         specifier: workspace:*
         version: link:../sortable
+
+  packages/user-manager:
+    dependencies:
+      solid-js:
+        specifier: ^1.8.0
+        version: 1.9.14
+    devDependencies:
+      '@solid-dumb-kit/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/utils:
     dependencies:
