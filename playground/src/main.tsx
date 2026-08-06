@@ -191,7 +191,7 @@ const GROUPS: Array<Group> = [
         id: "virtual",
         label: "createVirtualizer",
         pkg: "shared",
-        hint: "10 000 строк без замеров",
+        hint: "миллион строк, пул узлов, воркер",
         Comp: VirtualExample,
       },
       {

@@ -17,6 +17,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[DumbTimeline](docs/DumbTimeline.md)** — a booking chart: resource rows × time columns. Nights, hours and day-long rentals on one grid; no measurements during a drag, and overlapping neighbours is impossible by construction.
 - **[DumbDateRange](docs/DumbDateRange.md)** — a calendar for a day or a range, with occupancy shown before the click. Dates are strings, so timezones can't shift a night.
 - **[DumbModal](docs/DumbModal.md)** · **[DumbLightbox](docs/DumbLightbox.md)** · **[DumbContextMenu](docs/DumbContextMenu.md)** · **[DumbToast](docs/DumbToast.md)** — the top-layer family: native `<dialog>` and the Popover API with anchor positioning, so nothing fights over `z-index`.
+- **[Long lists](docs/Virtual.md)** — `createVirtualizer`: the list window is arithmetic over a declared row size, elements are never measured. Next to it `createRowIndex` — sorting and filtering a million rows in a worker, in chunks, cancelling stale requests.
 - **[Odata1C](docs/Odata1C.md)** — framework-free client for the 1C standard OData interface: Basic auth, request building, and the platform's quirks handled for you. Runs in the browser and in Node.
 
 **🔗 Live demo:** https://russelgal.github.io/solid-dumb-kit/ · runnable source in [`examples/`](examples/).
@@ -24,6 +25,8 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 **📓 Changelog:** [CHANGELOG.md](CHANGELOG.md)
+
+**🤖 For agents:** [the kit's MCP server](mcp/README.md) — packages, props, examples and the repo's rules without reading the sources; zero dependencies.
 
 **🧭 Write-ups:** [What turned out to be true](docs/Findings.md) — verified claims, with how they were verified · [Global DnD](docs/GlobalDnd.md) — dragging between unlike things (a proposal, not implemented)
 
@@ -125,6 +128,8 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 | `genSlug` | util | [docs/utils.md#genslug--url-slugs](docs/utils.md#genslug--url-slugs) |
 | `extractImagesFromZip` | util | [docs/utils.md#extractimagesfromzip--images-out-of-a-zip](docs/utils.md#extractimagesfromzip--images-out-of-a-zip) |
 | `imgproxyUrl` / `configureImgproxy` / `ImgproxyOps` / `ImgproxyConfig` | util | [docs/utils.md#imgproxyurl--imgproxy-url-builder](docs/utils.md#imgproxyurl--imgproxy-url-builder) |
+| `createVirtualizer` / `scrollOffsetFor` / `VirtualOptions` / `VirtualRange` / `MAX_SCROLL_HEIGHT` | primitive | [docs/Virtual.md](docs/Virtual.md) |
+| `createRowIndex` / `RowIndexOptions` / `RowIndexResult` / `RowColumn` / `RowQuery` | primitive | [docs/Virtual.md#createrowindex--sorting-and-filtering-off-the-main-thread](docs/Virtual.md#createrowindex--sorting-and-filtering-off-the-main-thread) |
 | `OdataClient` / `createOdataClient` / `OdataClientOptions` / `OdataListResponse` | client | [docs/Odata1C.md](docs/Odata1C.md) |
 | `OdataError` / `odataString` / `toBase64` | client | [docs/Odata1C.md#helpers](docs/Odata1C.md#helpers) |
 

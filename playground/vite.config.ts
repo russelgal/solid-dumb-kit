@@ -21,5 +21,18 @@ export default defineConfig({
   resolve: {
     conditions: ['solid-dumb-kit-source', 'development', 'browser'],
   },
-  server: { fs: { allow: ['..'] } }, // examples/ живут вне корня playground
+  server: {
+    fs: { allow: ['..'] }, // examples/ живут вне корня playground
+    // Изоляция страницы: без неё `SharedArrayBuffer` бросает в конструкторе, и
+    // вкладка `#virtual` не покажет общий с воркером буфер. В дев-сервере это
+    // просто заголовки; на GitHub Pages их взять неоткуда, там ту же пару
+    // ставит `public/coi-sw.js`, включаемый кнопкой прямо на вкладке.
+    //
+    // `credentialless`, а не `require-corp`: под `require-corp` картинки из
+    // чужого хранилища (галерея, файловый менеджер) перестали бы грузиться.
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
+  },
 })

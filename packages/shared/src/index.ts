@@ -102,10 +102,27 @@ export {
 export {
   createVirtualizer,
   scrollOffsetFor,
+  MAX_SCROLL_HEIGHT,
   type Virtual,
   type VirtualOptions,
   type VirtualRange,
 } from './virtual'
+
+/**
+ * Порядок строк для длинных списков: сортировка и фильтр считаются в воркере и
+ * ПРЕРЫВАЮТСЯ на полуслове, когда пришёл запрос посвежее. Наружу отдаётся
+ * `Uint32Array` номеров строк — сами данные никто не двигает.
+ */
+export {
+  createRowIndex,
+  type RowIndex,
+  type RowIndexOptions,
+  type RowIndexResult,
+  type RowIndexProgress,
+  type RowColumn,
+  type RowQuery,
+  type SortDir,
+} from './rowIndex'
 
 /**
  * Бросок ПАПКИ, а не только файлов: `dataTransfer.files` плоский, дерево лежит

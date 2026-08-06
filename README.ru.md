@@ -17,6 +17,7 @@
 - **[DumbTimeline](docs/ru/DumbTimeline.md)** — шахматка: строки-ресурсы × колонки-время. Сутки, часы и дневная аренда на одной сетке; за жест ни одного замера, а наложение соседей невозможно по устройству.
 - **[DumbDateRange](docs/ru/DumbDateRange.md)** — календарь на день или период, занятость видна до клика. Дата — строка, поэтому часовые пояса не сдвигают ночь.
 - **[DumbModal](docs/ru/DumbModal.md)** · **[DumbLightbox](docs/ru/DumbLightbox.md)** · **[DumbContextMenu](docs/ru/DumbContextMenu.md)** · **[DumbToast](docs/ru/DumbToast.md)** — семейство top layer: нативный `<dialog>` и Popover API с anchor positioning, поэтому никто не спорит за `z-index`.
+- **[Длинные списки](docs/ru/Virtual.md)** — `createVirtualizer`: окно списка считается арифметикой по заявленному размеру строки, элементы не измеряются ни разу. Рядом `createRowIndex` — сортировка и фильтр миллиона строк в воркере, порциями и с отменой устаревшего запроса.
 - **[Odata1C](docs/ru/Odata1C.md)** — клиент стандартного интерфейса OData 1С без привязки к фреймворку: Basic-авторизация, сборка запросов и обход капризов платформы. Работает и в браузере, и в Node.
 
 **🔗 Живое демо:** https://russelgal.github.io/solid-dumb-kit/ · запускаемые исходники в [`examples/`](examples/).
@@ -24,6 +25,8 @@
 Ветка `0.x` рассчитана на **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 **📓 История изменений:** [CHANGELOG.md](CHANGELOG.md)
+
+**🤖 Агентам:** [MCP-сервер кита](mcp/README.ru.md) — пакеты, пропсы, примеры и правила репы без вычитывания исходников; зависимостей нет.
 
 **🧭 Разборы:** [Что выяснилось на практике](docs/ru/Findings.md) — проверенные утверждения с тем, как именно проверялось · [Сквозной DnD](docs/ru/GlobalDnd.md) — как перетаскивать между разнородными штуками (предложение, не реализовано)
 
@@ -125,6 +128,8 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 | `genSlug` | утилита | [docs/ru/utils.md#genslug--слаги-для-url](docs/ru/utils.md#genslug--слаги-для-url) |
 | `extractImagesFromZip` | утилита | [docs/ru/utils.md#extractimagesfromzip--картинки-из-zip](docs/ru/utils.md#extractimagesfromzip--картинки-из-zip) |
 | `imgproxyUrl` / `configureImgproxy` / `ImgproxyOps` / `ImgproxyConfig` | утилита | [docs/ru/utils.md#imgproxyurl--сборка-url-для-imgproxy](docs/ru/utils.md#imgproxyurl--сборка-url-для-imgproxy) |
+| `createVirtualizer` / `scrollOffsetFor` / `VirtualOptions` / `VirtualRange` / `MAX_SCROLL_HEIGHT` | примитив | [docs/ru/Virtual.md](docs/ru/Virtual.md) |
+| `createRowIndex` / `RowIndexOptions` / `RowIndexResult` / `RowColumn` / `RowQuery` | примитив | [docs/ru/Virtual.md#createrowindex--сортировка-и-фильтр-вне-главного-потока](docs/ru/Virtual.md#createrowindex--сортировка-и-фильтр-вне-главного-потока) |
 | `OdataClient` / `createOdataClient` / `OdataClientOptions` / `OdataListResponse` | клиент | [docs/ru/Odata1C.md](docs/ru/Odata1C.md) |
 | `OdataError` / `odataString` / `toBase64` | клиент | [docs/ru/Odata1C.md#хелперы](docs/ru/Odata1C.md#хелперы) |
 
