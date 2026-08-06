@@ -1,5 +1,6 @@
 {
   "name": "solid-dumb-kit",
+  "version": "0.1.0",
   "private": true,
   "description": "SolidJS UI kit: sortable, selection, grids, table, tree — one package per feature",
   "type": "module",
