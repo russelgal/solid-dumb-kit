@@ -97,7 +97,9 @@ function extractType(source, typeName) {
   // Работаем строками, а не смещениями в тексте: со смещениями тут же
   // наживаешь ошибку на единицу и отдаёшь тип без первой буквы.
   const lines = source.split('\n')
-  const decl = new RegExp(`^export type ${typeName}\\b`)
+  // `type` и `interface` вперемешку: в ките пишут и так и так, а спрашивающему
+  // разница безразлична — ему нужны поля с комментариями
+  const decl = new RegExp(`^export (?:type|interface) ${typeName}\\b`)
   const at = lines.findIndex((line) => decl.test(line))
   if (at < 0) return null
   // прихватываем комментарий над объявлением — в нём всё самое ценное

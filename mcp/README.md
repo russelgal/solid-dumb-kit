@@ -50,29 +50,29 @@ location, so the working directory it is launched from does not matter.
 
 The server's knowledge *is* the repo's files (`packages/*/src`, `docs`,
 `examples`, `CLAUDE.md`), so "install one package from npm" does not work here:
-the repo has to be there. Hence two ways.
-
-**No clone, one command.** The repo root declares a `bin`, so it can be run
-straight from GitHub — npm downloads and caches it itself:
-
-```bash
-claude mcp add solid-dumb-kit -- npx -y github:russelgal/solid-dumb-kit
-```
-
-The whole repository is downloaded (otherwise the server would have nothing to
-read), but that is a few megabytes, once: after that npx serves it from cache.
-To move to a newer state — `npx -y github:russelgal/solid-dumb-kit@main` after
-`npm cache clean --force`, or just clone it.
-
-**With a clone** — if the kit is edited on this machine anyway:
+a copy of the repository has to be there. The upside is that the server has no
+dependencies, so there is nothing to install after cloning — no `npm install`
+at all:
 
 ```bash
-git clone git@github.com:russelgal/solid-dumb-kit.git
-claude mcp add solid-dumb-kit -- node "$PWD/solid-dumb-kit/mcp/server.mjs"
+git clone --depth 1 git@github.com:russelgal/solid-dumb-kit.git ~/.solid-dumb-kit
+claude mcp add solid-dumb-kit -- node ~/.solid-dumb-kit/mcp/server.mjs
 ```
 
-That way the server answers from the WORKING copy — unreleased edits, your own
-branches — which is usually what you want while developing the kit itself.
+The clone takes about 6 MB (the repo carries a built `dist` — consumers install
+the packages straight from GitHub and have nothing to build with). Refresh it
+with `git -C ~/.solid-dumb-kit pull`.
+
+> **Why not `npx github:russelgal/solid-dumb-kit`.** Tried it — it does not
+> work, and MCP is not to blame. Installing from git makes npm pull dev
+> dependencies too, and the repo root has a couple of dozen of them written as
+> `workspace:*` — a protocol pnpm understands and npm does not, so the install
+> dies with `EUNSUPPORTEDPROTOCOL`. The only fix would be dropping `workspace:*`
+> from the root, i.e. breaking a working setup for the sake of one command.
+
+If the kit is edited on this machine anyway, point at your working copy rather
+than a separate clone: the server then answers with unreleased edits, on
+whatever branch you are on.
 
 ## Checking it
 
