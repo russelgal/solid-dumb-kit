@@ -403,13 +403,22 @@ function DumbContextMenu(props) {
       else close();
     };
     window.addEventListener("pointerup", release, true);
-    const track = (ev) => {
-      if (!open() || !ev.buttons) return;
-      const under = document.elementFromPoint(ev.clientX, ev.clientY);
+    let hitRaf = 0;
+    let hitX = 0, hitY = 0;
+    const hitTest = () => {
+      hitRaf = 0;
+      if (!open()) return;
+      const under = document.elementFromPoint(hitX, hitY);
       const hit = under?.closest(".dumb-menu-item");
       if (!hit) return;
       const panel = hit.closest(".dumb-menu");
       stack.find((p) => p.el === panel)?.focusItem(hit);
+    };
+    const track = (ev) => {
+      if (!open() || !ev.buttons) return;
+      hitX = ev.clientX;
+      hitY = ev.clientY;
+      if (!hitRaf) hitRaf = requestAnimationFrame(hitTest);
     };
     window.addEventListener("pointermove", track, true);
     const bail = () => close();
@@ -422,6 +431,7 @@ function DumbContextMenu(props) {
       window.removeEventListener("pointerdown", away, true);
       window.removeEventListener("pointerup", release, true);
       window.removeEventListener("pointermove", track, true);
+      if (hitRaf) cancelAnimationFrame(hitRaf);
       window.removeEventListener("scroll", bail, true);
       window.removeEventListener("resize", bail);
       window.removeEventListener("blur", bail);

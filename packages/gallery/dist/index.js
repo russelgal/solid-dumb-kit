@@ -741,7 +741,7 @@ var _tmpl$3 = /* @__PURE__ */ template(`<div>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<button type=button data-no-drag title=\u0443\u0431\u0440\u0430\u0442\u044C>\u2715`);
 var _tmpl$5 = /* @__PURE__ */ template(`<span class=dumb-gallery-bar><i>`);
 var _tmpl$6 = /* @__PURE__ */ template(`<figure class=dumb-gallery-tile><img>`);
-var CSS = `
+var STYLES = `
           /* grid, \u0430 \u043D\u0435 flex: \u043D\u0430 \u043D\u0451\u043C \u0438 \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F CSS order, \u043A\u043E\u0442\u043E\u0440\u044B\u043C \u0434\u0432\u0438\u0433\u0430\u044E\u0442\u0441\u044F \u043F\u043B\u0438\u0442\u043A\u0438 */
           .dumb-gallery { display: grid; gap: var(--dumb-gallery-gap, 10px);
                           grid-template-columns:
@@ -775,7 +775,7 @@ function matchesAccept(file, accept) {
   });
 }
 function DumbGallery(props) {
-  injectStyle("gallery", CSS);
+  injectStyle("gallery", STYLES);
   const editable = () => props.editable !== false;
   const accept = () => props.accept ?? "image/*";
   const [dragOver, setDragOver] = createSignal(false);

@@ -33,7 +33,7 @@ function injectStyle(id, css) {
 }
 
 // src/DumbTree.tsx
-var CSS = `
+var STYLES = `
   .dumb-tree { list-style: none; margin: 0; padding: 0; line-height: 1.4;
                font-size: var(--dumb-tree-size, 13px);
                color: var(--dumb-tree-fg, inherit); user-select: none }
@@ -92,7 +92,7 @@ function createOpened(key) {
   };
 }
 function DumbTree(props) {
-  injectStyle("tree", CSS);
+  injectStyle("tree", STYLES);
   const opened = createOpened(props.storageKey);
   const query = () => props.query?.().trim().toLowerCase() ?? "";
   const matches = (n) => props.match ? props.match(n, query()) : n.label.toLowerCase().includes(query());
@@ -172,11 +172,19 @@ function Row(p) {
       </Show>
     </>;
   const rowProps = {
-    class: `dumb-tree-row ${p.node.class ?? ""}`,
-    "aria-current": chosen(),
-    "data-open": open() ? "1" : void 0,
+    get class() {
+      return `dumb-tree-row ${p.node.class ?? ""}`;
+    },
+    get "aria-current"() {
+      return chosen();
+    },
+    get "data-open"() {
+      return open() ? "1" : void 0;
+    },
     "data-id": p.node.id,
-    draggable: !!drag(),
+    get draggable() {
+      return !!drag();
+    },
     onDragStart: (ev) => {
       const d = drag();
       if (!d || !ev.dataTransfer) return;

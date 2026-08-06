@@ -28,7 +28,7 @@ function injectStyle(id, css) {
 }
 
 // src/DumbLightbox.tsx
-var CSS = `
+var STYLES = `
   .dumb-lightbox { border: 0; padding: 0; max-width: 100vw; max-height: 100vh;
                    width: 100vw; height: 100vh; background: transparent; overflow: hidden }
   .dumb-lightbox::backdrop { background: rgb(0 0 0 / .82) }
@@ -59,7 +59,7 @@ var CSS = `
   .dumb-lightbox-nav[data-side="next"] { right: 12px }
 `;
 function DumbLightbox(props) {
-  injectStyle("lightbox", CSS);
+  injectStyle("lightbox", STYLES);
   let dialog;
   const [zoom, setZoom] = createSignal(1);
   const [pan, setPan] = createSignal({ x: 0, y: 0 });

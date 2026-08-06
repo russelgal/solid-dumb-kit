@@ -740,7 +740,7 @@ function moveAt(list, from, to) {
 }
 
 // src/DumbBoard.tsx
-var CSS = `
+var STYLES = `
           .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
                         grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
           .dumb-board-panel { position: relative; min-width: 0 }
@@ -812,7 +812,7 @@ var CSS = `
                                 cursor: nwse-resize; touch-action: none }
         `;
 function DumbBoard(props) {
-  injectStyle("board", CSS);
+  injectStyle("board", STYLES);
   const cols = () => props.cols ?? 12;
   const gap = () => props.gap ?? 14;
   const rowH = () => props.rowHeight ?? 76;

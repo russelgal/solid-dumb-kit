@@ -34,7 +34,7 @@ var _tmpl$5 = /* @__PURE__ */ template(`<div class=dumb-lightbox-bar data-at=top
 var _tmpl$6 = /* @__PURE__ */ template(`<button type=button class=dumb-lightbox-nav data-side=prev title="\u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F (\u2190)">\u2039`);
 var _tmpl$7 = /* @__PURE__ */ template(`<button type=button class=dumb-lightbox-nav data-side=next title="\u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F (\u2192)">\u203A`);
 var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-lightbox-bar data-at=bottom>`);
-var CSS = `
+var STYLES = `
   .dumb-lightbox { border: 0; padding: 0; max-width: 100vw; max-height: 100vh;
                    width: 100vw; height: 100vh; background: transparent; overflow: hidden }
   .dumb-lightbox::backdrop { background: rgb(0 0 0 / .82) }
@@ -65,7 +65,7 @@ var CSS = `
   .dumb-lightbox-nav[data-side="next"] { right: 12px }
 `;
 function DumbLightbox(props) {
-  injectStyle("lightbox", CSS);
+  injectStyle("lightbox", STYLES);
   let dialog;
   const [zoom, setZoom] = createSignal(1);
   const [pan, setPan] = createSignal({

@@ -473,7 +473,7 @@ var _tmpl$0 = /* @__PURE__ */ template(`<section class=dumb-board-panel><div cla
 var _tmpl$1 = /* @__PURE__ */ template(`<span class=dumb-board-block-grip>`);
 var _tmpl$10 = /* @__PURE__ */ template(`<div class=dumb-board-block>`);
 var _tmpl$11 = /* @__PURE__ */ template(`<div class=dumb-board-frame aria-hidden=true>`);
-var CSS = `
+var STYLES = `
           .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
                         grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
           .dumb-board-panel { position: relative; min-width: 0 }
@@ -545,7 +545,7 @@ var CSS = `
                                 cursor: nwse-resize; touch-action: none }
         `;
 function DumbBoard(props) {
-  injectStyle("board", CSS);
+  injectStyle("board", STYLES);
   const cols = () => props.cols ?? 12;
   const gap = () => props.gap ?? 14;
   const rowH = () => props.rowHeight ?? 76;
