@@ -492,7 +492,9 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
    */
   const settle = (want: S): S | null => {
     if (free(want)) return want
-    const sc = scale()
+    // ищем свободное место шагом ЭТОЙ строки: номер переезжает на сутки, а не
+    // на полчаса — иначе «ближайшее свободное» оказывается тем же днём в 16:30
+    const sc = scaleOf(want.row)
     const step = snapOf(sc)
     const at = toMinutes(want.from, sc, 'from')
     for (let i = 1; i <= 24; i++) {
@@ -526,30 +528,56 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
   const rowGeom = createMemo(() => {
     const tops = new Map<string, number>()
     const heights: Array<number> = []
+    /** начало каждого ряда; `offsets[i + 1]` — его низ, то есть линия под ним */
+    const offsets: Array<number> = []
     const items = shownRows()
     let y = 0
     for (const it of items) {
       const h = it.kind === 'group' ? Math.round(rowH() * 0.72) : rowH() * levelsOf(it.row.id)
       if (it.kind === 'row') tops.set(it.row.id, y)
+      offsets.push(y)
       heights.push(h)
       y += h
     }
-    return { tops, heights, total: y, items }
+    offsets.push(y)
+    return { tops, heights, offsets, total: y, items }
   })
-  /** какая строка на этой высоте — строки разной высоты, да ещё и с группами */
+  /** номер строки по её id — чтобы не звать `indexOf` в горячем пути жеста */
+  const rowOrder = createMemo(() => {
+    const order = new Map<string, number>()
+    props.rows.forEach((r, i) => order.set(r.id, i))
+    return order
+  })
+
+  /**
+   * Какая строка на этой высоте — строки разной высоты, да ещё и с группами.
+   *
+   * Бинарный поиск по накопленным высотам, а не проход по всем рядам: функция
+   * зовётся НА КАЖДОЕ ДВИЖЕНИЕ УКАЗАТЕЛЯ во время драга, и на трёх сотнях
+   * строк линейный перебор со вложенным `indexOf` стоил бы десятков тысяч
+   * операций в кадр.
+   */
   const rowAtY = (y: number): number => {
-    const { items, heights } = rowGeom()
-    let acc = 0
-    let lastRow = 0
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i]
-      if (it.kind === 'row') {
-        if (y >= acc && y < acc + heights[i]) return rowIds().indexOf(it.row.id)
-        lastRow = rowIds().indexOf(it.row.id)
-      }
-      acc += heights[i]
+    const { items, offsets } = rowGeom()
+    if (!items.length) return 0
+    let lo = 0
+    let hi = items.length - 1
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1
+      if (offsets[mid] <= y) lo = mid
+      else hi = mid - 1
     }
-    return Math.max(0, lastRow)
+    // попали в заголовок группы — берём ближайшую строку выше, а нет её, так
+    // ниже: у заголовка своей брони не бывает
+    for (let i = lo; i >= 0; i--) {
+      const it = items[i]
+      if (it.kind === 'row') return rowOrder().get(it.row.id) ?? 0
+    }
+    for (let i = lo + 1; i < items.length; i++) {
+      const it = items[i]
+      if (it.kind === 'row') return rowOrder().get(it.row.id) ?? 0
+    }
+    return 0
   }
 
   /**
@@ -604,6 +632,7 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
 
   let canvas!: HTMLDivElement
   let viewport: HTMLDivElement | undefined
+
 
   /**
    * Ширина вьюпорта — из `ResizeObserver`, а не `clientWidth` на каждый кадр:
@@ -728,19 +757,20 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
     const apply = (cx: number, cy: number) => {
       if (!origin) return
       const { x, y } = toLocal(cx, cy)
-      const sc = scale()
       let next: S
       if (mode === 'move') {
+        const rows = rowIds()
+        // строку берём ПО КООРДИНАТЕ, а не по сдвигу в строках: строки разной
+        // высоты, и «сдвиг на две строки» ничего не значит
+        const rowIdx = Math.max(0, Math.min(rows.length - 1, rowAtY(y)))
+        // шаг — ЦЕЛЕВОЙ строки, как и правила: тащим в номер — едем сутками
+        const sc = scaleOf(rows[rowIdx])
         // Сдвиг — в ШАГАХ ПЕРЕМЕЩЕНИЯ от точки захвата (не в колонках!): сетка
         // может быть мельче шага, как в бане — час против двухчасового сеанса.
         const step = snapOf(sc)
         const shiftedMin = ((cx - grabbedAt.x) / sc.colW) * sc.stepMin
         const startMin =
           toMinutes(startSpan.from, sc, 'from') + Math.round(shiftedMin / step) * step
-        const rows = rowIds()
-        // строку берём ПО КООРДИНАТЕ, а не по сдвигу в строках: строки разной
-        // высоты, и «сдвиг на две строки» ничего не значит
-        const rowIdx = Math.max(0, Math.min(rows.length - 1, rowAtY(y)))
         // правила — ЦЕЛЕВОЙ строки: перетащили в банкетный зал — жить по его
         // окну, а не по окну строки, откуда тащили
         const moved = moveTo(startSpan, Math.max(0, startMin), sc, rulesOf(rows[rowIdx]))
@@ -750,6 +780,8 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
         if (!ok) return                    // некуда — оставляем как было
         next = ok
       } else {
+        // ресайз из строки не уходит — шкала своей строки
+        const sc = scaleOf(startSpan.row)
         // Край встаёт на СВОЮ отметку: заезд в 16:00, выезд в 12:00. Обычный
         // снап в шаг положил бы его на полночь — полоса удлинялась бы на
         // полдня, и щель на пересменку пропадала.
@@ -1169,14 +1201,16 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
             })
           }}
         >
-          <For each={rowGeom().heights}>
-            {(h, i) => {
-              // линия рисуется по НАКОПЛЕННОЙ высоте: ряды разной высоты, да и
-              // заголовки групп между ними тоже занимают место
-              const top = () => rowGeom().heights.slice(0, i() + 1).reduce((a, b) => a + b, 0)
-              void h
-              return <div class="dumb-tl-hline" style={{ top: `${top()}px` }} />
-            }}
+          {/*
+            Линия под каждым рядом. Её место — накопленная высота
+            (`offsets[i + 1]`), а не сумма среза высот: ряды разной высоты, и
+            пересчёт суммы для каждой линии стоил бы квадрата от числа строк —
+            на десятке строк незаметно, на сотнях уже нет.
+          */}
+          <For each={rowGeom().items}>
+            {(_, i) => (
+              <div class="dumb-tl-hline" style={{ top: `${rowGeom().offsets[i() + 1]}px` }} />
+            )}
           </For>
           {/*
             Закрытые часы строк со СВОИМ окном (банкетный зал с 14:00): по два

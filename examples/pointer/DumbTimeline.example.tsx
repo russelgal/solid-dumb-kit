@@ -185,6 +185,11 @@ const ALL_ROWS = [
   ...VENUE_ROWS,
 ];
 
+/** чем торгует строка — по ней решаем, спрашивать ли время при создании */
+const unitOf = (rows: typeof ALL_ROWS | typeof ROOMS, row: string) =>
+  (rows.find((r) => r.id === row) as { unit?: "day" | "hour" } | undefined)
+    ?.unit ?? "day";
+
 /** брони номеров — вкладка «номера · сутки» */
 const SEED: Array<Booking> = [
   B("b1", "101", 0, 3, "Иванов"),
@@ -279,7 +284,9 @@ export default function DumbTimelineExample() {
   );
   const [hour, setHour] = createSignal(12);
   const [dur, setDur] = createSignal(2);
-  const [days, setDays] = createSignal(30);
+  // Дней на экране. Дефолт недельный: на почасовой сетке день — это 24 колонки,
+  // и месяц целиком превращается в семьсот колонок, по которым только скроллить
+  const [days, setDays] = createSignal(7);
 
   /**
    * Сетка, строки и данные меняются вместе: это три разных бизнеса на ОДНОМ
@@ -287,13 +294,23 @@ export default function DumbTimelineExample() {
    */
   const view = () => {
     if (mode() === "all") {
-      // одна сетка на всё: сутки, потому что проживание тут главное
+      /*
+        Сетка ПОЧАСОВАЯ — та же, что у площадок, и по той же причине: час
+        нельзя нарисовать в колонке шириной в сутки. Раньше здесь были сутки,
+        и все брони площадок сжимались в засечки шириной в пиксель — видно, что
+        занято, и больше ничего.
+
+        Проживанию часовая шкала не мешает: строка помечена `unit: 'day'`,
+        заезд и выезд подставляет шкала (`checkIn`/`checkOut`), поэтому полоса
+        по-прежнему начинается в 16:00 и кончается в 12:00 — только теперь это
+        видно по часам, а не подразумевается.
+      */
       return {
         rows: ALL_ROWS,
         data: all(),
         set: setAll,
         scale: {
-          ...SCALES.hotel(start, days(), dayW()),
+          ...SCALES.venues(start, days(), hourW()),
           checkIn: checkIn() * 60,
           checkOut: checkOut() * 60,
         },
@@ -308,9 +325,9 @@ export default function DumbTimelineExample() {
         rows: VENUE_ROWS,
         data: venues(),
         set: setVenues,
-        scale: SCALES.venues(start, 7, hourW()),
+        scale: SCALES.venues(start, days(), hourW()),
         gap: 0,
-        days: 7,
+        days: days(),
       };
     }
     return {
@@ -383,11 +400,14 @@ export default function DumbTimelineExample() {
         брони — меню, клик по пустой клетке — создать.
       </p>
       <p class="mb-2 max-w-[92ch] text-sm text-base-content">
-        <b>Всё вместе</b> — проживание и почасовые активности в одной шахматке:
-        строка знает, чем торгует (<code>unit: 'day' | 'hour'</code>). Протяни
-        по пустому месту: на суточной строке получится бронь с 16:00 до 12:00, а
-        на почасовой компонент честно скажет, что время из такого жеста не
-        вытащить, — и его спросят отдельно.
+        <b>Всё вместе</b> — проживание и площадки в одной шахматке, и сетка тут
+        <b> почасовая</b>: строка знает, чем торгует (
+        <code>unit: 'day' | 'hour'</code>), а вот час нарисовать в колонке
+        шириной в сутки нельзя. Правила площадок работают ровно те же, что на
+        отдельной вкладке — окна, минимумы, уборка. Номеру часовая шкала не
+        мешает: полоса начинается в 16:00 и кончается в 12:00, только теперь это
+        видно по часам. Протянешь по номеру — спросим даты, по бане — создадим
+        сразу.
       </p>
       <p class="mb-2 max-w-[92ch] text-sm text-base-content">
         <b>Площадки</b> — сетка круглосуточная и одна, а правила у каждой
@@ -441,10 +461,11 @@ export default function DumbTimelineExample() {
         <Pick
           label="дней"
           value={days()}
-          options={[14, 30, 60, 90].map((n) => ({ value: n }))}
+          options={[3, 7, 14, 30].map((n) => ({ value: n }))}
           onChange={(v) => setDays(Number(v))}
         />
-        <Show when={mode() === "hotel"}>
+        {/* заезд и выезд есть у проживания — а его нет только на площадках */}
+        <Show when={mode() !== "venues"}>
           <Pick
             label="заезд"
             value={checkIn()}
@@ -466,26 +487,26 @@ export default function DumbTimelineExample() {
         </Show>
         {/* масштаб: у суточной и часовой сетки свои ползунки */}
         <label class="flex items-center gap-1 text-sm">
-          {mode() === "venues" ? "час" : "день"}
+          {mode() === "hotel" ? "день" : "час"}
           <input
             type="range"
             class="range range-xs w-24"
             min="16"
             max="90"
-            value={mode() === "venues" ? hourW() : dayW()}
+            value={mode() === "hotel" ? dayW() : hourW()}
             onInput={(e) => {
               const v = Number(e.currentTarget.value);
-              if (mode() === "venues") {
-                setHourW(v);
-                keep("hourW", v);
-              } else {
+              if (mode() === "hotel") {
                 setDayW(v);
                 keep("dayW", v);
+              } else {
+                setHourW(v);
+                keep("hourW", v);
               }
             }}
           />
           <span class="w-8 tabular-nums opacity-70">
-            {mode() === "venues" ? hourW() : dayW()}
+            {mode() === "hotel" ? dayW() : hourW()}
           </span>
         </label>
         <label class="flex items-center gap-1 text-sm">
@@ -527,7 +548,7 @@ export default function DumbTimelineExample() {
         scale={view().scale}
         rowH={rowH()}
         gapMin={view().gap}
-        showRoom={mode() === "venues"}
+        showRoom={mode() !== "hotel"}
         class="rounded-box border border-base-300"
         style={{ "max-height": "54vh" }}
         dayClass={(at) => {
@@ -543,7 +564,7 @@ export default function DumbTimelineExample() {
         summaryTitle="Свободно"
         // на часовой линейке строка сводки не нужна: колонка-час узкая, и
         // одно и то же число повторялось бы 24 раза на день
-        summary={mode() === "venues" ? undefined : (at) => {
+        summary={mode() !== "hotel" ? undefined : (at) => {
           // сколько номеров свободно в эти сутки — та самая строка, на которую
           // в системах бронирования смотрят чаще, чем на сами брони
           const day = at.slice(0, 10);
@@ -566,7 +587,10 @@ export default function DumbTimelineExample() {
           }
           // Почасовая сетка отдаёт точное время — создаём сразу. Минимум уже
           // подтянут компонентом: выделил бане час — пришло два.
-          if (mode() === "venues") {
+          //
+          // Решает ЕДИНИЦА СТРОКИ, а не режим: в «всё вместе» на одной и той же
+          // часовой сетке живут и баня (создаём сразу), и номер (спросим даты).
+          if (unitOf(view().rows, row) === "hour") {
             view().set((was) => [
               ...was,
               { id: `v${Date.now()}`, row, from, to, guest: "новая", kind: "сайт" },
@@ -575,9 +599,13 @@ export default function DumbTimelineExample() {
             return;
           }
           // суточная строка: открываем форму с уже выбранным периодом —
-          // молча создавать бронь протяжкой слишком лихо
-          setRange({ from: from.slice(0, 10), to: to.slice(0, 10) });
-          setNewFor({ row, day: from.slice(0, 10) });
+          // молча создавать бронь протяжкой слишком лихо.
+          // На часовой сетке выделение может уложиться внутрь одних суток —
+          // тогда это ноль ночей, и календарю нужен хотя бы завтрашний день
+          const day = from.slice(0, 10);
+          const till = to.slice(0, 10);
+          setRange({ from: day, to: till > day ? till : shiftDay(day, 1) });
+          setNewFor({ row, day });
         }}
         onOpen={(b, at) => {
           setPicked(b);
