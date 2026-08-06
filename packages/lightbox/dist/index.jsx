@@ -29,6 +29,8 @@ function injectStyle(id, css) {
 
 // src/DumbLightbox.tsx
 var STYLES = `
+  /* \u0422\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430 \u0438 \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430 \u0437\u0443\u043C\u0430. \u041A\u043D\u043E\u043F\u043A\u0438 \u2014 daisyUI (btn) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435; \u043D\u0430\u0434
+     \u0442\u0451\u043C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u0438\u043D\u043A\u043E\u0439 \u043E\u043D\u0438 \u0438\u0434\u0443\u0442 \u0432 btn-neutral, \u0447\u0442\u043E\u0431\u044B \u0447\u0438\u0442\u0430\u0442\u044C\u0441\u044F \u043D\u0430 \u043B\u044E\u0431\u043E\u043C \u0444\u043E\u043D\u0435. */
   .dumb-lightbox { border: 0; padding: 0; max-width: 100vw; max-height: 100vh;
                    width: 100vw; height: 100vh; background: transparent; overflow: hidden }
   .dumb-lightbox::backdrop { background: rgb(0 0 0 / .82) }
@@ -40,21 +42,13 @@ var STYLES = `
   .dumb-lightbox[data-animate="1"] .dumb-lightbox-img { transition: transform .12s ease-out }
   .dumb-lightbox-stage[data-drag="1"] .dumb-lightbox-img { transition: none }
 
-  .dumb-lightbox-bar { position: absolute; left: 0; right: 0; display: flex; align-items: center;
-                       gap: 10px; padding: 12px 16px; color: #f8fafc; font-size: 13px }
+  /* \u043F\u0430\u043D\u0435\u043B\u0438 \u043F\u043E\u0432\u0435\u0440\u0445 \u043A\u0430\u0440\u0442\u0438\u043D\u043A\u0438: \u043F\u043E\u0434\u043B\u043E\u0436\u043A\u0430-\u0433\u0440\u0430\u0434\u0438\u0435\u043D\u0442, \u0447\u0442\u043E\u0431\u044B \u043F\u043E\u0434\u043F\u0438\u0441\u0438 \u0447\u0438\u0442\u0430\u043B\u0438\u0441\u044C */
+  .dumb-lightbox-bar { position: absolute; left: 0; right: 0 }
   .dumb-lightbox-bar[data-at="top"] { top: 0;
     background: linear-gradient(rgb(0 0 0 / .55), transparent) }
-  .dumb-lightbox-bar[data-at="bottom"] { bottom: 0; justify-content: center;
+  .dumb-lightbox-bar[data-at="bottom"] { bottom: 0;
     background: linear-gradient(transparent, rgb(0 0 0 / .55)) }
-  .dumb-lightbox-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                         white-space: nowrap }
-  .dumb-lightbox-count { font-variant-numeric: tabular-nums; opacity: .85 }
-  .dumb-lightbox button { font: inherit; color: inherit; cursor: pointer; border: 0;
-                          border-radius: 8px; padding: 5px 10px;
-                          background: rgb(255 255 255 / .16) }
-  .dumb-lightbox button:hover { background: rgb(255 255 255 / .3) }
-  .dumb-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%);
-                       font-size: 22px; padding: 10px 14px !important }
+  .dumb-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%) }
   .dumb-lightbox-nav[data-side="prev"] { left: 12px }
   .dumb-lightbox-nav[data-side="next"] { right: 12px }
 `;
@@ -167,19 +161,27 @@ function DumbLightbox(props) {
   />
             </div>
 
-            <div class="dumb-lightbox-bar" data-at="top">
-              <span class="dumb-lightbox-title">{cur().title}</span>
+            <div
+    class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"
+    data-at="top"
+  >
+              <span class="dumb-lightbox-title min-w-0 flex-1 truncate">{cur().title}</span>
               <Show when={props.items.length > 1}>
-                <span class="dumb-lightbox-count">
+                <span class="dumb-lightbox-count tabular-nums">
                   {(at() ?? 0) + 1} / {props.items.length}
                 </span>
               </Show>
               <Show when={zoom() !== 1}>
-                <button type="button" onClick={reset}>
+                <button type="button" class="btn btn-sm btn-neutral" onClick={reset}>
                   1:1
                 </button>
               </Show>
-              <button type="button" title="закрыть (Esc)" onClick={close}>
+              <button
+    type="button"
+    class="btn btn-sm btn-circle btn-neutral"
+    title="закрыть (Esc)"
+    onClick={close}
+  >
                 ✕
               </button>
             </div>
@@ -187,7 +189,7 @@ function DumbLightbox(props) {
             <Show when={props.items.length > 1}>
               <button
     type="button"
-    class="dumb-lightbox-nav"
+    class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"
     data-side="prev"
     title="предыдущая (←)"
     onClick={() => go(-1)}
@@ -196,7 +198,7 @@ function DumbLightbox(props) {
               </button>
               <button
     type="button"
-    class="dumb-lightbox-nav"
+    class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"
     data-side="next"
     title="следующая (→)"
     onClick={() => go(1)}
@@ -206,7 +208,10 @@ function DumbLightbox(props) {
             </Show>
 
             <Show when={props.actions}>
-              <div class="dumb-lightbox-bar" data-at="bottom">
+              <div
+    class="dumb-lightbox-bar flex items-center justify-center gap-3 p-3 text-sm text-white"
+    data-at="bottom"
+  >
                 {props.actions(cur(), at() ?? 0)}
               </div>
             </Show>

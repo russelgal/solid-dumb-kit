@@ -157,7 +157,7 @@ const STYLES = `
           .dumb-board-head:active { cursor: grabbing }
           /* всё, что читают или хватают, — контрастное: блёклая ручка и серый по
              серому не читаются ни на проекторе, ни при ярком свете */
-          .dumb-board-grip { color: var(--dumb-board-grip, #64748b) }
+          .dumb-board-grip { color: var(--dumb-board-grip, var(--color-base-content, #64748b)) }
           /* подпись, счётчик и кнопки секции — daisyUI-классами в разметке */
           .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
           /* сетка блоков: ячейки фиксированного шага, места задаются явно */
@@ -191,17 +191,18 @@ const STYLES = `
              пиксельной арифметики — и не мешает блокам, у которых места явные */
           .dumb-board-frame { pointer-events: none; z-index: 3 }
           /* ручка ресайза блока — тот же уголок, что у секции: две линии со
-             скруглением. Рисуем сами, а не Tailwind'ом: кит самодостаточен */
+             скруглением. Рисуется здесь, потому что daisyUI такого органа не
+             знает; цвет берётся из токена темы */
           .dumb-board-block-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
                                    cursor: nwse-resize; touch-action: none; z-index: 2 }
           /* цвет КОНТРАСТНЫЙ: ручка — орган управления, её надо видеть, а не
              угадывать. Перекрывается переменной, но блёклый дефолт недопустим */
           .dumb-board-block-grip::after { content: ''; position: absolute; right: 4px; bottom: 4px;
                                           width: 9px; height: 9px;
-                                          border-right: 2px solid var(--dumb-board-grip, #475569);
-                                          border-bottom: 2px solid var(--dumb-board-grip, #475569);
+                                          border-right: 2px solid var(--dumb-board-grip, var(--color-base-content, #475569));
+                                          border-bottom: 2px solid var(--dumb-board-grip, var(--color-base-content, #475569));
                                           border-bottom-right-radius: 3px }
-          .dumb-board-block-grip:hover::after { border-color: var(--dumb-board-grip-hover, #1e293b) }
+          .dumb-board-block-grip:hover::after { border-color: var(--dumb-board-grip-hover, var(--color-primary, #1e293b)) }
           /* блок занимает СВОИ ячейки целиком — высота приходит из сетки, а не
              из содержимого, поэтому мерить её не нужно вовсе */
           .dumb-board-block { min-width: 0; min-height: 0; position: relative; z-index: 1 }

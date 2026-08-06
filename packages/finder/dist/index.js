@@ -2050,9 +2050,9 @@ var _tmpl$32 = /* @__PURE__ */ template(`<span class=dumb-finder-weight> \xB7 `)
 var _tmpl$42 = /* @__PURE__ */ template(`<ul>`);
 var _tmpl$52 = /* @__PURE__ */ template(`<li><div class=dumb-finder-node><span class=dumb-finder-node-name>`);
 var _tmpl$62 = /* @__PURE__ */ template(`<span class=dumb-finder-twist>`);
-var _tmpl$7 = /* @__PURE__ */ template(`<nav class=dumb-finder-side><input class=dumb-finder-find placeholder=\u043F\u0430\u043F\u043A\u0430><ul class=dumb-finder-tree>`);
+var _tmpl$7 = /* @__PURE__ */ template(`<nav class=dumb-finder-side><input class="dumb-finder-find input input-xs w-full"placeholder=\u043F\u0430\u043F\u043A\u0430><ul class=dumb-finder-tree>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-finder-head><span></span><span></span><button type=button>\u0418\u043C\u044F </button><button type=button>\u0420\u0430\u0437\u043C\u0435\u0440 </button><button type=button>\u0418\u0437\u043C\u0435\u043D\u0451\u043D </button><span>\u0412\u0438\u0434`);
-var _tmpl$9 = /* @__PURE__ */ template(`<div class=dumb-finder-empty>`);
+var _tmpl$9 = /* @__PURE__ */ template(`<div class="dumb-finder-empty p-6 text-center">`);
 var _tmpl$0 = /* @__PURE__ */ template(`<div class=dumb-finder-view tabindex=0><div class=dumb-finder-items>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<div class=dumb-finder-item>`);
 var _tmpl$10 = /* @__PURE__ */ template(`<span class=dumb-finder-indent>`);
@@ -2063,19 +2063,24 @@ var _tmpl$14 = /* @__PURE__ */ template(`<div class=dumb-finder-name>`);
 var _tmpl$15 = /* @__PURE__ */ template(`<div class=dumb-finder-meta>`);
 var _tmpl$16 = /* @__PURE__ */ template(`<span class=dumb-finder-bar-progress><i>`);
 var _tmpl$17 = /* @__PURE__ */ template(`<div class=dumb-finder-item data-pending=1><div class=dumb-finder-thumb>\u2B06</div><div class=dumb-finder-name></div><div class=dumb-finder-meta>`);
-var _tmpl$18 = /* @__PURE__ */ template(`<button type=button class=dumb-finder-btn><span>`);
-var _tmpl$19 = /* @__PURE__ */ template(`<div class=dumb-finder-bar><span class=dumb-finder-err>\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u0435\u0437\u0432\u043E\u0437\u0432\u0440\u0430\u0442\u043D\u043E: </span><button type=button>\u0414\u0430, \u0443\u0434\u0430\u043B\u0438\u0442\u044C</button><button type=button>\u041E\u0442\u043C\u0435\u043D\u0430`);
-var _tmpl$20 = /* @__PURE__ */ template(`<div class=dumb-finder-err>`);
-var _tmpl$21 = /* @__PURE__ */ template(`<div><div class=dumb-finder-bar><nav class=dumb-finder-crumbs><ul></ul></nav></div><div class=dumb-finder-main></div><div class=dumb-finder-status>`);
+var _tmpl$18 = /* @__PURE__ */ template(`<button type=button class="dumb-finder-btn btn btn-xs btn-ghost"><span>`);
+var _tmpl$19 = /* @__PURE__ */ template(`<div class=dumb-finder-bar><span class="dumb-finder-err text-error">\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u0435\u0437\u0432\u043E\u0437\u0432\u0440\u0430\u0442\u043D\u043E: </span><button type=button>\u0414\u0430, \u0443\u0434\u0430\u043B\u0438\u0442\u044C</button><button type=button>\u041E\u0442\u043C\u0435\u043D\u0430`);
+var _tmpl$20 = /* @__PURE__ */ template(`<div class="dumb-finder-err alert alert-error py-1 text-sm">`);
+var _tmpl$21 = /* @__PURE__ */ template(`<div><div class=dumb-finder-bar><nav class=dumb-finder-crumbs><ul></ul></nav></div><div class=dumb-finder-main></div><div class="dumb-finder-status px-1.5 py-1 text-sm">`);
 var _tmpl$222 = /* @__PURE__ */ template(`<li><button type=button class=dumb-finder-crumb>`);
 var _tmpl$232 = /* @__PURE__ */ template(`<div class=dumb-finder-bar><input autofocus placeholder="\u0438\u043C\u044F \u043F\u0430\u043F\u043A\u0438"><button type=button>\u0413\u043E\u0442\u043E\u0432\u043E</button><button type=button>\u041E\u0442\u043C\u0435\u043D\u0430`);
 var STYLES2 = `
-  /* \u041A\u0435\u0433\u043B\u044C \u041E\u0414\u0418\u041D \u043D\u0430 \u0432\u0435\u0441\u044C \u043A\u043E\u043C\u043F\u043E\u043D\u0435\u043D\u0442: \u043E\u0442 \u043D\u0435\u0433\u043E \u0435\u0434\u0443\u0442 \u0438 \u0434\u0435\u0440\u0435\u0432\u043E \u0441\u043B\u0435\u0432\u0430, \u0438 \u0441\u0442\u0440\u043E\u043A\u0438
+  /* \u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435 \u2014 daisyUI: \u043A\u043D\u043E\u043F\u043A\u0438, \u043F\u043E\u043B\u044F \u0438 \u043F\u043B\u0430\u0448\u043A\u0438 \u0431\u0435\u0440\u0443\u0442 \u043A\u043B\u0430\u0441\u0441\u044B \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435, \u0446\u0432\u0435\u0442\u0430
+     \u0438\u0434\u0443\u0442 \u0438\u0437 \u0442\u043E\u043A\u0435\u043D\u043E\u0432 \u0442\u0435\u043C\u044B (--color-base-*, --color-primary, --color-error).
+     \u0417\u0434\u0435\u0441\u044C \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0442\u043E, \u0447\u0435\u0433\u043E \u043A\u043B\u0430\u0441\u0441\u043E\u043C \u043D\u0435 \u0432\u044B\u0440\u0430\u0437\u0438\u0442\u044C: \u0441\u0435\u0442\u043A\u0430 \u0441\u043F\u0438\u0441\u043A\u0430, \u0440\u0438\u0442\u043C \u0441\u0442\u0440\u043E\u043A \u0432
+     1lh, \u043F\u043E\u043B\u043E\u0441\u044B \u043E\u0434\u043D\u0438\u043C \u0433\u0440\u0430\u0434\u0438\u0435\u043D\u0442\u043E\u043C \u0438 \u0440\u0430\u043C\u043A\u0438-\u0446\u0435\u043B\u0438 \u043F\u0435\u0440\u0435\u043D\u043E\u0441\u0430.
+
+     \u041A\u0435\u0433\u043B\u044C \u041E\u0414\u0418\u041D \u043D\u0430 \u0432\u0435\u0441\u044C \u043A\u043E\u043C\u043F\u043E\u043D\u0435\u043D\u0442: \u043E\u0442 \u043D\u0435\u0433\u043E \u0435\u0434\u0443\u0442 \u0438 \u0434\u0435\u0440\u0435\u0432\u043E \u0441\u043B\u0435\u0432\u0430, \u0438 \u0441\u0442\u0440\u043E\u043A\u0438
      \u0441\u043F\u0438\u0441\u043A\u0430, \u0438 \u043F\u043E\u0434\u043F\u0438\u0441\u0438 \u043F\u043B\u0438\u0442\u043E\u043A. \u0414\u0435\u0440\u0435\u0432\u0443 \u043C\u043E\u0436\u043D\u043E \u0437\u0430\u0434\u0430\u0442\u044C \u0441\u0432\u043E\u0439 (--dumb-finder-tree-size),
      \u043D\u043E \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u043E\u043D\u043E \u0431\u0435\u0440\u0451\u0442 \u043E\u0431\u0449\u0438\u0439. */
   .dumb-finder { display: flex; flex-direction: column; min-height: 0;
                  font-size: var(--dumb-finder-size, 13px);
-                 color: var(--dumb-finder-fg, #0f172a) }
+                 color: var(--dumb-finder-fg, var(--color-base-content, #0f172a)) }
   .dumb-finder-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
                      padding: 6px 2px }
   .dumb-finder-crumbs { min-width: 0; flex: 1 }
@@ -2084,17 +2089,16 @@ var STYLES2 = `
   .dumb-finder-crumbs li { display: flex; align-items: center }
   /* \u0440\u0430\u0437\u0434\u0435\u043B\u0438\u0442\u0435\u043B\u044C \u0433\u0430\u0441\u0438\u0442\u0441\u044F \u043F\u0435\u0440\u0435\u043C\u0435\u043D\u043D\u043E\u0439: \u0441 \u0433\u043E\u0442\u043E\u0432\u044B\u043C\u0438 \u043A\u0440\u043E\u0448\u043A\u0430\u043C\u0438 \u043E\u043D \u0443\u0436\u0435 \u0441\u0432\u043E\u0439 */
   .dumb-finder-crumbs li + li::before { content: var(--dumb-finder-crumb-sep, '\u203A');
-                                        opacity: .55; padding: 0 2px }
+                                        padding: 0 2px }
   .dumb-finder-crumb { padding: 2px 7px; border-radius: 6px; cursor: pointer;
                        border: 1px solid transparent; background: none; font: inherit;
                        color: inherit; white-space: nowrap }
-  .dumb-finder-crumb:hover { background: var(--dumb-finder-hover, rgb(0 0 0 / .06)) }
+  .dumb-finder-crumb:hover { background: var(--dumb-finder-hover, var(--color-base-200, rgb(0 0 0 / .06))) }
   .dumb-finder-crumb[aria-current="true"] { font-weight: 600 }
   /* \u0446\u0435\u043B\u044C \u043F\u0435\u0440\u0435\u043D\u043E\u0441\u0430 \u043F\u043E\u0434\u0441\u0432\u0435\u0447\u0438\u0432\u0430\u0435\u0442\u0441\u044F \u044F\u0440\u043A\u043E: \u043F\u0440\u043E\u043C\u0430\u0445\u043D\u0443\u0442\u044C\u0441\u044F \u043C\u0438\u043C\u043E \u043F\u0430\u043F\u043A\u0438 \u2014 \u043E\u0431\u044B\u0447\u043D\u043E\u0435 \u0434\u0435\u043B\u043E */
-  .dumb-finder [data-drop="1"] { outline: 2px solid var(--dumb-finder-drop, #2563eb);
+  .dumb-finder [data-drop="1"] { outline: 2px solid var(--dumb-finder-drop, var(--color-primary, #2563eb));
                                  outline-offset: 1px;
-                                 background: var(--dumb-finder-drop-bg, rgb(37 99 235 / .1)) }
-  .dumb-finder-sep { opacity: .55 }
+                                 background: var(--dumb-finder-drop-bg, color-mix(in oklch, var(--color-primary, #2563eb) 10%, transparent)) }
   /* \u0437\u043D\u0430\u0447\u043E\u043A \u0438 \u043F\u043E\u0434\u043F\u0438\u0441\u044C \u0432 \u043E\u0434\u043D\u0443 \u0441\u0442\u0440\u043E\u043A\u0443; \u0433\u043E\u043B\u044B\u0439 \u0437\u043D\u0430\u0447\u043E\u043A \u2014 \u043F\u0440\u044F\u0447\u044C \u043F\u043E\u0434\u043F\u0438\u0441\u044C \u0441\u0432\u043E\u0438\u043C CSS */
   .dumb-finder-btn { display: inline-flex; align-items: center; gap: 5px }
   .dumb-finder-btn .dumb-finder-glyph { width: 15px; height: 15px; flex: none }
@@ -2115,9 +2119,7 @@ var STYLES2 = `
   .dumb-finder-side * { box-sizing: border-box }
   .dumb-finder-split { height: 100% }
   /* \u2500\u2500 \u0434\u0435\u0440\u0435\u0432\u043E \u043F\u0430\u043F\u043E\u043A \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-  .dumb-finder-find { width: 100%; box-sizing: border-box; margin-bottom: 4px;
-                      padding: 3px 7px; font: inherit; font-size: 12px; border-radius: 6px;
-                      border: 1px solid var(--dumb-finder-line, rgb(0 0 0 / .2)) }
+  .dumb-finder-find { margin-bottom: 4px }
   /*
     \u0420\u0430\u0437\u043C\u0435\u0440 \u0434\u0435\u0440\u0435\u0432\u0430 \u0437\u0430\u0434\u0430\u0451\u0442\u0441\u044F \u041E\u0414\u041D\u0418\u041C \u0448\u0440\u0438\u0444\u0442\u043E\u043C: \u0432\u044B\u0441\u043E\u0442\u0430 \u0441\u0442\u0440\u043E\u043A\u0438 \u043D\u0438\u0436\u0435 \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D\u0430 \u043A 1lh,
     \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u043E\u0442 \u043A\u0435\u0433\u043B\u044F \u0435\u0434\u0435\u0442 \u0432\u0441\u0451 \u0440\u0430\u0437\u043E\u043C \u2014 \u0438 \u0441\u0442\u0440\u043E\u043A\u0438, \u0438 \u043F\u043E\u043B\u043E\u0441\u044B, \u0438 \u043E\u0442\u0441\u0442\u0443\u043F\u044B.
@@ -2132,17 +2134,17 @@ var STYLES2 = `
     */
                       background-image: repeating-linear-gradient(to bottom,
                         transparent 0, transparent 1lh,
-                        var(--dumb-finder-zebra, rgb(0 0 0 / .035)) 1lh,
-                        var(--dumb-finder-zebra, rgb(0 0 0 / .035)) 2lh);
+                        var(--dumb-finder-zebra, var(--color-base-200, rgb(0 0 0 / .035))) 1lh,
+                        var(--dumb-finder-zebra, var(--color-base-200, rgb(0 0 0 / .035))) 2lh);
                       background-attachment: local }
   .dumb-finder-tree ul { list-style: none; margin: 0; padding-left: 1rem }
   /* \u0441\u0442\u0440\u043E\u043A\u0430 \u0440\u043E\u0432\u043D\u043E \u0432 \u043E\u0434\u043D\u0443 \u0441\u0442\u0440\u043E\u043A\u0443 \u0442\u0435\u043A\u0441\u0442\u0430: \u043D\u0430 \u044D\u0442\u043E\u043C \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F \u0440\u0438\u0442\u043C \u043F\u043E\u043B\u043E\u0441 */
   .dumb-finder-node { display: flex; align-items: center; gap: 0; height: 1lh;
                       padding: 0 3px; border-radius: 3px; cursor: default }
-  .dumb-finder-node:hover { background: var(--dumb-finder-hover, rgb(0 0 0 / .06)) }
+  .dumb-finder-node:hover { background: var(--dumb-finder-hover, var(--color-base-200, rgb(0 0 0 / .06))) }
   .dumb-finder-node[data-here="1"] { font-weight: 500;
-                                     color: var(--dumb-finder-drop, #2563eb);
-                                     background: var(--dumb-finder-sel, rgb(37 99 235 / .16)) }
+                                     color: var(--dumb-finder-drop, var(--color-primary, #2563eb));
+                                     background: var(--dumb-finder-sel, color-mix(in oklch, var(--color-primary, #2563eb) 16%, transparent)) }
   .dumb-finder-node-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
                            white-space: nowrap; padding-left: 5px }
   /* \u0437\u043D\u0430\u0447\u043A\u0438 \u0432 em, \u0430 \u043D\u0435 \u0432 px: \u0440\u0430\u0437\u043C\u0435\u0440 \u0434\u0435\u0440\u0435\u0432\u0430 \u0437\u0430\u0434\u0430\u0451\u0442\u0441\u044F \u043A\u0435\u0433\u043B\u0435\u043C, \u0438 \u043F\u0430\u043F\u043A\u0430 \u0441\u043E \u0441\u0442\u0440\u0435\u043B\u043A\u043E\u0439
@@ -2160,10 +2162,10 @@ var STYLES2 = `
   .dumb-finder-weight { flex: 0 1 auto; min-width: 0; margin-left: auto; padding-left: 6px;
                         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
                         font-size: .82em; font-variant-numeric: tabular-nums;
-                        color: var(--dumb-finder-dim, #475569) }
+                        color: var(--dumb-finder-dim, var(--color-base-content, #475569)) }
   /* \u0432\u0435\u0442\u043A\u0430 \u043F\u043E\u0434 \u043A\u0443\u0440\u0441\u043E\u0440\u043E\u043C \u043F\u0435\u0440\u0435\u043D\u043E\u0441\u0430: \u0440\u0430\u043C\u043A\u043E\u0439, \u043A\u0430\u043A \u043F\u0430\u043F\u043A\u0430 \u0441\u043F\u0440\u0430\u0432\u0430 */
-  .dumb-finder-node-drop { outline: 2px solid var(--dumb-finder-drop, #2563eb);
-                           background: var(--dumb-finder-drop-bg, rgb(37 99 235 / .1)) }
+  .dumb-finder-node-drop { outline: 2px solid var(--dumb-finder-drop, var(--color-primary, #2563eb));
+                           background: var(--dumb-finder-drop-bg, color-mix(in oklch, var(--color-primary, #2563eb) 10%, transparent)) }
   /* \u0437\u043D\u0430\u0447\u043A\u0438 \u0434\u0435\u0440\u0435\u0432\u0430: \u044D\u043C\u043E\u0434\u0437\u0438 \u0447\u0435\u0440\u0435\u0437 ::before \u2014 \u043D\u0438 \u0448\u0440\u0438\u0444\u0442\u0430, \u043D\u0438 \u0441\u043F\u0440\u0430\u0439\u0442\u0430 \u043D\u0435 \u043D\u0430\u0434\u043E */
   .dumb-finder-i { display: inline-grid; place-items: center; font-size: 12px;
                    line-height: 1; font-style: normal }
@@ -2181,7 +2183,7 @@ var STYLES2 = `
   .dumb-finder-body { flex: 1; min-width: 0; min-height: 0; overflow: auto;
                       overscroll-behavior: contain; padding: 4px; scrollbar-gutter: stable }
   .dumb-finder-view { min-height: 100%; outline: none }
-  .dumb-finder-view:focus-visible { outline: 2px solid var(--dumb-finder-drop, #2563eb);
+  .dumb-finder-view:focus-visible { outline: 2px solid var(--dumb-finder-drop, var(--color-primary, #2563eb));
                                     outline-offset: -2px }
   .dumb-finder-view[data-view="grid"] .dumb-finder-items {
     display: grid; gap: 8px;
@@ -2190,22 +2192,22 @@ var STYLES2 = `
 
   .dumb-finder-item { position: relative; cursor: default; border-radius: 8px;
                       border: 1px solid transparent; user-select: none }
-  .dumb-finder-item[data-selected="1"] { background: var(--dumb-finder-sel, rgb(37 99 235 / .16));
-                                         border-color: var(--dumb-finder-drop, #2563eb) }
-  .dumb-finder-item:hover { background: var(--dumb-finder-hover, rgb(0 0 0 / .06)) }
-  .dumb-finder-item[data-selected="1"]:hover { background: var(--dumb-finder-sel, rgb(37 99 235 / .16)) }
+  .dumb-finder-item[data-selected="1"] { background: var(--dumb-finder-sel, color-mix(in oklch, var(--color-primary, #2563eb) 16%, transparent));
+                                         border-color: var(--dumb-finder-drop, var(--color-primary, #2563eb)) }
+  .dumb-finder-item:hover { background: var(--dumb-finder-hover, var(--color-base-200, rgb(0 0 0 / .06))) }
+  .dumb-finder-item[data-selected="1"]:hover { background: var(--dumb-finder-sel, color-mix(in oklch, var(--color-primary, #2563eb) 16%, transparent)) }
 
   /* \u043F\u043B\u0438\u0442\u043A\u0430 */
   .dumb-finder-view[data-view="grid"] .dumb-finder-item { padding: 6px; text-align: center }
   .dumb-finder-thumb { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden;
                        display: grid; place-items: center; font-size: 34px; line-height: 1;
-                       background: var(--dumb-finder-thumb-bg, rgb(0 0 0 / .05)) }
+                       background: var(--dumb-finder-thumb-bg, var(--color-base-200, rgb(0 0 0 / .05))) }
   .dumb-finder-thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
   .dumb-finder-name { margin-top: 4px; font-size: .92em; line-height: 1.25;
                       overflow-wrap: anywhere;
                       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
                       overflow: hidden }
-  .dumb-finder-meta { font-size: .85em; color: var(--dumb-finder-dim, #475569) }
+  .dumb-finder-meta { font-size: .85em; color: var(--dumb-finder-dim, var(--color-base-content, #475569)) }
 
   /* \u0441\u0442\u0440\u043E\u043A\u0430 \u0441\u043F\u0438\u0441\u043A\u0430 */
   .dumb-finder-view[data-view="list"] .dumb-finder-item {
@@ -2216,9 +2218,9 @@ var STYLES2 = `
     height: 1lh }
   /* \u043F\u043E\u043B\u043E\u0441\u0430\u0442\u043E\u0441\u0442\u044C \u0441\u0442\u0440\u043E\u043A \u2014 \u043A\u0430\u043A \u0432 Finder: \u0433\u043B\u0430\u0437\u0443 \u043B\u0435\u0433\u0447\u0435 \u0432\u0435\u0441\u0442\u0438 \u0441\u0442\u0440\u043E\u043A\u0443 \u0434\u043E \u043F\u0440\u0430\u0432\u043E\u0433\u043E \u043A\u0440\u0430\u044F */
   .dumb-finder-view[data-view="list"] .dumb-finder-item:nth-child(even) {
-    background: var(--dumb-finder-zebra, rgb(0 0 0 / .035)) }
+    background: var(--dumb-finder-zebra, var(--color-base-200, rgb(0 0 0 / .035))) }
   .dumb-finder-view[data-view="list"] .dumb-finder-item[data-selected="1"]:nth-child(even) {
-    background: var(--dumb-finder-sel, rgb(37 99 235 / .16)) }
+    background: var(--dumb-finder-sel, color-mix(in oklch, var(--color-primary, #2563eb) 16%, transparent)) }
   .dumb-finder-indent { display: block; height: 1px; flex: none }
   .dumb-finder-view[data-view="list"] .dumb-finder-thumb { aspect-ratio: auto; background: none;
     font-size: 1.1em; width: 1.25em; height: 1.25em }
@@ -2226,8 +2228,8 @@ var STYLES2 = `
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block }
   .dumb-finder-head { display: grid; grid-template-columns: 18px 22px 1fr 90px 130px 90px; gap: 6px;
                       padding: 2px .6em; font-size: .92em; font-weight: 600;
-                      color: var(--dumb-finder-dim, #475569);
-                      border-bottom: 1px solid var(--dumb-finder-line, rgb(0 0 0 / .12)) }
+                      color: var(--dumb-finder-dim, var(--color-base-content, #475569));
+                      border-bottom: 1px solid var(--dumb-finder-line, var(--color-base-300, rgb(0 0 0 / .12))) }
   .dumb-finder-head button { font: inherit; color: inherit; background: none; border: 0;
                              padding: 0; cursor: pointer; text-align: left }
 
@@ -2236,23 +2238,17 @@ var STYLES2 = `
                                                                     transition: transform .12s }
   .dumb-finder-item[data-open="1"] button.dumb-finder-twist > .dumb-finder-glyph {
     transform: rotate(90deg) }
-  .dumb-finder-item[data-pending="1"] { opacity: .75 }
+  /* \u043F\u043E\u043A\u0430 \u0444\u0430\u0439\u043B \u0435\u0434\u0435\u0442, \u0441\u0442\u0440\u043E\u043A\u0430 \u043F\u043E\u043C\u0435\u0447\u0430\u0435\u0442\u0441\u044F \u043F\u043E\u043B\u043E\u0441\u043E\u0439 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441\u0430, \u0430 \u043D\u0435 \u0432\u044B\u0446\u0432\u0435\u0442\u0430\u043D\u0438\u0435\u043C */
   .dumb-finder-bar-progress { position: absolute; left: 6px; right: 6px; bottom: 4px; height: 3px;
                               border-radius: 2px; background: rgb(0 0 0 / .15) }
   .dumb-finder-bar-progress > i { display: block; height: 100%; border-radius: 2px;
-                                  background: var(--dumb-finder-drop, #2563eb);
+                                  background: var(--dumb-finder-drop, var(--color-primary, #2563eb));
                                   transition: width .12s linear }
-  .dumb-finder-item[data-failed="1"] { outline: 2px solid var(--dumb-finder-bad, #b91c1c) }
+  .dumb-finder-item[data-failed="1"] { outline: 2px solid var(--dumb-finder-bad, var(--color-error, #b91c1c)) }
 
-  .dumb-finder-status { padding: 4px 6px; font-size: .92em;
-                        color: var(--dumb-finder-dim, #475569) }
-  .dumb-finder-empty { padding: 24px; text-align: center;
-                       color: var(--dumb-finder-dim, #475569) }
-  .dumb-finder-err { padding: 6px 8px; border-radius: 6px; font-size: 13px;
-                     color: var(--dumb-finder-bad, #b91c1c);
-                     background: var(--dumb-finder-bad-bg, rgb(185 28 28 / .1)) }
+  /* \u0441\u0442\u0430\u0442\u0443\u0441, \u043F\u0443\u0441\u0442\u0430\u044F \u043F\u0430\u043F\u043A\u0430 \u0438 \u043E\u0448\u0438\u0431\u043A\u0430 \u2014 daisyUI-\u043A\u043B\u0430\u0441\u0441\u044B \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435 */
   /* \u043F\u0440\u0438\u0451\u043C \u0444\u0430\u0439\u043B\u043E\u0432 \u0438\u0437 \u0441\u0438\u0441\u0442\u0435\u043C\u044B: \u0440\u0430\u043C\u043A\u0430 \u043F\u043E \u0432\u0441\u0435\u0439 \u043E\u0431\u043B\u0430\u0441\u0442\u0438 */
-  .dumb-finder-view[data-files="1"] { outline: 2px dashed var(--dumb-finder-drop, #2563eb);
+  .dumb-finder-view[data-files="1"] { outline: 2px dashed var(--dumb-finder-drop, var(--color-primary, #2563eb));
                                       outline-offset: -3px }
 `;
 function DumbFinder(props) {

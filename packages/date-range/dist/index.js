@@ -80,56 +80,32 @@ function reachTo(from, busy, limit) {
 
 // src/DumbDateRange.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<div>`);
-var _tmpl$2 = /* @__PURE__ */ template(`<button type=button class=dumb-cal-nav>\u2039`);
-var _tmpl$3 = /* @__PURE__ */ template(`<button type=button class=dumb-cal-nav>\u203A`);
-var _tmpl$4 = /* @__PURE__ */ template(`<div class=dumb-cal-month><div class=dumb-cal-head><div class=dumb-cal-title> </div></div><div class=dumb-cal-grid>`);
-var _tmpl$5 = /* @__PURE__ */ template(`<span class=dumb-cal-nav>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<div class=dumb-cal-week>`);
+var _tmpl$2 = /* @__PURE__ */ template(`<button type=button class="dumb-cal-nav btn btn-sm btn-ghost btn-circle">\u2039`);
+var _tmpl$3 = /* @__PURE__ */ template(`<button type=button class="dumb-cal-nav btn btn-sm btn-ghost btn-circle">\u203A`);
+var _tmpl$4 = /* @__PURE__ */ template(`<div class="dumb-cal-month min-w-62"><div class="dumb-cal-head mb-1.5 flex items-center gap-1"><div class="dumb-cal-title flex-1 text-center font-semibold capitalize"> </div></div><div class=dumb-cal-grid>`);
+var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-cal-nav size-8">`);
+var _tmpl$6 = /* @__PURE__ */ template(`<div class="dumb-cal-week pb-1 text-center text-xs font-medium">`);
 var _tmpl$7 = /* @__PURE__ */ template(`<span class=dumb-cal-extra>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<button type=button>`);
 var WEEK = ["\u043F\u043D", "\u0432\u0442", "\u0441\u0440", "\u0447\u0442", "\u043F\u0442", "\u0441\u0431", "\u0432\u0441"];
 var MONTHS = ["\u044F\u043D\u0432\u0430\u0440\u044C", "\u0444\u0435\u0432\u0440\u0430\u043B\u044C", "\u043C\u0430\u0440\u0442", "\u0430\u043F\u0440\u0435\u043B\u044C", "\u043C\u0430\u0439", "\u0438\u044E\u043D\u044C", "\u0438\u044E\u043B\u044C", "\u0430\u0432\u0433\u0443\u0441\u0442", "\u0441\u0435\u043D\u0442\u044F\u0431\u0440\u044C", "\u043E\u043A\u0442\u044F\u0431\u0440\u044C", "\u043D\u043E\u044F\u0431\u0440\u044C", "\u0434\u0435\u043A\u0430\u0431\u0440\u044C"];
 var STYLES = `
-  .dumb-cal { display: flex; gap: 18px; flex-wrap: wrap;
-              color: var(--dumb-cal-fg, #0f172a); user-select: none }
-  .dumb-cal-month { min-width: 15.5rem }
-  .dumb-cal-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px }
-  .dumb-cal-title { flex: 1; text-align: center; font-weight: 600; font-size: 14px;
-                    text-transform: capitalize }
-  .dumb-cal-nav { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px;
-                  cursor: pointer; font: inherit; background: none; color: inherit }
-  .dumb-cal-nav:hover { background: var(--dumb-cal-hover, rgb(0 0 0 / .07)) }
-  .dumb-cal-nav[disabled] { opacity: .35; cursor: default }
-
+  /* \u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435 \u2014 daisyUI-\u043A\u043B\u0430\u0441\u0441\u0430\u043C\u0438 \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435 (btn, join, bg-base-*, text-error).
+     \u0417\u0434\u0435\u0441\u044C \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0442\u043E, \u0447\u0435\u0433\u043E \u043A\u043B\u0430\u0441\u0441\u043E\u043C \u043D\u0435 \u0432\u044B\u0440\u0430\u0437\u0438\u0442\u044C: \u0441\u0435\u0442\u043A\u0430 \u043D\u0435\u0434\u0435\u043B\u0438, \u0434\u0438\u0430\u0433\u043E\u043D\u0430\u043B\u044C\u043D\u0430\u044F
+     \u043F\u0435\u0440\u0435\u0447\u0451\u0440\u043A\u0438\u0432\u0430\u044E\u0449\u0430\u044F \u043F\u043E\u043B\u043E\u0441\u0430 \u0437\u0430\u043D\u044F\u0442\u043E\u0433\u043E \u0434\u043D\u044F \u0438 \u043A\u0440\u0430\u044F \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u043E\u0433\u043E \u043F\u0435\u0440\u0438\u043E\u0434\u0430. */
+  .dumb-cal { user-select: none }
   .dumb-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr) }
-  .dumb-cal-week { font-size: 11px; text-align: center; padding-bottom: 4px;
-                   color: var(--dumb-cal-dim, #475569) }
-  .dumb-cal-day { position: relative; aspect-ratio: 1; display: grid; place-items: center;
-                  font-size: 13px; border: 0; background: none; font: inherit; color: inherit;
-                  cursor: pointer; line-height: 1 }
-  /* \u0421\u043E\u0441\u0435\u0434\u043D\u0438\u0439 \u043C\u0435\u0441\u044F\u0446 \u0432\u0438\u0434\u0435\u043D, \u043D\u043E \u043F\u0440\u0438\u0433\u043B\u0443\u0448\u0451\u043D: \u0431\u0435\u0437 \u043D\u0435\u0433\u043E \u0441\u0435\u0442\u043A\u0430 \u043F\u0440\u044B\u0433\u0430\u0435\u0442, \u0430 \u0441 \u043D\u0438\u043C \u2014 \u043D\u0435\u0442.
-     \u041F\u0440\u0438\u0433\u043B\u0443\u0448\u0435\u043D\u0438\u0435 \u0426\u0412\u0415\u0422\u041E\u041C, \u0430 \u043D\u0435 \u043F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u043E\u0441\u0442\u044C\u044E: \u0447\u0438\u0441\u043B\u043E \u0432\u0441\u0451 \u0435\u0449\u0451 \u0447\u0438\u0442\u0430\u044E\u0442 (\u0432 \u043D\u0435\u0433\u043E
-     \u043A\u043B\u0438\u043A\u0430\u044E\u0442, \u0438\u043C \u0437\u0430\u043A\u0430\u043D\u0447\u0438\u0432\u0430\u044E\u0442 \u043F\u0435\u0440\u0438\u043E\u0434), \u0430 opacity \u0443\u0432\u043E\u0434\u0438\u043B\u0430 \u0435\u0433\u043E \u0434\u043E 2.4:1 \u043A \u0431\u0435\u043B\u043E\u043C\u0443. */
-  .dumb-cal-day[data-out="1"] { color: var(--dumb-cal-dim, #475569) }
-  .dumb-cal-day[data-today="1"] { font-weight: 700; text-decoration: underline }
-  .dumb-cal-day:hover:not([disabled]) { background: var(--dumb-cal-hover, rgb(0 0 0 / .07)) }
-  /* \u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0430 \u043F\u0435\u0440\u0438\u043E\u0434\u0430 \u2014 \u0441\u043F\u043B\u043E\u0448\u043D\u0430\u044F \u043F\u043E\u043B\u043E\u0441\u0430, \u043A\u0440\u0430\u044F \u2014 \u0441\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u044B: \u0442\u0430\u043A \u0432\u0438\u0434\u043D\u043E \u043D\u0430\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435 */
-  .dumb-cal-day[data-in="1"] { background: var(--dumb-cal-range, rgb(37 99 235 / .14)) }
-  .dumb-cal-day[data-edge="from"] { border-radius: 8px 0 0 8px }
-  .dumb-cal-day[data-edge="to"] { border-radius: 0 8px 8px 0 }
-  .dumb-cal-day[data-edge="both"] { border-radius: 8px }
-  .dumb-cal-day[data-edge] { background: var(--dumb-cal-accent, #2563eb); color: #fff;
-                             font-weight: 600 }
-  .dumb-cal-day[data-busy="1"] { color: var(--dumb-cal-busy, #b91c1c) }
+  .dumb-cal-day { position: relative; aspect-ratio: 1; display: grid; place-items: center }
   /* \u0437\u0430\u043D\u044F\u0442\u044B\u0439 \u0434\u0435\u043D\u044C \u043F\u0435\u0440\u0435\u0447\u0451\u0440\u043A\u043D\u0443\u0442 \u043F\u043E \u0434\u0438\u0430\u0433\u043E\u043D\u0430\u043B\u0438 \u2014 \u0432\u0438\u0434\u043D\u043E \u0438 \u0431\u0435\u0437 \u0446\u0432\u0435\u0442\u0430 */
   .dumb-cal-day[data-busy="1"]::after {
     content: ''; position: absolute; inset: 18%;
     background: linear-gradient(to top right, transparent 45%,
-      var(--dumb-cal-busy, #b91c1c) 45%, var(--dumb-cal-busy, #b91c1c) 55%, transparent 55%) }
-  .dumb-cal-day[disabled] { cursor: default; opacity: .3 }
+      currentColor 45%, currentColor 55%, transparent 55%) }
+  .dumb-cal-day[data-edge="from"] { border-radius: 8px 0 0 8px }
+  .dumb-cal-day[data-edge="to"] { border-radius: 0 8px 8px 0 }
+  .dumb-cal-day[data-edge="both"] { border-radius: 8px }
   .dumb-cal-extra { position: absolute; left: 0; right: 0; bottom: 1px; font-size: 9px;
-                    text-align: center; color: var(--dumb-cal-dim, #475569) }
-  .dumb-cal-day[data-edge] .dumb-cal-extra { color: inherit }
+                    text-align: center }
 `;
 function DumbDateRange(props) {
   injectStyle("date-range", STYLES);
@@ -278,7 +254,7 @@ function DumbDateRange(props) {
                 }
               }), null);
               effect((_p$) => {
-                var _v$ = `dumb-cal-day ${mark()?.class ?? ""}`, _v$2 = sameMonth(day, month) ? void 0 : "1", _v$3 = day === today() ? "1" : void 0, _v$4 = isBusy(day) ? "1" : void 0, _v$5 = inRange(day, range()?.from ?? null, range()?.to ?? null) ? "1" : void 0, _v$6 = edge(), _v$7 = blocked(), _v$8 = busy().find((b) => diffDays(b.from, day) >= 0 && diffDays(day, b.to) <= 0)?.title ?? mark()?.title;
+                var _v$ = `dumb-cal-day btn btn-ghost btn-sm h-auto min-h-0 p-0 font-normal ${edge() ? "btn-active btn-neutral font-semibold" : ""} ${inRange(day, range()?.from ?? null, range()?.to ?? null) && !edge() ? "bg-base-300" : ""} ${isBusy(day) ? "text-error" : ""} ${sameMonth(day, month) ? "" : "italic"} ${day === today() ? "font-bold underline" : ""} ${mark()?.class ?? ""}`, _v$2 = sameMonth(day, month) ? void 0 : "1", _v$3 = day === today() ? "1" : void 0, _v$4 = isBusy(day) ? "1" : void 0, _v$5 = inRange(day, range()?.from ?? null, range()?.to ?? null) ? "1" : void 0, _v$6 = edge(), _v$7 = blocked(), _v$8 = busy().find((b) => diffDays(b.from, day) >= 0 && diffDays(day, b.to) <= 0)?.title ?? mark()?.title;
                 _v$ !== _p$.e && className(_el$10, _p$.e = _v$);
                 _v$2 !== _p$.t && setAttribute(_el$10, "data-out", _p$.t = _v$2);
                 _v$3 !== _p$.a && setAttribute(_el$10, "data-today", _p$.a = _v$3);
@@ -305,7 +281,7 @@ function DumbDateRange(props) {
         return _el$2;
       })()
     }));
-    effect(() => className(_el$, `dumb-cal ${props.class ?? ""}`));
+    effect(() => className(_el$, `dumb-cal flex flex-wrap gap-5 ${props.class ?? ""}`));
     return _el$;
   })();
 }

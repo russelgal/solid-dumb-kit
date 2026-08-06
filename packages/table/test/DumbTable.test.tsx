@@ -212,12 +212,14 @@ describe('DumbTable — перетаскивание строк', () => {
       <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} onReorder={() => {}}
                  sort={sort()} order="asc" onSort={(k) => setSort(k)} />
     ))
+    // курсор задаётся классом Tailwind, а не инлайновым стилем: оформление в
+    // ките — daisyUI, свои style остались только под геометрию
     const handle = () => host.querySelector('[data-drag-handle]') as HTMLElement
-    expect(handle().style.cursor).toBe('grab')
+    expect(handle().className).toContain('cursor-grab')
 
     // th[0] — колонка ручки, заголовки колонок сдвинуты на единицу
     ;(host.querySelectorAll('th')[1] as HTMLElement).click()   // включили сортировку
-    expect(handle().style.cursor).toBe('not-allowed')
+    expect(handle().className).toContain('cursor-not-allowed')
   })
 })
 

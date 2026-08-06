@@ -25,12 +25,10 @@ var STYLES = `
   /* \u044F\u043A\u043E\u0440\u044C: \u043F\u0438\u043A\u0441\u0435\u043B\u044C \u0432 \u0442\u043E\u0447\u043A\u0435 \u043A\u043B\u0438\u043A\u0430, \u043A \u043D\u0435\u043C\u0443 \u043F\u0440\u0438\u0432\u044F\u0437\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043C\u0435\u043D\u044E */
   .dumb-menu-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
                       anchor-name: --dumb-menu-at }
-  .dumb-menu { position: fixed; margin: 0; min-width: 190px; padding: 4px;
-               border-radius: 10px; font-size: 13px;
-               color: var(--dumb-menu-fg, #0f172a);
-               background: var(--dumb-menu-bg, #fff);
-               border: 1px solid var(--dumb-menu-line, rgb(0 0 0 / .12));
-               box-shadow: 0 10px 30px rgb(0 0 0 / .18);
+  /* \u0412\u0438\u0434 \u043F\u0430\u043D\u0435\u043B\u0438 \u2014 daisyUI (menu, bg-base-100, rounded-box, shadow) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435.
+     \u0417\u0434\u0435\u0441\u044C \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u0440\u043E\u0432\u043D\u043E \u0442\u043E, \u0447\u0435\u0433\u043E daisyUI \u043D\u0435 \u0443\u043C\u0435\u0435\u0442: \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u043A \u0442\u043E\u0447\u043A\u0435 \u043A\u043B\u0438\u043A\u0430
+     \u0447\u0435\u0440\u0435\u0437 anchor positioning \u0438 \u0436\u0438\u0437\u043D\u044C \u0432 top layer. */
+  .dumb-menu { position: fixed; margin: 0; min-width: 190px;
                /* \u0432 top layer: \u043D\u0438 z-index, \u043D\u0438 overflow \u043F\u0440\u0435\u0434\u043A\u043E\u0432 \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0432\u0430\u0436\u043D\u044B */
                overflow: visible;
                /* \u043C\u0435\u0441\u0442\u043E \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442 \u0431\u0440\u0430\u0443\u0437\u0435\u0440: \u0433\u0434\u0435 \u043D\u0435 \u0432\u043B\u0435\u0437\u0430\u0435\u0442 \u2014 \u0440\u0430\u0441\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u0432 \u0434\u0440\u0443\u0433\u0443\u044E
@@ -44,23 +42,9 @@ var STYLES = `
                /* \u0443 \u043A\u0440\u0430\u044F \u043E\u043A\u043D\u0430 \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u0441\u0430\u043C \u043F\u0435\u0440\u0435\u0432\u043E\u0440\u0430\u0447\u0438\u0432\u0430\u0435\u0442: \u0432\u0432\u0435\u0440\u0445 \u0438/\u0438\u043B\u0438 \u0432\u043B\u0435\u0432\u043E */
                position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline }
   .dumb-menu:popover-open { display: block }
-  .dumb-menu ul { list-style: none; margin: 0; padding: 0 }
-  .dumb-menu-item { display: flex; align-items: center; gap: 8px; width: 100%;
-                    padding: 5px 8px; border: 0; border-radius: 6px; background: none;
-                    font: inherit; color: inherit; text-align: left; cursor: pointer }
-  .dumb-menu-item:hover:not([disabled]),
-  .dumb-menu-item[data-active="1"] { background: var(--dumb-menu-hover, rgb(0 0 0 / .07)) }
-  .dumb-menu-item[disabled] { opacity: .45; cursor: default }
-  .dumb-menu-item[data-danger="1"] { color: var(--dumb-menu-danger, #b91c1c) }
-  .dumb-menu-icon { flex: none; width: 1.1em; height: 1.1em }
-  .dumb-menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                     white-space: nowrap }
-  /* \u043F\u043E\u0434\u0441\u043A\u0430\u0437\u043A\u0430 \u0442\u0443\u0441\u043A\u043B\u0435\u0435 \u0442\u0435\u043A\u0441\u0442\u0430, \u043D\u043E \u0447\u0438\u0442\u0430\u0435\u043C\u043E: \u0441\u0435\u0440\u043E\u043C\u0443 \u043F\u043E \u0441\u0435\u0440\u043E\u043C\u0443 \u0442\u0443\u0442 \u043D\u0435 \u043C\u0435\u0441\u0442\u043E */
-  .dumb-menu-hint { flex: none; font-size: .85em; color: var(--dumb-menu-dim, #475569) }
-  .dumb-menu-sep { height: 1px; margin: 4px 6px;
-                   background: var(--dumb-menu-line, rgb(0 0 0 / .12)) }
-  /* \u0441\u0442\u0440\u0435\u043B\u043A\u0430 \u0432\u0435\u0442\u043A\u0438 \u2014 \u043F\u043E\u043B\u043D\u044B\u043C \u0446\u0432\u0435\u0442\u043E\u043C: \u044D\u0442\u043E \u0443\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C, \u0430 \u043D\u0435 \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u0435 */
-  .dumb-menu-more { flex: none; font-size: .9em }
+  /* \u043F\u043E\u0434\u0441\u0432\u0435\u0442\u043A\u0443 \u0441 \u043A\u043B\u0430\u0432\u0438\u0430\u0442\u0443\u0440\u044B \u0434\u0430\u0451\u043C \u0442\u0435\u043C \u0436\u0435 \u043A\u043B\u0430\u0441\u0441\u043E\u043C, \u0447\u0442\u043E \u0434\u0430\u0451\u0442 daisyUI \u043D\u0430\u0432\u0435\u0434\u0435\u043D\u0438\u044E */
+  .dumb-menu-item[data-active="1"] { background: var(--dumb-menu-active, rgb(0 0 0 / .07)) }
+  .dumb-menu-item[disabled] { cursor: default }
 
   /* \u041F\u043E\u0434\u043C\u0435\u043D\u044E. \u0422\u043E\u0442 \u0436\u0435 popover, \u0442\u043E\u0442 \u0436\u0435 top layer \u2014 \u0437\u043D\u0430\u0447\u0438\u0442 \u0435\u0433\u043E \u0442\u0430\u043A \u0436\u0435 \u043D\u0435 \u0440\u0435\u0436\u0435\u0442 \u043D\u0438
      overflow, \u043D\u0438 clip-path \u043F\u0440\u0435\u0434\u043A\u043E\u0432, \u0438 z-index \u0435\u043C\u0443 \u043D\u0435 \u043D\u0443\u0436\u0435\u043D.
@@ -168,7 +152,7 @@ function Panel(props) {
       </Show>
       <div
     ref={el}
-    class={`dumb-menu ${props.depth > 0 ? "dumb-menu-sub" : ""} ${props.class ?? ""}`}
+    class={`dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${props.depth > 0 ? "dumb-menu-sub" : ""} ${props.class ?? ""}`}
     popover="manual"
     style={place()}
     tabindex={-1}
@@ -177,12 +161,15 @@ function Panel(props) {
   >
         <ul>
           <For each={props.items}>
-            {(it, i) => <Show when={isItem(it)} fallback={<li class="dumb-menu-sep" role="separator" />}>
+            {(it, i) => <Show
+    when={isItem(it)}
+    fallback={<li class="dumb-menu-sep divider my-1" role="separator" />}
+  >
                 <li>
                   <button
     type="button"
     role="menuitem"
-    class="dumb-menu-item"
+    class={`dumb-menu-item flex w-full items-center gap-2 text-left ${asItem(it).danger ? "text-error" : ""}`}
     data-active={active() === i() ? "1" : void 0}
     data-danger={asItem(it).danger ? "1" : void 0}
     data-sub={branch(it) ? "1" : void 0}
@@ -197,14 +184,18 @@ function Panel(props) {
     }}
   >
                     <Show when={asItem(it).icon}>
-                      <span class={`dumb-menu-icon ${asItem(it).icon}`} />
+                      <span class={`dumb-menu-icon size-[1.1em] shrink-0 ${asItem(it).icon}`} />
                     </Show>
-                    <span class="dumb-menu-label">{asItem(it).label}</span>
+                    <span class="dumb-menu-label flex-1 truncate">{asItem(it).label}</span>
                     <Show when={asItem(it).hint}>
-                      <span class="dumb-menu-hint">{asItem(it).hint}</span>
+                      {
+    /* подсказка тусклее текста, но читаемо: base-content/60
+       и прочая блёклость правилом репы запрещены */
+  }
+                      <span class="dumb-menu-hint text-xs opacity-90">{asItem(it).hint}</span>
                     </Show>
                     <Show when={branch(it)}>
-                      <span class="dumb-menu-more" aria-hidden="true">
+                      <span class="dumb-menu-more text-sm" aria-hidden="true">
                         ▸
                       </span>
                     </Show>
@@ -378,15 +369,11 @@ function DumbContextMenu(props) {
 // src/DumbPopover.tsx
 import { Show as Show2, createEffect as createEffect3, onCleanup as onCleanup2 } from "solid-js";
 var STYLES2 = `
+  /* \u0422\u043E\u043B\u044C\u043A\u043E \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u043A \u0442\u043E\u0447\u043A\u0435 \u0438 top layer \u2014 \u0432\u0438\u0434 \u0434\u0430\u0451\u0442 daisyUI (card) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. */
   .dumb-pop-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
                      anchor-name: --dumb-pop-at }
-  .dumb-pop { position: fixed; margin: 0; padding: 0; overflow: visible;
+  .dumb-pop { position: fixed; margin: 0; padding: 0; overflow: visible; background: none;
               width: var(--dumb-pop-w, min(320px, 92vw));
-              border-radius: 12px; font-size: 13px;
-              color: var(--dumb-pop-fg, #0f172a);
-              background: var(--dumb-pop-bg, #fff);
-              border: 1px solid var(--dumb-pop-line, rgb(0 0 0 / .12));
-              box-shadow: 0 12px 34px rgb(0 0 0 / .2);
               position-anchor: --dumb-pop-at;
               /* \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u0447\u0435\u0440\u0435\u0437 anchor(): position-area \u0441\u043E span-* Chrome
                  \u043E\u0442\u0431\u0440\u0430\u0441\u044B\u0432\u0430\u0435\u0442 \u043A\u0430\u043A \u043D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u043E\u0435, \u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0443\u0435\u0437\u0436\u0430\u0435\u0442 \u0432 \u0443\u0433\u043E\u043B */
@@ -394,17 +381,6 @@ var STYLES2 = `
               left: anchor(--dumb-pop-at right);
               position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline }
   .dumb-pop:popover-open { display: block }
-  .dumb-pop-head { display: flex; align-items: center; gap: 8px;
-                   padding: 9px 12px 4px; font-weight: 600 }
-  .dumb-pop-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                    white-space: nowrap }
-  .dumb-pop-x { flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px;
-                cursor: pointer; font: inherit; background: none;
-                color: var(--dumb-pop-dim, #475569) }
-  .dumb-pop-x:hover { background: var(--dumb-pop-hover, rgb(0 0 0 / .07)) }
-  .dumb-pop-body { padding: 4px 12px 12px }
-  .dumb-pop-foot { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px;
-                   border-top: 1px solid var(--dumb-pop-line, rgb(0 0 0 / .12)) }
 `;
 function DumbPopover(props) {
   injectStyle("popover", STYLES2);
@@ -449,20 +425,25 @@ function DumbPopover(props) {
           <div
     ref={box}
     popover="manual"
-    class={`dumb-pop ${props.class ?? ""}`}
+    class={`dumb-pop card rounded-box bg-base-100 border-base-300 border p-3 shadow-xl ${props.class ?? ""}`}
     style={props.width ? { "--dumb-pop-w": props.width } : void 0}
   >
             <Show2 when={props.title}>
-              <div class="dumb-pop-head">
-                <div class="dumb-pop-title">{props.title}</div>
-                <button type="button" class="dumb-pop-x" title="закрыть" onClick={close}>
+              <div class="dumb-pop-head mb-2 flex items-center gap-2 font-semibold">
+                <div class="dumb-pop-title flex-1 truncate">{props.title}</div>
+                <button
+    type="button"
+    class="dumb-pop-x btn btn-xs btn-circle btn-ghost"
+    title="закрыть"
+    onClick={close}
+  >
                   ✕
                 </button>
               </div>
             </Show2>
             <div class="dumb-pop-body">{props.children}</div>
             <Show2 when={props.footer}>
-              <div class="dumb-pop-foot">{props.footer}</div>
+              <div class="dumb-pop-foot mt-3 flex justify-end gap-2">{props.footer}</div>
             </Show2>
           </div>
         </>}

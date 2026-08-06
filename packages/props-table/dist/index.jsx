@@ -89,9 +89,9 @@ function dumpProps(source, options = {}) {
 
 // src/DumbPropsTable.tsx
 var KIND_COLOR = {
-  object: "var(--dumb-props-object, #6d28d9)",
-  array: "var(--dumb-props-array, #0e7490)",
-  function: "var(--dumb-props-function, #9a3412)",
+  object: "var(--dumb-props-object, var(--color-secondary, #6d28d9))",
+  array: "var(--dumb-props-array, var(--color-accent, #0e7490))",
+  function: "var(--dumb-props-function, var(--color-warning, #9a3412))",
   primitive: "inherit"
 };
 function DumbPropsTable(props) {
@@ -100,21 +100,18 @@ function DumbPropsTable(props) {
   );
   return <div class={props.class}>
       <Show when={props.title}>
-        <div style={{ "font-weight": 700, "margin-bottom": "4px" }}>{props.title}</div>
+        <div class="mb-1 font-bold">{props.title}</div>
       </Show>
-      <table
-    style={{
-      "font-size": "12px",
-      "font-family": "ui-monospace, monospace",
-      "border-collapse": "collapse"
-    }}
-  >
+      {
+    /* table table-xs из daisyUI: отладочная таблица должна быть плотной */
+  }
+      <table class="table table-xs font-mono">
         <Show when={!props.headless}>
           <thead>
             <tr>
-              <th style={{ "text-align": "left", "padding-right": "12px" }}>проп</th>
-              <th style={{ "text-align": "left", "padding-right": "12px" }}>тип</th>
-              <th style={{ "text-align": "left" }}>значение</th>
+              <th>проп</th>
+              <th>тип</th>
+              <th>значение</th>
             </tr>
           </thead>
         </Show>
@@ -122,11 +119,9 @@ function DumbPropsTable(props) {
           <For each={rows()}>
             {(r) => <tr>
                 <td
+    class={`whitespace-nowrap ${r.depth === 0 ? "font-bold" : ""}`}
     style={{
-      "padding-right": "12px",
       "padding-left": `${r.depth * (props.indent ?? 14)}px`,
-      "font-weight": r.depth === 0 ? 700 : 400,
-      "white-space": "nowrap",
       color: KIND_COLOR[r.kind]
     }}
     title={r.path}
@@ -138,15 +133,12 @@ function DumbPropsTable(props) {
        а не прозрачностью: полупрозрачный текст не читается */
   }
                 <td
-    style={{
-      "padding-right": "12px",
-      color: "var(--dumb-props-dim, #475569)",
-      "white-space": "nowrap"
-    }}
+    class="whitespace-nowrap"
+    style={{ color: "var(--dumb-props-dim, var(--color-base-content, #475569))" }}
   >
                   {r.type}
                 </td>
-                <td style={{ "white-space": "pre-wrap", "word-break": "break-all" }}>{r.value}</td>
+                <td class="break-all whitespace-pre-wrap">{r.value}</td>
               </tr>}
           </For>
         </tbody>

@@ -34,9 +34,12 @@ function injectStyle(id, css) {
 
 // src/DumbTree.tsx
 var STYLES = `
+  /* \u0412\u0438\u0434 \u2014 daisyUI (menu, bg-base-*, text-primary) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. \u0417\u0434\u0435\u0441\u044C \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F
+     \u0442\u043E, \u0447\u0435\u0433\u043E \u043A\u043B\u0430\u0441\u0441\u0430\u043C\u0438 \u043D\u0435 \u0441\u0434\u0435\u043B\u0430\u0442\u044C: \u043F\u043E\u043B\u043E\u0441\u044B \u041E\u0414\u041D\u0418\u041C \u0433\u0440\u0430\u0434\u0438\u0435\u043D\u0442\u043E\u043C \u0441 \u0448\u0430\u0433\u043E\u043C \u0432 \u0441\u0442\u0440\u043E\u043A\u0443
+     (\u043A\u043B\u0430\u0441\u0441\u043E\u043C \u043D\u0430 \u043A\u0430\u0436\u0434\u0443\u044E \u0432\u0442\u043E\u0440\u0443\u044E \u043E\u043D\u0438 \u0441\u0431\u0438\u0432\u0430\u043B\u0438\u0441\u044C \u0431\u044B \u0441 \u0440\u0438\u0442\u043C\u0430 \u0432\u043D\u0443\u0442\u0440\u0438 \u0432\u0435\u0442\u043E\u043A) \u0438 \u0441\u0442\u0440\u043E\u043A\u0430
+     \u0440\u043E\u0432\u043D\u043E \u0432 1lh, \u043E\u0442 \u043A\u043E\u0442\u043E\u0440\u043E\u0439 \u043F\u043B\u044F\u0448\u0443\u0442 \u0441\u0442\u0440\u0435\u043B\u043A\u0430 \u0438 \u0437\u043D\u0430\u0447\u043E\u043A. */
   .dumb-tree { list-style: none; margin: 0; padding: 0; line-height: 1.4;
-               font-size: var(--dumb-tree-size, 13px);
-               color: var(--dumb-tree-fg, inherit); user-select: none }
+               font-size: var(--dumb-tree-size, 13px); user-select: none }
   .dumb-tree[data-stripes="1"] {
     background-image: repeating-linear-gradient(to bottom,
       transparent 0, transparent 1lh,
@@ -44,25 +47,11 @@ var STYLES = `
       var(--dumb-tree-zebra, rgb(0 0 0 / .035)) 2lh);
     background-attachment: local }
   .dumb-tree ul { list-style: none; margin: 0; padding-left: 1rem }
-  .dumb-tree-row { display: flex; align-items: center; gap: .375rem; height: 1lh;
-                   padding: 0 4px; border-radius: 3px; cursor: pointer;
-                   text-decoration: none; color: inherit }
-  .dumb-tree-row:hover { background: var(--dumb-tree-hover, rgb(0 0 0 / .06)) }
-  .dumb-tree-row[aria-current="true"] { font-weight: 500;
-                                        color: var(--dumb-tree-accent, #2563eb);
-                                        background: var(--dumb-tree-sel, rgb(37 99 235 / .14)) }
-  .dumb-tree-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                     white-space: nowrap }
-  .dumb-tree-badge { flex: none; font-size: .82em; font-variant-numeric: tabular-nums;
-                     color: var(--dumb-tree-dim, #475569) }
-  /* \u0441\u0442\u0440\u0435\u043B\u043A\u0430 \u043E\u0434\u043D\u0430 \u043D\u0430 \u043E\u0431\u0430 \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u044F: \u0440\u0430\u0441\u043A\u0440\u044B\u0442\u0430\u044F \u2014 \u0442\u0430 \u0436\u0435, \u043F\u043E\u0432\u0451\u0440\u043D\u0443\u0442\u0430\u044F */
-  .dumb-tree-twist { flex: none; width: 13px; height: 1lh; padding: 0; border: 0;
-                     display: grid; place-items: center; background: none; cursor: pointer;
-                     color: var(--dumb-tree-dim, #475569); font-size: .8em }
+  .dumb-tree-row { height: 1lh }
+  .dumb-tree-twist { width: 13px; height: 1lh }
   .dumb-tree-twist > span { width: 10px; height: 10px; transition: transform .12s }
   .dumb-tree-row[data-open="1"] .dumb-tree-twist > span { transform: rotate(90deg) }
-  .dumb-tree-icon { flex: none; width: 15px; height: 15px }
-  .dumb-tree-wait { flex: none; width: 13px; text-align: center; opacity: .6 }
+  @media (prefers-reduced-motion: reduce) { .dumb-tree-twist > span { transition: none } }
 `;
 function createOpened(key) {
   const read = () => {
@@ -130,7 +119,7 @@ function Branch(p) {
   });
   return <>
       <Show when={busy() && !p.parentId}>
-        <li class="dumb-tree-wait">…</li>
+        <li class="dumb-tree-wait px-1"><span class="loading loading-dots loading-xs" /></li>
       </Show>
       <For each={list()}>
         {(node) => <Row node={node} opened={p.opened} tree={p.tree} matches={p.matches} />}
@@ -145,10 +134,10 @@ function Row(p) {
   const icon = () => p.node.icon ?? (branch() ? open() ? p.tree.icons?.folderOpen ?? p.tree.icons?.folder : p.tree.icons?.folder : p.tree.icons?.leaf);
   const drag = () => p.tree.getDragData?.(p.node) ?? null;
   const inner = <>
-      <Show when={branch()} fallback={<span class="dumb-tree-twist" />}>
+      <Show when={branch()} fallback={<span class="dumb-tree-twist shrink-0" />}>
         <button
     type="button"
-    class="dumb-tree-twist"
+    class="dumb-tree-twist grid shrink-0 cursor-pointer place-items-center border-0 bg-transparent p-0 text-xs"
     data-no-select
     title={open() ? "\u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C" : "\u0440\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C"}
     onClick={(ev) => {
@@ -163,17 +152,17 @@ function Row(p) {
         </button>
       </Show>
       <Show when={icon()}>
-        <span class={`dumb-tree-icon ${icon()}`} />
+        <span class={`dumb-tree-icon size-[15px] shrink-0 ${icon()}`} />
       </Show>
-      <span class="dumb-tree-label">{p.node.label}</span>
+      <span class="dumb-tree-label min-w-0 flex-1 truncate">{p.node.label}</span>
       <Show when={p.tree.renderAction}>{p.tree.renderAction(p.node)}</Show>
       <Show when={p.node.badge !== void 0 && p.node.badge !== ""}>
-        <span class="dumb-tree-badge">{p.node.badge}</span>
+        <span class="dumb-tree-badge badge badge-sm badge-ghost tabular-nums">{p.node.badge}</span>
       </Show>
     </>;
   const rowProps = {
     get class() {
-      return `dumb-tree-row ${p.node.class ?? ""}`;
+      return `dumb-tree-row flex cursor-pointer items-center gap-1.5 rounded-sm px-1 no-underline hover:bg-base-200 ${chosen() ? "bg-primary/15 text-primary font-medium" : ""} ${p.node.class ?? ""}`;
     },
     get "aria-current"() {
       return chosen();

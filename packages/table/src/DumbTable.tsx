@@ -118,10 +118,14 @@ const withViewTransition = (on: boolean | undefined, fn: () => void) => {
   else fn()
 }
 
-// Стрелка сортировки: у сортируемой колонки видна всегда, неактивная — бледная.
+/**
+ * Стрелка сортировки. У сортируемой колонки она видна ВСЕГДА: иначе колонку с
+ * сортировкой не отличить от обычной, пока по ней не щёлкнешь. Неактивная — не
+ * блёклая (правило контраста), а другой значок: ⇅ против ▲/▼.
+ */
 function SortMark(props: { dir: false | 'asc' | 'desc' }) {
   return (
-    <span aria-hidden="true" style={{ 'margin-left': '4px', opacity: props.dir ? '1' : '.3' }}>
+    <span aria-hidden="true" class="ml-1 inline-block">
       {props.dir === 'asc' ? '▲' : props.dir === 'desc' ? '▼' : '⇅'}
     </span>
   )
@@ -203,21 +207,20 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
   })
 
   return (
-    <div
-      class={props.class}
-      style={{ opacity: props.loading ? '.5' : '1', transition: 'opacity .15s' }}
-    >
+    <div class={props.class}>
+      {/* Пока данные едут, таблица не выцветает (её всё равно читают) — сверху
+          кладётся полоса прогресса daisyUI. */}
+      <Show when={props.loading}>
+        <progress class="progress progress-primary mb-1 h-1 w-full" />
+      </Show>
       <Show when={visibleRows().length} fallback={props.empty}>
-        <table
-          class={props.tableClass}
-          style={{ width: '100%', 'border-collapse': 'collapse' }}
-        >
+        <table class={`table ${props.tableClass ?? ''}`}>
           <thead class={props.headClass}>
             <For each={table.getHeaderGroups()}>
               {(hg) => (
                 <tr>
                   <Show when={props.onReorder && withHandle()}>
-                    <th style={{ width: '1%' }} />
+                    <th class="w-px" />
                   </Show>
                   <For each={hg.headers}>
                     {(header) => {
@@ -226,13 +229,8 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                       return (
                         <th
                           class={`${c().class ?? ''} ${c().headClass ?? ''}`.trim() || undefined}
-                          style={{
-                            ...cellStyle(c()),
-                            padding: '6px 8px',
-                            'white-space': 'nowrap',
-                            cursor: canSort() ? 'pointer' : undefined,
-                            'user-select': canSort() ? 'none' : undefined,
-                          }}
+                          classList={{ 'cursor-pointer select-none': canSort() }}
+                          style={{ ...cellStyle(c()), 'white-space': 'nowrap' }}
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
@@ -269,14 +267,13 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                   onClick={() => props.onRowClick?.(original, row().index)}
                 >
                   <Show when={props.onReorder && withHandle()}>
-                    <td style={{ padding: '6px 4px', width: '1%' }} onClick={(e) => e.stopPropagation()}>
+                    <td class="w-px" onClick={(e) => e.stopPropagation()}>
                       <span
                         data-drag-handle
-                        style={{
-                          display: 'inline-block',
-                          cursor: dragDisabled() ? 'not-allowed' : 'grab',
-                          opacity: dragDisabled() ? '.3' : '1',
-                          'touch-action': 'none',
+                        class="inline-block touch-none"
+                        classList={{
+                          'cursor-not-allowed text-base-content': dragDisabled(),
+                          'cursor-grab': !dragDisabled(),
                         }}
                         title={dragDisabled() ? 'reset sorting to reorder' : 'drag'}
                       >
@@ -290,7 +287,7 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                       return (
                         <td
                           class={c().class}
-                          style={{ ...cellStyle(c()), padding: '6px 8px' }}
+                          style={cellStyle(c())}
                           onClick={c().stopClick ? (e: Event) => e.stopPropagation() : undefined}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

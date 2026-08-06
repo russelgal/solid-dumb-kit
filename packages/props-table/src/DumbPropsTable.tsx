@@ -32,10 +32,15 @@ export interface DumbPropsTableProps extends DumpOptions {
  * блёклый серый по белому в ней — брак (правило контраста репы). Каждый
  * вынесен в переменную, чтобы тёмная тема перекрасила их своими.
  */
+/**
+ * Вид значения — цветом из темы daisyUI: свои hex'ы разъезжаются с тёмной
+ * темой, а токены темы меняются вместе с ней. Перекрыть можно своей
+ * переменной, дефолт — цвет темы.
+ */
 const KIND_COLOR: Record<DumpRow['kind'], string> = {
-  object: 'var(--dumb-props-object, #6d28d9)',
-  array: 'var(--dumb-props-array, #0e7490)',
-  function: 'var(--dumb-props-function, #9a3412)',
+  object: 'var(--dumb-props-object, var(--color-secondary, #6d28d9))',
+  array: 'var(--dumb-props-array, var(--color-accent, #0e7490))',
+  function: 'var(--dumb-props-function, var(--color-warning, #9a3412))',
   primitive: 'inherit',
 }
 
@@ -76,7 +81,10 @@ export function DumbPropsTable(props: DumbPropsTableProps) {
                 </td>
                 {/* тип — подсказка, а не главное; вторичность даётся ЦВЕТОМ,
                     а не прозрачностью: полупрозрачный текст не читается */}
-                <td class="whitespace-nowrap" style={{ color: 'var(--dumb-props-dim, #475569)' }}>
+                <td
+                  class="whitespace-nowrap"
+                  style={{ color: 'var(--dumb-props-dim, var(--color-base-content, #475569))' }}
+                >
                   {r.type}
                 </td>
                 <td class="break-all whitespace-pre-wrap">{r.value}</td>

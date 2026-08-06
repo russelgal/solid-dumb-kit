@@ -28,13 +28,15 @@ function injectStyle(id, css) {
 // src/DumbLightbox.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<dialog>`);
 var _tmpl$2 = /* @__PURE__ */ template(`<div class=dumb-lightbox-stage><img class=dumb-lightbox-img>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<span class=dumb-lightbox-count> / `);
-var _tmpl$4 = /* @__PURE__ */ template(`<button type=button>1:1`);
-var _tmpl$5 = /* @__PURE__ */ template(`<div class=dumb-lightbox-bar data-at=top><span class=dumb-lightbox-title></span><button type=button title="\u0437\u0430\u043A\u0440\u044B\u0442\u044C (Esc)">\u2715`);
-var _tmpl$6 = /* @__PURE__ */ template(`<button type=button class=dumb-lightbox-nav data-side=prev title="\u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F (\u2190)">\u2039`);
-var _tmpl$7 = /* @__PURE__ */ template(`<button type=button class=dumb-lightbox-nav data-side=next title="\u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F (\u2192)">\u203A`);
-var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-lightbox-bar data-at=bottom>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<span class="dumb-lightbox-count tabular-nums"> / `);
+var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral">1:1`);
+var _tmpl$5 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"data-at=top><span class="dumb-lightbox-title min-w-0 flex-1 truncate"></span><button type=button class="btn btn-sm btn-circle btn-neutral"title="\u0437\u0430\u043A\u0440\u044B\u0442\u044C (Esc)">\u2715`);
+var _tmpl$6 = /* @__PURE__ */ template(`<button type=button class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"data-side=prev title="\u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F (\u2190)">\u2039`);
+var _tmpl$7 = /* @__PURE__ */ template(`<button type=button class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"data-side=next title="\u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F (\u2192)">\u203A`);
+var _tmpl$8 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center justify-center gap-3 p-3 text-sm text-white"data-at=bottom>`);
 var STYLES = `
+  /* \u0422\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430 \u0438 \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430 \u0437\u0443\u043C\u0430. \u041A\u043D\u043E\u043F\u043A\u0438 \u2014 daisyUI (btn) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435; \u043D\u0430\u0434
+     \u0442\u0451\u043C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u0438\u043D\u043A\u043E\u0439 \u043E\u043D\u0438 \u0438\u0434\u0443\u0442 \u0432 btn-neutral, \u0447\u0442\u043E\u0431\u044B \u0447\u0438\u0442\u0430\u0442\u044C\u0441\u044F \u043D\u0430 \u043B\u044E\u0431\u043E\u043C \u0444\u043E\u043D\u0435. */
   .dumb-lightbox { border: 0; padding: 0; max-width: 100vw; max-height: 100vh;
                    width: 100vw; height: 100vh; background: transparent; overflow: hidden }
   .dumb-lightbox::backdrop { background: rgb(0 0 0 / .82) }
@@ -46,21 +48,13 @@ var STYLES = `
   .dumb-lightbox[data-animate="1"] .dumb-lightbox-img { transition: transform .12s ease-out }
   .dumb-lightbox-stage[data-drag="1"] .dumb-lightbox-img { transition: none }
 
-  .dumb-lightbox-bar { position: absolute; left: 0; right: 0; display: flex; align-items: center;
-                       gap: 10px; padding: 12px 16px; color: #f8fafc; font-size: 13px }
+  /* \u043F\u0430\u043D\u0435\u043B\u0438 \u043F\u043E\u0432\u0435\u0440\u0445 \u043A\u0430\u0440\u0442\u0438\u043D\u043A\u0438: \u043F\u043E\u0434\u043B\u043E\u0436\u043A\u0430-\u0433\u0440\u0430\u0434\u0438\u0435\u043D\u0442, \u0447\u0442\u043E\u0431\u044B \u043F\u043E\u0434\u043F\u0438\u0441\u0438 \u0447\u0438\u0442\u0430\u043B\u0438\u0441\u044C */
+  .dumb-lightbox-bar { position: absolute; left: 0; right: 0 }
   .dumb-lightbox-bar[data-at="top"] { top: 0;
     background: linear-gradient(rgb(0 0 0 / .55), transparent) }
-  .dumb-lightbox-bar[data-at="bottom"] { bottom: 0; justify-content: center;
+  .dumb-lightbox-bar[data-at="bottom"] { bottom: 0;
     background: linear-gradient(transparent, rgb(0 0 0 / .55)) }
-  .dumb-lightbox-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                         white-space: nowrap }
-  .dumb-lightbox-count { font-variant-numeric: tabular-nums; opacity: .85 }
-  .dumb-lightbox button { font: inherit; color: inherit; cursor: pointer; border: 0;
-                          border-radius: 8px; padding: 5px 10px;
-                          background: rgb(255 255 255 / .16) }
-  .dumb-lightbox button:hover { background: rgb(255 255 255 / .3) }
-  .dumb-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%);
-                       font-size: 22px; padding: 10px 14px !important }
+  .dumb-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%) }
   .dumb-lightbox-nav[data-side="prev"] { left: 12px }
   .dumb-lightbox-nav[data-side="next"] { right: 12px }
 `;

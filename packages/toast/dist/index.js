@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, effect, setAttribute, className, setStyleProperty, template } from 'solid-js/web';
+import { delegateEvents, use, insert, createComponent, effect, className, setAttribute, setStyleProperty, template } from 'solid-js/web';
 import { createSignal, createEffect, For, Show, untrack, onCleanup } from 'solid-js';
 
 // src/DumbToaster.tsx
@@ -140,16 +140,17 @@ var toast = createToastBus();
 
 // src/DumbToaster.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<div popover=manual>`);
-var _tmpl$2 = /* @__PURE__ */ template(`<span class=dumb-toast-count>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<button type=button class=dumb-toast-close title=\u0437\u0430\u043A\u0440\u044B\u0442\u044C>\u2715`);
-var _tmpl$4 = /* @__PURE__ */ template(`<div class=dumb-toast><span class=dumb-toast-text>`);
+var _tmpl$2 = /* @__PURE__ */ template(`<span class="dumb-toast-count badge badge-sm tabular-nums">`);
+var _tmpl$3 = /* @__PURE__ */ template(`<button type=button class="dumb-toast-close btn btn-sm btn-ghost btn-circle"title=\u0437\u0430\u043A\u0440\u044B\u0442\u044C>\u2715`);
+var _tmpl$4 = /* @__PURE__ */ template(`<div><span class="dumb-toast-text flex-1">`);
 var _tmpl$5 = /* @__PURE__ */ template(`<button type=button>`);
 var _tmpl$6 = /* @__PURE__ */ template(`<div class=dumb-toast-anchor>`);
-var _tmpl$7 = /* @__PURE__ */ template(`<button type=button class=dumb-toast-close>\u2715`);
-var _tmpl$8 = /* @__PURE__ */ template(`<div popover=manual class="dumb-toast dumb-toast-at"><span class=dumb-toast-text>`);
+var _tmpl$7 = /* @__PURE__ */ template(`<button type=button class="dumb-toast-close btn btn-sm btn-ghost btn-circle">\u2715`);
+var _tmpl$8 = /* @__PURE__ */ template(`<div popover=manual><span class="dumb-toast-text flex-1">`);
 var STYLES = `
-  /* popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u0432 \u0442\u043E\u0447\u043A\u0443 \u0438 \u0441\u0442\u043E\u0438\u0442 \u043F\u043E \u0446\u0435\u043D\u0442\u0440\u0443 \u2014 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C \u043D\u0430
-     \u0432\u0441\u0451 \u043E\u043A\u043D\u043E \u0438 \u0434\u0435\u043B\u0430\u0435\u043C \u043F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u044B\u043C \u0434\u043B\u044F \u043A\u043B\u0438\u043A\u043E\u0432, \u043A\u0440\u043E\u043C\u0435 \u0441\u0430\u043C\u0438\u0445 \u043F\u043B\u0430\u0448\u0435\u043A */
+  /* \u0417\u0434\u0435\u0441\u044C \u0422\u041E\u041B\u042C\u041A\u041E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430: popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u0432 \u0442\u043E\u0447\u043A\u0443 \u0438 \u0441\u0442\u043E\u0438\u0442 \u043F\u043E
+     \u0446\u0435\u043D\u0442\u0440\u0443 \u2014 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C \u043D\u0430 \u0432\u0441\u0451 \u043E\u043A\u043D\u043E \u0438 \u0434\u0435\u043B\u0430\u0435\u043C \u043F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u044B\u043C \u0434\u043B\u044F \u043A\u043B\u0438\u043A\u043E\u0432, \u043A\u0440\u043E\u043C\u0435
+     \u0441\u0430\u043C\u0438\u0445 \u043F\u043B\u0430\u0448\u0435\u043A. \u0412\u0438\u0434 \u043F\u043B\u0430\u0448\u043A\u0438 \u2014 daisyUI (alert), \u0441\u043C. \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0443 \u043D\u0438\u0436\u0435. */
   .dumb-toaster { position: fixed; inset: 0; width: 100%; height: 100%;
                   margin: 0; padding: 16px; border: 0; background: none; overflow: visible;
                   display: flex; flex-direction: column; gap: 8px;
@@ -160,39 +161,17 @@ var STYLES = `
   .dumb-toaster[data-at$="center"] { align-items: center }
   .dumb-toaster[data-at^="top"] { justify-content: flex-start }
   .dumb-toaster[data-at^="bottom"] { justify-content: flex-end; flex-direction: column-reverse }
-  .dumb-toast { max-width: min(92vw, 420px) }
 
-  .dumb-toast { pointer-events: auto; display: flex; align-items: center; gap: 10px;
-                padding: 9px 12px; border-radius: 10px; font-size: 13px; line-height: 1.35;
-                color: var(--dumb-toast-fg, #f8fafc);
-                background: var(--dumb-toast-bg, #1e293b);
-                box-shadow: 0 6px 20px rgb(0 0 0 / .18);
+  /* \u043F\u043B\u0430\u0448\u043A\u0430 \u043B\u043E\u0432\u0438\u0442 \u043A\u043B\u0438\u043A\u0438, \u0445\u043E\u0442\u044F \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440 \u0438\u0445 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0430\u0435\u0442 \u043D\u0430\u0441\u043A\u0432\u043E\u0437\u044C */
+  .dumb-toast { pointer-events: auto; width: auto; max-width: min(92vw, 420px);
                 animation: dumb-toast-in .16s ease-out }
-  .dumb-toast[data-kind="success"] { background: var(--dumb-toast-ok, #15803d) }
-  .dumb-toast[data-kind="error"] { background: var(--dumb-toast-bad, #b91c1c) }
-  .dumb-toast-text { flex: 1; min-width: 0; overflow-wrap: anywhere }
-  /* \u0441\u0447\u0451\u0442\u0447\u0438\u043A \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432: \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u044C \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445 \u043E\u0448\u0438\u0431\u043E\u043A \u2014 \u043E\u0434\u043D\u0430 \u043F\u043B\u0430\u0448\u043A\u0430 \u0441 \u0447\u0438\u0441\u043B\u043E\u043C */
-  .dumb-toast-count { flex: none; font-size: 11px; font-variant-numeric: tabular-nums;
-                      padding: 1px 6px; border-radius: 999px; background: rgb(255 255 255 / .22) }
-  .dumb-toast button { flex: none; font: inherit; color: inherit; cursor: pointer;
-                       background: rgb(255 255 255 / .16); border: 0; border-radius: 6px;
-                       padding: 3px 9px }
-  .dumb-toast button:hover { background: rgb(255 255 255 / .28) }
-  /* \u0433\u043B\u0430\u0432\u043D\u043E\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u0432\u0438\u0434\u043D\u043E \u0441\u0440\u0430\u0437\u0443, \u043E\u043F\u0430\u0441\u043D\u043E\u0435 \u2014 \u043A\u0440\u0430\u0441\u043D\u044B\u043C: \u043F\u043E \u043D\u0438\u043C \u043F\u043E\u043F\u0430\u0434\u0430\u044E\u0442 \u043D\u0430\u0441\u043F\u0435\u0445 */
-  .dumb-toast button[data-kind="primary"] { background: rgb(255 255 255 / .92);
-                                            color: var(--dumb-toast-bg, #1e293b);
-                                            font-weight: 600 }
-  .dumb-toast button[data-kind="danger"] { background: var(--dumb-toast-bad, #b91c1c);
-                                           color: #fff; font-weight: 600 }
-  .dumb-toast button[data-kind="danger"]:hover { filter: brightness(1.12) }
-  .dumb-toast-close { padding: 0 4px !important; background: none !important; opacity: .8 }
 
   /* \u043F\u043B\u0430\u0448\u043A\u0430 \u0423 \u041A\u0423\u0420\u0421\u041E\u0420\u0410: \u0442\u043E\u0442 \u0436\u0435 \u043F\u0440\u0438\u0451\u043C, \u0447\u0442\u043E \u0443 \u043A\u043E\u043D\u0442\u0435\u043A\u0441\u0442\u043D\u043E\u0433\u043E \u043C\u0435\u043D\u044E \u2014 \u043D\u0435\u0432\u0438\u0434\u0438\u043C\u044B\u0439 \u044F\u043A\u043E\u0440\u044C
      \u0432 \u0442\u043E\u0447\u043A\u0435 \u0438 \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u043A \u043D\u0435\u043C\u0443, \u0441\u0442\u043E\u0440\u043E\u043D\u0443 \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442 \u0431\u0440\u0430\u0443\u0437\u0435\u0440 */
   .dumb-toast-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
                        anchor-name: --dumb-toast-at }
-  .dumb-toast-at { position: fixed; margin: 0; border: 0; padding: 9px 12px; overflow: visible;
-                   max-width: min(92vw, 380px);
+  .dumb-toast-at { position: fixed; margin: 0; border: 0; padding: 0; overflow: visible;
+                   max-width: min(92vw, 380px); background: none;
                    position-anchor: --dumb-toast-at;
                    top: anchor(--dumb-toast-at bottom);
                    left: anchor(--dumb-toast-at right);
@@ -203,6 +182,8 @@ var STYLES = `
   /* \u0441\u0438\u0441\u0442\u0435\u043C\u043D\u0430\u044F \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0430 \u0441\u0438\u043B\u044C\u043D\u0435\u0435 \u0432\u043A\u0443\u0441\u0430: \u0432\u044A\u0435\u0437\u0434 \u0433\u0430\u0441\u0438\u043C */
   @media (prefers-reduced-motion: reduce) { .dumb-toast { animation: none } }
 `;
+var alertClass = (kind) => kind === "error" ? "alert alert-error" : kind === "success" ? "alert alert-success" : "alert";
+var actionClass = (kind) => kind === "primary" ? "btn btn-sm" : kind === "danger" ? "btn btn-sm btn-error" : "btn btn-sm btn-ghost";
 function DumbToaster(props) {
   injectStyle("toast", STYLES);
   const bus = () => props.bus ?? toast;
@@ -291,7 +272,15 @@ function DumbToaster(props) {
               if (!a.keepOpen) bus().dismiss(t.id);
             };
             insert(_el$6, () => a.label);
-            effect(() => setAttribute(_el$6, "data-kind", a.kind));
+            effect((_p$) => {
+              var _v$6 = actionClass(a.kind), _v$7 = a.kind;
+              _v$6 !== _p$.e && className(_el$6, _p$.e = _v$6);
+              _v$7 !== _p$.t && setAttribute(_el$6, "data-kind", _p$.t = _v$7);
+              return _p$;
+            }, {
+              e: void 0,
+              t: void 0
+            });
             return _el$6;
           })()
         }), null);
@@ -306,13 +295,15 @@ function DumbToaster(props) {
           }
         }), null);
         effect((_p$) => {
-          var _v$3 = t.kind, _v$4 = t.kind === "error" ? "alert" : "status";
-          _v$3 !== _p$.e && setAttribute(_el$2, "data-kind", _p$.e = _v$3);
-          _v$4 !== _p$.t && setAttribute(_el$2, "role", _p$.t = _v$4);
+          var _v$3 = `dumb-toast ${alertClass(t.kind)}`, _v$4 = t.kind, _v$5 = t.kind === "error" ? "alert" : "status";
+          _v$3 !== _p$.e && className(_el$2, _p$.e = _v$3);
+          _v$4 !== _p$.t && setAttribute(_el$2, "data-kind", _p$.t = _v$4);
+          _v$5 !== _p$.a && setAttribute(_el$2, "role", _p$.a = _v$5);
           return _p$;
         }, {
           e: void 0,
-          t: void 0
+          t: void 0,
+          a: void 0
         });
         return _el$2;
       })()
@@ -348,9 +339,9 @@ function DumbToaster(props) {
     return [(() => {
       var _el$7 = _tmpl$6();
       effect((_p$) => {
-        var _v$5 = `${spot.x}px`, _v$6 = `${spot.y}px`;
-        _v$5 !== _p$.e && setStyleProperty(_el$7, "left", _p$.e = _v$5);
-        _v$6 !== _p$.t && setStyleProperty(_el$7, "top", _p$.t = _v$6);
+        var _v$8 = `${spot.x}px`, _v$9 = `${spot.y}px`;
+        _v$8 !== _p$.e && setStyleProperty(_el$7, "left", _p$.e = _v$8);
+        _v$9 !== _p$.t && setStyleProperty(_el$7, "top", _p$.t = _v$9);
         return _p$;
       }, {
         e: void 0,
@@ -373,7 +364,15 @@ function DumbToaster(props) {
             if (!a.keepOpen) bus().dismiss(p.t.id);
           };
           insert(_el$1, () => a.label);
-          effect(() => setAttribute(_el$1, "data-kind", a.kind));
+          effect((_p$) => {
+            var _v$11 = actionClass(a.kind), _v$12 = a.kind;
+            _v$11 !== _p$.e && className(_el$1, _p$.e = _v$11);
+            _v$12 !== _p$.t && setAttribute(_el$1, "data-kind", _p$.t = _v$12);
+            return _p$;
+          }, {
+            e: void 0,
+            t: void 0
+          });
           return _el$1;
         })()
       }), null);
@@ -388,13 +387,15 @@ function DumbToaster(props) {
         }
       }), null);
       effect((_p$) => {
-        var _v$7 = p.t.kind, _v$8 = p.t.kind === "error" ? "alert" : "status";
-        _v$7 !== _p$.e && setAttribute(_el$8, "data-kind", _p$.e = _v$7);
-        _v$8 !== _p$.t && setAttribute(_el$8, "role", _p$.t = _v$8);
+        var _v$0 = `dumb-toast dumb-toast-at ${alertClass(p.t.kind)}`, _v$1 = p.t.kind, _v$10 = p.t.kind === "error" ? "alert" : "status";
+        _v$0 !== _p$.e && className(_el$8, _p$.e = _v$0);
+        _v$1 !== _p$.t && setAttribute(_el$8, "data-kind", _p$.t = _v$1);
+        _v$10 !== _p$.a && setAttribute(_el$8, "role", _p$.a = _v$10);
         return _p$;
       }, {
         e: void 0,
-        t: void 0
+        t: void 0,
+        a: void 0
       });
       return _el$8;
     })()];

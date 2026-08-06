@@ -229,8 +229,12 @@ export type DumbTimelineProps<S extends Span = Span> = {
 }
 
 const STYLES = `
+  /* Оформление — daisyUI: цвета берутся из токенов темы (--color-primary,
+     --color-base-*, --color-error), кнопки и поля в разметке идут классами.
+     Здесь остаётся механика шахматки: сетка фоном, липкие колонки, полосы на
+     transform и штриховка закрытых часов — классом этого не выразить. */
   .dumb-tl { position: relative; overflow: auto; overscroll-behavior: contain;
-             color: var(--dumb-tl-fg, #0f172a); user-select: none;
+             color: var(--dumb-tl-fg, var(--color-base-content, #0f172a)); user-select: none;
              --dumb-tl-line: rgb(0 0 0 / .12) }
   .dumb-tl-inner { position: relative; display: grid;
                    grid-template-columns: var(--dumb-tl-head) 1fr }
@@ -239,8 +243,8 @@ const STYLES = `
      синхронной прокруткой: у sticky нет рассинхрона на инерции. */
   .dumb-tl-corner { position: sticky; top: 0; left: 0; z-index: 3;
                     display: flex; align-items: flex-end; padding: 0 8px 3px;
-                    font-size: 11px; color: var(--dumb-tl-dim, #475569);
-                    background: var(--dumb-tl-bg, #fff);
+                    font-size: 11px; color: var(--dumb-tl-dim, var(--color-base-content, #475569));
+                    background: var(--dumb-tl-bg, var(--color-base-100, #fff));
                     border-right: 1px solid var(--dumb-tl-line);
                     border-bottom: 1px solid var(--dumb-tl-line) }
   .dumb-tl-sum-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
@@ -249,36 +253,36 @@ const STYLES = `
                       padding: 0 6px; border: 0; border-bottom: 1px solid var(--dumb-tl-line);
                       font: inherit; font-size: 12px; font-weight: 600; text-align: left;
                       cursor: pointer; color: inherit;
-                      background: var(--dumb-tl-group-bg, rgb(0 0 0 / .04)) }
+                      background: var(--dumb-tl-group-bg, var(--color-base-200, rgb(0 0 0 / .04))) }
   /* без opacity: элемент управления обязан читаться сразу (правило контраста) */
   .dumb-tl-fold { font-size: 9px }
   /* «сейчас»: тонкая линия поверх сетки, но под полосами */
   .dumb-tl-now { position: absolute; top: 0; bottom: 0; width: 2px; z-index: 1;
-                 background: var(--dumb-tl-now, #2563eb); pointer-events: none }
+                 background: var(--dumb-tl-now, var(--color-primary, #2563eb)); pointer-events: none }
   /* выделение пустого места протяжкой: рамка с подписью «сколько выбрано» */
   .dumb-tl-pick { position: absolute; z-index: 3; border-radius: 6px; pointer-events: none;
                   display: flex; align-items: center; justify-content: center;
-                  font-size: 11px; font-weight: 600; color: var(--dumb-tl-span-bg, #2563eb);
-                  border: 2px dashed var(--dumb-tl-span-bg, #2563eb);
-                  background: color-mix(in srgb, var(--dumb-tl-span-bg, #2563eb) 12%, transparent) }
+                  font-size: 11px; font-weight: 600; color: var(--dumb-tl-span-bg, var(--color-primary, #2563eb));
+                  border: 2px dashed var(--dumb-tl-span-bg, var(--color-primary, #2563eb));
+                  background: color-mix(in srgb, var(--dumb-tl-span-bg, var(--color-primary, #2563eb)) 12%, transparent) }
   .dumb-tl-head { position: sticky; top: 0; z-index: 2;
-                  background: var(--dumb-tl-bg, #fff);
+                  background: var(--dumb-tl-bg, var(--color-base-100, #fff));
                   border-bottom: 1px solid var(--dumb-tl-line) }
   .dumb-tl-groups { display: grid; border-bottom: 1px solid var(--dumb-tl-line) }
   .dumb-tl-group { font-size: 12px; font-weight: 600; text-align: center; padding: 3px 0;
                    border-left: 1px solid var(--dumb-tl-line);
                    overflow: hidden; white-space: nowrap; text-transform: capitalize }
-  .dumb-tl-days { display: grid; background: var(--dumb-tl-bg, #fff) }
+  .dumb-tl-days { display: grid; background: var(--dumb-tl-bg, var(--color-base-100, #fff)) }
   .dumb-tl-summary { border-top: 1px solid var(--dumb-tl-line);
                      font-variant-numeric: tabular-nums;
-                     color: var(--dumb-tl-dim, #475569) }
+                     color: var(--dumb-tl-dim, var(--color-base-content, #475569)) }
   .dumb-tl-day { font-size: 11px; text-align: center; padding: 3px 0; line-height: 1.15;
                  border-left: 1px solid var(--dumb-tl-line) }
   /* день недели мельче числа: он подсказка, а не главное. Вторичность — размером
      и цветом не светлее var(--dumb-tl-dim), а не полупрозрачностью */
-  .dumb-tl-wd { display: block; font-size: 9px; color: var(--dumb-tl-dim, #475569) }
+  .dumb-tl-wd { display: block; font-size: 9px; color: var(--dumb-tl-dim, var(--color-base-content, #475569)) }
   .dumb-tl-rows { position: sticky; left: 0; z-index: 2;
-                  background: var(--dumb-tl-bg, #fff);
+                  background: var(--dumb-tl-bg, var(--color-base-100, #fff));
                   border-right: 1px solid var(--dumb-tl-line) }
   .dumb-tl-row { display: flex; align-items: center; padding: 0 8px; font-size: 13px;
                  border-bottom: 1px solid var(--dumb-tl-line); overflow: hidden;
@@ -306,7 +310,7 @@ const STYLES = `
   .dumb-tl-span { position: absolute; box-sizing: border-box; display: flex; align-items: center;
                   gap: 4px; padding: 0 6px; border-radius: 6px; font-size: 12px;
                   line-height: 1.2; overflow: hidden; white-space: nowrap; cursor: grab;
-                  background: var(--dumb-tl-span-bg, #2563eb); color: #fff;
+                  background: var(--dumb-tl-span-bg, var(--color-primary, #2563eb)); color: #fff;
                   will-change: transform }
   .dumb-tl-span[data-drag="1"] { cursor: grabbing; opacity: .85; z-index: 4 }
   /* заблокированная полоса: блок, ремонт, санитарный день */
@@ -314,9 +318,9 @@ const STYLES = `
   /* Закрытая строка: видна, но ничего не создать. Название приглушается
      ЦВЕТОМ — прозрачность .55 уводила его к 3.5:1, а по названию строку ищут
      глазами. Что строка нерабочая, видно и без этого: канва заштрихована. */
-  .dumb-tl-row[data-off="1"] { color: var(--dumb-tl-dim, #475569) }
+  .dumb-tl-row[data-off="1"] { color: var(--dumb-tl-dim, var(--color-base-content, #475569)) }
   /* нельзя сюда — видно сразу, а не после отпускания */
-  .dumb-tl-span[data-bad="1"] { background: var(--dumb-tl-bad, #b91c1c) }
+  .dumb-tl-span[data-bad="1"] { background: var(--dumb-tl-bad, var(--color-error, #b91c1c)) }
   .dumb-tl-grip { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize }
   .dumb-tl-grip[data-edge="from"] { left: 0 }
   .dumb-tl-grip[data-edge="to"] { right: 0 }
@@ -332,7 +336,7 @@ const STYLES = `
      как он попробует туда что-то поставить. */
   .dumb-tl-closed { position: absolute; pointer-events: none;
                     background: repeating-linear-gradient(45deg,
-                      transparent 0 4px, var(--dumb-tl-closed, rgb(0 0 0 / .1)) 4px 8px) }
+                      transparent 0 4px, var(--dumb-tl-closed, var(--color-base-300, rgb(0 0 0 / .1))) 4px 8px) }
   /* Зазор после брони: уборка бани, перезарядка пейнтбола. Время формально
      свободно, а ставить туда нельзя — вот и видно, ПОЧЕМУ сосед не встык. */
   .dumb-tl-gap { position: absolute; pointer-events: none; border-radius: 0 4px 4px 0;
@@ -341,13 +345,13 @@ const STYLES = `
                    transparent 0 3px, rgb(0 0 0 / .25) 3px 5px) }
   /* сколько ещё свободно справа: видно при наведении, тянуть не обязательно */
   .dumb-tl-room { position: absolute; border-radius: 0 6px 6px 0; pointer-events: none;
-                  border: 1px dashed var(--dumb-tl-span-bg, #2563eb);
+                  border: 1px dashed var(--dumb-tl-span-bg, var(--color-primary, #2563eb));
                   border-left: 0; opacity: .55;
                   background: repeating-linear-gradient(45deg,
-                    transparent 0 5px, var(--dumb-tl-span-bg, #2563eb) 5px 6px) }
+                    transparent 0 5px, var(--dumb-tl-span-bg, var(--color-primary, #2563eb)) 5px 6px) }
   .dumb-tl-room > b { position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
                       font-size: 10px; font-weight: 600; white-space: nowrap;
-                      color: var(--dumb-tl-fg, #0f172a) }
+                      color: var(--dumb-tl-fg, var(--color-base-content, #0f172a)) }
 `
 
 export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {

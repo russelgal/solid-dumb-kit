@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect, setStyleProperty, memo, className, style, template } from 'solid-js/web';
+import { delegateEvents, use, insert, createComponent, setAttribute, effect, setStyleProperty, className, memo, style, template } from 'solid-js/web';
 import { createSignal, onCleanup, createMemo, Show, createEffect, For } from 'solid-js';
 import { createFileUploader, createDropzone } from '@solid-primitives/upload';
 
@@ -735,30 +735,31 @@ async function walk(entry, prefix) {
 }
 
 // src/DumbGallery.tsx
-var _tmpl$2 = /* @__PURE__ */ template(`<button type=button>\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0444\u0430\u0439\u043B\u044B`);
-var _tmpl$22 = /* @__PURE__ */ template(`<span data-gallery-stats>`);
+var _tmpl$2 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral mt-3">\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0444\u0430\u0439\u043B\u044B`);
+var _tmpl$22 = /* @__PURE__ */ template(`<span class="ml-3 text-sm"data-gallery-stats>`);
 var _tmpl$3 = /* @__PURE__ */ template(`<div>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<button type=button data-no-drag title=\u0443\u0431\u0440\u0430\u0442\u044C>\u2715`);
-var _tmpl$5 = /* @__PURE__ */ template(`<span class=dumb-gallery-bar><i>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<figure class=dumb-gallery-tile><img>`);
+var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"data-no-drag title=\u0443\u0431\u0440\u0430\u0442\u044C>\u2715`);
+var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-gallery-bar bg-base-300"><i>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<figure><img>`);
 var STYLES = `
           /* grid, \u0430 \u043D\u0435 flex: \u043D\u0430 \u043D\u0451\u043C \u0438 \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F CSS order, \u043A\u043E\u0442\u043E\u0440\u044B\u043C \u0434\u0432\u0438\u0433\u0430\u044E\u0442\u0441\u044F \u043F\u043B\u0438\u0442\u043A\u0438 */
           .dumb-gallery { display: grid; gap: var(--dumb-gallery-gap, 10px);
                           grid-template-columns:
                             repeat(auto-fill, var(--dumb-gallery-tile, minmax(120px, 1fr))) }
-          .dumb-gallery-tile { position: relative; overflow: hidden; aspect-ratio: 1;
-                               border-radius: 10px; background: rgb(0 0 0 / .04) }
+          /* \u0441\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u0438\u0435 \u0438 \u0444\u043E\u043D \u043F\u043B\u0438\u0442\u043A\u0438 \u2014 daisyUI (rounded-box, bg-base-200) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435 */
+          .dumb-gallery-tile { position: relative; overflow: hidden; aspect-ratio: 1 }
           .dumb-gallery-tile img { width: 100%; height: 100%; object-fit: cover; display: block }
           /* \u043F\u043E\u043A\u0430 \u0444\u0430\u0439\u043B \u0435\u0434\u0435\u0442 \u2014 \u043F\u0440\u0438\u0433\u043B\u0443\u0448\u0430\u0435\u043C \u0438 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u043C \u043F\u043E\u043B\u043E\u0441\u0443 */
           .dumb-gallery-tile[data-status="uploading"] img,
           .dumb-gallery-tile[data-status="queued"] img { opacity: .5 }
           /* \u0436\u0434\u0443\u0449\u0438\u0439 \u0432 \u043E\u0447\u0435\u0440\u0435\u0434\u0438 \u043E\u0442\u043B\u0438\u0447\u0430\u0435\u0442\u0441\u044F \u043E\u0442 \u0438\u0434\u0443\u0449\u0435\u0433\u043E: \u043F\u043E\u043B\u043E\u0441\u0430 \u0443 \u043D\u0435\u0433\u043E \u043D\u0435 \u0434\u0432\u0438\u0436\u0435\u0442\u0441\u044F */
           .dumb-gallery-tile[data-status="queued"] .dumb-gallery-bar > i { width: 0 !important }
-          .dumb-gallery-tile[data-status="error"] { outline: 2px solid currentColor }
-          .dumb-gallery-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-                              background: rgb(0 0 0 / .12) }
+          .dumb-gallery-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px }
           .dumb-gallery-bar > i { display: block; height: 100%; background: currentColor;
                                   transition: width .12s linear }
+          @media (prefers-reduced-motion: reduce) {
+            .dumb-gallery-bar > i { transition: none }
+          }
           .dumb-gallery-drop { position: relative }
           .dumb-gallery-drop[data-over="1"]::after {
             content: ''; position: absolute; inset: -6px; border-radius: 12px;
@@ -946,17 +947,19 @@ function DumbGallery(props) {
           }
         }), null);
         effect((_p$) => {
-          var _v$4 = item.status ?? "local", _v$5 = item.error ?? item.name, _v$6 = item.preview ?? item.url, _v$7 = item.name ?? "";
-          _v$4 !== _p$.e && setAttribute(_el$4, "data-status", _p$.e = _v$4);
-          _v$5 !== _p$.t && setAttribute(_el$4, "title", _p$.t = _v$5);
-          _v$6 !== _p$.a && setAttribute(_el$5, "src", _p$.a = _v$6);
-          _v$7 !== _p$.o && setAttribute(_el$5, "alt", _p$.o = _v$7);
+          var _v$4 = `dumb-gallery-tile rounded-box bg-base-200 ${item.status === "error" ? "outline-error outline-2" : ""}`, _v$5 = item.status ?? "local", _v$6 = item.error ?? item.name, _v$7 = item.preview ?? item.url, _v$8 = item.name ?? "";
+          _v$4 !== _p$.e && className(_el$4, _p$.e = _v$4);
+          _v$5 !== _p$.t && setAttribute(_el$4, "data-status", _p$.t = _v$5);
+          _v$6 !== _p$.a && setAttribute(_el$4, "title", _p$.a = _v$6);
+          _v$7 !== _p$.o && setAttribute(_el$5, "src", _p$.o = _v$7);
+          _v$8 !== _p$.i && setAttribute(_el$5, "alt", _p$.i = _v$8);
           return _p$;
         }, {
           e: void 0,
           t: void 0,
           a: void 0,
-          o: void 0
+          o: void 0,
+          i: void 0
         });
         return _el$4;
       })()

@@ -32,19 +32,22 @@ function injectStyle(id, css) {
 
 // src/DumbTree.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<ul>`);
-var _tmpl$2 = /* @__PURE__ */ template(`<li class=dumb-tree-wait>\u2026`);
+var _tmpl$2 = /* @__PURE__ */ template(`<li class="dumb-tree-wait px-1"><span class="loading loading-dots loading-xs">`);
 var _tmpl$3 = /* @__PURE__ */ template(`<span>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class=dumb-tree-twist data-no-select>`);
-var _tmpl$5 = /* @__PURE__ */ template(`<span class=dumb-tree-label>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<span class=dumb-tree-badge>`);
-var _tmpl$7 = /* @__PURE__ */ template(`<span class=dumb-tree-twist>`);
+var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="dumb-tree-twist grid shrink-0 cursor-pointer place-items-center border-0 bg-transparent p-0 text-xs"data-no-select>`);
+var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-tree-label min-w-0 flex-1 truncate">`);
+var _tmpl$6 = /* @__PURE__ */ template(`<span class="dumb-tree-badge badge badge-sm badge-ghost tabular-nums">`);
+var _tmpl$7 = /* @__PURE__ */ template(`<span class="dumb-tree-twist shrink-0">`);
 var _tmpl$8 = /* @__PURE__ */ template(`<a>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<li>`);
 var _tmpl$0 = /* @__PURE__ */ template(`<div>`);
 var STYLES = `
+  /* \u0412\u0438\u0434 \u2014 daisyUI (menu, bg-base-*, text-primary) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. \u0417\u0434\u0435\u0441\u044C \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F
+     \u0442\u043E, \u0447\u0435\u0433\u043E \u043A\u043B\u0430\u0441\u0441\u0430\u043C\u0438 \u043D\u0435 \u0441\u0434\u0435\u043B\u0430\u0442\u044C: \u043F\u043E\u043B\u043E\u0441\u044B \u041E\u0414\u041D\u0418\u041C \u0433\u0440\u0430\u0434\u0438\u0435\u043D\u0442\u043E\u043C \u0441 \u0448\u0430\u0433\u043E\u043C \u0432 \u0441\u0442\u0440\u043E\u043A\u0443
+     (\u043A\u043B\u0430\u0441\u0441\u043E\u043C \u043D\u0430 \u043A\u0430\u0436\u0434\u0443\u044E \u0432\u0442\u043E\u0440\u0443\u044E \u043E\u043D\u0438 \u0441\u0431\u0438\u0432\u0430\u043B\u0438\u0441\u044C \u0431\u044B \u0441 \u0440\u0438\u0442\u043C\u0430 \u0432\u043D\u0443\u0442\u0440\u0438 \u0432\u0435\u0442\u043E\u043A) \u0438 \u0441\u0442\u0440\u043E\u043A\u0430
+     \u0440\u043E\u0432\u043D\u043E \u0432 1lh, \u043E\u0442 \u043A\u043E\u0442\u043E\u0440\u043E\u0439 \u043F\u043B\u044F\u0448\u0443\u0442 \u0441\u0442\u0440\u0435\u043B\u043A\u0430 \u0438 \u0437\u043D\u0430\u0447\u043E\u043A. */
   .dumb-tree { list-style: none; margin: 0; padding: 0; line-height: 1.4;
-               font-size: var(--dumb-tree-size, 13px);
-               color: var(--dumb-tree-fg, inherit); user-select: none }
+               font-size: var(--dumb-tree-size, 13px); user-select: none }
   .dumb-tree[data-stripes="1"] {
     background-image: repeating-linear-gradient(to bottom,
       transparent 0, transparent 1lh,
@@ -52,25 +55,11 @@ var STYLES = `
       var(--dumb-tree-zebra, rgb(0 0 0 / .035)) 2lh);
     background-attachment: local }
   .dumb-tree ul { list-style: none; margin: 0; padding-left: 1rem }
-  .dumb-tree-row { display: flex; align-items: center; gap: .375rem; height: 1lh;
-                   padding: 0 4px; border-radius: 3px; cursor: pointer;
-                   text-decoration: none; color: inherit }
-  .dumb-tree-row:hover { background: var(--dumb-tree-hover, rgb(0 0 0 / .06)) }
-  .dumb-tree-row[aria-current="true"] { font-weight: 500;
-                                        color: var(--dumb-tree-accent, #2563eb);
-                                        background: var(--dumb-tree-sel, rgb(37 99 235 / .14)) }
-  .dumb-tree-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                     white-space: nowrap }
-  .dumb-tree-badge { flex: none; font-size: .82em; font-variant-numeric: tabular-nums;
-                     color: var(--dumb-tree-dim, #475569) }
-  /* \u0441\u0442\u0440\u0435\u043B\u043A\u0430 \u043E\u0434\u043D\u0430 \u043D\u0430 \u043E\u0431\u0430 \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u044F: \u0440\u0430\u0441\u043A\u0440\u044B\u0442\u0430\u044F \u2014 \u0442\u0430 \u0436\u0435, \u043F\u043E\u0432\u0451\u0440\u043D\u0443\u0442\u0430\u044F */
-  .dumb-tree-twist { flex: none; width: 13px; height: 1lh; padding: 0; border: 0;
-                     display: grid; place-items: center; background: none; cursor: pointer;
-                     color: var(--dumb-tree-dim, #475569); font-size: .8em }
+  .dumb-tree-row { height: 1lh }
+  .dumb-tree-twist { width: 13px; height: 1lh }
   .dumb-tree-twist > span { width: 10px; height: 10px; transition: transform .12s }
   .dumb-tree-row[data-open="1"] .dumb-tree-twist > span { transform: rotate(90deg) }
-  .dumb-tree-icon { flex: none; width: 15px; height: 15px }
-  .dumb-tree-wait { flex: none; width: 13px; text-align: center; opacity: .6 }
+  @media (prefers-reduced-motion: reduce) { .dumb-tree-twist > span { transition: none } }
 `;
 function createOpened(key) {
   const read = () => {
@@ -224,7 +213,7 @@ function Row(p) {
     },
     get children() {
       var _el$5 = _tmpl$3();
-      effect(() => className(_el$5, `dumb-tree-icon ${icon()}`));
+      effect(() => className(_el$5, `dumb-tree-icon size-[15px] shrink-0 ${icon()}`));
       return _el$5;
     }
   }), (() => {
@@ -250,7 +239,7 @@ function Row(p) {
   })];
   const rowProps = {
     get class() {
-      return `dumb-tree-row ${p.node.class ?? ""}`;
+      return `dumb-tree-row flex cursor-pointer items-center gap-1.5 rounded-sm px-1 no-underline hover:bg-base-200 ${chosen() ? "bg-primary/15 text-primary font-medium" : ""} ${p.node.class ?? ""}`;
     },
     get "aria-current"() {
       return chosen();

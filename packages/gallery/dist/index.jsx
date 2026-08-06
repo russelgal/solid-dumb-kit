@@ -746,19 +746,20 @@ var STYLES = `
           .dumb-gallery { display: grid; gap: var(--dumb-gallery-gap, 10px);
                           grid-template-columns:
                             repeat(auto-fill, var(--dumb-gallery-tile, minmax(120px, 1fr))) }
-          .dumb-gallery-tile { position: relative; overflow: hidden; aspect-ratio: 1;
-                               border-radius: 10px; background: rgb(0 0 0 / .04) }
+          /* \u0441\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u0438\u0435 \u0438 \u0444\u043E\u043D \u043F\u043B\u0438\u0442\u043A\u0438 \u2014 daisyUI (rounded-box, bg-base-200) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435 */
+          .dumb-gallery-tile { position: relative; overflow: hidden; aspect-ratio: 1 }
           .dumb-gallery-tile img { width: 100%; height: 100%; object-fit: cover; display: block }
           /* \u043F\u043E\u043A\u0430 \u0444\u0430\u0439\u043B \u0435\u0434\u0435\u0442 \u2014 \u043F\u0440\u0438\u0433\u043B\u0443\u0448\u0430\u0435\u043C \u0438 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u043C \u043F\u043E\u043B\u043E\u0441\u0443 */
           .dumb-gallery-tile[data-status="uploading"] img,
           .dumb-gallery-tile[data-status="queued"] img { opacity: .5 }
           /* \u0436\u0434\u0443\u0449\u0438\u0439 \u0432 \u043E\u0447\u0435\u0440\u0435\u0434\u0438 \u043E\u0442\u043B\u0438\u0447\u0430\u0435\u0442\u0441\u044F \u043E\u0442 \u0438\u0434\u0443\u0449\u0435\u0433\u043E: \u043F\u043E\u043B\u043E\u0441\u0430 \u0443 \u043D\u0435\u0433\u043E \u043D\u0435 \u0434\u0432\u0438\u0436\u0435\u0442\u0441\u044F */
           .dumb-gallery-tile[data-status="queued"] .dumb-gallery-bar > i { width: 0 !important }
-          .dumb-gallery-tile[data-status="error"] { outline: 2px solid currentColor }
-          .dumb-gallery-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-                              background: rgb(0 0 0 / .12) }
+          .dumb-gallery-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px }
           .dumb-gallery-bar > i { display: block; height: 100%; background: currentColor;
                                   transition: width .12s linear }
+          @media (prefers-reduced-motion: reduce) {
+            .dumb-gallery-bar > i { transition: none }
+          }
           .dumb-gallery-drop { position: relative }
           .dumb-gallery-drop[data-over="1"]::after {
             content: ''; position: absolute; inset: -6px; border-radius: 12px;
@@ -900,7 +901,7 @@ function DumbGallery(props) {
     animate={props.animate}
   >
         {(item, i) => props.children?.(item, i, () => progressOf(item.id)) ?? <figure
-    class="dumb-gallery-tile"
+    class={`dumb-gallery-tile rounded-box bg-base-200 ${item.status === "error" ? "outline-error outline-2" : ""}`}
     data-status={item.status ?? "local"}
     title={item.error ?? item.name}
     onClick={() => props.onOpen?.(item, i())}
@@ -912,6 +913,7 @@ function DumbGallery(props) {
   }
                 <button
     type="button"
+    class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"
     data-no-drag
     draggable={false}
     title="убрать"
@@ -924,7 +926,7 @@ function DumbGallery(props) {
                 </button>
               </Show>
               <Show when={item.status === "uploading" || item.status === "queued"}>
-                <span class="dumb-gallery-bar">
+                <span class="dumb-gallery-bar bg-base-300">
                   <i style={{ width: `${Math.round(progressOf(item.id) * 100)}%` }} />
                 </span>
               </Show>
@@ -932,12 +934,16 @@ function DumbGallery(props) {
       </DumbSortableDnd>
 
       <Show when={editable()}>
-        <button type="button" onClick={() => picker.selectFiles(accepted)}>
+        <button
+    type="button"
+    class="btn btn-sm btn-neutral mt-3"
+    onClick={() => picker.selectFiles(accepted)}
+  >
           Выбрать файлы
         </button>
       </Show>
       <Show when={stats().up || stats().bad}>
-        <span data-gallery-stats>
+        <span class="ml-3 text-sm" data-gallery-stats>
           {stats().up ? `\u0437\u0430\u043B\u0438\u0432\u0430\u0435\u0442\u0441\u044F: ${stats().up}` : ""}
           {stats().bad ? ` \xB7 \u0441 \u043E\u0448\u0438\u0431\u043A\u043E\u0439: ${stats().bad}` : ""}
         </span>

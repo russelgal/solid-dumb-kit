@@ -133,12 +133,17 @@ type Pending = {
  * можно, но дефолт обязан читаться.
  */
 const STYLES = `
-  /* Кегль ОДИН на весь компонент: от него едут и дерево слева, и строки
+  /* Оформление — daisyUI: кнопки, поля и плашки берут классы в разметке, цвета
+     идут из токенов темы (--color-base-*, --color-primary, --color-error).
+     Здесь остаётся то, чего классом не выразить: сетка списка, ритм строк в
+     1lh, полосы одним градиентом и рамки-цели переноса.
+
+     Кегль ОДИН на весь компонент: от него едут и дерево слева, и строки
      списка, и подписи плиток. Дереву можно задать свой (--dumb-finder-tree-size),
      но по умолчанию оно берёт общий. */
   .dumb-finder { display: flex; flex-direction: column; min-height: 0;
                  font-size: var(--dumb-finder-size, 13px);
-                 color: var(--dumb-finder-fg, #0f172a) }
+                 color: var(--dumb-finder-fg, var(--color-base-content, #0f172a)) }
   .dumb-finder-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
                      padding: 6px 2px }
   .dumb-finder-crumbs { min-width: 0; flex: 1 }
@@ -147,17 +152,16 @@ const STYLES = `
   .dumb-finder-crumbs li { display: flex; align-items: center }
   /* разделитель гасится переменной: с готовыми крошками он уже свой */
   .dumb-finder-crumbs li + li::before { content: var(--dumb-finder-crumb-sep, '›');
-                                        opacity: .55; padding: 0 2px }
+                                        padding: 0 2px }
   .dumb-finder-crumb { padding: 2px 7px; border-radius: 6px; cursor: pointer;
                        border: 1px solid transparent; background: none; font: inherit;
                        color: inherit; white-space: nowrap }
-  .dumb-finder-crumb:hover { background: var(--dumb-finder-hover, rgb(0 0 0 / .06)) }
+  .dumb-finder-crumb:hover { background: var(--dumb-finder-hover, var(--color-base-200, rgb(0 0 0 / .06))) }
   .dumb-finder-crumb[aria-current="true"] { font-weight: 600 }
   /* цель переноса подсвечивается ярко: промахнуться мимо папки — обычное дело */
-  .dumb-finder [data-drop="1"] { outline: 2px solid var(--dumb-finder-drop, #2563eb);
+  .dumb-finder [data-drop="1"] { outline: 2px solid var(--dumb-finder-drop, var(--color-primary, #2563eb));
                                  outline-offset: 1px;
-                                 background: var(--dumb-finder-drop-bg, rgb(37 99 235 / .1)) }
-  .dumb-finder-sep { opacity: .55 }
+                                 background: var(--dumb-finder-drop-bg, color-mix(in oklch, var(--color-primary, #2563eb) 10%, transparent)) }
   /* значок и подпись в одну строку; голый значок — прячь подпись своим CSS */
   .dumb-finder-btn { display: inline-flex; align-items: center; gap: 5px }
   .dumb-finder-btn .dumb-finder-glyph { width: 15px; height: 15px; flex: none }
@@ -178,9 +182,7 @@ const STYLES = `
   .dumb-finder-side * { box-sizing: border-box }
   .dumb-finder-split { height: 100% }
   /* ── дерево папок ─────────────────────────────────────────────────────── */
-  .dumb-finder-find { width: 100%; box-sizing: border-box; margin-bottom: 4px;
-                      padding: 3px 7px; font: inherit; font-size: 12px; border-radius: 6px;
-                      border: 1px solid var(--dumb-finder-line, rgb(0 0 0 / .2)) }
+  .dumb-finder-find { margin-bottom: 4px }
   /*
     Размер дерева задаётся ОДНИМ шрифтом: высота строки ниже привязана к 1lh,
     поэтому от кегля едет всё разом — и строки, и полосы, и отступы.
@@ -195,17 +197,17 @@ const STYLES = `
     */
                       background-image: repeating-linear-gradient(to bottom,
                         transparent 0, transparent 1lh,
-                        var(--dumb-finder-zebra, rgb(0 0 0 / .035)) 1lh,
-                        var(--dumb-finder-zebra, rgb(0 0 0 / .035)) 2lh);
+                        var(--dumb-finder-zebra, var(--color-base-200, rgb(0 0 0 / .035))) 1lh,
+                        var(--dumb-finder-zebra, var(--color-base-200, rgb(0 0 0 / .035))) 2lh);
                       background-attachment: local }
   .dumb-finder-tree ul { list-style: none; margin: 0; padding-left: 1rem }
   /* строка ровно в одну строку текста: на этом держится ритм полос */
   .dumb-finder-node { display: flex; align-items: center; gap: 0; height: 1lh;
                       padding: 0 3px; border-radius: 3px; cursor: default }
-  .dumb-finder-node:hover { background: var(--dumb-finder-hover, rgb(0 0 0 / .06)) }
+  .dumb-finder-node:hover { background: var(--dumb-finder-hover, var(--color-base-200, rgb(0 0 0 / .06))) }
   .dumb-finder-node[data-here="1"] { font-weight: 500;
-                                     color: var(--dumb-finder-drop, #2563eb);
-                                     background: var(--dumb-finder-sel, rgb(37 99 235 / .16)) }
+                                     color: var(--dumb-finder-drop, var(--color-primary, #2563eb));
+                                     background: var(--dumb-finder-sel, color-mix(in oklch, var(--color-primary, #2563eb) 16%, transparent)) }
   .dumb-finder-node-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
                            white-space: nowrap; padding-left: 5px }
   /* значки в em, а не в px: размер дерева задаётся кеглем, и папка со стрелкой
@@ -223,10 +225,10 @@ const STYLES = `
   .dumb-finder-weight { flex: 0 1 auto; min-width: 0; margin-left: auto; padding-left: 6px;
                         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
                         font-size: .82em; font-variant-numeric: tabular-nums;
-                        color: var(--dumb-finder-dim, #475569) }
+                        color: var(--dumb-finder-dim, var(--color-base-content, #475569)) }
   /* ветка под курсором переноса: рамкой, как папка справа */
-  .dumb-finder-node-drop { outline: 2px solid var(--dumb-finder-drop, #2563eb);
-                           background: var(--dumb-finder-drop-bg, rgb(37 99 235 / .1)) }
+  .dumb-finder-node-drop { outline: 2px solid var(--dumb-finder-drop, var(--color-primary, #2563eb));
+                           background: var(--dumb-finder-drop-bg, color-mix(in oklch, var(--color-primary, #2563eb) 10%, transparent)) }
   /* значки дерева: эмодзи через ::before — ни шрифта, ни спрайта не надо */
   .dumb-finder-i { display: inline-grid; place-items: center; font-size: 12px;
                    line-height: 1; font-style: normal }
@@ -244,7 +246,7 @@ const STYLES = `
   .dumb-finder-body { flex: 1; min-width: 0; min-height: 0; overflow: auto;
                       overscroll-behavior: contain; padding: 4px; scrollbar-gutter: stable }
   .dumb-finder-view { min-height: 100%; outline: none }
-  .dumb-finder-view:focus-visible { outline: 2px solid var(--dumb-finder-drop, #2563eb);
+  .dumb-finder-view:focus-visible { outline: 2px solid var(--dumb-finder-drop, var(--color-primary, #2563eb));
                                     outline-offset: -2px }
   .dumb-finder-view[data-view="grid"] .dumb-finder-items {
     display: grid; gap: 8px;
@@ -253,22 +255,22 @@ const STYLES = `
 
   .dumb-finder-item { position: relative; cursor: default; border-radius: 8px;
                       border: 1px solid transparent; user-select: none }
-  .dumb-finder-item[data-selected="1"] { background: var(--dumb-finder-sel, rgb(37 99 235 / .16));
-                                         border-color: var(--dumb-finder-drop, #2563eb) }
-  .dumb-finder-item:hover { background: var(--dumb-finder-hover, rgb(0 0 0 / .06)) }
-  .dumb-finder-item[data-selected="1"]:hover { background: var(--dumb-finder-sel, rgb(37 99 235 / .16)) }
+  .dumb-finder-item[data-selected="1"] { background: var(--dumb-finder-sel, color-mix(in oklch, var(--color-primary, #2563eb) 16%, transparent));
+                                         border-color: var(--dumb-finder-drop, var(--color-primary, #2563eb)) }
+  .dumb-finder-item:hover { background: var(--dumb-finder-hover, var(--color-base-200, rgb(0 0 0 / .06))) }
+  .dumb-finder-item[data-selected="1"]:hover { background: var(--dumb-finder-sel, color-mix(in oklch, var(--color-primary, #2563eb) 16%, transparent)) }
 
   /* плитка */
   .dumb-finder-view[data-view="grid"] .dumb-finder-item { padding: 6px; text-align: center }
   .dumb-finder-thumb { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden;
                        display: grid; place-items: center; font-size: 34px; line-height: 1;
-                       background: var(--dumb-finder-thumb-bg, rgb(0 0 0 / .05)) }
+                       background: var(--dumb-finder-thumb-bg, var(--color-base-200, rgb(0 0 0 / .05))) }
   .dumb-finder-thumb img { width: 100%; height: 100%; object-fit: cover; display: block }
   .dumb-finder-name { margin-top: 4px; font-size: .92em; line-height: 1.25;
                       overflow-wrap: anywhere;
                       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
                       overflow: hidden }
-  .dumb-finder-meta { font-size: .85em; color: var(--dumb-finder-dim, #475569) }
+  .dumb-finder-meta { font-size: .85em; color: var(--dumb-finder-dim, var(--color-base-content, #475569)) }
 
   /* строка списка */
   .dumb-finder-view[data-view="list"] .dumb-finder-item {
@@ -279,9 +281,9 @@ const STYLES = `
     height: 1lh }
   /* полосатость строк — как в Finder: глазу легче вести строку до правого края */
   .dumb-finder-view[data-view="list"] .dumb-finder-item:nth-child(even) {
-    background: var(--dumb-finder-zebra, rgb(0 0 0 / .035)) }
+    background: var(--dumb-finder-zebra, var(--color-base-200, rgb(0 0 0 / .035))) }
   .dumb-finder-view[data-view="list"] .dumb-finder-item[data-selected="1"]:nth-child(even) {
-    background: var(--dumb-finder-sel, rgb(37 99 235 / .16)) }
+    background: var(--dumb-finder-sel, color-mix(in oklch, var(--color-primary, #2563eb) 16%, transparent)) }
   .dumb-finder-indent { display: block; height: 1px; flex: none }
   .dumb-finder-view[data-view="list"] .dumb-finder-thumb { aspect-ratio: auto; background: none;
     font-size: 1.1em; width: 1.25em; height: 1.25em }
@@ -289,8 +291,8 @@ const STYLES = `
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block }
   .dumb-finder-head { display: grid; grid-template-columns: 18px 22px 1fr 90px 130px 90px; gap: 6px;
                       padding: 2px .6em; font-size: .92em; font-weight: 600;
-                      color: var(--dumb-finder-dim, #475569);
-                      border-bottom: 1px solid var(--dumb-finder-line, rgb(0 0 0 / .12)) }
+                      color: var(--dumb-finder-dim, var(--color-base-content, #475569));
+                      border-bottom: 1px solid var(--dumb-finder-line, var(--color-base-300, rgb(0 0 0 / .12))) }
   .dumb-finder-head button { font: inherit; color: inherit; background: none; border: 0;
                              padding: 0; cursor: pointer; text-align: left }
 
@@ -299,23 +301,17 @@ const STYLES = `
                                                                     transition: transform .12s }
   .dumb-finder-item[data-open="1"] button.dumb-finder-twist > .dumb-finder-glyph {
     transform: rotate(90deg) }
-  .dumb-finder-item[data-pending="1"] { opacity: .75 }
+  /* пока файл едет, строка помечается полосой прогресса, а не выцветанием */
   .dumb-finder-bar-progress { position: absolute; left: 6px; right: 6px; bottom: 4px; height: 3px;
                               border-radius: 2px; background: rgb(0 0 0 / .15) }
   .dumb-finder-bar-progress > i { display: block; height: 100%; border-radius: 2px;
-                                  background: var(--dumb-finder-drop, #2563eb);
+                                  background: var(--dumb-finder-drop, var(--color-primary, #2563eb));
                                   transition: width .12s linear }
-  .dumb-finder-item[data-failed="1"] { outline: 2px solid var(--dumb-finder-bad, #b91c1c) }
+  .dumb-finder-item[data-failed="1"] { outline: 2px solid var(--dumb-finder-bad, var(--color-error, #b91c1c)) }
 
-  .dumb-finder-status { padding: 4px 6px; font-size: .92em;
-                        color: var(--dumb-finder-dim, #475569) }
-  .dumb-finder-empty { padding: 24px; text-align: center;
-                       color: var(--dumb-finder-dim, #475569) }
-  .dumb-finder-err { padding: 6px 8px; border-radius: 6px; font-size: 13px;
-                     color: var(--dumb-finder-bad, #b91c1c);
-                     background: var(--dumb-finder-bad-bg, rgb(185 28 28 / .1)) }
+  /* статус, пустая папка и ошибка — daisyUI-классы в разметке */
   /* приём файлов из системы: рамка по всей области */
-  .dumb-finder-view[data-files="1"] { outline: 2px dashed var(--dumb-finder-drop, #2563eb);
+  .dumb-finder-view[data-files="1"] { outline: 2px dashed var(--dumb-finder-drop, var(--color-primary, #2563eb));
                                       outline-offset: -3px }
 `
 
@@ -1031,7 +1027,7 @@ export function DumbFinder(props: DumbFinderProps) {
   const SIDE = () => (
     <nav class="dumb-finder-side">
       <input
-        class="dumb-finder-find"
+        class="dumb-finder-find input input-xs w-full"
         placeholder="папка"
         value={find()}
         onInput={(ev) => setFind(ev.currentTarget.value)}
@@ -1231,7 +1227,7 @@ export function DumbFinder(props: DumbFinderProps) {
             </div>
   
             <Show when={!shown().length && !ghosts().length && !loading()}>
-              <div class="dumb-finder-empty">
+              <div class="dumb-finder-empty p-6 text-center">
                 {editable() && props.source.upload ? 'Пусто. Брось сюда файлы.' : 'Пусто.'}
               </div>
             </Show>
@@ -1249,7 +1245,7 @@ export function DumbFinder(props: DumbFinderProps) {
    */
   function BarButton(p: { icon?: string; onClick: () => void; children: JSX.Element }) {
     return (
-      <button type="button" class="dumb-finder-btn" onClick={p.onClick}>
+      <button type="button" class="dumb-finder-btn btn btn-xs btn-ghost" onClick={p.onClick}>
         <Show when={p.icon}>
           <span class={`dumb-finder-glyph ${p.icon}`} />
         </Show>
@@ -1347,7 +1343,7 @@ export function DumbFinder(props: DumbFinderProps) {
       {/* строка вопроса: подтверждение и ввод имени живут здесь, а не в `confirm()` */}
       <Show when={confirming() && picked().length}>
         <div class="dumb-finder-bar">
-          <span class="dumb-finder-err">
+          <span class="dumb-finder-err text-error">
             Удалить безвозвратно: {picked().map(nameOf).join(', ')}
           </span>
           <button type="button" onClick={doRemove}>
@@ -1382,7 +1378,7 @@ export function DumbFinder(props: DumbFinderProps) {
       </Show>
 
       <Show when={error()}>
-        <div class="dumb-finder-err">{error()}</div>
+        <div class="dumb-finder-err alert alert-error py-1 text-sm">{error()}</div>
       </Show>
 
       {/*
@@ -1406,7 +1402,7 @@ export function DumbFinder(props: DumbFinderProps) {
         </Show>
       </div>
 
-      <div class="dumb-finder-status">
+      <div class="dumb-finder-status px-1.5 py-1 text-sm">
         <Show when={loading()} fallback={
           <>
             папок: {totals().dirs} · файлов: {totals().files} · {fmtSize(totals().size)}

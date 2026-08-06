@@ -1,4 +1,4 @@
-import { insert, createComponent, effect, setStyleProperty, setAttribute, className, template } from 'solid-js/web';
+import { insert, createComponent, effect, className, setStyleProperty, setAttribute, template } from 'solid-js/web';
 import { createMemo, Show, For } from 'solid-js';
 
 // src/DumbPropsTable.tsx
@@ -90,14 +90,14 @@ function dumpProps(source, options = {}) {
 }
 
 // src/DumbPropsTable.tsx
-var _tmpl$ = /* @__PURE__ */ template(`<div style=font-weight:700;margin-bottom:4px>`);
-var _tmpl$2 = /* @__PURE__ */ template(`<thead><tr><th style=text-align:left;padding-right:12px>\u043F\u0440\u043E\u043F</th><th style=text-align:left;padding-right:12px>\u0442\u0438\u043F</th><th style=text-align:left>\u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435`);
-var _tmpl$3 = /* @__PURE__ */ template(`<div><table style="font-size:12px;font-family:ui-monospace, monospace;border-collapse:collapse"><tbody>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<tr><td style=padding-right:12px;white-space:nowrap></td><td style="padding-right:12px;color:var(--dumb-props-dim, #475569);white-space:nowrap"></td><td style=white-space:pre-wrap;word-break:break-all>`);
+var _tmpl$ = /* @__PURE__ */ template(`<div class="mb-1 font-bold">`);
+var _tmpl$2 = /* @__PURE__ */ template(`<thead><tr><th>\u043F\u0440\u043E\u043F</th><th>\u0442\u0438\u043F</th><th>\u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435`);
+var _tmpl$3 = /* @__PURE__ */ template(`<div><table class="table table-xs font-mono"><tbody>`);
+var _tmpl$4 = /* @__PURE__ */ template(`<tr><td></td><td class=whitespace-nowrap style="color:var(--dumb-props-dim, var(--color-base-content, #475569))"></td><td class="break-all whitespace-pre-wrap">`);
 var KIND_COLOR = {
-  object: "var(--dumb-props-object, #6d28d9)",
-  array: "var(--dumb-props-array, #0e7490)",
-  function: "var(--dumb-props-function, #9a3412)",
+  object: "var(--dumb-props-object, var(--color-secondary, #6d28d9))",
+  array: "var(--dumb-props-array, var(--color-accent, #0e7490))",
+  function: "var(--dumb-props-function, var(--color-warning, #9a3412))",
   primitive: "inherit"
 };
 function DumbPropsTable(props) {
@@ -107,7 +107,7 @@ function DumbPropsTable(props) {
     skip: props.skip
   }));
   return (() => {
-    var _el$ = _tmpl$3(), _el$3 = _el$.firstChild, _el$9 = _el$3.firstChild;
+    var _el$ = _tmpl$3(), _el$3 = _el$.firstChild, _el$5 = _el$3.firstChild;
     insert(_el$, createComponent(Show, {
       get when() {
         return props.title;
@@ -123,25 +123,24 @@ function DumbPropsTable(props) {
         return !props.headless;
       },
       get children() {
-        var _el$4 = _tmpl$2(), _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling; _el$7.nextSibling;
-        return _el$4;
+        return _tmpl$2();
       }
-    }), _el$9);
-    insert(_el$9, createComponent(For, {
+    }), _el$5);
+    insert(_el$5, createComponent(For, {
       get each() {
         return rows();
       },
       children: (r) => (() => {
-        var _el$0 = _tmpl$4(), _el$1 = _el$0.firstChild, _el$10 = _el$1.nextSibling, _el$11 = _el$10.nextSibling;
-        insert(_el$1, () => r.key);
-        insert(_el$10, () => r.type);
-        insert(_el$11, () => r.value);
+        var _el$6 = _tmpl$4(), _el$7 = _el$6.firstChild, _el$8 = _el$7.nextSibling, _el$9 = _el$8.nextSibling;
+        insert(_el$7, () => r.key);
+        insert(_el$8, () => r.type);
+        insert(_el$9, () => r.value);
         effect((_p$) => {
-          var _v$ = `${r.depth * (props.indent ?? 14)}px`, _v$2 = r.depth === 0 ? 700 : 400, _v$3 = KIND_COLOR[r.kind], _v$4 = r.path;
-          _v$ !== _p$.e && setStyleProperty(_el$1, "padding-left", _p$.e = _v$);
-          _v$2 !== _p$.t && setStyleProperty(_el$1, "font-weight", _p$.t = _v$2);
-          _v$3 !== _p$.a && setStyleProperty(_el$1, "color", _p$.a = _v$3);
-          _v$4 !== _p$.o && setAttribute(_el$1, "title", _p$.o = _v$4);
+          var _v$ = `whitespace-nowrap ${r.depth === 0 ? "font-bold" : ""}`, _v$2 = `${r.depth * (props.indent ?? 14)}px`, _v$3 = KIND_COLOR[r.kind], _v$4 = r.path;
+          _v$ !== _p$.e && className(_el$7, _p$.e = _v$);
+          _v$2 !== _p$.t && setStyleProperty(_el$7, "padding-left", _p$.t = _v$2);
+          _v$3 !== _p$.a && setStyleProperty(_el$7, "color", _p$.a = _v$3);
+          _v$4 !== _p$.o && setAttribute(_el$7, "title", _p$.o = _v$4);
           return _p$;
         }, {
           e: void 0,
@@ -149,7 +148,7 @@ function DumbPropsTable(props) {
           a: void 0,
           o: void 0
         });
-        return _el$0;
+        return _el$6;
       })()
     }));
     effect(() => className(_el$, props.class));

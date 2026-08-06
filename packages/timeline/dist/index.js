@@ -286,8 +286,12 @@ var _tmpl$14 = /* @__PURE__ */ template(`<div class=dumb-tl-room style=top:3px;l
 var _tmpl$15 = /* @__PURE__ */ template(`<span class=dumb-tl-hh>`);
 var _tmpl$16 = /* @__PURE__ */ template(`<span class=dumb-tl-wd>`);
 var STYLES = `
+  /* \u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435 \u2014 daisyUI: \u0446\u0432\u0435\u0442\u0430 \u0431\u0435\u0440\u0443\u0442\u0441\u044F \u0438\u0437 \u0442\u043E\u043A\u0435\u043D\u043E\u0432 \u0442\u0435\u043C\u044B (--color-primary,
+     --color-base-*, --color-error), \u043A\u043D\u043E\u043F\u043A\u0438 \u0438 \u043F\u043E\u043B\u044F \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435 \u0438\u0434\u0443\u0442 \u043A\u043B\u0430\u0441\u0441\u0430\u043C\u0438.
+     \u0417\u0434\u0435\u0441\u044C \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430 \u0448\u0430\u0445\u043C\u0430\u0442\u043A\u0438: \u0441\u0435\u0442\u043A\u0430 \u0444\u043E\u043D\u043E\u043C, \u043B\u0438\u043F\u043A\u0438\u0435 \u043A\u043E\u043B\u043E\u043D\u043A\u0438, \u043F\u043E\u043B\u043E\u0441\u044B \u043D\u0430
+     transform \u0438 \u0448\u0442\u0440\u0438\u0445\u043E\u0432\u043A\u0430 \u0437\u0430\u043A\u0440\u044B\u0442\u044B\u0445 \u0447\u0430\u0441\u043E\u0432 \u2014 \u043A\u043B\u0430\u0441\u0441\u043E\u043C \u044D\u0442\u043E\u0433\u043E \u043D\u0435 \u0432\u044B\u0440\u0430\u0437\u0438\u0442\u044C. */
   .dumb-tl { position: relative; overflow: auto; overscroll-behavior: contain;
-             color: var(--dumb-tl-fg, #0f172a); user-select: none;
+             color: var(--dumb-tl-fg, var(--color-base-content, #0f172a)); user-select: none;
              --dumb-tl-line: rgb(0 0 0 / .12) }
   .dumb-tl-inner { position: relative; display: grid;
                    grid-template-columns: var(--dumb-tl-head) 1fr }
@@ -296,8 +300,8 @@ var STYLES = `
      \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u043D\u043E\u0439 \u043F\u0440\u043E\u043A\u0440\u0443\u0442\u043A\u043E\u0439: \u0443 sticky \u043D\u0435\u0442 \u0440\u0430\u0441\u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0430 \u043D\u0430 \u0438\u043D\u0435\u0440\u0446\u0438\u0438. */
   .dumb-tl-corner { position: sticky; top: 0; left: 0; z-index: 3;
                     display: flex; align-items: flex-end; padding: 0 8px 3px;
-                    font-size: 11px; color: var(--dumb-tl-dim, #475569);
-                    background: var(--dumb-tl-bg, #fff);
+                    font-size: 11px; color: var(--dumb-tl-dim, var(--color-base-content, #475569));
+                    background: var(--dumb-tl-bg, var(--color-base-100, #fff));
                     border-right: 1px solid var(--dumb-tl-line);
                     border-bottom: 1px solid var(--dumb-tl-line) }
   .dumb-tl-sum-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
@@ -306,36 +310,36 @@ var STYLES = `
                       padding: 0 6px; border: 0; border-bottom: 1px solid var(--dumb-tl-line);
                       font: inherit; font-size: 12px; font-weight: 600; text-align: left;
                       cursor: pointer; color: inherit;
-                      background: var(--dumb-tl-group-bg, rgb(0 0 0 / .04)) }
+                      background: var(--dumb-tl-group-bg, var(--color-base-200, rgb(0 0 0 / .04))) }
   /* \u0431\u0435\u0437 opacity: \u044D\u043B\u0435\u043C\u0435\u043D\u0442 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u043E\u0431\u044F\u0437\u0430\u043D \u0447\u0438\u0442\u0430\u0442\u044C\u0441\u044F \u0441\u0440\u0430\u0437\u0443 (\u043F\u0440\u0430\u0432\u0438\u043B\u043E \u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442\u0430) */
   .dumb-tl-fold { font-size: 9px }
   /* \xAB\u0441\u0435\u0439\u0447\u0430\u0441\xBB: \u0442\u043E\u043D\u043A\u0430\u044F \u043B\u0438\u043D\u0438\u044F \u043F\u043E\u0432\u0435\u0440\u0445 \u0441\u0435\u0442\u043A\u0438, \u043D\u043E \u043F\u043E\u0434 \u043F\u043E\u043B\u043E\u0441\u0430\u043C\u0438 */
   .dumb-tl-now { position: absolute; top: 0; bottom: 0; width: 2px; z-index: 1;
-                 background: var(--dumb-tl-now, #2563eb); pointer-events: none }
+                 background: var(--dumb-tl-now, var(--color-primary, #2563eb)); pointer-events: none }
   /* \u0432\u044B\u0434\u0435\u043B\u0435\u043D\u0438\u0435 \u043F\u0443\u0441\u0442\u043E\u0433\u043E \u043C\u0435\u0441\u0442\u0430 \u043F\u0440\u043E\u0442\u044F\u0436\u043A\u043E\u0439: \u0440\u0430\u043C\u043A\u0430 \u0441 \u043F\u043E\u0434\u043F\u0438\u0441\u044C\u044E \xAB\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0432\u044B\u0431\u0440\u0430\u043D\u043E\xBB */
   .dumb-tl-pick { position: absolute; z-index: 3; border-radius: 6px; pointer-events: none;
                   display: flex; align-items: center; justify-content: center;
-                  font-size: 11px; font-weight: 600; color: var(--dumb-tl-span-bg, #2563eb);
-                  border: 2px dashed var(--dumb-tl-span-bg, #2563eb);
-                  background: color-mix(in srgb, var(--dumb-tl-span-bg, #2563eb) 12%, transparent) }
+                  font-size: 11px; font-weight: 600; color: var(--dumb-tl-span-bg, var(--color-primary, #2563eb));
+                  border: 2px dashed var(--dumb-tl-span-bg, var(--color-primary, #2563eb));
+                  background: color-mix(in srgb, var(--dumb-tl-span-bg, var(--color-primary, #2563eb)) 12%, transparent) }
   .dumb-tl-head { position: sticky; top: 0; z-index: 2;
-                  background: var(--dumb-tl-bg, #fff);
+                  background: var(--dumb-tl-bg, var(--color-base-100, #fff));
                   border-bottom: 1px solid var(--dumb-tl-line) }
   .dumb-tl-groups { display: grid; border-bottom: 1px solid var(--dumb-tl-line) }
   .dumb-tl-group { font-size: 12px; font-weight: 600; text-align: center; padding: 3px 0;
                    border-left: 1px solid var(--dumb-tl-line);
                    overflow: hidden; white-space: nowrap; text-transform: capitalize }
-  .dumb-tl-days { display: grid; background: var(--dumb-tl-bg, #fff) }
+  .dumb-tl-days { display: grid; background: var(--dumb-tl-bg, var(--color-base-100, #fff)) }
   .dumb-tl-summary { border-top: 1px solid var(--dumb-tl-line);
                      font-variant-numeric: tabular-nums;
-                     color: var(--dumb-tl-dim, #475569) }
+                     color: var(--dumb-tl-dim, var(--color-base-content, #475569)) }
   .dumb-tl-day { font-size: 11px; text-align: center; padding: 3px 0; line-height: 1.15;
                  border-left: 1px solid var(--dumb-tl-line) }
   /* \u0434\u0435\u043D\u044C \u043D\u0435\u0434\u0435\u043B\u0438 \u043C\u0435\u043B\u044C\u0447\u0435 \u0447\u0438\u0441\u043B\u0430: \u043E\u043D \u043F\u043E\u0434\u0441\u043A\u0430\u0437\u043A\u0430, \u0430 \u043D\u0435 \u0433\u043B\u0430\u0432\u043D\u043E\u0435. \u0412\u0442\u043E\u0440\u0438\u0447\u043D\u043E\u0441\u0442\u044C \u2014 \u0440\u0430\u0437\u043C\u0435\u0440\u043E\u043C
      \u0438 \u0446\u0432\u0435\u0442\u043E\u043C \u043D\u0435 \u0441\u0432\u0435\u0442\u043B\u0435\u0435 var(--dumb-tl-dim), \u0430 \u043D\u0435 \u043F\u043E\u043B\u0443\u043F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u043E\u0441\u0442\u044C\u044E */
-  .dumb-tl-wd { display: block; font-size: 9px; color: var(--dumb-tl-dim, #475569) }
+  .dumb-tl-wd { display: block; font-size: 9px; color: var(--dumb-tl-dim, var(--color-base-content, #475569)) }
   .dumb-tl-rows { position: sticky; left: 0; z-index: 2;
-                  background: var(--dumb-tl-bg, #fff);
+                  background: var(--dumb-tl-bg, var(--color-base-100, #fff));
                   border-right: 1px solid var(--dumb-tl-line) }
   .dumb-tl-row { display: flex; align-items: center; padding: 0 8px; font-size: 13px;
                  border-bottom: 1px solid var(--dumb-tl-line); overflow: hidden;
@@ -363,7 +367,7 @@ var STYLES = `
   .dumb-tl-span { position: absolute; box-sizing: border-box; display: flex; align-items: center;
                   gap: 4px; padding: 0 6px; border-radius: 6px; font-size: 12px;
                   line-height: 1.2; overflow: hidden; white-space: nowrap; cursor: grab;
-                  background: var(--dumb-tl-span-bg, #2563eb); color: #fff;
+                  background: var(--dumb-tl-span-bg, var(--color-primary, #2563eb)); color: #fff;
                   will-change: transform }
   .dumb-tl-span[data-drag="1"] { cursor: grabbing; opacity: .85; z-index: 4 }
   /* \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u0430\u044F \u043F\u043E\u043B\u043E\u0441\u0430: \u0431\u043B\u043E\u043A, \u0440\u0435\u043C\u043E\u043D\u0442, \u0441\u0430\u043D\u0438\u0442\u0430\u0440\u043D\u044B\u0439 \u0434\u0435\u043D\u044C */
@@ -371,9 +375,9 @@ var STYLES = `
   /* \u0417\u0430\u043A\u0440\u044B\u0442\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430: \u0432\u0438\u0434\u043D\u0430, \u043D\u043E \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0441\u043E\u0437\u0434\u0430\u0442\u044C. \u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043F\u0440\u0438\u0433\u043B\u0443\u0448\u0430\u0435\u0442\u0441\u044F
      \u0426\u0412\u0415\u0422\u041E\u041C \u2014 \u043F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u043E\u0441\u0442\u044C .55 \u0443\u0432\u043E\u0434\u0438\u043B\u0430 \u0435\u0433\u043E \u043A 3.5:1, \u0430 \u043F\u043E \u043D\u0430\u0437\u0432\u0430\u043D\u0438\u044E \u0441\u0442\u0440\u043E\u043A\u0443 \u0438\u0449\u0443\u0442
      \u0433\u043B\u0430\u0437\u0430\u043C\u0438. \u0427\u0442\u043E \u0441\u0442\u0440\u043E\u043A\u0430 \u043D\u0435\u0440\u0430\u0431\u043E\u0447\u0430\u044F, \u0432\u0438\u0434\u043D\u043E \u0438 \u0431\u0435\u0437 \u044D\u0442\u043E\u0433\u043E: \u043A\u0430\u043D\u0432\u0430 \u0437\u0430\u0448\u0442\u0440\u0438\u0445\u043E\u0432\u0430\u043D\u0430. */
-  .dumb-tl-row[data-off="1"] { color: var(--dumb-tl-dim, #475569) }
+  .dumb-tl-row[data-off="1"] { color: var(--dumb-tl-dim, var(--color-base-content, #475569)) }
   /* \u043D\u0435\u043B\u044C\u0437\u044F \u0441\u044E\u0434\u0430 \u2014 \u0432\u0438\u0434\u043D\u043E \u0441\u0440\u0430\u0437\u0443, \u0430 \u043D\u0435 \u043F\u043E\u0441\u043B\u0435 \u043E\u0442\u043F\u0443\u0441\u043A\u0430\u043D\u0438\u044F */
-  .dumb-tl-span[data-bad="1"] { background: var(--dumb-tl-bad, #b91c1c) }
+  .dumb-tl-span[data-bad="1"] { background: var(--dumb-tl-bad, var(--color-error, #b91c1c)) }
   .dumb-tl-grip { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize }
   .dumb-tl-grip[data-edge="from"] { left: 0 }
   .dumb-tl-grip[data-edge="to"] { right: 0 }
@@ -389,7 +393,7 @@ var STYLES = `
      \u043A\u0430\u043A \u043E\u043D \u043F\u043E\u043F\u0440\u043E\u0431\u0443\u0435\u0442 \u0442\u0443\u0434\u0430 \u0447\u0442\u043E-\u0442\u043E \u043F\u043E\u0441\u0442\u0430\u0432\u0438\u0442\u044C. */
   .dumb-tl-closed { position: absolute; pointer-events: none;
                     background: repeating-linear-gradient(45deg,
-                      transparent 0 4px, var(--dumb-tl-closed, rgb(0 0 0 / .1)) 4px 8px) }
+                      transparent 0 4px, var(--dumb-tl-closed, var(--color-base-300, rgb(0 0 0 / .1))) 4px 8px) }
   /* \u0417\u0430\u0437\u043E\u0440 \u043F\u043E\u0441\u043B\u0435 \u0431\u0440\u043E\u043D\u0438: \u0443\u0431\u043E\u0440\u043A\u0430 \u0431\u0430\u043D\u0438, \u043F\u0435\u0440\u0435\u0437\u0430\u0440\u044F\u0434\u043A\u0430 \u043F\u0435\u0439\u043D\u0442\u0431\u043E\u043B\u0430. \u0412\u0440\u0435\u043C\u044F \u0444\u043E\u0440\u043C\u0430\u043B\u044C\u043D\u043E
      \u0441\u0432\u043E\u0431\u043E\u0434\u043D\u043E, \u0430 \u0441\u0442\u0430\u0432\u0438\u0442\u044C \u0442\u0443\u0434\u0430 \u043D\u0435\u043B\u044C\u0437\u044F \u2014 \u0432\u043E\u0442 \u0438 \u0432\u0438\u0434\u043D\u043E, \u041F\u041E\u0427\u0415\u041C\u0423 \u0441\u043E\u0441\u0435\u0434 \u043D\u0435 \u0432\u0441\u0442\u044B\u043A. */
   .dumb-tl-gap { position: absolute; pointer-events: none; border-radius: 0 4px 4px 0;
@@ -398,13 +402,13 @@ var STYLES = `
                    transparent 0 3px, rgb(0 0 0 / .25) 3px 5px) }
   /* \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0435\u0449\u0451 \u0441\u0432\u043E\u0431\u043E\u0434\u043D\u043E \u0441\u043F\u0440\u0430\u0432\u0430: \u0432\u0438\u0434\u043D\u043E \u043F\u0440\u0438 \u043D\u0430\u0432\u0435\u0434\u0435\u043D\u0438\u0438, \u0442\u044F\u043D\u0443\u0442\u044C \u043D\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E */
   .dumb-tl-room { position: absolute; border-radius: 0 6px 6px 0; pointer-events: none;
-                  border: 1px dashed var(--dumb-tl-span-bg, #2563eb);
+                  border: 1px dashed var(--dumb-tl-span-bg, var(--color-primary, #2563eb));
                   border-left: 0; opacity: .55;
                   background: repeating-linear-gradient(45deg,
-                    transparent 0 5px, var(--dumb-tl-span-bg, #2563eb) 5px 6px) }
+                    transparent 0 5px, var(--dumb-tl-span-bg, var(--color-primary, #2563eb)) 5px 6px) }
   .dumb-tl-room > b { position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
                       font-size: 10px; font-weight: 600; white-space: nowrap;
-                      color: var(--dumb-tl-fg, #0f172a) }
+                      color: var(--dumb-tl-fg, var(--color-base-content, #0f172a)) }
 `;
 function DumbTimeline(props) {
   injectStyle("timeline", STYLES);

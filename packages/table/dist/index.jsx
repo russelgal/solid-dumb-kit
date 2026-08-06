@@ -574,7 +574,7 @@ var withViewTransition = (on, fn) => {
   else fn();
 };
 function SortMark(props) {
-  return <span aria-hidden="true" style={{ "margin-left": "4px", opacity: props.dir ? "1" : ".3" }}>
+  return <span aria-hidden="true" class="ml-1 inline-block">
       {props.dir === "asc" ? "\u25B2" : props.dir === "desc" ? "\u25BC" : "\u21C5"}
     </span>;
 }
@@ -644,20 +644,21 @@ function DumbTable(props) {
     "text-align": c.align ?? "left",
     ...c.width ? { width: c.width } : {}
   });
-  return <div
-    class={props.class}
-    style={{ opacity: props.loading ? ".5" : "1", transition: "opacity .15s" }}
-  >
+  return <div class={props.class}>
+      {
+    /* Пока данные едут, таблица не выцветает (её всё равно читают) — сверху
+       кладётся полоса прогресса daisyUI. */
+  }
+      <Show when={props.loading}>
+        <progress class="progress progress-primary mb-1 h-1 w-full" />
+      </Show>
       <Show when={visibleRows().length} fallback={props.empty}>
-        <table
-    class={props.tableClass}
-    style={{ width: "100%", "border-collapse": "collapse" }}
-  >
+        <table class={`table ${props.tableClass ?? ""}`}>
           <thead class={props.headClass}>
             <For2 each={table.getHeaderGroups()}>
               {(hg) => <tr>
                   <Show when={props.onReorder && withHandle()}>
-                    <th style={{ width: "1%" }} />
+                    <th class="w-px" />
                   </Show>
                   <For2 each={hg.headers}>
                     {(header) => {
@@ -665,13 +666,8 @@ function DumbTable(props) {
     const canSort = () => header.column.getCanSort();
     return <th
       class={`${c().class ?? ""} ${c().headClass ?? ""}`.trim() || void 0}
-      style={{
-        ...cellStyle(c()),
-        padding: "6px 8px",
-        "white-space": "nowrap",
-        cursor: canSort() ? "pointer" : void 0,
-        "user-select": canSort() ? "none" : void 0
-      }}
+      classList={{ "cursor-pointer select-none": canSort() }}
+      style={{ ...cellStyle(c()), "white-space": "nowrap" }}
       onClick={header.column.getToggleSortingHandler()}
     >
                           {flexRender(header.column.columnDef.header, header.getContext())}
@@ -703,14 +699,13 @@ function DumbTable(props) {
       onClick={() => props.onRowClick?.(original, row().index)}
     >
                   <Show when={props.onReorder && withHandle()}>
-                    <td style={{ padding: "6px 4px", width: "1%" }} onClick={(e) => e.stopPropagation()}>
+                    <td class="w-px" onClick={(e) => e.stopPropagation()}>
                       <span
       data-drag-handle
-      style={{
-        display: "inline-block",
-        cursor: dragDisabled() ? "not-allowed" : "grab",
-        opacity: dragDisabled() ? ".3" : "1",
-        "touch-action": "none"
+      class="inline-block touch-none"
+      classList={{
+        "cursor-not-allowed text-base-content": dragDisabled(),
+        "cursor-grab": !dragDisabled()
       }}
       title={dragDisabled() ? "reset sorting to reorder" : "drag"}
     >
@@ -723,7 +718,7 @@ function DumbTable(props) {
       const c = () => colOf(cell.column.columnDef);
       return <td
         class={c().class}
-        style={{ ...cellStyle(c()), padding: "6px 8px" }}
+        style={cellStyle(c())}
         onClick={c().stopClick ? (e) => e.stopPropagation() : void 0}
       >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -766,36 +761,15 @@ function buildPageNumbers(current, total) {
 function DumbPagination(props) {
   const pages = () => Math.max(1, Math.ceil(props.total / props.pageSize));
   const summary = () => props.summary ? props.summary({ page: props.page, pages: pages(), total: props.total }) : `${props.total} \xB7 ${props.page}/${pages()}`;
-  const btn = (active, disabled) => ({
-    padding: "3px 9px",
-    "min-width": "32px",
-    border: "1px solid currentColor",
-    "border-radius": "6px",
-    background: "transparent",
-    color: "inherit",
-    font: "inherit",
-    opacity: disabled ? ".35" : active ? "1" : ".7",
-    cursor: disabled ? "default" : "pointer",
-    "font-weight": active ? "700" : "400"
-  });
-  return <div
-    class={props.class}
-    style={{
-      display: "flex",
-      "align-items": "center",
-      "justify-content": "space-between",
-      gap: "12px",
-      "flex-wrap": "wrap"
-    }}
-  >
-      <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
-        <span style={{ opacity: ".7", "font-size": "13px" }}>{summary()}</span>
+  const btn = (active) => `join-item btn btn-sm ${active ? "btn-active" : "btn-ghost"}`;
+  return <div class={`flex flex-wrap items-center justify-between gap-3 ${props.class ?? ""}`}>
+      <div class="flex items-center gap-2">
+        <span class="text-sm">{summary()}</span>
         <Show2 when={props.pageSizes?.length && props.onPageSizeChange}>
-          <div style={{ display: "flex", gap: "4px" }}>
+          <div class="join">
             <For3 each={props.pageSizes}>
               {(size) => <button
-    class={`${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`.trim() || void 0}
-    style={btn(props.pageSize === size, false)}
+    class={`${btn(props.pageSize === size)} ${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`}
     onClick={() => props.onPageSizeChange(size)}
   >
                   {size}
@@ -806,20 +780,18 @@ function DumbPagination(props) {
       </div>
 
       <Show2 when={pages() > 1}>
-        <div style={{ display: "flex", gap: "4px", "flex-wrap": "wrap" }}>
+        <div class="join">
           <button
-    class={props.buttonClass}
-    style={btn(false, props.page <= 1)}
+    class={`${btn(false)} ${props.buttonClass ?? ""}`}
     disabled={props.page <= 1}
     onClick={() => props.onPageChange(props.page - 1)}
   >
             «
           </button>
           <For3 each={buildPageNumbers(props.page, pages())}>
-            {(p) => <Show2 when={p !== "\u2026"} fallback={<span style={{ padding: "3px 4px", opacity: ".4" }}>…</span>}>
+            {(p) => <Show2 when={p !== "\u2026"} fallback={<span class="join-item btn btn-sm btn-ghost btn-disabled">…</span>}>
                 <button
-    class={`${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`.trim() || void 0}
-    style={btn(props.page === p, false)}
+    class={`${btn(props.page === p)} ${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`}
     onClick={() => props.onPageChange(p)}
   >
                   {p}
@@ -827,8 +799,7 @@ function DumbPagination(props) {
               </Show2>}
           </For3>
           <button
-    class={props.buttonClass}
-    style={btn(false, props.page >= pages())}
+    class={`${btn(false)} ${props.buttonClass ?? ""}`}
     disabled={props.page >= pages()}
     onClick={() => props.onPageChange(props.page + 1)}
   >

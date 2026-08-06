@@ -142,8 +142,9 @@ var toast = createToastBus();
 
 // src/DumbToaster.tsx
 var STYLES = `
-  /* popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u0432 \u0442\u043E\u0447\u043A\u0443 \u0438 \u0441\u0442\u043E\u0438\u0442 \u043F\u043E \u0446\u0435\u043D\u0442\u0440\u0443 \u2014 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C \u043D\u0430
-     \u0432\u0441\u0451 \u043E\u043A\u043D\u043E \u0438 \u0434\u0435\u043B\u0430\u0435\u043C \u043F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u044B\u043C \u0434\u043B\u044F \u043A\u043B\u0438\u043A\u043E\u0432, \u043A\u0440\u043E\u043C\u0435 \u0441\u0430\u043C\u0438\u0445 \u043F\u043B\u0430\u0448\u0435\u043A */
+  /* \u0417\u0434\u0435\u0441\u044C \u0422\u041E\u041B\u042C\u041A\u041E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430: popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u0432 \u0442\u043E\u0447\u043A\u0443 \u0438 \u0441\u0442\u043E\u0438\u0442 \u043F\u043E
+     \u0446\u0435\u043D\u0442\u0440\u0443 \u2014 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C \u043D\u0430 \u0432\u0441\u0451 \u043E\u043A\u043D\u043E \u0438 \u0434\u0435\u043B\u0430\u0435\u043C \u043F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u044B\u043C \u0434\u043B\u044F \u043A\u043B\u0438\u043A\u043E\u0432, \u043A\u0440\u043E\u043C\u0435
+     \u0441\u0430\u043C\u0438\u0445 \u043F\u043B\u0430\u0448\u0435\u043A. \u0412\u0438\u0434 \u043F\u043B\u0430\u0448\u043A\u0438 \u2014 daisyUI (alert), \u0441\u043C. \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0443 \u043D\u0438\u0436\u0435. */
   .dumb-toaster { position: fixed; inset: 0; width: 100%; height: 100%;
                   margin: 0; padding: 16px; border: 0; background: none; overflow: visible;
                   display: flex; flex-direction: column; gap: 8px;
@@ -154,39 +155,17 @@ var STYLES = `
   .dumb-toaster[data-at$="center"] { align-items: center }
   .dumb-toaster[data-at^="top"] { justify-content: flex-start }
   .dumb-toaster[data-at^="bottom"] { justify-content: flex-end; flex-direction: column-reverse }
-  .dumb-toast { max-width: min(92vw, 420px) }
 
-  .dumb-toast { pointer-events: auto; display: flex; align-items: center; gap: 10px;
-                padding: 9px 12px; border-radius: 10px; font-size: 13px; line-height: 1.35;
-                color: var(--dumb-toast-fg, #f8fafc);
-                background: var(--dumb-toast-bg, #1e293b);
-                box-shadow: 0 6px 20px rgb(0 0 0 / .18);
+  /* \u043F\u043B\u0430\u0448\u043A\u0430 \u043B\u043E\u0432\u0438\u0442 \u043A\u043B\u0438\u043A\u0438, \u0445\u043E\u0442\u044F \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440 \u0438\u0445 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0430\u0435\u0442 \u043D\u0430\u0441\u043A\u0432\u043E\u0437\u044C */
+  .dumb-toast { pointer-events: auto; width: auto; max-width: min(92vw, 420px);
                 animation: dumb-toast-in .16s ease-out }
-  .dumb-toast[data-kind="success"] { background: var(--dumb-toast-ok, #15803d) }
-  .dumb-toast[data-kind="error"] { background: var(--dumb-toast-bad, #b91c1c) }
-  .dumb-toast-text { flex: 1; min-width: 0; overflow-wrap: anywhere }
-  /* \u0441\u0447\u0451\u0442\u0447\u0438\u043A \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432: \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u044C \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445 \u043E\u0448\u0438\u0431\u043E\u043A \u2014 \u043E\u0434\u043D\u0430 \u043F\u043B\u0430\u0448\u043A\u0430 \u0441 \u0447\u0438\u0441\u043B\u043E\u043C */
-  .dumb-toast-count { flex: none; font-size: 11px; font-variant-numeric: tabular-nums;
-                      padding: 1px 6px; border-radius: 999px; background: rgb(255 255 255 / .22) }
-  .dumb-toast button { flex: none; font: inherit; color: inherit; cursor: pointer;
-                       background: rgb(255 255 255 / .16); border: 0; border-radius: 6px;
-                       padding: 3px 9px }
-  .dumb-toast button:hover { background: rgb(255 255 255 / .28) }
-  /* \u0433\u043B\u0430\u0432\u043D\u043E\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u0432\u0438\u0434\u043D\u043E \u0441\u0440\u0430\u0437\u0443, \u043E\u043F\u0430\u0441\u043D\u043E\u0435 \u2014 \u043A\u0440\u0430\u0441\u043D\u044B\u043C: \u043F\u043E \u043D\u0438\u043C \u043F\u043E\u043F\u0430\u0434\u0430\u044E\u0442 \u043D\u0430\u0441\u043F\u0435\u0445 */
-  .dumb-toast button[data-kind="primary"] { background: rgb(255 255 255 / .92);
-                                            color: var(--dumb-toast-bg, #1e293b);
-                                            font-weight: 600 }
-  .dumb-toast button[data-kind="danger"] { background: var(--dumb-toast-bad, #b91c1c);
-                                           color: #fff; font-weight: 600 }
-  .dumb-toast button[data-kind="danger"]:hover { filter: brightness(1.12) }
-  .dumb-toast-close { padding: 0 4px !important; background: none !important; opacity: .8 }
 
   /* \u043F\u043B\u0430\u0448\u043A\u0430 \u0423 \u041A\u0423\u0420\u0421\u041E\u0420\u0410: \u0442\u043E\u0442 \u0436\u0435 \u043F\u0440\u0438\u0451\u043C, \u0447\u0442\u043E \u0443 \u043A\u043E\u043D\u0442\u0435\u043A\u0441\u0442\u043D\u043E\u0433\u043E \u043C\u0435\u043D\u044E \u2014 \u043D\u0435\u0432\u0438\u0434\u0438\u043C\u044B\u0439 \u044F\u043A\u043E\u0440\u044C
      \u0432 \u0442\u043E\u0447\u043A\u0435 \u0438 \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u043A \u043D\u0435\u043C\u0443, \u0441\u0442\u043E\u0440\u043E\u043D\u0443 \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442 \u0431\u0440\u0430\u0443\u0437\u0435\u0440 */
   .dumb-toast-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
                        anchor-name: --dumb-toast-at }
-  .dumb-toast-at { position: fixed; margin: 0; border: 0; padding: 9px 12px; overflow: visible;
-                   max-width: min(92vw, 380px);
+  .dumb-toast-at { position: fixed; margin: 0; border: 0; padding: 0; overflow: visible;
+                   max-width: min(92vw, 380px); background: none;
                    position-anchor: --dumb-toast-at;
                    top: anchor(--dumb-toast-at bottom);
                    left: anchor(--dumb-toast-at right);
@@ -197,6 +176,8 @@ var STYLES = `
   /* \u0441\u0438\u0441\u0442\u0435\u043C\u043D\u0430\u044F \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0430 \u0441\u0438\u043B\u044C\u043D\u0435\u0435 \u0432\u043A\u0443\u0441\u0430: \u0432\u044A\u0435\u0437\u0434 \u0433\u0430\u0441\u0438\u043C */
   @media (prefers-reduced-motion: reduce) { .dumb-toast { animation: none } }
 `;
+var alertClass = (kind) => kind === "error" ? "alert alert-error" : kind === "success" ? "alert alert-success" : "alert";
+var actionClass = (kind) => kind === "primary" ? "btn btn-sm" : kind === "danger" ? "btn btn-sm btn-error" : "btn btn-sm btn-ghost";
 function DumbToaster(props) {
   injectStyle("toast", STYLES);
   const bus = () => props.bus ?? toast;
@@ -248,14 +229,19 @@ function DumbToaster(props) {
     onMouseLeave={() => bus().resume()}
   >
       <For each={stacked()}>
-        {(t) => props.children?.(t, () => bus().dismiss(t.id)) ?? <div class="dumb-toast" data-kind={t.kind} role={t.kind === "error" ? "alert" : "status"}>
-              <span class="dumb-toast-text">{t.text}</span>
+        {(t) => props.children?.(t, () => bus().dismiss(t.id)) ?? <div
+    class={`dumb-toast ${alertClass(t.kind)}`}
+    data-kind={t.kind}
+    role={t.kind === "error" ? "alert" : "status"}
+  >
+              <span class="dumb-toast-text flex-1">{t.text}</span>
               <Show when={t.count > 1}>
-                <span class="dumb-toast-count">{t.count}</span>
+                <span class="dumb-toast-count badge badge-sm tabular-nums">{t.count}</span>
               </Show>
               <For each={t.actions ?? []}>
                 {(a) => <button
     type="button"
+    class={actionClass(a.kind)}
     data-kind={a.kind}
     onClick={() => {
       a.run?.();
@@ -272,7 +258,7 @@ function DumbToaster(props) {
               <Show when={t.closable}>
                 <button
     type="button"
-    class="dumb-toast-close"
+    class="dumb-toast-close btn btn-sm btn-ghost btn-circle"
     title="закрыть"
     onClick={() => bus().dismiss(t.id)}
   >
@@ -297,14 +283,15 @@ function DumbToaster(props) {
         <div
       ref={el}
       popover="manual"
-      class="dumb-toast dumb-toast-at"
+      class={`dumb-toast dumb-toast-at ${alertClass(p.t.kind)}`}
       data-kind={p.t.kind}
       role={p.t.kind === "error" ? "alert" : "status"}
     >
-          <span class="dumb-toast-text">{p.t.text}</span>
+          <span class="dumb-toast-text flex-1">{p.t.text}</span>
           <For each={p.t.actions ?? []}>
             {(a) => <button
       type="button"
+      class={actionClass(a.kind)}
       data-kind={a.kind}
       onClick={() => {
         a.run?.();
@@ -315,7 +302,11 @@ function DumbToaster(props) {
               </button>}
           </For>
           <Show when={p.t.closable}>
-            <button type="button" class="dumb-toast-close" onClick={() => bus().dismiss(p.t.id)}>
+            <button
+      type="button"
+      class="dumb-toast-close btn btn-sm btn-ghost btn-circle"
+      onClick={() => bus().dismiss(p.t.id)}
+    >
               ✕
             </button>
           </Show>

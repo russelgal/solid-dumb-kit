@@ -462,9 +462,9 @@ function moveAt(list, from, to) {
 // src/DumbBoard.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<div><div class=dumb-board>`);
 var _tmpl$2 = /* @__PURE__ */ template(`<span class=dumb-board-grip>\u283F`);
-var _tmpl$3 = /* @__PURE__ */ template(`<span class=dumb-board-sub>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<span class=dumb-board-actions>`);
-var _tmpl$5 = /* @__PURE__ */ template(`<h4 class=dumb-board-head data-board-handle><span class=dumb-board-title></span><span class=dumb-board-count>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<span class="dumb-board-sub text-xs font-normal">`);
+var _tmpl$4 = /* @__PURE__ */ template(`<span class="dumb-board-actions ml-auto flex gap-1">`);
+var _tmpl$5 = /* @__PURE__ */ template(`<h4 class=dumb-board-head data-board-handle><span class=dumb-board-title></span><span class="dumb-board-count badge badge-sm badge-ghost">`);
 var _tmpl$6 = /* @__PURE__ */ template(`<div class=dumb-board-lines aria-hidden=true>`);
 var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-board-grip-x data-axis=x>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-board-grip-y data-axis=y>`);
@@ -472,7 +472,7 @@ var _tmpl$9 = /* @__PURE__ */ template(`<div class=dumb-board-grip-xy data-axis=
 var _tmpl$0 = /* @__PURE__ */ template(`<section class=dumb-board-panel><div class=dumb-board-zone>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<span class=dumb-board-block-grip>`);
 var _tmpl$10 = /* @__PURE__ */ template(`<div class=dumb-board-block>`);
-var _tmpl$11 = /* @__PURE__ */ template(`<div class=dumb-board-frame aria-hidden=true>`);
+var _tmpl$11 = /* @__PURE__ */ template(`<div class="dumb-board-frame border-primary bg-primary/10 rounded-box border-2 border-dashed"aria-hidden=true>`);
 var STYLES = `
           .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
                         grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
@@ -483,12 +483,9 @@ var STYLES = `
           .dumb-board-head:active { cursor: grabbing }
           /* \u0432\u0441\u0451, \u0447\u0442\u043E \u0447\u0438\u0442\u0430\u044E\u0442 \u0438\u043B\u0438 \u0445\u0432\u0430\u0442\u0430\u044E\u0442, \u2014 \u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442\u043D\u043E\u0435: \u0431\u043B\u0451\u043A\u043B\u0430\u044F \u0440\u0443\u0447\u043A\u0430 \u0438 \u0441\u0435\u0440\u044B\u0439 \u043F\u043E
              \u0441\u0435\u0440\u043E\u043C\u0443 \u043D\u0435 \u0447\u0438\u0442\u0430\u044E\u0442\u0441\u044F \u043D\u0438 \u043D\u0430 \u043F\u0440\u043E\u0435\u043A\u0442\u043E\u0440\u0435, \u043D\u0438 \u043F\u0440\u0438 \u044F\u0440\u043A\u043E\u043C \u0441\u0432\u0435\u0442\u0435 */
-          .dumb-board-grip { color: var(--dumb-board-grip, #64748b) }
+          .dumb-board-grip { color: var(--dumb-board-grip, var(--color-base-content, #64748b)) }
+          /* \u043F\u043E\u0434\u043F\u0438\u0441\u044C, \u0441\u0447\u0451\u0442\u0447\u0438\u043A \u0438 \u043A\u043D\u043E\u043F\u043A\u0438 \u0441\u0435\u043A\u0446\u0438\u0438 \u2014 daisyUI-\u043A\u043B\u0430\u0441\u0441\u0430\u043C\u0438 \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435 */
           .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
-          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .85 }
-          .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                              background: rgb(0 0 0 / .1) }
-          .dumb-board-actions { margin-left: auto; display: flex; gap: 4px }
           /* \u0441\u0435\u0442\u043A\u0430 \u0431\u043B\u043E\u043A\u043E\u0432: \u044F\u0447\u0435\u0439\u043A\u0438 \u0444\u0438\u043A\u0441\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u043E\u0433\u043E \u0448\u0430\u0433\u0430, \u043C\u0435\u0441\u0442\u0430 \u0437\u0430\u0434\u0430\u044E\u0442\u0441\u044F \u044F\u0432\u043D\u043E */
           /* overflow-x \u0438\u043C\u0435\u043D\u043D\u043E clip, \u0430 \u043D\u0435 visible: \u0440\u044F\u0434\u043E\u043C \u0441 overflow-y: auto
              visible \u0432\u044B\u0447\u0438\u0441\u043B\u044F\u0435\u0442\u0441\u044F \u0432 auto, \u0438 FLIP, \u0432\u044B\u043D\u043E\u0441\u044F \u0431\u043B\u043E\u043A \u0437\u0430 \u043F\u0440\u0430\u0432\u044B\u0439 \u043A\u0440\u0430\u0439,
@@ -518,21 +515,20 @@ var STYLES = `
                               will-change: opacity }
           /* \u0440\u0430\u043C\u043A\u0430 \u0431\u0443\u0434\u0443\u0449\u0435\u0433\u043E \u0440\u0430\u0437\u043C\u0435\u0440\u0430: \u0421\u0410\u041C\u0410 grid item, \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u0432\u0441\u0442\u0430\u0451\u0442 \u0432 \u044F\u0447\u0435\u0439\u043A\u0438 \u0431\u0435\u0437
              \u043F\u0438\u043A\u0441\u0435\u043B\u044C\u043D\u043E\u0439 \u0430\u0440\u0438\u0444\u043C\u0435\u0442\u0438\u043A\u0438 \u2014 \u0438 \u043D\u0435 \u043C\u0435\u0448\u0430\u0435\u0442 \u0431\u043B\u043E\u043A\u0430\u043C, \u0443 \u043A\u043E\u0442\u043E\u0440\u044B\u0445 \u043C\u0435\u0441\u0442\u0430 \u044F\u0432\u043D\u044B\u0435 */
-          .dumb-board-frame { pointer-events: none; z-index: 3; border-radius: 10px;
-                              border: 2px dashed rgba(59,130,246,.9);
-                              background: rgba(59,130,246,.08) }
+          .dumb-board-frame { pointer-events: none; z-index: 3 }
           /* \u0440\u0443\u0447\u043A\u0430 \u0440\u0435\u0441\u0430\u0439\u0437\u0430 \u0431\u043B\u043E\u043A\u0430 \u2014 \u0442\u043E\u0442 \u0436\u0435 \u0443\u0433\u043E\u043B\u043E\u043A, \u0447\u0442\u043E \u0443 \u0441\u0435\u043A\u0446\u0438\u0438: \u0434\u0432\u0435 \u043B\u0438\u043D\u0438\u0438 \u0441\u043E
-             \u0441\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u0438\u0435\u043C. \u0420\u0438\u0441\u0443\u0435\u043C \u0441\u0430\u043C\u0438, \u0430 \u043D\u0435 Tailwind'\u043E\u043C: \u043A\u0438\u0442 \u0441\u0430\u043C\u043E\u0434\u043E\u0441\u0442\u0430\u0442\u043E\u0447\u0435\u043D */
+             \u0441\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u0438\u0435\u043C. \u0420\u0438\u0441\u0443\u0435\u0442\u0441\u044F \u0437\u0434\u0435\u0441\u044C, \u043F\u043E\u0442\u043E\u043C\u0443 \u0447\u0442\u043E daisyUI \u0442\u0430\u043A\u043E\u0433\u043E \u043E\u0440\u0433\u0430\u043D\u0430 \u043D\u0435
+             \u0437\u043D\u0430\u0435\u0442; \u0446\u0432\u0435\u0442 \u0431\u0435\u0440\u0451\u0442\u0441\u044F \u0438\u0437 \u0442\u043E\u043A\u0435\u043D\u0430 \u0442\u0435\u043C\u044B */
           .dumb-board-block-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
                                    cursor: nwse-resize; touch-action: none; z-index: 2 }
           /* \u0446\u0432\u0435\u0442 \u041A\u041E\u041D\u0422\u0420\u0410\u0421\u0422\u041D\u042B\u0419: \u0440\u0443\u0447\u043A\u0430 \u2014 \u043E\u0440\u0433\u0430\u043D \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F, \u0435\u0451 \u043D\u0430\u0434\u043E \u0432\u0438\u0434\u0435\u0442\u044C, \u0430 \u043D\u0435
              \u0443\u0433\u0430\u0434\u044B\u0432\u0430\u0442\u044C. \u041F\u0435\u0440\u0435\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043F\u0435\u0440\u0435\u043C\u0435\u043D\u043D\u043E\u0439, \u043D\u043E \u0431\u043B\u0451\u043A\u043B\u044B\u0439 \u0434\u0435\u0444\u043E\u043B\u0442 \u043D\u0435\u0434\u043E\u043F\u0443\u0441\u0442\u0438\u043C */
           .dumb-board-block-grip::after { content: ''; position: absolute; right: 4px; bottom: 4px;
                                           width: 9px; height: 9px;
-                                          border-right: 2px solid var(--dumb-board-grip, #475569);
-                                          border-bottom: 2px solid var(--dumb-board-grip, #475569);
+                                          border-right: 2px solid var(--dumb-board-grip, var(--color-base-content, #475569));
+                                          border-bottom: 2px solid var(--dumb-board-grip, var(--color-base-content, #475569));
                                           border-bottom-right-radius: 3px }
-          .dumb-board-block-grip:hover::after { border-color: var(--dumb-board-grip-hover, #1e293b) }
+          .dumb-board-block-grip:hover::after { border-color: var(--dumb-board-grip-hover, var(--color-primary, #1e293b)) }
           /* \u0431\u043B\u043E\u043A \u0437\u0430\u043D\u0438\u043C\u0430\u0435\u0442 \u0421\u0412\u041E\u0418 \u044F\u0447\u0435\u0439\u043A\u0438 \u0446\u0435\u043B\u0438\u043A\u043E\u043C \u2014 \u0432\u044B\u0441\u043E\u0442\u0430 \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442 \u0438\u0437 \u0441\u0435\u0442\u043A\u0438, \u0430 \u043D\u0435
              \u0438\u0437 \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u0433\u043E, \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u043C\u0435\u0440\u0438\u0442\u044C \u0435\u0451 \u043D\u0435 \u043D\u0443\u0436\u043D\u043E \u0432\u043E\u0432\u0441\u0435 */
           .dumb-board-block { min-width: 0; min-height: 0; position: relative; z-index: 1 }

@@ -47,34 +47,27 @@ export function DumbPagination(props: DumbPaginationProps) {
       ? props.summary({ page: props.page, pages: pages(), total: props.total })
       : `${props.total} · ${props.page}/${pages()}`
 
-  const btn = (active: boolean, disabled: boolean) => ({
-    padding: '3px 9px',
-    'min-width': '32px',
-    border: '1px solid currentColor',
-    'border-radius': '6px',
-    background: 'transparent',
-    color: 'inherit',
-    font: 'inherit',
-    opacity: disabled ? '.35' : active ? '1' : '.7',
-    cursor: disabled ? 'default' : 'pointer',
-    'font-weight': active ? '700' : '400',
-  })
+  /**
+   * Классы кнопки — daisyUI: `join-item btn btn-sm`, текущая страница помечена
+   * `btn-active`. Приглушать неактивные прозрачностью нельзя (правило
+   * контраста), поэтому «неактивная» отличается не блёклостью, а тем, что она
+   * просто `btn-ghost`.
+   */
+  const btn = (active: boolean) =>
+    `join-item btn btn-sm ${active ? 'btn-active' : 'btn-ghost'}`
 
   return (
-    <div
-      class={props.class}
-      style={{ display: 'flex', 'align-items': 'center', 'justify-content': 'space-between',
-               gap: '12px', 'flex-wrap': 'wrap' }}
-    >
-      <div style={{ display: 'flex', 'align-items': 'center', gap: '8px' }}>
-        <span style={{ opacity: '.7', 'font-size': '13px' }}>{summary()}</span>
+    <div class={`flex flex-wrap items-center justify-between gap-3 ${props.class ?? ''}`}>
+      <div class="flex items-center gap-2">
+        <span class="text-sm">{summary()}</span>
         <Show when={props.pageSizes?.length && props.onPageSizeChange}>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div class="join">
             <For each={props.pageSizes}>
               {(size) => (
                 <button
-                  class={`${props.buttonClass ?? ''} ${props.pageSize === size ? props.activeClass ?? '' : ''}`.trim() || undefined}
-                  style={btn(props.pageSize === size, false)}
+                  class={`${btn(props.pageSize === size)} ${props.buttonClass ?? ''} ${
+                    props.pageSize === size ? (props.activeClass ?? '') : ''
+                  }`}
                   onClick={() => props.onPageSizeChange!(size)}
                 >
                   {size}
@@ -86,9 +79,9 @@ export function DumbPagination(props: DumbPaginationProps) {
       </div>
 
       <Show when={pages() > 1}>
-        <div style={{ display: 'flex', gap: '4px', 'flex-wrap': 'wrap' }}>
+        <div class="join">
           <button
-            class={props.buttonClass} style={btn(false, props.page <= 1)}
+            class={`${btn(false)} ${props.buttonClass ?? ''}`}
             disabled={props.page <= 1}
             onClick={() => props.onPageChange(props.page - 1)}
           >
@@ -96,10 +89,11 @@ export function DumbPagination(props: DumbPaginationProps) {
           </button>
           <For each={buildPageNumbers(props.page, pages())}>
             {(p) => (
-              <Show when={p !== '…'} fallback={<span style={{ padding: '3px 4px', opacity: '.4' }}>…</span>}>
+              <Show when={p !== '…'} fallback={<span class="join-item btn btn-sm btn-ghost btn-disabled">…</span>}>
                 <button
-                  class={`${props.buttonClass ?? ''} ${props.page === p ? props.activeClass ?? '' : ''}`.trim() || undefined}
-                  style={btn(props.page === p, false)}
+                  class={`${btn(props.page === p)} ${props.buttonClass ?? ''} ${
+                    props.page === p ? (props.activeClass ?? '') : ''
+                  }`}
                   onClick={() => props.onPageChange(p as number)}
                 >
                   {p}
@@ -108,7 +102,7 @@ export function DumbPagination(props: DumbPaginationProps) {
             )}
           </For>
           <button
-            class={props.buttonClass} style={btn(false, props.page >= pages())}
+            class={`${btn(false)} ${props.buttonClass ?? ''}`}
             disabled={props.page >= pages()}
             onClick={() => props.onPageChange(props.page + 1)}
           >
