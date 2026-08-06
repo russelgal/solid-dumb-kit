@@ -78,7 +78,7 @@ claude mcp add solid-dumb-kit -- node ~/.solid-dumb-kit/mcp/server.mjs
 вовсе:
 
 ```bash
-claude mcp add --transport http solid-dumb-kit https://<адрес>/mcp
+claude mcp add --transport http solid-dumb-kit https://solid-dumb-kit.vercel.app/mcp
 ```
 
 Данные там — снимок репы (`mcp/snapshot.json`), собираемый на деплое: диска с

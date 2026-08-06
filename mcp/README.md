@@ -80,7 +80,7 @@ The same server also speaks HTTP, and then neither a clone nor Node is needed on
 the machine at all:
 
 ```bash
-claude mcp add --transport http solid-dumb-kit https://<host>/mcp
+claude mcp add --transport http solid-dumb-kit https://solid-dumb-kit.vercel.app/mcp
 ```
 
 Its data there is a snapshot of the repo (`mcp/snapshot.json`) built at deploy

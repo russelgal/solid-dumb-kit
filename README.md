@@ -27,7 +27,7 @@ Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 **📓 Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
-**🤖 For agents:** [the kit's MCP server](mcp/README.md) — packages, props, examples and the repo's rules without reading the sources; zero dependencies. Speaks stdio (next to a working copy) and HTTP (one URL, no clone).
+**🤖 For agents:** [the kit's MCP server](mcp/README.md) — packages, props, examples and the repo's rules without reading the sources; zero dependencies. Speaks stdio (next to a working copy) and HTTP: `claude mcp add --transport http solid-dumb-kit https://solid-dumb-kit.vercel.app/mcp` — one URL, no clone.
 
 **🧭 Write-ups:** [What turned out to be true](docs/Findings.md) — verified claims, with how they were verified · [Global DnD](docs/GlobalDnd.md) — dragging between unlike things (a proposal, not implemented)
 
