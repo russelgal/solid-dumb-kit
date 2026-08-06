@@ -1,0 +1,18 @@
+{
+  "name": "@solid-dumb-kit/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP-сервер кита: пакеты, пропсы, примеры, доки и правила репы — для агентов в соседних проектах",
+  "type": "module",
+  "bin": {
+    "solid-dumb-kit-mcp": "./server.mjs"
+  },
+  "files": [
+    "server.mjs",
+    "README.md",
+    "README.ru.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
