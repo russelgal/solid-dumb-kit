@@ -23,8 +23,17 @@ export function injectStyle(id: string, css: string): void {
   if (done.has(id)) return
   done.add(id)
 
-  // мог остаться от предыдущей загрузки модуля (HMR) — второй раз не нужен
-  if (document.querySelector(`style[data-dumb-kit="${id}"]`)) return
+  // Мог остаться от предыдущей загрузки модуля (HMR). Второй тег не нужен, но
+  // СОДЕРЖИМОЕ обновить обязательно: правишь стили компонента, дев-сервер
+  // перезагружает модуль — а страница держит правила от первой загрузки, и
+  // новых селекторов в ней нет вовсе. Ловится это отвратительно: код верный,
+  // в свежей вкладке всё работает, а на открытой — нет. В проде функция
+  // вызывается один раз, и сравнение строк ничего не стоит.
+  const was = document.querySelector(`style[data-dumb-kit="${id}"]`)
+  if (was) {
+    if (was.textContent !== css) was.textContent = css
+    return
+  }
 
   const el = document.createElement('style')
   el.setAttribute('data-dumb-kit', id)

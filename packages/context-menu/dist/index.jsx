@@ -9,7 +9,11 @@ function injectStyle(id, css) {
   if (typeof document === "undefined") return;
   if (done.has(id)) return;
   done.add(id);
-  if (document.querySelector(`style[data-dumb-kit="${id}"]`)) return;
+  const was = document.querySelector(`style[data-dumb-kit="${id}"]`);
+  if (was) {
+    if (was.textContent !== css) was.textContent = css;
+    return;
+  }
   const el = document.createElement("style");
   el.setAttribute("data-dumb-kit", id);
   el.textContent = css;
@@ -55,7 +59,179 @@ var STYLES = `
   .dumb-menu-hint { flex: none; font-size: .85em; color: var(--dumb-menu-dim, #475569) }
   .dumb-menu-sep { height: 1px; margin: 4px 6px;
                    background: var(--dumb-menu-line, rgb(0 0 0 / .12)) }
+  /* \u0441\u0442\u0440\u0435\u043B\u043A\u0430 \u0432\u0435\u0442\u043A\u0438 \u2014 \u043F\u043E\u043B\u043D\u044B\u043C \u0446\u0432\u0435\u0442\u043E\u043C: \u044D\u0442\u043E \u0443\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C, \u0430 \u043D\u0435 \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u0435 */
+  .dumb-menu-more { flex: none; font-size: .9em }
+
+  /* \u041F\u043E\u0434\u043C\u0435\u043D\u044E. \u0422\u043E\u0442 \u0436\u0435 popover, \u0442\u043E\u0442 \u0436\u0435 top layer \u2014 \u0437\u043D\u0430\u0447\u0438\u0442 \u0435\u0433\u043E \u0442\u0430\u043A \u0436\u0435 \u043D\u0435 \u0440\u0435\u0436\u0435\u0442 \u043D\u0438
+     overflow, \u043D\u0438 clip-path \u043F\u0440\u0435\u0434\u043A\u043E\u0432, \u0438 z-index \u0435\u043C\u0443 \u043D\u0435 \u043D\u0443\u0436\u0435\u043D.
+
+     \u042F\u043A\u043E\u0440\u044C \u0443 \u043D\u0435\u0433\u043E \u0421\u0412\u041E\u0419 \u2014 \u043F\u0438\u043A\u0441\u0435\u043B\u044C \u0432 \u0442\u043E\u0447\u043A\u0435, \u0433\u0434\u0435 \u043A\u0443\u0440\u0441\u043E\u0440 \u0432\u043E\u0448\u0451\u043B \u0432 \u043F\u0443\u043D\u043A\u0442-\u0432\u0435\u0442\u043A\u0443. \u041D\u0435
+     \u0441\u0430\u043C\u0430 \u043A\u043D\u043E\u043F\u043A\u0430: \u043E\u043D\u0430 \u043B\u0435\u0436\u0438\u0442 \u0432\u043D\u0443\u0442\u0440\u0438 \u0440\u043E\u0434\u0438\u0442\u0435\u043B\u044C\u0441\u043A\u043E\u0433\u043E popover, \u0430 \u043D\u0430 \u044D\u043B\u0435\u043C\u0435\u043D\u0442 \u0432 top
+     layer anchor() \u043D\u0435 \u0440\u0430\u0437\u0440\u0435\u0448\u0430\u0435\u0442\u0441\u044F, \u0438 \u043F\u0430\u043D\u0435\u043B\u044C \u0443\u0435\u0437\u0436\u0430\u0435\u0442 \u0432 \u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0443\u044E \u043F\u043E\u0437\u0438\u0446\u0438\u044E.
+     \u0421\u0442\u043E\u0440\u043E\u043D\u0443, \u043A\u0430\u043A \u0438 \u0443 \u043A\u043E\u0440\u043D\u0435\u0432\u043E\u0433\u043E \u043C\u0435\u043D\u044E, \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442 \u0431\u0440\u0430\u0443\u0437\u0435\u0440; \u0437\u0430\u043C\u0435\u0440\u043E\u0432 \u043F\u043E-\u043F\u0440\u0435\u0436\u043D\u0435\u043C\u0443
+     \u043D\u043E\u043B\u044C \u2014 \u043A\u043E\u043E\u0440\u0434\u0438\u043D\u0430\u0442\u044B \u0431\u0435\u0440\u0443\u0442\u0441\u044F \u0438\u0437 \u0441\u043E\u0431\u044B\u0442\u0438\u044F, \u0430 \u043D\u0435 \u0438\u0437 \u0440\u0430\u0441\u043A\u043B\u0430\u0434\u043A\u0438. */
+  .dumb-menu-sub { top: anchor(top); left: anchor(right);
+                   /* \u043D\u0435\u043C\u043D\u043E\u0433\u043E \u0432\u0432\u0435\u0440\u0445, \u0447\u0442\u043E\u0431\u044B \u043F\u0435\u0440\u0432\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430 \u043F\u043E\u0434\u043C\u0435\u043D\u044E \u043E\u043A\u0430\u0437\u0430\u043B\u0430\u0441\u044C \u043D\u0430
+                      \u0443\u0440\u043E\u0432\u043D\u0435 \u043F\u0443\u043D\u043A\u0442\u0430, \u0430 \u043D\u0435 \u043F\u043E\u0434 \u043A\u0443\u0440\u0441\u043E\u0440\u043E\u043C */
+                   margin-top: -6px; margin-left: 2px;
+                   position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block }
 `;
+function Panel(props) {
+  const [active, setActive] = createSignal(-1);
+  const [sub, setSub] = createSignal(null);
+  let el;
+  const subAnchor = `--dumb-sub-${props.depth + 1}`;
+  const isItem = (it) => it.kind !== "separator";
+  const asItem = (it) => it;
+  const branch = (it) => isItem(it) ? (asItem(it).items?.length ?? 0) > 0 : false;
+  const pickable = () => props.items.map((it, i) => ({ it, i })).filter(({ it }) => isItem(it) && !asItem(it).disabled);
+  const highlight = (i, x, y) => {
+    setActive(i);
+    const it = props.items[i];
+    if (it && branch(it)) setSub({ i, x, y });
+    else setSub(null);
+  };
+  createEffect2(() => {
+    queueMicrotask(() => {
+      if (el && !el.matches(":popover-open")) el.showPopover?.();
+      if (props.depth === 0) el?.focus();
+    });
+  });
+  onCleanup(() => {
+    if (el?.matches(":popover-open")) el.hidePopover();
+  });
+  createEffect2(() => {
+    const api = {
+      depth: props.depth,
+      get el() {
+        return el;
+      },
+      move: (step) => {
+        const list = pickable();
+        if (!list.length) return;
+        const cur = list.findIndex(({ i: i2 }) => i2 === active());
+        const next = (cur + step + list.length) % list.length;
+        const i = list[cur < 0 && step < 0 ? list.length - 1 : next].i;
+        highlight(i, props.at.x, props.at.y);
+      },
+      focusItem: (btn) => {
+        const rows = Array.from(el?.querySelectorAll(":scope > ul > li") ?? []);
+        const i = rows.findIndex((li) => li.contains(btn));
+        if (i >= 0 && i !== active()) highlight(i, props.at.x, props.at.y);
+      },
+      openSub: () => {
+        const it = props.items[active()];
+        if (!it || !branch(it)) return false;
+        setSub({ i: active(), x: props.at.x, y: props.at.y });
+        return true;
+      },
+      closeSub: () => setSub(null),
+      runActive: () => {
+        const it = props.items[active()];
+        if (!it || !isItem(it) || branch(it) || asItem(it).disabled) return false;
+        asItem(it).run?.();
+        return true;
+      }
+    };
+    onCleanup(props.register(api));
+  });
+  const place = () => {
+    const anchored = window.CSS?.supports?.("anchor-name: --x");
+    if (anchored) return props.anchor ? { "position-anchor": props.anchor } : {};
+    const p = props.at;
+    const flipX = p.x > window.innerWidth / 2;
+    const flipY = p.y > window.innerHeight / 2;
+    return {
+      left: flipX ? "auto" : `${p.x}px`,
+      right: flipX ? `${window.innerWidth - p.x}px` : "auto",
+      top: flipY ? "auto" : `${p.y}px`,
+      bottom: flipY ? `${window.innerHeight - p.y}px` : "auto"
+    };
+  };
+  return <>
+      {
+    /* Свой якорь — обычный div в документе, а НЕ кнопка-родитель.
+       Кнопка лежит внутри родительского popover, то есть в top layer, и
+       `anchor()` на неё не разрешается: inset становится auto, а панель
+       уезжает в статическую позицию — левый нижний угол экрана. У корневого
+       меню якорь ровно такой же, и там всё работает; повторяем механизм. */
+  }
+      <Show when={props.depth > 0}>
+        <div
+    class="dumb-menu-anchor"
+    style={{
+      left: `${props.at.x}px`,
+      top: `${props.at.y}px`,
+      "anchor-name": props.anchor
+    }}
+  />
+      </Show>
+      <div
+    ref={el}
+    class={`dumb-menu ${props.depth > 0 ? "dumb-menu-sub" : ""} ${props.class ?? ""}`}
+    popover="manual"
+    style={place()}
+    tabindex={-1}
+    role="menu"
+    data-depth={props.depth}
+  >
+        <ul>
+          <For each={props.items}>
+            {(it, i) => <Show when={isItem(it)} fallback={<li class="dumb-menu-sep" role="separator" />}>
+                <li>
+                  <button
+    type="button"
+    role="menuitem"
+    class="dumb-menu-item"
+    data-active={active() === i() ? "1" : void 0}
+    data-danger={asItem(it).danger ? "1" : void 0}
+    data-sub={branch(it) ? "1" : void 0}
+    aria-haspopup={branch(it) ? "menu" : void 0}
+    aria-expanded={branch(it) ? sub()?.i === i() ? "true" : "false" : void 0}
+    disabled={asItem(it).disabled}
+    onMouseEnter={(ev) => highlight(i(), ev.clientX, ev.clientY)}
+    onClick={(ev) => {
+      if (branch(it)) return void highlight(i(), ev.clientX, ev.clientY);
+      asItem(it).run?.();
+      props.onRun();
+    }}
+  >
+                    <Show when={asItem(it).icon}>
+                      <span class={`dumb-menu-icon ${asItem(it).icon}`} />
+                    </Show>
+                    <span class="dumb-menu-label">{asItem(it).label}</span>
+                    <Show when={asItem(it).hint}>
+                      <span class="dumb-menu-hint">{asItem(it).hint}</span>
+                    </Show>
+                    <Show when={branch(it)}>
+                      <span class="dumb-menu-more" aria-hidden="true">
+                        ▸
+                      </span>
+                    </Show>
+                  </button>
+                </li>
+              </Show>}
+          </For>
+        </ul>
+      </div>
+
+      {
+    /* Подменю — соседний popover, а не потомок панели: в top layer каждый
+       сам по себе, и порядок показа решает, кто выше. */
+  }
+      <Show when={sub()}>
+        {(s) => <Panel
+    items={asItem(props.items[s().i]).items}
+    depth={props.depth + 1}
+    anchor={subAnchor}
+    at={{ x: s().x, y: s().y }}
+    onRun={props.onRun}
+    register={props.register}
+    class={props.class}
+  />}
+      </Show>
+    </>;
+}
 function DumbContextMenu(props) {
   injectStyle("menu", STYLES);
   const HOLD = 250;
@@ -63,17 +239,22 @@ function DumbContextMenu(props) {
   const [at, setAt] = createSignal(null);
   let pressedAt = 0;
   let pressedPoint = { x: 0, y: 0 };
-  const [active, setActive] = createSignal(-1);
-  let box;
   let returnTo = null;
+  const stack = [];
+  const register = (api) => {
+    stack.push(api);
+    stack.sort((a, b) => a.depth - b.depth);
+    return () => {
+      const i = stack.indexOf(api);
+      if (i >= 0) stack.splice(i, 1);
+    };
+  };
+  const deepest = () => stack[stack.length - 1];
+  const inside = (node) => stack.some((p) => p.el?.contains(node));
   const open = () => at() !== null;
-  const items = () => open() ? props.items() : [];
-  const pickable = () => items().map((it, i) => ({ it, i })).filter(({ it }) => it.kind !== "separator" && !it.disabled);
   function close() {
     if (!open()) return;
-    if (box?.matches(":popover-open")) box.hidePopover();
     setAt(null);
-    setActive(-1);
     props.onToggle?.(false);
     returnTo?.focus?.();
     returnTo = null;
@@ -89,36 +270,44 @@ function DumbContextMenu(props) {
     pressedAt = performance.now();
     pressedPoint = { x: ev.clientX, y: ev.clientY };
     setAt({ x: ev.clientX, y: ev.clientY });
-    setActive(-1);
     props.onToggle?.(true);
   }
   function onKey(ev) {
     if (!open()) return;
-    const list = pickable();
-    if (ev.key === "Escape") return void (ev.preventDefault(), close());
+    const top = deepest();
+    if (!top) return;
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      if (top.depth > 0) stack[stack.length - 2]?.closeSub();
+      else close();
+      return;
+    }
     if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
       ev.preventDefault();
-      if (!list.length) return;
-      const cur = list.findIndex(({ i }) => i === active());
-      const step = ev.key === "ArrowDown" ? 1 : -1;
-      const next = (cur + step + list.length) % list.length;
-      setActive(list[next < 0 ? list.length - 1 : next].i);
+      top.move(ev.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    if (ev.key === "ArrowRight") {
+      ev.preventDefault();
+      if (top.openSub()) queueMicrotask(() => deepest()?.move(1));
+      return;
+    }
+    if (ev.key === "ArrowLeft") {
+      ev.preventDefault();
+      if (top.depth > 0) stack[stack.length - 2]?.closeSub();
       return;
     }
     if (ev.key === "Enter" || ev.key === " ") {
-      const it = items()[active()];
-      if (it && it.kind !== "separator") {
-        ev.preventDefault();
-        it.run();
-        close();
-      }
+      ev.preventDefault();
+      if (top.runActive()) close();
+      else if (top.openSub()) queueMicrotask(() => deepest()?.move(1));
     }
   }
   createEffect2(() => {
     window.addEventListener("contextmenu", onContext);
     window.addEventListener("keydown", onKey);
     const away = (ev) => {
-      if (open() && !box?.contains(ev.target)) close();
+      if (open() && !inside(ev.target)) close();
     };
     window.addEventListener("pointerdown", away, true);
     const release = (ev) => {
@@ -128,6 +317,7 @@ function DumbContextMenu(props) {
       if (held < HOLD && moved < TOL) return;
       const under = document.elementFromPoint(ev.clientX, ev.clientY);
       const hit = under?.closest(".dumb-menu-item");
+      if (hit?.dataset.sub === "1") return;
       if (hit && !hit.disabled) hit.click();
       else close();
     };
@@ -136,15 +326,14 @@ function DumbContextMenu(props) {
       if (!open() || !ev.buttons) return;
       const under = document.elementFromPoint(ev.clientX, ev.clientY);
       const hit = under?.closest(".dumb-menu-item");
-      if (!hit) return void setActive(-1);
-      const all = Array.from(box?.querySelectorAll(".dumb-menu-item") ?? []);
-      const rows = Array.from(box?.querySelectorAll("li") ?? []);
-      setActive(rows.findIndex((li) => li.contains(hit)));
-      void all;
+      if (!hit) return;
+      const panel = hit.closest(".dumb-menu");
+      stack.find((p) => p.el === panel)?.focusItem(hit);
     };
     window.addEventListener("pointermove", track, true);
     const bail = () => close();
     window.addEventListener("scroll", bail, true);
+    window.addEventListener("resize", bail);
     window.addEventListener("blur", bail);
     onCleanup(() => {
       window.removeEventListener("contextmenu", onContext);
@@ -153,76 +342,26 @@ function DumbContextMenu(props) {
       window.removeEventListener("pointerup", release, true);
       window.removeEventListener("pointermove", track, true);
       window.removeEventListener("scroll", bail, true);
+      window.removeEventListener("resize", bail);
       window.removeEventListener("blur", bail);
     });
   });
-  createEffect2(() => {
-    if (!open()) return;
-    queueMicrotask(() => {
-      if (box && !box.matches(":popover-open")) box.showPopover?.();
-      box?.focus();
-    });
-  });
-  const place = () => {
-    const p = at();
-    if (!p) return {};
-    if (window.CSS?.supports?.("anchor-name: --x")) return {};
-    const flipX = p.x > window.innerWidth / 2;
-    const flipY = p.y > window.innerHeight / 2;
-    return {
-      left: flipX ? "auto" : `${p.x}px`,
-      right: flipX ? `${window.innerWidth - p.x}px` : "auto",
-      top: flipY ? "auto" : `${p.y}px`,
-      bottom: flipY ? `${window.innerHeight - p.y}px` : "auto"
-    };
-  };
-  return <Show when={open()}>
-      {
-    /* якорь стоит ровно там, где щёлкнули: меню цепляется за него */
+  return <Show when={at()}>
+      {(p) => <>
+          {
+    /* якорь стоит ровно там, где щёлкнули: корневая панель цепляется за
+       него, а каждое подменю — уже за свой пункт */
   }
-      <div class="dumb-menu-anchor" style={{ left: `${at().x}px`, top: `${at().y}px` }} />
-      <div
-    ref={box}
-    class={`dumb-menu ${props.class ?? ""}`}
-    popover="manual"
-    style={place()}
-    tabindex={-1}
-    role="menu"
-  >
-        <ul>
-          <For each={items()}>
-            {(it, i) => <Show
-    when={it.kind !== "separator"}
-    fallback={<li class="dumb-menu-sep" role="separator" />}
-  >
-                <li>
-                  <button
-    type="button"
-    role="menuitem"
-    class="dumb-menu-item"
-    data-active={active() === i() ? "1" : void 0}
-    data-danger={it.danger ? "1" : void 0}
-    disabled={it.disabled}
-    onMouseEnter={() => setActive(i())}
-    onClick={() => {
-      ;
-      it.run();
-      close();
-    }}
-  >
-                    <Show when={it.icon}>
-                      <span class={`dumb-menu-icon ${it.icon}`} />
-                    </Show>
-                    <span class="dumb-menu-label">{it.label}</span>
-                    <Show when={it.hint}>
-                      <span class="dumb-menu-hint">{it.hint}</span>
-                    </Show>
-                  </button>
-                </li>
-              </Show>}
-          </For>
-        </ul>
-      </div>
+          <div class="dumb-menu-anchor" style={{ left: `${p().x}px`, top: `${p().y}px` }} />
+          <Panel
+    items={props.items()}
+    depth={0}
+    at={p()}
+    onRun={close}
+    register={register}
+    class={props.class}
+  />
+        </>}
     </Show>;
 }
 

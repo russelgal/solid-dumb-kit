@@ -26,6 +26,527 @@
   themes: nord --default, dark --prefersdark;
 }
 
+/* Третья тема — своя, «scifi»: тёмный космос с неоном. Смысл у неё не только
+   декоративный: сине-фиолетовый фон и циан вместо нейтралей ловят второй сорт
+   захардкоженных цветов, который в `dark` не виден — тот, что взял серый из
+   палитры Tailwind вместо токена темы.
+
+   Контраст держим по железному правилу репы: `base-content` почти белый,
+   акценты светлее фона на 50+ пунктов lightness, ручки и линии кита ниже
+   перекрашены в циан, а не приглушены. */
+@plugin "daisyui/theme" {
+  name: "scifi";
+  default: false;
+  prefersdark: false;
+  color-scheme: dark;
+
+  /* Фон: не чёрный, а глубокая синь — на ней неон читается, а белый текст не
+     жжёт глаза так, как на чистом #000. `base-200` тут ТЕМНЕЕ `base-100`
+     нарочно: утопленные панели (сайдбар, шапка) уходят вглубь, а карточки
+     всплывают. */
+  --color-base-100: #0b0f19;
+  --color-base-200: #070a11;
+  --color-base-300: #101626;
+  --color-base-content: #d1d5db;
+
+  --color-primary: #00f3ff;
+  --color-primary-content: #00050a;
+  --color-secondary: #b000ff;
+  --color-secondary-content: #ffffff;
+  --color-accent: #ff5500;
+  --color-accent-content: #000000;
+  --color-neutral: #151c2c;
+  --color-neutral-content: #c7cfe4;
+
+  /* Статусные цвета в исходной палитре не заданы — подобраны в тон неону:
+     холодные, светлее фона, чтобы текст на них не приходилось прищуривать. */
+  --color-info: #38bdf8;
+  --color-info-content: #001018;
+  --color-success: #00e5a0;
+  --color-success-content: #001a12;
+  --color-warning: #ffc933;
+  --color-warning-content: #1a1200;
+  --color-error: #ff3d6e;
+  --color-error-content: #1a0008;
+
+  /* Углы прямые — жанр требует панелей, а не пилюль. Все три радиуса в ноль:
+     скругление в этой теме даёт только фаска (clip-path), она же и читается
+     как «срез», а не как «кнопка со скруглением». */
+  --radius-selector: 0rem;
+  --radius-field: 0rem;
+  --radius-box: 0rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* Светлый вариант той же темы: «лаборатория при дневном свете» вместо «рубка
+   ночью». Геометрия общая (декор ниже навешан на обе), меняются только цвета.
+
+   Неон на белом не светится — на светлом фоне тот же приём читается как грязь,
+   поэтому акценты здесь не яркие, а НАСЫЩЕННЫЕ и тёмные: контраст даёт цвет, а
+   не свечение. Свечение в декоре приглушено переменной --sf-glow-a. */
+@plugin "daisyui/theme" {
+  name: "scifi-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+
+  --color-base-100: #f2f6fb;
+  --color-base-200: #e6ecf5;
+  --color-base-300: #cfdae8;
+  --color-base-content: #0a1220;
+
+  --color-primary: #0e7490;
+  --color-primary-content: #f0fdff;
+  --color-secondary: #7412c4;
+  --color-secondary-content: #faf5ff;
+  --color-accent: #b93c06;
+  --color-accent-content: #fff7ed;
+  --color-neutral: #1c2635;
+  --color-neutral-content: #eef3fa;
+
+  --color-info: #0369a1;
+  --color-info-content: #f0f9ff;
+  --color-success: #046b4e;
+  --color-success-content: #ecfdf5;
+  --color-warning: #8a5300;
+  --color-warning-content: #fffbeb;
+  --color-error: #b0173c;
+  --color-error-content: #fff1f2;
+
+  --radius-selector: 0rem;
+  --radius-field: 0rem;
+  --radius-box: 0rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* Неон отдельным блоком: daisyUI-тема — это только цвета, свечение, скосы и
+   сканлайны темой не задаются. Декор навешан на те же классы daisyUI, которыми
+   размечена витрина (`btn`, `card`, `badge`, `menu`, `table`), — примеры ради
+   темы не переверстываем, и в остальных темах всё остаётся как было.
+
+   Один блок на обе темы: тёмная и светлая различаются ЦВЕТАМИ (они в
+   `@plugin`) и парой переменных интенсивности ниже, а не разметкой. Держать
+   две копии декора — гарантированно развести их через неделю.
+
+   Идеи в духе cosmic-ui / cybercore-css, но реализация своя и без зависимостей:
+   ни SVG-рамок, ни JS. */
+:is([data-theme="scifi"], [data-theme="scifi-light"]) {
+  /* Радиусы daisyUI (`--radius-box` и компания) обнулены в самой теме, но
+     примеры и витрина размечены классами Tailwind — `rounded-xl` берёт
+     `var(--radius-xl)` из ЕГО шкалы, темы не касающейся. Гасим и её, иначе
+     скругления остаются ровно там, где их видно глазами: секции доски,
+     карточки, плитки.
+
+     `rounded-full` не задет: у Tailwind это `calc(infinity * 1px)`, не
+     переменная, — аватары, спиннеры и тумблеры остаются круглыми. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+
+  /* Скос угла у панелей и кнопок. Одна переменная — чтобы «насколько футуризма»
+     крутилось в одном месте. */
+  --sf-cut: 0.5rem;
+  --sf-cut-sm: 0.3rem;
+  /* Интенсивность декора — три ручки, которыми светлый вариант отличается от
+     тёмного (переопределены ниже). Сила свечения, цвет сканлайнов, свечение
+     текста: на белом фоне ореол не светится, а мылит, поэтому там он слабее
+     или выключен вовсе. */
+  --sf-glow-a: 55%;
+  --sf-scan: color-mix(in oklch, var(--color-primary) 6%, transparent);
+  --sf-vignette: rgb(0 0 0 / 0.45);
+  --sf-text-glow: 0 0 12px color-mix(in oklch, var(--color-primary) 60%, transparent);
+
+  /* Фаска рисуется clip-path, а он ОБРЕЗАЕТ box-shadow, поэтому внешнее
+     свечение у скошенных элементов даёт `filter: drop-shadow` — он применяется
+     после клипа и обводит уже срезанную форму. */
+  --sf-glow: drop-shadow(0 0 6px color-mix(in oklch, var(--color-primary) var(--sf-glow-a), transparent));
+
+  /* Линии и ручки кита в этой теме — циан, а не полупрозрачный base-content:
+     на синем фоне серый гаснет, и ручка ресайза перестаёт читаться.
+     Объявляем НА тех же селекторах, что и выше в `@layer components`: там
+     переменная задана на самом элементе, а унаследованная от `html` такому
+     объявлению проигрывает независимо от специфичности. */
+  & .dumb-board-zone,
+  & .dumb-grid {
+    --dumb-board-grip: color-mix(in oklch, var(--color-primary) 80%, transparent);
+    --dumb-board-grip-hover: var(--color-primary);
+    --dumb-grid-line: color-mix(in oklch, var(--color-primary) 30%, transparent);
+  }
+
+  /* Панели: холодная рамка внутренней тенью. Рамка именно тенью, а не `border`:
+     границей она добавила бы плитке два пикселя и раскладка поехала бы ровно
+     там, где кит считает геометрию.
+
+     Фаски (`clip-path`) у КОНТЕЙНЕРОВ нет намеренно: клип режет не только сам
+     элемент, но и всё, что из него выпадает, — дропдаун, тултип, летящую при
+     драге панель. Форму углам задают скобы ниже, они ничего не обрезают. */
+  & .card,
+  & .dumb-board-zone,
+  & .sd-tile {
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--color-primary) 28%, transparent);
+  }
+
+
+  /* Уголковые скобы — четыре градиента в `background-image`. Фон (`bg-base-*`)
+     задан `background-color` и остаётся на месте, поэтому скобы кладутся сверху
+     без обёрток и псевдоэлементов (у карточек кита они уже заняты). */
+  & .card,
+  & .dumb-board-zone {
+    background-image:
+      linear-gradient(to right, var(--color-primary) 0 100%),
+      linear-gradient(to bottom, var(--color-primary) 0 100%),
+      linear-gradient(to right, var(--color-primary) 0 100%),
+      linear-gradient(to bottom, var(--color-primary) 0 100%);
+    background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px;
+    background-position: right top, right top, left bottom, left bottom;
+    background-repeat: no-repeat;
+  }
+
+  /* Кнопки: свечение обычной тенью. Фаску даёт `corner-shape` ниже — она
+     настоящая форма границы, и тень её обходит сама. */
+  & .btn {
+    letter-spacing: 0.02em;
+  }
+  & .btn-primary { box-shadow: 0 0 14px -3px var(--color-primary) }
+  & .btn-secondary { box-shadow: 0 0 14px -3px var(--color-secondary) }
+  & .btn-accent { box-shadow: 0 0 14px -3px var(--color-accent) }
+  & .btn:hover,
+  & .btn:focus-visible {
+    box-shadow: 0 0 18px -2px color-mix(in oklch, var(--color-primary) 85%, transparent);
+  }
+
+  /* Всплывающие панели кита — меню, попап, модалка, тосты. Рамка в primary плюс
+     ореол наружу: они висят НАД содержимым, и без края сливаются с ним.
+
+     Тень тут обычная (`box-shadow`), а не `drop-shadow`: фаска ниже стоит
+     только на меню, у остальных клипа нет и тень не обрезается. */
+  /* Фон всплывающих панелей — на ступень СВЕТЛЕЕ страницы. В этой теме
+     `base-100` у страницы и у панели совпадает, а тень под ней чёрная: на
+     тёмном фоне её попросту не видно, и меню читалось как дырка в странице.
+     `base-300` отделяет панель сам по себе, до всякой тени. */
+  & .dumb-menu,
+  & .dumb-pop,
+  & .dumb-modal,
+  & .dumb-toast {
+    --dumb-menu-bg: var(--color-base-300);
+    --dumb-pop-bg: var(--color-base-300);
+    --dumb-modal-bg: var(--color-base-300);
+    --dumb-toast-bg: var(--color-base-300);
+  }
+
+  & .dumb-modal,
+  & .dumb-toast {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--color-primary) 55%, transparent),
+      0 16px 40px -12px rgb(0 0 0 / 0.75),
+      0 0 28px -6px color-mix(in oklch, var(--color-primary) var(--sf-glow-a), transparent);
+  }
+
+  /* Меню и попап — рамка, неоновый ореол и тень вниз, чтобы панель имела вес,
+     а не только светилась. Всё обычным `box-shadow`: фаску здесь делает
+     `corner-shape`, а не клип, и тень обходит скошенный угол сама. */
+  & .dumb-menu,
+  & .dumb-pop {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--color-primary) 60%, transparent),
+      0 0 22px -4px color-mix(in oklch, var(--color-primary) 70%, transparent),
+      0 12px 24px -6px rgb(0 0 0 / 0.7);
+  }
+
+  /* Уголковые скобы — те же, что у карточек: рисуются градиентами поверх
+     `background-color`, поэтому фон панели (он из `--dumb-*-bg`) остаётся. */
+  & .dumb-menu,
+  & .dumb-pop,
+  & .dumb-modal {
+    background-image:
+      linear-gradient(to right, var(--color-primary) 0 100%),
+      linear-gradient(to bottom, var(--color-primary) 0 100%),
+      linear-gradient(to right, var(--color-primary) 0 100%),
+      linear-gradient(to bottom, var(--color-primary) 0 100%);
+    background-size: 12px 2px, 2px 12px, 12px 2px, 2px 12px;
+    background-position: right top, right top, left bottom, left bottom;
+    background-repeat: no-repeat;
+  }
+
+
+  /* Пункт под курсором — полоса слева, как строка терминала; подпись-подсказка
+     и заголовки панелей моноширинные. */
+  /* `data-active="1"` — так пакет метит пункт под клавиатурой; `:not([disabled])`
+     потому, что у выключенного пункта подсветки нет и у самого кита. */
+  & .dumb-menu-item:hover:not([disabled]),
+  & .dumb-menu-item:focus-visible,
+  & .dumb-menu-item[data-active="1"] {
+    box-shadow: inset 2px 0 0 var(--color-primary);
+  }
+  & .dumb-menu-hint,
+  & .dumb-toast-count,
+  & .dumb-pop-title,
+  & .dumb-modal-title {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+    letter-spacing: 0.03em;
+  }
+
+  /* Бейджи и `kbd` — техношрифт: моноширинный системный, без веб-фонта. */
+  & .badge,
+  & kbd,
+  & .menu-title {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+    letter-spacing: 0.04em;
+  }
+  & .badge { border-radius: 0 }
+  & .badge-primary { box-shadow: 0 0 10px -3px var(--color-primary) }
+  & .badge-secondary { box-shadow: 0 0 10px -3px var(--color-secondary) }
+  & .badge-accent { box-shadow: 0 0 10px -3px var(--color-accent) }
+
+  /* Заголовки разделов в сайдбаре — со свечением текста: это заголовок, его и
+     положено видеть первым. Тень СВЕРХ полного контраста, а не вместо него. */
+  & .menu-title {
+    text-shadow: var(--sf-text-glow);
+  }
+
+  /* Активный пункт меню — светящаяся полоса слева, как строка терминала. */
+  & .menu :where(li > .active, li > a:hover) {
+    box-shadow: inset 2px 0 0 var(--color-primary), inset 0 0 24px -12px var(--color-primary);
+  }
+
+  /* Таблицы: строка-заголовок как шапка консоли. */
+  & .table thead th {
+    color: var(--color-primary);
+    border-bottom-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Кит рисует структурные стили инжектом, и радиусы там зашиты числами
+     (`.dumb-board-frame { border-radius: 10px }` и десяток таких же) — темой
+     они не гасятся. Перебиваем разом по префиксу класса: селектор из двух
+     частей, поэтому специфичнее одиночного класса из инжекта.
+
+     Без `!important`: он перебил бы и фаску (`corner-shape` ниже задаёт этим
+     же элементам ненулевой `border-radius`). Кнопки пагинации остаются
+     скруглёнными — они пишут радиус ИНЛАЙНОМ и класса `dumb-*` не имеют;
+     чинится это в пакете, вынесением радиуса в переменную с фолбэком, как
+     сделано с `--dumb-board-grip`. */
+  & [class*="dumb-"] {
+    border-radius: 0;
+  }
+
+  /* Фокус и активные поля — свечением, а не обводкой. daisyUI рисует у полей
+     `outline` в 2px цветом `base-content`, и на тёмном фоне это выглядит как
+     белая рамка поверх неона.
+
+     Обводку убираем, но фокус ОБЯЗАН остаться видимым — иначе клавиатурная
+     навигация вслепую. Взамен: рамка в primary плюс ореол, и он заметнее
+     исходного outline, а не тише. */
+  & .input,
+  & .select,
+  & .textarea,
+  & .filter-input {
+    outline: none;
+    border-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+  }
+  & .input:focus,
+  & .input:focus-within,
+  & .select:focus,
+  & .select:focus-within,
+  & .textarea:focus,
+  & .textarea:focus-within {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary), 0 0 16px -4px var(--color-primary);
+  }
+
+  /* У кнопок фаска (`clip-path`), а она режет тени — фокус показываем усилением
+     того же свечения, что и в покое. */
+  & .btn:focus-visible {
+    outline: none;
+    filter: drop-shadow(0 0 10px color-mix(in oklch, var(--color-primary) 85%, transparent));
+  }
+
+  & :focus-visible:not(.btn, .input, .select, .textarea, .input *, .select *, .textarea *) {
+    outline-color: var(--color-primary);
+  }
+}
+
+/* Сканлайны и виньетка — одним фиксированным слоем поверх страницы. Слой
+   `pointer-events: none`, иначе он перехватывал бы жесты кита; `position:
+   fixed` — чтобы полосы не ездили при скролле и не заставляли перерисовывать
+   документ.
+
+   Непрозрачность нарочно низкая: полосы поверх текста — это ровно тот случай,
+   когда «атмосферно» превращается в «нечитаемо». */
+/* ФАСКА — через `corner-shape`, а не `clip-path`.
+
+   Клип для этого не годится по двум причинам, и обе выяснились на практике:
+   1) он применяется ПОСЛЕ фильтра и обрезает результат, поэтому у скошенного
+      элемента срезается и `box-shadow`, и `drop-shadow` — свечения просто нет;
+   2) он режет любых потомков, включая выпадающие.
+
+   `corner-shape: bevel` вместе с `border-radius` делает срез НАСТОЯЩЕЙ формой
+   границы: её обходят и фон, и рамка, и тень, а содержимое не обрезается вовсе.
+   Свойство молодое, поэтому под `@supports`: где его нет, углы просто прямые —
+   тема от этого не ломается, а свечение остаётся на месте в обоих случаях. */
+@supports (corner-shape: bevel) {
+  :is([data-theme="scifi"], [data-theme="scifi-light"]) {
+    & .card,
+    & .dumb-board-zone,
+    & .dumb-menu,
+    & .dumb-pop,
+    & .dumb-modal,
+    & .sd-tile {
+      corner-shape: bevel;
+      /* по диагонали: левый верхний и правый нижний — так форма читается как
+         срез, а не как «скруглили и передумали» */
+      border-radius: var(--sf-cut) 0 var(--sf-cut) 0;
+    }
+    & .btn,
+    & .badge,
+    & .input,
+    & .select,
+    & .textarea {
+      corner-shape: bevel;
+      border-radius: var(--sf-cut-sm) 0 var(--sf-cut-sm) 0;
+    }
+  }
+}
+
+:is([data-theme="scifi"], [data-theme="scifi-light"]) body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, var(--sf-scan) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 50% 50%, transparent 55%, var(--sf-vignette) 100%);
+}
+
+/* Отличия светлого варианта — только интенсивность декора. Свечения почти нет
+   (на белом это муть, а не неон), сканлайны тёмные и ещё слабее, виньетка
+   еле заметная: на светлом фоне затемнение краёв читается сильнее, чем
+   осветление на тёмном, поэтому её приходится убавлять. */
+[data-theme="scifi-light"] {
+  --sf-glow-a: 20%;
+  --sf-scan: color-mix(in oklch, var(--color-base-content) 5%, transparent);
+  --sf-vignette: rgb(10 18 32 / 0.08);
+  --sf-text-glow: none;
+
+  /* На светлом «всплывает» не свечение, а белизна и тень: панель должна быть
+     СВЕТЛЕЕ страницы, поэтому здесь `base-100`, а не `base-300` как в тёмной. */
+  /* Тост НЕ трогаем: он тёмный по умолчанию и текст в нём светлый
+     (`--dumb-toast-fg`), так что белый фон дал бы белое по белому. Тёмная
+     плашка на светлой странице — то, что от уведомления и ждут. */
+  & .dumb-menu,
+  & .dumb-pop,
+  & .dumb-modal {
+    --dumb-menu-bg: #ffffff;
+    --dumb-pop-bg: #ffffff;
+    --dumb-modal-bg: #ffffff;
+  }
+  & .dumb-menu,
+  & .dumb-pop {
+    filter:
+      drop-shadow(0 0 1px color-mix(in oklch, var(--color-primary) 55%, transparent))
+      drop-shadow(0 10px 16px rgb(10 18 32 / 0.22))
+      drop-shadow(0 2px 4px rgb(10 18 32 / 0.14));
+  }
+}
+
+/* Цвета кита — из токенов темы, одним местом на все пакеты.
+
+   Пакеты цвета не хардкодят: каждый отдаёт переменные вида `--dumb-<фича>-fg`
+   / `-bg` / `-dim` / `-line`. Но фолбэки у них светлые (`#fff`, текст
+   `#0f172a`) — расчёт на белую страницу, поэтому в `dark` и `scifi` панели
+   светили белым. Кто задаёт цвет — потребитель, здесь это витрина.
+
+   Объявлено на `html`: переменные наследуются, а сами пакеты их нигде не
+   переопределяют (единственное исключение — `--dumb-tl-line`, оно ниже). */
+html {
+  --dumb-menu-fg: var(--color-base-content);
+  --dumb-menu-bg: var(--color-base-100);
+  --dumb-menu-dim: var(--color-base-content);
+  --dumb-menu-line: color-mix(in oklch, var(--color-base-content) 28%, transparent);
+  --dumb-menu-hover: var(--color-base-200);
+  /* `--dumb-menu-at` / `--dumb-pop-at` / `--dumb-toast-at` тут НЕ задаём: это
+     не цвета, а имена якорей для `anchor-name`/`position-anchor` — сходство
+     с остальными именами обманчиво. */
+
+  --dumb-pop-fg: var(--color-base-content);
+  --dumb-pop-bg: var(--color-base-100);
+  --dumb-pop-dim: var(--color-base-content);
+  --dumb-pop-line: color-mix(in oklch, var(--color-base-content) 28%, transparent);
+  --dumb-pop-hover: var(--color-base-200);
+
+  --dumb-modal-fg: var(--color-base-content);
+  --dumb-modal-bg: var(--color-base-100);
+  --dumb-modal-dim: var(--color-base-content);
+  --dumb-modal-line: color-mix(in oklch, var(--color-base-content) 28%, transparent);
+  --dumb-modal-hover: var(--color-base-200);
+
+  --dumb-cal-fg: var(--color-base-content);
+  --dumb-cal-dim: var(--color-base-content);
+  --dumb-cal-hover: var(--color-base-200);
+  --dumb-cal-accent: var(--color-primary);
+
+  --dumb-finder-fg: var(--color-base-content);
+  --dumb-finder-dim: var(--color-base-content);
+  --dumb-finder-line: color-mix(in oklch, var(--color-base-content) 28%, transparent);
+  --dumb-finder-hover: var(--color-base-200);
+  --dumb-finder-zebra: color-mix(in oklch, var(--color-base-content) 6%, transparent);
+  --dumb-finder-sel: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  --dumb-finder-thumb-bg: var(--color-base-200);
+
+  --dumb-tree-fg: var(--color-base-content);
+  --dumb-tree-dim: var(--color-base-content);
+  --dumb-tree-hover: var(--color-base-200);
+  --dumb-tree-sel: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  --dumb-tree-accent: var(--color-primary);
+  --dumb-tree-zebra: color-mix(in oklch, var(--color-base-content) 6%, transparent);
+
+  --dumb-props-dim: var(--color-base-content);
+}
+
+/* Цвета таймлайна — из токенов темы. Пакет их не хардкодит, он отдаёт
+   переменные, но фолбэки у него светлые (`--dumb-tl-bg, #fff`, текст `#0f172a`),
+   рассчитанные на белую страницу: в `dark` и `scifi` колонка ресурсов светила
+   белым. Задаём их здесь один раз на все темы — цвет кита определяет
+   потребитель, это его работа, а не пакета.
+
+   Селектор `html .dumb-tl`, а НЕ `.dumb-tl` в `@layer components`: пакет
+   инжектит свои стили тегом `<style>` при монтировании, то есть без слоя и
+   позже нашего CSS. Правило вне слоя всегда бьёт правило в слое, а при равной
+   специфичности выигрывает то, что ниже в документе, — значит нужен и выход из
+   слоя, и лишний вес селектора. */
+html .dumb-tl {
+  --dumb-tl-bg: var(--color-base-100);
+  --dumb-tl-fg: var(--color-base-content);
+  /* «Приглушённый» текст берём полным цветом: это подписи дат и сводка, их
+     читают. По железному правилу репы блёклым им быть нельзя. */
+  --dumb-tl-dim: var(--color-base-content);
+  --dumb-tl-line: color-mix(in oklch, var(--color-base-content) 28%, transparent);
+  --dumb-tl-group-bg: var(--color-base-200);
+  --dumb-tl-closed: color-mix(in oklch, var(--color-base-content) 12%, transparent);
+  --dumb-tl-now: var(--color-primary);
+  /* `--dumb-tl-span-bg` и `--dumb-tl-bad` НЕ трогаем намеренно: текст на полосе
+     брони пакет пишет белым (`color: #fff` в его стилях), и подстановка светлых
+     токенов темы — циана и розового `error` — сделала бы подпись нечитаемой.
+     Тёмно-синий и тёмно-красный по умолчанию с белым текстом работают в любой
+     теме. */
+}
+
 /* Прокручиваемая область списка. Объявлена через `@utility`, а не как класс в
    `@layer components`: сослаться на неё из `@apply` можно только так — на
    обычный компонентный класс `@apply` ругается «unknown utility».
@@ -42,6 +563,97 @@
 /* Оформление кита в витрине. Кит даёт только структуру — сетку, позиции ручек,
    приглушение источника, — а как это выглядит, решает потребитель. Здесь
    потребитель мы, и решаем один раз на все примеры. */
+/* ── Аура: дешёвая замена компоненту `.aura` из daisyUI ──────────────────────
+   У daisyUI на каждый элемент приходится три слоя, и все три дорогие:
+   анимируется `--aura-angle` ВНУТРИ conic-градиента (перерисовка градиента
+   каждый кадр, композитор тут не помогает), а `::before`/`::after` вдобавок
+   накрыты `filter: blur(.25rem)` и `blur(1rem)` — свёртка по всей площади на
+   каждом кадре. `aura-glow` анимирует сам радиус блюра, то есть худший случай.
+
+   Здесь анимируется только то, что композитор двигает без перерисовки:
+   `rotate` у готового слоя и `opacity`. Градиент растеризуется ОДИН раз,
+   блюра нет вовсе — мягкость даёт прозрачный стоп в самом градиенте.
+
+   Цвет берётся из `currentColor`, скорость и толщина — из переменных. */
+@layer components {
+  .sf-aura {
+    position: relative;
+    isolation: isolate;
+    padding: var(--sf-aura-w, 2px);
+    /* прячем углы вращающегося квадрата — наружу торчать должна только кайма */
+    overflow: hidden;
+  }
+  /* Контент поверх каймы и со своим фоном — иначе градиент просвечивал бы. */
+  .sf-aura > * {
+    position: relative;
+    z-index: 1;
+  }
+  .sf-aura::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    top: 50%;
+    left: 50%;
+    /* Квадрат со стороной в две ширины: при любом повороте он перекрывает
+       элемент целиком (диагональ прямоугольника всегда меньше 2W при W >= H).
+       Для элементов выше своей ширины поднимается --sf-aura-cover. */
+    width: var(--sf-aura-cover, 200%);
+    aspect-ratio: 1;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0 55%,
+      var(--sf-aura-color, currentColor) 78%,
+      transparent 100%
+    );
+    /* `translate` и `rotate` — отдельные свойства, а не одна matrix: центровка
+       не мешает вращению, и анимировать можно только вращение. */
+    translate: -50% -50%;
+    animation: sf-aura-spin var(--sf-aura-speed, 6s) linear infinite;
+    will-change: transform;
+  }
+
+  /* Пульсирующий ореол — замена `.aura-glow`. Слой статичный, анимируется
+     ТОЛЬКО прозрачность; вешается на обёртку без фона, ребёнок — со своим. */
+  .sf-glow {
+    position: relative;
+    isolation: isolate;
+  }
+  .sf-glow > * {
+    position: relative;
+    z-index: 1;
+  }
+  .sf-glow::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: -35%;
+    pointer-events: none;
+    background: radial-gradient(closest-side, var(--sf-aura-color, currentColor), transparent 72%);
+    opacity: 0.35;
+    animation: sf-glow-pulse var(--sf-aura-speed, 4s) ease-in-out infinite;
+  }
+}
+
+@keyframes sf-aura-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+@keyframes sf-glow-pulse {
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Системная настройка важнее декора — то же правило, что у `shouldAnimate()`
+   в самом ките. */
+@media (prefers-reduced-motion: reduce) {
+  .sf-aura::before,
+  .sf-glow::before {
+    animation: none;
+  }
+}
+
 @layer components {
   /* Кит рисует линии и ручки своими цветами — они нейтральные и читаются на
      любом фоне, но в теме приятнее взять её же токены. Кит для этого отдаёт

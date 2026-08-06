@@ -14,6 +14,9 @@ const ICONS = {
   copy: 'icon-[solar--copy-bold]',
   rename: 'icon-[solar--pen-2-bold]',
   trash: 'icon-[solar--trash-bin-trash-bold]',
+  share: 'icon-[solar--share-bold]',
+  export: 'icon-[solar--download-bold]',
+  tag: 'icon-[solar--tag-bold]',
 }
 
 export default function ContextMenuExample() {
@@ -36,6 +39,40 @@ export default function ContextMenuExample() {
       run: () => toast.success('скопировано'),
     },
     { label: 'Переименовать', icon: ICONS.rename, hint: 'F2', disabled: !picked(), run: () => {} },
+    { kind: 'separator' },
+    // Ветка: пункт с `items` раскрывает подменю вбок и сам ничего не делает.
+    // Подменю — такой же popover в top layer, поэтому его не режет ни
+    // `overflow` предков, ни `clip-path` из темы витрины, и сторону у края
+    // экрана браузер выбирает сам.
+    {
+      label: 'Отправить',
+      icon: ICONS.share,
+      disabled: !picked(),
+      items: [
+        { label: 'Почтой', run: () => toast.info(`отправили почтой: ${picked()}`) },
+        { label: 'Ссылкой', hint: '⌘L', run: () => toast.success('ссылка в буфере') },
+        { kind: 'separator' },
+        // вложенность любая — панель рекурсивна
+        {
+          label: 'Экспорт',
+          icon: ICONS.export,
+          items: [
+            { label: 'PDF', run: () => toast.info('экспорт в PDF') },
+            { label: 'CSV', run: () => toast.info('экспорт в CSV') },
+            { label: 'ZIP архивом', run: () => toast.info('экспорт в ZIP') },
+          ],
+        },
+      ],
+    },
+    {
+      label: 'Метка',
+      icon: ICONS.tag,
+      items: [
+        { label: 'Срочное', run: () => toast.success('метка: срочное') },
+        { label: 'На проверку', run: () => toast.success('метка: на проверку') },
+        { label: 'Архив', disabled: true, run: () => {} },
+      ],
+    },
     { kind: 'separator' },
     {
       label: 'Удалить',

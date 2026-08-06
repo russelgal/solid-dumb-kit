@@ -1,6 +1,8 @@
 import "./app.css";
 import { render } from "solid-js/web";
-import { createEffect, createSignal, For, Show, onCleanup, type JSX } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show, onCleanup, type JSX } from "solid-js";
+
+import ThemeShowcase from "./ThemeShowcase";
 
 import SelectionAreaExample from "../../examples/pointer/SelectionArea.example";
 import DumbSortableExample from "../../examples/pointer/DumbSortable.example";
@@ -234,6 +236,18 @@ const GROUPS: Array<Group> = [
     ],
   },
   {
+    title: "Витрина",
+    note: "оформление самой демо-страницы: тема, токены, органы управления",
+    items: [
+      {
+        id: "theme",
+        label: "Тема",
+        hint: "палитра, кнопки, формы, декор",
+        Comp: ThemeShowcase,
+      },
+    ],
+  },
+  {
     title: "Лаборатория",
     note: "без кита вообще — проверяем идеи на голых событиях браузера",
     items: [
@@ -300,15 +314,23 @@ const fromHash = (): string => {
 };
 
 /**
- * Тема витрины. Две штуки нарочно: светлая `nord` и `dark` — на второй сразу
- * видно захардкоженный светлый цвет, если он куда-то пролез.
+ * Тема витрины. Светлая `nord`, `dark` — на ней сразу видно захардкоженный
+ * светлый цвет, если он куда-то пролез, — и своя `scifi` (описана в `app.css`):
+ * она ловит второй сорт хардкода, серый из палитры Tailwind вместо токена темы.
  *
  * Пишем в `data-theme` на `<html>` (так daisyUI и переключает темы) и помним
  * выбор в `localStorage`. Начальное значение читаем ДО первого рендера, иначе
  * страница успевает моргнуть светлой.
  */
-const THEMES = ["nord", "dark"] as const;
+const THEMES = ["nord", "dark", "scifi", "scifi-light"] as const;
 type Theme = (typeof THEMES)[number];
+
+const THEME_LABEL: Record<Theme, string> = {
+  nord: "☀ nord",
+  dark: "☾ dark",
+  scifi: "⬡ scifi",
+  "scifi-light": "⬡ scifi·день",
+};
 
 const readTheme = (): Theme => {
   const saved = localStorage.getItem("sd-theme");
@@ -316,9 +338,56 @@ const readTheme = (): Theme => {
   return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "nord";
 };
 
+/** Совпадение по названию, подсказке и имени пакета — регистр не важен. */
+const matches = (t: Tab, q: string): boolean => {
+  const hay = `${t.label} ${t.hint} ${t.pkg ?? ""} ${t.id}`.toLowerCase();
+  return q.split(/\s+/).every((w) => hay.includes(w));
+};
+
 function App() {
   const [tab, setTab] = createSignal(fromHash());
   const [theme, setTheme] = createSignal<Theme>(readTheme());
+
+  // Поиск по меню. Тридцать примеров в четырёх группах — это два экрана
+  // прокрутки, и глазами искать дольше, чем набрать три буквы.
+  const [query, setQuery] = createSignal("");
+  const searching = () => query().trim().length > 0;
+
+  // Свёрнутые группы. Храним именно СВЁРНУТЫЕ, а не открытые: новая группа в
+  // `GROUPS` тогда появляется раскрытой, без правки сохранённого состояния.
+  const [folded, setFolded] = createSignal<string[]>(
+    JSON.parse(localStorage.getItem("sd-folded") ?? "[]"),
+  );
+  const isOpen = (title: string) => searching() || !folded().includes(title);
+  const toggleGroup = (title: string) =>
+    setFolded((cur) => {
+      const next = cur.includes(title) ? cur.filter((t) => t !== title) : [...cur, title];
+      localStorage.setItem("sd-folded", JSON.stringify(next));
+      return next;
+    });
+
+  // Сайдбар целиком — примеру с широкой сеткой лишние 16rem не лишние.
+  const [hidden, setHidden] = createSignal(localStorage.getItem("sd-nav-hidden") === "1");
+  const toggleNav = () => {
+    const next = !hidden();
+    setHidden(next);
+    localStorage.setItem("sd-nav-hidden", next ? "1" : "0");
+  };
+
+  const groups = createMemo(() => {
+    const q = query().trim().toLowerCase();
+    if (!q) return GROUPS;
+    return GROUPS.map((g) => ({ ...g, items: g.items.filter((t) => matches(t, q)) })).filter(
+      (g) => g.items.length > 0,
+    );
+  });
+  /** Плоский список видимого — по нему ходят стрелки в поле поиска. */
+  const visible = createMemo(() => groups().flatMap((g) => g.items));
+
+  // Курсор клавиатуры. Отдельный от выбранной вкладки: стрелками бегаем по
+  // списку, а переход делает Enter — так поиск не дёргает тяжёлые примеры.
+  const [cursor, setCursor] = createSignal(0);
+  const cursorId = () => visible()[cursor()]?.id;
 
   createEffect(() => {
     document.documentElement.dataset.theme = theme();
@@ -329,79 +398,203 @@ function App() {
   window.addEventListener("hashchange", onHash);
   onCleanup(() => window.removeEventListener("hashchange", onHash));
 
+  let searchEl: HTMLInputElement | undefined;
+
+  // Глобальные хоткеи: `/` и ⌘K/Ctrl+K — в поиск. Проверка на поле ввода
+  // обязательна, иначе слэш перестанет печататься в примерах с инпутами.
+  const onKey = (e: KeyboardEvent) => {
+    const el = e.target as HTMLElement | null;
+    const typing =
+      !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+    const hotK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
+    if (hotK || (e.key === "/" && !typing)) {
+      e.preventDefault();
+      setHidden(false);
+      searchEl?.focus();
+      searchEl?.select();
+    }
+  };
+  window.addEventListener("keydown", onKey);
+  onCleanup(() => window.removeEventListener("keydown", onKey));
+
+  const onSearchKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setQuery("");
+      searchEl?.blur();
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const n = visible().length;
+      if (!n) return;
+      setCursor((c) => (e.key === "ArrowDown" ? (c + 1) % n : (c - 1 + n) % n));
+      return;
+    }
+    if (e.key === "Enter") {
+      const id = cursorId();
+      if (id) {
+        location.hash = id;
+        searchEl?.blur();
+      }
+    }
+  };
+
   return (
     <div class="flex min-h-screen items-start">
-      <aside class="sticky top-0 h-screen w-60 shrink-0 overflow-y-auto border-r border-base-300 bg-base-200 [scrollbar-gutter:stable]">
-        <div class="flex items-center gap-2 px-4 pt-4 pb-2">
-          <a
-            class="min-w-0 flex-1 truncate text-base font-semibold no-underline"
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              location.hash = TABS[0].id;
-            }}
-          >
-            solid-dumb-kit
-          </a>
-
-          {/* Переключатель темы. Кнопка, а не `swap`: тем ровно две, и подпись
-              «что включится» понятнее иконки-состояния. */}
+      {/* Свёрнутый сайдбар — узкая полоса с одной кнопкой: навигация никогда не
+          пропадает совсем, иначе на GitHub Pages из примера некуда вернуться. */}
+      <Show when={hidden()}>
+        <div class="sticky top-0 flex h-screen w-10 shrink-0 flex-col items-center gap-2 border-r border-base-300 bg-base-200 py-3">
           <button
             type="button"
             class="btn btn-ghost btn-xs"
-            title={`Тема: ${theme()} — переключить`}
-            aria-label={`Тема ${theme()}, переключить`}
-            onClick={() => setTheme(theme() === "nord" ? "dark" : "nord")}
+            title="Показать навигацию (⌘K)"
+            aria-label="Показать навигацию"
+            onClick={toggleNav}
           >
-            {theme() === "nord" ? "☀ nord" : "☾ dark"}
+            ☰
           </button>
         </div>
+      </Show>
 
-        <ul class="menu w-full gap-0.5 p-2">
-          <For each={GROUPS}>
-            {(group) => (
-              <>
-                <li class="menu-title text-primary text-xl" title={group.note}>
-                  {group.title}
+      <Show when={!hidden()}>
+        <aside class="sticky top-0 flex h-screen w-68 shrink-0 flex-col border-r border-base-300 bg-base-200">
+          <div class="flex items-center gap-1 px-3 pt-3">
+            <a
+              class="min-w-0 flex-1 truncate text-base font-semibold no-underline"
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                location.hash = TABS[0].id;
+              }}
+            >
+              solid-dumb-kit
+            </a>
+
+            {/* Переключатель темы. Кнопка, а не `swap`: тем больше двух, и подпись
+                с названием понятнее иконки-состояния. Клик — следующая по кругу. */}
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              title={`Тема: ${theme()} — переключить`}
+              aria-label={`Тема ${theme()}, переключить`}
+              onClick={() => setTheme(THEMES[(THEMES.indexOf(theme()) + 1) % THEMES.length])}
+            >
+              {THEME_LABEL[theme()]}
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              title="Скрыть навигацию"
+              aria-label="Скрыть навигацию"
+              onClick={toggleNav}
+            >
+              ⇤
+            </button>
+          </div>
+
+          <div class="px-3 pt-2 pb-1">
+            <label class="input input-sm w-full">
+              <span aria-hidden="true">⌕</span>
+              <input
+                ref={searchEl}
+                type="search"
+                value={query()}
+                placeholder="поиск примера"
+                aria-label="Поиск примера"
+                onInput={(e) => {
+                  setQuery(e.currentTarget.value);
+                  setCursor(0);
+                }}
+                onKeyDown={onSearchKey}
+              />
+              <kbd class="kbd kbd-xs">/</kbd>
+            </label>
+            <Show when={searching()}>
+              <div class="px-1 pt-1 text-xs">
+                {visible().length === 0
+                  ? "ничего не найдено"
+                  : `найдено: ${visible().length} · ↑↓ выбрать, Enter открыть`}
+              </div>
+            </Show>
+          </div>
+
+          {/* `flex-nowrap` обязателен: у daisyUI `.menu` — это flex-колонка с
+              `flex-wrap: wrap`, и при ограниченной высоте (тут `flex-1`) она
+              переносит группы во ВТОРУЮ колонку вместо прокрутки — половина
+              меню уезжает за край сайдбара. */}
+          <ul class="menu min-h-0 w-full flex-1 flex-nowrap gap-0.5 overflow-x-hidden overflow-y-auto p-2 [scrollbar-gutter:stable]">
+            <For each={groups()}>
+              {(group) => (
+                <li>
+                  {/* Аккордеон на `details` — разметка daisyUI для вложенного
+                      меню: раскрытие держит браузер, нам остаётся состояние. */}
+                  <details open={isOpen(group.title)}>
+                    <summary
+                      class="text-primary text-base font-semibold"
+                      title={group.note}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (!searching()) toggleGroup(group.title);
+                      }}
+                    >
+                      <span class="flex-1">{group.title}</span>
+                      <span class="badge badge-sm badge-ghost">{group.items.length}</span>
+                    </summary>
+
+                    <ul class="gap-0.5">
+                      <For each={group.items}>
+                        {(t) => (
+                          <li>
+                            <a
+                              class="py-1.5"
+                              classList={{
+                                "menu-active": tab() === t.id,
+                                // курсор поиска: рамкой, а не фоном — фон уже
+                                // занят активной вкладкой, и они бы спорили
+                                "outline outline-primary": searching() && cursorId() === t.id,
+                              }}
+                              href={`#${t.id}`}
+                              aria-current={tab() === t.id ? "page" : undefined}
+                              title={t.pkg ? `${t.hint} · @solid-dumb-kit/${t.pkg}` : t.hint}
+                            >
+                              {/* Пункт меню у daisyUI — grid в СТРОКУ: без обёртки
+                                  подпись, описание и имя пакета встали бы рядом и
+                                  налезли друг на друга. Оборачиваем в один блок. */}
+                              <span class="flex min-w-0 flex-col leading-snug">
+                                <span class="truncate font-medium">{t.label}</span>
+                                {/* Подсказка и пакет — только у текущего пункта и
+                                    в поиске: тридцать пунктов по три строки и
+                                    делали из меню простыню. Остальным хватает
+                                    подсказки в `title`. */}
+                                <Show when={tab() === t.id || searching()}>
+                                  <span class="truncate text-xs">{t.hint}</span>
+                                </Show>
+                                <Show when={tab() === t.id && t.pkg}>
+                                  <span class="truncate font-mono text-[10.5px]">
+                                    @solid-dumb-kit/{t.pkg}
+                                  </span>
+                                </Show>
+                              </span>
+                            </a>
+                          </li>
+                        )}
+                      </For>
+                    </ul>
+                  </details>
                 </li>
-                <For each={group.items}>
-                  {(t) => (
-                    <li>
-                      <a
-                        class="py-2"
-                        classList={{ "menu-active": tab() === t.id }}
-                        href={`#${t.id}`}
-                        aria-current={tab() === t.id ? "page" : undefined}
-                      >
-                        {/* Пункт меню у daisyUI — grid в СТРОКУ: без обёртки
-                            подпись, описание и имя пакета встали бы рядом и
-                            налезли друг на друга. Оборачиваем в один блок. */}
-                        <span class="flex min-w-0 flex-col">
-                          <span class="font-medium">{t.label}</span>
-                          <span class="text-xs opacity-80">{t.hint}</span>
-                          {/* какой пакет ставить — видно прямо в меню, чтобы не искать по докам */}
-                          <Show when={t.pkg}>
-                            <span class="truncate font-mono text-[10.5px] opacity-60">
-                              @solid-dumb-kit/{t.pkg}
-                            </span>
-                          </Show>
-                        </span>
-                      </a>
-                    </li>
-                  )}
-                </For>
-              </>
-            )}
-          </For>
-        </ul>
+              )}
+            </For>
+          </ul>
 
-        <a
-          class="link link-primary block px-4 pt-1 pb-4 text-sm"
-          href="https://github.com/russelgal/solid-dumb-kit"
-        >
-          GitHub ↗
-        </a>
-      </aside>
+          <a
+            class="link link-primary block shrink-0 border-t border-base-300 px-4 py-2 text-sm"
+            href="https://github.com/russelgal/solid-dumb-kit"
+          >
+            GitHub ↗
+          </a>
+        </aside>
+      </Show>
 
       <main class="min-w-0 flex-1">
         <For each={TABS}>
