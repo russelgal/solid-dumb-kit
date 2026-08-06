@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>solid-dumb-kit — MCP</title>
+    <style>
+      :root { color-scheme: light dark }
+      body { margin: 0; padding: 40px 20px; font: 16px/1.6 ui-sans-serif, system-ui, sans-serif;
+             color: #0f172a; background: #fff; display: flex; justify-content: center }
+      main { max-width: 68ch }
+      h1 { font-size: 22px; margin: 0 0 4px }
+      p.lead { margin: 0 0 24px; color: #475569 }
+      code, pre { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px }
+      pre { background: #f1f5f9; padding: 12px 14px; border-radius: 8px; overflow-x: auto }
+      table { border-collapse: collapse; width: 100%; margin: 8px 0 24px }
+      th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #e2e8f0;
+               vertical-align: top }
+      th { font-size: 13px; color: #475569 }
+      a { color: #1d4ed8 }
+      @media (prefers-color-scheme: dark) {
+        body { color: #e2e8f0; background: #0f172a }
+        p.lead, th { color: #cbd5e1 }
+        pre { background: #1e293b }
+        th, td { border-color: #334155 }
+        a { color: #93c5fd }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>solid-dumb-kit — MCP-сервер</h1>
+      <p class="lead">
+        Знания о ките для агента: пакеты, пропсы компонентов, примеры, документация и правила
+        репозитория. Без клона и без установки — одним адресом.
+      </p>
+
+      <pre><code>claude mcp add --transport http solid-dumb-kit https://ЭТОТ-АДРЕС/mcp</code></pre>
+
+      <p>
+        Проверить, что сервер жив и чем набит: <a href="/mcp">/mcp</a> — отдаёт версию, время
+        сборки снимка и число файлов в нём.
+      </p>
+
+      <h2 style="font-size: 17px">Инструменты</h2>
+      <table>
+        <thead>
+          <tr><th>Инструмент</th><th>Что отдаёт</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>list_packages</code></td><td>все пакеты: имя, версия, за что отвечает</td></tr>
+          <tr><td><code>package_api</code></td><td>барр-файл пакета — в ките у каждого экспорта есть комментарий</td></tr>
+          <tr><td><code>component_props</code></td><td>тип пропсов компонента вместе с JSDoc над полями</td></tr>
+          <tr><td><code>example</code></td><td>исходник рабочего примера; их держит в актуальном виде тест</td></tr>
+          <tr><td><code>docs</code></td><td>страница документации, русская или английская</td></tr>
+          <tr><td><code>rules</code></td><td>железные правила: никакого reflow, импорты под Solid 2, контраст</td></tr>
+          <tr><td><code>search</code></td><td>поиск по исходникам, примерам и докам</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        Исходники: <a href="https://github.com/russelgal/solid-dumb-kit">github.com/russelgal/solid-dumb-kit</a>
+        · витрина компонентов: <a href="https://russelgal.github.io/solid-dumb-kit/">russelgal.github.io/solid-dumb-kit</a>
+      </p>
+      <p>
+        Данные — снимок репозитория, собранный на деплое. Он пересобирается на каждый пуш в
+        <code>main</code>, так что ответы догоняют репозиторий сами. Нужны невыпущенные правки —
+        запускай сервер локально по stdio, он читает рабочую копию.
+      </p>
+    </main>
+  </body>
+</html>

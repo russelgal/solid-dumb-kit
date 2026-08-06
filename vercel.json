@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "echo 'зависимостей у сервера нет — ставить нечего'",
+  "buildCommand": "node mcp/snapshot.mjs",
+  "outputDirectory": "public",
+  "functions": {
+    "api/mcp.mjs": {
+      "includeFiles": "mcp/**",
+      "maxDuration": 15
+    }
+  },
+  "rewrites": [
+    { "source": "/mcp", "destination": "/api/mcp" }
+  ]
+}

@@ -74,6 +74,52 @@ If the kit is edited on this machine anyway, point at your working copy rather
 than a separate clone: the server then answers with unreleased edits, on
 whatever branch you are on.
 
+## Hosted: one URL, nothing installed
+
+The same server also speaks HTTP, and then neither a clone nor Node is needed on
+the machine at all:
+
+```bash
+claude mcp add --transport http solid-dumb-kit https://<host>/mcp
+```
+
+Its data there is a snapshot of the repo (`mcp/snapshot.json`) built at deploy
+time: there is no disk with the repository on a host. The snapshot is rebuilt on
+every push to `main`, so the answers keep up with the repo on their own. It
+naturally does not see unreleased edits — for work on the kit itself, run the
+stdio version against your working copy.
+
+### Deploying to Vercel
+
+```bash
+npx vercel            # first time: login and project questions
+npx vercel --prod
+```
+
+Pick **Other** for the framework: the build is described in `vercel.json`
+(`buildCommand: node mcp/snapshot.mjs`, dependency installation disabled — there
+are none). Then link the project to the GitHub repo and the snapshot rebuilds
+itself on every push.
+
+The endpoint is open: the kit is public anyway, there is nothing to hide. Should
+something private appear, close it with a header check in `api/mcp.mjs` — no
+separate build needed for that.
+
+### What is where
+
+| File | Purpose |
+| --- | --- |
+| `mcp/tools.mjs` | the tools themselves — shared by stdio and HTTP |
+| `mcp/sources.mjs` | where knowledge comes from: repo files or a snapshot |
+| `mcp/server.mjs` | the stdio transport |
+| `api/mcp.mjs` | the HTTP transport (a Vercel function) |
+| `mcp/snapshot.mjs` | building the snapshot |
+
+The HTTP transport is deliberately the simplest one: a POST with a single
+JSON-RPC message, a single JSON back. No sessions, no SSE — on serverless every
+request lands in its own instance, there is nothing to keep state in anyway, and
+the tools do not need any.
+
 ## Checking it
 
 ```bash

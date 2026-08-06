@@ -9,6 +9,8 @@
     "url": "https://github.com/russelgal/solid-dumb-kit"
   },
   "scripts": {
+    "opus": "claude --model opus --dangerously-skip-permissions ",
+    "fable": "claude --model fable --dangerously-skip-permissions ",
     "build": "pnpm -r --filter './packages/*' run build",
     "demo": "vite playground",
     "demo:build": "vite build playground",
