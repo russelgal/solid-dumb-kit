@@ -1,4 +1,4 @@
-[Русский](ru/DumbGallery.md) · **English**
+**English** · [Русский](ru/DumbGallery.md)
 
 # DumbGallery
 
@@ -6,7 +6,7 @@ Images: pick, look, reorder, upload.
 
 Assembled from things that already exist: file picking and drop-into-window come
 from [`@solid-primitives/upload`](https://primitives.solidjs.community/package/upload),
-reordering from [`DumbSortableDnd`](DumbSortableDnd.md), uploading from a queue
+reordering from [`DumbSortableDnd`](GlobalDnd.md), uploading from a queue
 with a transport you supply.
 
 **Order comes from CSS `order`; the markup doesn't move.** The browser relocates

@@ -1,4 +1,4 @@
-**Русский** · [English](../DumbFinder.md)
+[English](../DumbFinder.md) · **Русский**
 
 # DumbFinder
 

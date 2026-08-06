@@ -1,4 +1,4 @@
-[Русский](ru/DumbContextMenu.md) · **English**
+**English** · [Русский](ru/DumbContextMenu.md)
 
 # DumbContextMenu and DumbPopover
 

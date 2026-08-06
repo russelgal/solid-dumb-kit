@@ -1,4 +1,4 @@
-[Русский](ru/DumbModal.md) · **English**
+**English** · [Русский](ru/DumbModal.md)
 
 # DumbModal
 

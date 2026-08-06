@@ -1,4 +1,4 @@
-[Русский](ru/DumbLightbox.md) · **English**
+**English** · [Русский](ru/DumbLightbox.md)
 
 # DumbLightbox
 

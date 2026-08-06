@@ -6,7 +6,7 @@
 
 Собран из готового: выбор файлов и приём их броском в окно — примитив
 [`@solid-primitives/upload`](https://primitives.solidjs.community/package/upload),
-перестановка — [`DumbSortableDnd`](DumbSortableDnd.md), заливка — очередь с
+перестановка — [`DumbSortableDnd`](GlobalDnd.md), заливка — очередь с
 транспортом, который даёшь ты.
 
 **Порядок задаётся CSS `order`, разметка не шевелится.** За жест браузер не

@@ -1,57 +1,65 @@
 # solid-dumb-kit — инструкции для Claude
 
-Маленькая SolidJS UI-либа (SelectionArea, ResizableGrid, DumbSortable).
+Монорепа компонентов для SolidJS: два десятка пакетов `@solid-dumb-kit/*` —
+жесты (сортировка, сетки, выделение рамкой), данные (таблица, дерево, файловый
+менеджер, шахматка) и top layer (модалка, меню, тосты, лайтбокс).
 
 ## ЦЕЛЬ №1: СУПЕР БЫСТРО И БЕЗ КОСЯКОВ
 Две вещи неразделимы и важнее всего: (1) максимальная производительность (60fps, ноль reflow, на сотнях/тысячах элементов) и (2) корректность — никаких визуальных багов, дёрганья, съезда, выпадения, кривого порядка. Любая правка оценивается по этим двум критериям; если фикс убирает косяк, но добавляет reflow/тормоз — это НЕ решение, искать другое.
 
 ## ЖЕЛЕЗНОЕ ПРАВИЛО: НИКАКОГО REFLOW В ЛИБЕ
 
-В коде библиотеки (`src/`) **ЗАПРЕЩЕНО** всё, что форсит layout/reflow на горячем пути (драг, скролл, покадрово, в циклах по элементам):
+В коде пакетов (`packages/*/src`) **ЗАПРЕЩЕНО** всё, что форсит layout/reflow на горячем пути (драг, скролл, покадрово, в циклах по элементам):
 
-- **`getBoundingClientRect`** по элементам — НЕТ. Вообще не должно мелькать в `src/` (кроме, возможно, ОДНОГО замера контейнера-скроллера на самом старте, закэшированного — но лучше без него).
+- **`getBoundingClientRect`** по элементам — НЕТ. Вообще не должно мелькать в `packages/*/src` (кроме, возможно, ОДНОГО замера контейнера-скроллера на самом старте, закэшированного — но лучше без него).
 - `offsetTop/offsetLeft/offsetWidth/offsetHeight`, `clientWidth/clientHeight`, `scrollWidth/scrollHeight`, `getComputedStyle(...)` — НЕ читать в циклах/покадрово.
 - Никаких «синхронно замерю один элемент, это дёшево» — это всё равно forced reflow. **Не предлагать и не писать такое.**
 
 ### `@dnd-kit` — забыть навсегда
-`@dnd-kit/solid`, `@dnd-kit/helpers` и любые их обёртки в этой репе **запрещены**: они меряют `getBoundingClientRect` покадрово во время драга, то есть тормозят ровно по причине из правила выше. Не ставить, не предлагать как вариант, не тащить вместе с кодом из донора. Любое перетаскивание — только через `createDumbSortable` (`src/Sortable/sortableCore.ts`).
+`@dnd-kit/solid`, `@dnd-kit/helpers` и любые их обёртки в этой репе **запрещены**: они меряют `getBoundingClientRect` покадрово во время драга, то есть тормозят ровно по причине из правила выше. Не ставить, не предлагать как вариант, не тащить вместе с кодом из донора. Любое перетаскивание — только через `createDumbSortable` (`packages/sortable/src/sortableCore.ts`).
 
 ### Как правильно
-- Позиции/размеры элементов снимаются **один раз** через **IntersectionObserver** (`entry.boundingClientRect` считается off-main-thread, без reflow). См. `snapshot()` в `src/Sortable/sortableCore.ts`.
+- Позиции/размеры элементов снимаются **один раз** через **IntersectionObserver** (`entry.boundingClientRect` считается off-main-thread, без reflow). См. `snapshot()` в `packages/sortable/src/sortableCore.ts`.
 - Движение — **только `transform`** (GPU/compositor), не трогаем layout-свойства.
 - Геометрию скроллера (top/left/clientW/clientH/max) кэшировать **один раз на старте**; покадрово читать только `scrollTop`/`scrollLeft` (это не forced reflow).
 - Стили без зависимости от Tailwind/чужого CSS — структурные стили инлайном или инжектом (компонент самодостаточный).
 
-## Структура `src/`: папка на фичу + барр-файл
-Раскладка как у Kobalte/Corvu: каждая фича — своя папка со всеми файлами (компонент, css, ядро, тесты) и локальным `index.ts`, который перечисляет её публичный API. Корневой `src/index.tsx` реэкспортит **только из папок** (`from './Sortable'`), а не из файлов напрямую — так внутренние файлы можно переименовывать, не трогая entry.
+## Структура: пакет на фичу, воркспейс pnpm
+Репа — **монорепа**: каждая фича живёт своим npm-пакетом `@solid-dumb-kit/<имя>` в `packages/`, потребитель ставит только то, что взял. Общего пакета-зонтика `solid-dumb-kit` нет: корневой `package.json` приватный и держит витрину, тесты и инструменты.
 
 ```
-src/
-  index.tsx            # публичный API либы (единственный entry для tsup)
-  env.d.ts
-  shared/              viewport.ts (скроллер/вьюпорт), motion.ts (анимировать или нет),
-                       textSelection.ts (подавление выделения текста на время жеста),
-                       gesture.ts (когда жест стартует: интерактивные цели, лонгпресс, порог)
-  SelectionArea/       index.ts, SelectionArea.tsx, solid.ts, selectionCore.ts, selectionMath.ts, __tests__/
-  ResizableGrid/       index.ts, ResizableGrid.tsx
-  Sortable/            index.ts, solid.ts, sortableCore.ts, sortableGroup.ts, geometry.ts, DumbSortable.tsx, __tests__/
-  DumbTree/            index.ts, DumbTree.tsx
-  DumbTable/           index.ts, DumbTable.tsx, DumbPagination.tsx, __tests__/
-  DumbGrid/            index.ts, DumbGrid.tsx, solid.ts, gridCore.ts, gridGroup.ts, gridMath.ts, __tests__/
-  DumbGridDnd/         index.ts, DumbGridDnd.tsx, solid.ts, dndCore.ts, __tests__/  (нативный HTML5 DnD)
-  utils/               index.ts, fmt.ts, slug.ts, zip.ts, imgproxy.ts, __tests__/
+packages/
+  shared/        база остальных: FLIP, автопрокрутка, viewport, motion, textSelection,
+                 gesture, virtual, rowIndex, undo, uploadQueue, injectStyle, solidCompat
+  selection/     SelectionArea + selectionCore/selectionMath
+  sortable/      DumbSortable + sortableCore/sortableGroup/geometry
+  grid/          DumbGrid + gridCore/gridGroup/gridMath      (указательные события)
+  grid-dnd/      DumbGridDnd + dndCore                        (нативный HTML5 DnD)
+  sortable-dnd/  DumbSortableDnd + sortDndCore                (нативный HTML5 DnD)
+  board/         DumbBoard — секции с блоками
+  table/ tree/ finder/ timeline/ date-range/ modal/ lightbox/ context-menu/ toast/
+  gallery/ props-table/ user-manager/ resizable-grid/ odata-1c/ utils/
+docs/            англ. доки; docs/ru — русские, зеркально
+examples/        pointer/ dnd/ data/ lab — по примеру на компонент
+playground/      витрина на Vite, вкладка на пример
+configs/tsup.ts  ОДИН конфиг сборки на все пакеты
+mcp/             MCP-сервер: доки и API кита для агента в соседнем проекте
 ```
 
-- Имена папок — PascalCase, как экспортируемые компоненты (у Kobalte kebab, потому что там папка = публичный подпуть `@kobalte/core/accordion`; у нас подпутей нет).
-- CSS-файлов в ките больше нет: структурные стили инлайном или инжектом, `dist/index.css` не собирается.
-- Кросс-фичевые импорты — через файл, не через барр (`../Sortable/sortableCore`), чтобы не ловить циклы барр↔барр.
+Внутри пакета — плоско: `src/index.ts(x)` перечисляет публичный API, рядом компонент, движок, математика; тесты в `packages/<имя>/test/`.
+
+- Имена пакетов — kebab-case (`context-menu`), экспортируемые компоненты — PascalCase (`DumbContextMenu`).
+- CSS-файлов в ките нет: структурные стили инлайном или инжектом (`injectStyle` из `shared`).
+- Между пакетами импорт **по имени пакета** (`@solid-dumb-kit/shared`), а не по относительному пути.
+- Соседи по киту перечисляются ТОЛЬКО в `devDependencies` (`workspace:*`). В `dependencies` их быть не должно: код соседа всё равно вкомпилируется (`noExternal` в `configs/tsup.ts`), а `workspace:` уедет в опубликованный манифест и уронит установку подкаталогом git-репы (`ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`, у npm `EUNSUPPORTEDPROTOCOL`).
+- У каждого пакета свой `README.md` (в `files`, иначе не попадёт в пакет) со ссылками на обе языковые доки.
 
 ## Слои: движок без фреймворка + тонкие обёртки на Solid
 Логика жестов (драг, выделение) **не зависит от Solid**. Слои снизу вверх:
 
-1. `geometry.ts` / `selectionMath.ts` / `shared/viewport.ts` — чистые функции, ни DOM, ни фреймворка (кроме viewport, который читает DOM-API).
-2. `sortableCore.ts`, `sortableGroup.ts`, `selectionCore.ts` — **движки**: принимают элементы, возвращают функции отписки, имеют `destroy()`. Импорт `solid-js` здесь **запрещён** — это проверяется тестами `__tests__/engine.test.ts`, которые создают движок вне реактивного контекста.
-3. `solid.ts` в каждой папке — обёртки (`createDumbSortable`, `createSortableGroup`, `createSelectionArea`): всё, что они делают, — вешают отписки движка на `onCleanup`.
+1. `geometry.ts` / `selectionMath.ts` / `gridMath.ts` / `shared/viewport.ts` — чистые функции, ни DOM, ни фреймворка (кроме viewport, который читает DOM-API).
+2. `sortableCore.ts`, `sortableGroup.ts`, `selectionCore.ts`, `gridCore.ts`, `sortDndCore.ts` — **движки**: принимают элементы, возвращают функции отписки, имеют `destroy()`. Импорт `solid-js` здесь **запрещён** — это проверяется тестами `test/engine.test.ts` (есть у `sortable`, `sortable-dnd`, `grid`, `selection`), которые создают движок вне реактивного контекста.
+3. `solid.ts` в пакете — обёртки (`createDumbSortable`, `createSortableGroup`, `createSelectionArea`): всё, что они делают, — вешают отписки движка на `onCleanup`.
 4. `*.tsx` — компоненты.
 
 Зачем: под Solid 2 (или под другой фреймворк) переписывается только слой 3, а самое ценное — ноль forced layout за жест — от фреймворка не зависит вовсе. Подпуть-экспорт (`solid-dumb-kit/core`) пока не делаем — добавим, когда понадобится из не-Solid проекта.
@@ -60,42 +68,45 @@ src/
 `npm`/`yarn` в этой репе **запрещены** — лок-файл один: `pnpm-lock.yaml` (закоммичен). `package-lock.json`/`yarn.lock` в .gitignore.
 
 ```bash
-pnpm install        # зависимости
-pnpm build          # tsup → dist/ (dist закоммичен, ставится с GitHub)
-pnpm dev            # tsup --watch
-pnpm demo           # dev-сервер демо (playground/)
-pnpm demo:build     # сборка демо → playground/dist
-pnpm test           # vitest run (утилиты + смоук-монтирование всех примеров, happy-dom)
+pnpm install        # зависимости всех пакетов воркспейса
+pnpm build          # tsup по всем packages/* → их dist/ (dist закоммичен, ставится с GitHub)
+pnpm dev            # tsup --watch по всем пакетам разом
+pnpm demo           # dev-сервер витрины (playground/)
+pnpm demo:build     # сборка витрины → playground/dist
+pnpm test           # vitest run: тесты пакетов + смоук-монтирование всех примеров, happy-dom
 ```
 
-- `pnpm-workspace.yaml` — только для `onlyBuiltDependencies: [esbuild]` (pnpm 10 блокирует postinstall-скрипты; без esbuild сборка падает). Воркспейсов нет, пакет один.
+- `pnpm-workspace.yaml` объявляет воркспейс `packages/*` и `onlyBuiltDependencies: [esbuild]` (pnpm 10 блокирует postinstall-скрипты; без esbuild сборка падает).
+- Версии поднимаются **changesets**: правка, которую увидит потребитель, сопровождается файлом в `.changeset/` в том же коммите. Без него `changeset version` пакет не тронет, и фикс уедет в никуда.
 - `@solid-primitives/storage` **запинен на 4.3.4** (без `^`): в 4.4.0 сломана инференция типов `makePersisted` — dts-сборка `ResizableGrid` падает. Апать только вместе с проверкой `pnpm build`.
 - `@viselect/vanilla` **выкинут** (июль 2026): он звал `getBoundingClientRect` по каждому selectable на каждый move — сотни forced layout в кадр. Выделение рамкой теперь своё (`selectionCore` + `selectionMath`), по той же схеме, что драг: снимок через IntersectionObserver + арифметика в кадре.
 - Рантайм-зависимости утилит: `slug` (статический импорт — `genSlug` синхронный) и `fflate` (**динамический** `import()` внутри `extractImagesFromZip`, грузится только при фактической распаковке — не тащить его в top-level).
 - `@tanstack/solid-table` (v8, peer `solid-js >=1.3`) — под `DumbTable`. Свою сортировку/модель строк не пишем. v9 пока в бете, не берём.
-- `@types/node` **не ставим**: `process.env` в `src/` читается через каст `globalThis`, иначе dts-сборка требует типы Node.
-- В `tsup.config.ts` **нельзя** вызывать `preset.writePackageJson()`. `tsup-preset-solid` поднимает два инстанса tsup параллельно, и запись `package.json` на лету ловится вторым инстансом в момент усечения файла: он не видит `dependencies`, external становится пустым и **все зависимости инлайнятся в бандл** (`index.js` раздувается втрое, появляется чанк `dist/browser/*` из fflate). Симптом плавающий — сборка «через раз». Поля `exports` в `package.json` и так уже верные; пресет только печатает их справочно.
+- `@types/node` **не ставим**: `process.env` в пакетах читается через каст `globalThis`, иначе dts-сборка требует типы Node.
+- Конфиг сборки ОДИН на все пакеты — `configs/tsup.ts`, пакеты зовут его через `tsup --config ../../configs/tsup.ts`. Своих конфигов пакеты не держат: копии расходятся молча.
+- В `configs/tsup.ts` **нельзя** вызывать `preset.writePackageJson()`. `tsup-preset-solid` поднимает два инстанса tsup параллельно, и запись `package.json` на лету ловится вторым инстансом в момент усечения файла: он не видит `dependencies`, external становится пустым и **все зависимости инлайнятся в бандл** (`index.js` раздувается втрое, появляется чанк `dist/browser/*` из fflate). Симптом плавающий — сборка «через раз». Поля `exports` в `package.json` и так уже верные; пресет только печатает их справочно.
 - Перед коммитом `dist/` сверяйся с `git status dist` — тишина означает, что сборка воспроизвелась байт в байт.
 
 ## Донорская репа (источник для переноса)
 `/Volumes/sites/_shops/_pioneer/packages/solid-dumb-kit` — **старая/внутренняя** версия кита внутри монорепы `_pioneer`. Читать оттуда можно свободно, **править — нельзя** (только читаем и переносим сюда по кусочкам, по явной просьбе).
 
-Что там есть сверх текущей репы:
-- Компоненты: `Lightbox` + `lightbox-api`/`lightbox-types`/`lightbox.css`, `ContextMenu`, `toast`, `Img`, `MediaGallery`, `UniversalTree`, `S3Dashboard`, `UserManager`
-- ~~Sortable-семейство `SortableList`/`SortableTable`/`SortableGrid`~~ — **не переносим**, оно на `@dnd-kit` (см. запрет ниже). Всё это уже закрыто своими `sortableCore` + `DumbSortable` + `DumbTable`
-- ~~Утилиты `fmt`/`slug`/`zip`/`imgproxy`~~ — **перенесены** 27.07.2026 в `src/utils/` вместе с тестами
+Что там осталось непере­несённым: `Img`, `MediaGallery`, `S3Dashboard`, `UniversalTree`.
+
+Перенесено (брать оттуда больше нечего): `Lightbox` → `lightbox`, `ContextMenu` → `context-menu`, `toast` → `toast`, `UserManager` → `user-manager`, утилиты `fmt`/`slug`/`zip`/`imgproxy` → `utils`. Sortable-семейство `SortableList`/`SortableTable`/`SortableGrid` **не переносим никогда**: оно на `@dnd-kit` (см. запрет выше), и всё это давно закрыто своими `sortableCore` + `DumbSortable` + `DumbTable`.
 
 Правила переноса:
-1. Код из донора **не копировать as-is** — он писался под монорепу: там Tailwind-классы и доменные хардкоды (`_pioneer`-specific env, бакеты, названия). Структурные стили — инлайном, доменные значения — через конфиг-функцию с фолбэком на env (пример: `configureImgproxy()` в `src/utils/imgproxy.ts`).
-2. Любой перенос проходит проверку «ЖЕЛЕЗНОЕ ПРАВИЛО: никакого reflow». Замеры layout в доноре: `ResizableGrid.tsx`, `ContextMenu.tsx` — переписывать под IntersectionObserver + transform.
-   Tailwind-классы в разметке: `SelectionArea`, `ResizableGrid`, `ContextMenu`, `UniversalTree`, `MediaGallery`, `S3Dashboard`, `UserManager` — заменять на инлайн/инжект стили.
-3. Донор — на TS-конфиге монорепы; после переноса обязательно `pnpm build` (dts тоже собирается).
+1. Код из донора **не копировать as-is** — он писался под монорепу: там Tailwind-классы и доменные хардкоды (`_pioneer`-specific env, бакеты, названия). Структурные стили — инжектом, доменные значения — через конфиг-функцию с фолбэком на env (пример: `configureImgproxy()` в `packages/utils/src/imgproxy.ts`).
+2. Любой перенос проходит проверку «ЖЕЛЕЗНОЕ ПРАВИЛО: никакого reflow» и правило контраста.
+3. Tailwind/daisyUI-классы в разметке пакета — **брак**: без них у потребителя экран разваливается. Заменяются на свои классы плюс `injectStyle` и CSS-переменные с контрастными дефолтами. Так уже пришлось разбирать `UserManager` после переноса — не повторяй.
+4. Донор — на TS-конфиге монорепы; после переноса обязательно `pnpm build` (dts тоже собирается) и changeset.
 
 ## Примеры и тесты
-- `examples/*.example.tsx` — по одному на компонент, импортируют пакет **по имени** (`solid-dumb-kit`); в playground и vitest имя заворачивается алиасом на `src/`. Каждый пример подключён вкладкой в `playground/src/main.tsx` — добавил пример, добавь вкладку.
+- `examples/<группа>/*.example.tsx` — по одному на компонент, импортируют пакет **по имени** (`@solid-dumb-kit/toast`). Группы те же, что вкладки витрины: `pointer`, `dnd`, `data`, `lab`. Идут по исходникам, а не по `dist`: условие экспорта `solid-dumb-kit-source` в `vitest.config.ts` и в конфиге витрины выбирает у пакетов ветку `src`.
+- Добавил пример — добавь **и** вкладку в `playground/src/main.tsx`, **и** строку в `EXAMPLES` смоук-теста. Оба списка ручные, и молча разъезжаются.
+- Тесты пакета лежат в `packages/<имя>/test/`. Пакет без тестов — повод их написать, а не норма: их отсутствие уже прятало настоящие баги (у `DumbTree` не обновлялись `aria-current` и `data-open`).
 - `examples/__tests__/examples.test.tsx` — смоук: каждый пример монтируется в DOM и проверяется, что он что-то отрисовал. Ловит рассинхрон примеров с API кита.
 - `vitest.setup.ts` подкладывает in-memory `localStorage`: happy-dom 20 отдаёт `globalThis.localStorage` **без** `getItem`/`setItem`, и `makePersisted` (ResizableGrid, DumbTree) падает. Если тест на компоненте с персистом внезапно валится с `storage.getItem is not a function` — смотри туда.
-- `DumbTree` в примере оформлен CSS-шимом (~60 строк, подделывает нужные daisyUI-классы) и эмодзи-иконками — чтобы витрина оставалась самодостаточной.
+- Значки в примерах — iconify классами (`icon-[solar--folder-bold]`), потому что своих иконок кит не несёт: они приходят пропом (`icons`) и пакету не нужны.
 
 ## DumbTable: грабли TanStack
 - Колонке **обязателен `accessorFn`**, даже когда сортирует сервер и значение не используется. Без него TanStack считает колонку display-колонкой, `getCanSort()` всегда `false`, и сортировка молча выключается.
@@ -281,4 +292,5 @@ Vite падает с `Unexpected token, expected "..."`:
 ## Прочее
 - Деплой/пуш на git — **только по явной просьбе**. По умолчанию правим локально.
 - `pnpm demo` (dev-сервер) **не запускать** — его поднимает пользователь сам. Для проверки правок хватает `pnpm test`, `pnpm build`, `pnpm demo:build`; живой драг всё равно проверяется руками в браузере.
-- Демо: `playground/` (Vite) → GitHub Pages через Actions (`.github/workflows/pages.yml`, pnpm + `--frozen-lockfile`).
+- Витрина: `playground/` (Vite) → **Vercel**, туда же на общий домен смотрит HTTP-транспорт MCP-сервера (`mcp/`, `api/`). Зеркало на GitHub Pages выключено (workflow лежит с нерабочим расширением).
+- MCP-сервер: stdio-транспорт читает рабочую копию (видны невыпущенные правки), HTTP отвечает со **снимка** `mcp/snapshot.json`. Снимок в гит не коммитится и пересобирается на деплое (`vercel.json` → `buildCommand`), поэтому на проде он всегда свежий. Локальную копию, если проверяешь HTTP-транспорт руками, обновляй сам: `node mcp/snapshot.mjs`.

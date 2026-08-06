@@ -1,0 +1,33 @@
+---
+'@solid-dumb-kit/context-menu': minor
+'@solid-dumb-kit/date-range': minor
+'@solid-dumb-kit/lightbox': minor
+'@solid-dumb-kit/modal': minor
+'@solid-dumb-kit/props-table': minor
+'@solid-dumb-kit/timeline': minor
+'@solid-dumb-kit/toast': minor
+'@solid-dumb-kit/user-manager': minor
+---
+
+Первый выпуск восьми пакетов: top layer, шахматка, календарь и админка
+
+`DumbModal` — нативный `<dialog>`: top layer, `::backdrop`, ловушка фокуса и Esc
+достаются от браузера, своими руками только возврат фокуса, клик по подложке и
+защита от закрытия с несохранённым. `DumbLightbox` — просмотр во весь экран,
+зум только через `transform`, соседние картинки грузятся заранее.
+`DumbContextMenu` и `DumbPopover` — Popover API с anchor positioning, ни одного
+замера, вложенные подменю и жест как в macOS. `DumbToaster` с шиной `toast` —
+очередь, схлопывание повторов, пауза таймера под курсором и вопрос с кнопками
+вместо `confirm()`, в том числе у курсора.
+
+`DumbTimeline` — шахматка «строки-ресурсы × колонки-время»: сутки, часы и
+дневная аренда обслуживаются одной шкалой, наложение соседей невозможно тремя
+путями сразу. `DumbDateRange` — период двумя кликами, занятость видна до
+выбора; дата — строка `YYYY-MM-DD`, часовой пояс сутки не сдвигает.
+
+`DumbPropsTable` — отладочная таблица пропсов: показывает и функции, и
+`undefined`, то есть ровно то, что `JSON.stringify` молча выбрасывает.
+`DumbUserManager` — экран администратора: выдать доступ, сменить роль,
+заблокировать, задать пароль, выкинуть из сессий. Кто за ним стоит, компонент
+не знает: всё через колбэки, каждый необязателен. Оформление своё, инжектом —
+ни Tailwind, ни daisyUI не требуется.

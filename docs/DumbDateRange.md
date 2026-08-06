@@ -1,4 +1,4 @@
-[Русский](ru/DumbDateRange.md) · **English**
+**English** · [Русский](ru/DumbDateRange.md)
 
 # DumbDateRange
 

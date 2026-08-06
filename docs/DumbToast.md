@@ -1,4 +1,4 @@
-[Русский](ru/DumbToast.md) · **English**
+**English** · [Русский](ru/DumbToast.md)
 
 # DumbToast
 

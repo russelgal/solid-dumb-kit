@@ -1,4 +1,4 @@
-[Русский](ru/DumbTimeline.md) · **English**
+**English** · [Русский](ru/DumbTimeline.md)
 
 # DumbTimeline
 
