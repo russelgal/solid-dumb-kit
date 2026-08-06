@@ -147,7 +147,7 @@ export type DumbBoardProps<T> = {
  * `<head>` один раз на документ: внутри дерева они исчезли бы вместе с первым
  * размонтированным экземпляром. Всё остальное оформление твоё.
  */
-const CSS = `
+const STYLES = `
           .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
                         grid-template-columns: repeat(var(--dumb-board-cols), 1fr) }
           .dumb-board-panel { position: relative; min-width: 0 }
@@ -220,7 +220,7 @@ const CSS = `
         `
 
 export function DumbBoard<T>(props: DumbBoardProps<T>) {
-  injectStyle('board', CSS)
+  injectStyle('board', STYLES)
 
   const cols = () => props.cols ?? 12
   const gap = () => props.gap ?? 14

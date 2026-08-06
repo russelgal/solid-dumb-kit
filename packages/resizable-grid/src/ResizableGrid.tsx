@@ -1,7 +1,7 @@
 import { createSignal, type JSX, For, Show } from 'solid-js'
 import { makePersisted } from '@solid-primitives/storage'
 import * as v from 'valibot'
-import { restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
+import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 
 /* ────────── Типы ────────── */
 
@@ -62,6 +62,8 @@ function validateSizes(raw: unknown, defaults: PersistedSizes): PersistedSizes {
 /* ────────── Компонент ────────── */
 
 export function ResizableGrid(props: ResizableGridProps) {
+  injectStyle('resizable-grid', STYLES)
+
   // Кеш метаданных (min, initial) — НЕ обращаемся к props.cols/rows в event handlers
   // props.cols содержит JSX content, обращение к нему создаёт компоненты
   const meta = {
@@ -314,17 +316,12 @@ export function ResizableGrid(props: ResizableGridProps) {
   )
 }
 
-/* ────────── Стили (инжектятся один раз) ────────── */
+/* ────────── Стили ────────── */
 
-let stylesInjected = false
-
-if (typeof document !== 'undefined' && !stylesInjected) {
-  stylesInjected = true
-  const style = document.createElement('style')
-  style.textContent = `
 /* Ручку видно СРАЗУ, без наведения: прозрачная полоса — это ручка, которую
    находят мышью наугад. Полоса рисуется линией по центру, цвет перекрывается
    переменной, но дефолт обязан читаться (см. правило контраста в CLAUDE.md). */
+const STYLES = `
 .resizable-grid-handle-col {
   cursor: col-resize;
   background: linear-gradient(to right,
@@ -353,5 +350,3 @@ if (typeof document !== 'undefined' && !stylesInjected) {
 .resizable-grid-handle-row:active {
   background: oklch(from currentColor l c h / 0.2);
 }`
-  document.head.appendChild(style)
-}

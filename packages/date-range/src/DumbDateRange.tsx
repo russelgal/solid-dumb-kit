@@ -80,8 +80,10 @@ const STYLES = `
   .dumb-cal-day { position: relative; aspect-ratio: 1; display: grid; place-items: center;
                   font-size: 13px; border: 0; background: none; font: inherit; color: inherit;
                   cursor: pointer; line-height: 1 }
-  /* соседний месяц виден, но приглушён: без него сетка прыгает, а с ним — нет */
-  .dumb-cal-day[data-out="1"] { opacity: .35 }
+  /* Соседний месяц виден, но приглушён: без него сетка прыгает, а с ним — нет.
+     Приглушение ЦВЕТОМ, а не прозрачностью: число всё ещё читают (в него
+     кликают, им заканчивают период), а opacity уводила его до 2.4:1 к белому. */
+  .dumb-cal-day[data-out="1"] { color: var(--dumb-cal-dim, #475569) }
   .dumb-cal-day[data-today="1"] { font-weight: 700; text-decoration: underline }
   .dumb-cal-day:hover:not([disabled]) { background: var(--dumb-cal-hover, rgb(0 0 0 / .07)) }
   /* середина периода — сплошная полоса, края — скруглены: так видно направление */

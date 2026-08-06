@@ -132,7 +132,7 @@ type Pending = {
  * читают, ручку хватают — блёклым серым тут не место; перекрасить под тему
  * можно, но дефолт обязан читаться.
  */
-const CSS = `
+const STYLES = `
   /* Кегль ОДИН на весь компонент: от него едут и дерево слева, и строки
      списка, и подписи плиток. Дереву можно задать свой (--dumb-finder-tree-size),
      но по умолчанию оно берёт общий. */
@@ -320,7 +320,7 @@ const CSS = `
 `
 
 export function DumbFinder(props: DumbFinderProps) {
-  injectStyle('finder', CSS)
+  injectStyle('finder', STYLES)
 
   const editable = () => props.editable !== false
 
@@ -838,9 +838,8 @@ export function DumbFinder(props: DumbFinderProps) {
         setSelection(res.selected)
       })
       // Строка под курсором должна остаться видимой. Ищем по ПОРЯДКУ, а не по
-      // селектору с ключом: ключ — это путь, в нём бывает что угодно, и
-      // экранировать его пришлось бы вручную (`CSS.escape` тут занят именем
-      // константы со стилями).
+      // селектору с ключом: ключ — это путь, в нём бывает что угодно, и его
+      // пришлось бы прогонять через `CSS.escape` на каждое нажатие стрелки.
       const el = itemsBox?.children[next] as HTMLElement | undefined
       el?.scrollIntoView({ block: 'nearest' })
       return

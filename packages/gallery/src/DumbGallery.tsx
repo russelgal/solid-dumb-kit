@@ -101,7 +101,7 @@ export type DumbGalleryProps = {
  * Структурные стили: сетка, полоса прогресса, зона приёма. Кладутся в `<head>`
  * один раз на документ. Всё остальное оформление твоё.
  */
-const CSS = `
+const STYLES = `
           /* grid, а не flex: на нём и держится CSS order, которым двигаются плитки */
           .dumb-gallery { display: grid; gap: var(--dumb-gallery-gap, 10px);
                           grid-template-columns:
@@ -142,7 +142,7 @@ function matchesAccept(file: File, accept: string): boolean {
 }
 
 export function DumbGallery(props: DumbGalleryProps) {
-  injectStyle('gallery', CSS)
+  injectStyle('gallery', STYLES)
 
   const editable = () => props.editable !== false
   const accept = () => props.accept ?? 'image/*'

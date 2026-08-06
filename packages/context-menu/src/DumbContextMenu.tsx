@@ -493,16 +493,32 @@ export function DumbContextMenu(props: DumbContextMenuProps) {
      * Ведём с зажатой кнопкой — пункт под курсором подсвечивается. Что под
      * курсором, спрашиваем у браузера: при зажатой кнопке события идут туда,
      * где нажали, а панели вдобавок лежат в top layer.
+     *
+     * Спрашиваем РАЗ В КАДР, а не на каждое событие. `elementFromPoint` — это
+     * хиттест, ему нужен свежий layout, а подсветка предыдущего пункта его
+     * только что испортила: получилась бы пара «пересчитай раскладку — покрась»
+     * на каждое из полутора сотен событий в секунду у мыши с высоким опросом.
+     * Кадр их схлопывает в один, и подсветка от этого не отстаёт: чаще кадра
+     * её всё равно не видно.
      */
-    const track = (ev: PointerEvent) => {
-      if (!open() || !ev.buttons) return
-      const under = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null
+    let hitRaf = 0
+    let hitX = 0, hitY = 0
+    const hitTest = () => {
+      hitRaf = 0
+      if (!open()) return
+      const under = document.elementFromPoint(hitX, hitY) as HTMLElement | null
       const hit = under?.closest('.dumb-menu-item') as HTMLElement | null
       if (!hit) return
       // подсветку ставит ТА панель, которой пункт принадлежит: своё состояние
       // у каждой, и открытая ветка от чужого движения не должна схлопываться
       const panel = hit.closest('.dumb-menu')
       stack.find((p) => p.el === panel)?.focusItem(hit)
+    }
+    const track = (ev: PointerEvent) => {
+      if (!open() || !ev.buttons) return
+      hitX = ev.clientX
+      hitY = ev.clientY
+      if (!hitRaf) hitRaf = requestAnimationFrame(hitTest)
     }
     window.addEventListener('pointermove', track, true)
     // Прокрутка, смена размера окна и уход со страницы — меню становится не к
@@ -520,6 +536,7 @@ export function DumbContextMenu(props: DumbContextMenuProps) {
       window.removeEventListener('pointerdown', away, true)
       window.removeEventListener('pointerup', release, true)
       window.removeEventListener('pointermove', track, true)
+      if (hitRaf) cancelAnimationFrame(hitRaf)
       window.removeEventListener('scroll', bail, true)
       window.removeEventListener('resize', bail)
       window.removeEventListener('blur', bail)

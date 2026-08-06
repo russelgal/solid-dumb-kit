@@ -36,7 +36,7 @@ export type DumbLightboxProps = {
   class?: string
 }
 
-const CSS = `
+const STYLES = `
   .dumb-lightbox { border: 0; padding: 0; max-width: 100vw; max-height: 100vh;
                    width: 100vw; height: 100vh; background: transparent; overflow: hidden }
   .dumb-lightbox::backdrop { background: rgb(0 0 0 / .82) }
@@ -68,7 +68,7 @@ const CSS = `
 `
 
 export function DumbLightbox(props: DumbLightboxProps) {
-  injectStyle('lightbox', CSS)
+  injectStyle('lightbox', STYLES)
 
   let dialog!: HTMLDialogElement
   const [zoom, setZoom] = createSignal(1)

@@ -311,8 +311,10 @@ const STYLES = `
   .dumb-tl-span[data-drag="1"] { cursor: grabbing; opacity: .85; z-index: 4 }
   /* заблокированная полоса: блок, ремонт, санитарный день */
   .dumb-tl-span[data-locked="1"] { cursor: default }
-  /* закрытая строка: видна, но ничего не создать */
-  .dumb-tl-row[data-off="1"] { opacity: .55 }
+  /* Закрытая строка: видна, но ничего не создать. Название приглушается
+     ЦВЕТОМ — прозрачность .55 уводила его к 3.5:1, а по названию строку ищут
+     глазами. Что строка нерабочая, видно и без этого: канва заштрихована. */
+  .dumb-tl-row[data-off="1"] { color: var(--dumb-tl-dim, #475569) }
   /* нельзя сюда — видно сразу, а не после отпускания */
   .dumb-tl-span[data-bad="1"] { background: var(--dumb-tl-bad, #b91c1c) }
   .dumb-tl-grip { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize }

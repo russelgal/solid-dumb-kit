@@ -90,7 +90,7 @@ export type DumbTreeProps = {
  * Отсюда же требование к строке: её высота — ровно 1lh. Меняешь размер —
  * меняется кегль, а высота, полосы и отступы едут следом сами.
  */
-const CSS = `
+const STYLES = `
   .dumb-tree { list-style: none; margin: 0; padding: 0; line-height: 1.4;
                font-size: var(--dumb-tree-size, 13px);
                color: var(--dumb-tree-fg, inherit); user-select: none }
@@ -156,7 +156,7 @@ function createOpened(key?: string) {
 type Opened = ReturnType<typeof createOpened>
 
 export function DumbTree(props: DumbTreeProps) {
-  injectStyle('tree', CSS)
+  injectStyle('tree', STYLES)
 
   const opened = createOpened(props.storageKey)
   const query = () => props.query?.().trim().toLowerCase() ?? ''
@@ -287,12 +287,18 @@ function Row(p: {
     </>
   )
 
+  // Поля — ГЕТТЕРАМИ, а не значениями: объект собирается один раз, и записанное
+  // в него `chosen()` осталось бы навсегда тем, чем было в момент создания
+  // строки. Наружу это вылезало так: выбрали узел из кода — подсветка не
+  // переехала, раскрыли ветку — стрелка не повернулась (её поворачивает CSS по
+  // `data-open`). При спреде Solid читает геттеры внутри эффекта, поэтому так
+  // атрибуты снова следят за сигналами.
   const rowProps = {
-    class: `dumb-tree-row ${p.node.class ?? ''}`,
-    'aria-current': chosen(),
-    'data-open': open() ? '1' : undefined,
+    get class() { return `dumb-tree-row ${p.node.class ?? ''}` },
+    get 'aria-current'() { return chosen() },
+    get 'data-open'() { return open() ? '1' : undefined },
     'data-id': p.node.id,
-    draggable: !!drag(),
+    get draggable() { return !!drag() },
     onDragStart: (ev: DragEvent) => {
       const d = drag()
       if (!d || !ev.dataTransfer) return
