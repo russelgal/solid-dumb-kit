@@ -158,11 +158,8 @@ const STYLES = `
           /* всё, что читают или хватают, — контрастное: блёклая ручка и серый по
              серому не читаются ни на проекторе, ни при ярком свете */
           .dumb-board-grip { color: var(--dumb-board-grip, #64748b) }
+          /* подпись, счётчик и кнопки секции — daisyUI-классами в разметке */
           .dumb-board-title { display: flex; align-items: baseline; gap: 6px; min-width: 0 }
-          .dumb-board-sub { font-size: 11.5px; font-weight: 400; opacity: .85 }
-          .dumb-board-count { padding: 1px 7px; border-radius: 999px; font-size: 11px;
-                              background: rgb(0 0 0 / .1) }
-          .dumb-board-actions { margin-left: auto; display: flex; gap: 4px }
           /* сетка блоков: ячейки фиксированного шага, места задаются явно */
           /* overflow-x именно clip, а не visible: рядом с overflow-y: auto
              visible вычисляется в auto, и FLIP, вынося блок за правый край,
@@ -192,9 +189,7 @@ const STYLES = `
                               will-change: opacity }
           /* рамка будущего размера: САМА grid item, поэтому встаёт в ячейки без
              пиксельной арифметики — и не мешает блокам, у которых места явные */
-          .dumb-board-frame { pointer-events: none; z-index: 3; border-radius: 10px;
-                              border: 2px dashed rgba(59,130,246,.9);
-                              background: rgba(59,130,246,.08) }
+          .dumb-board-frame { pointer-events: none; z-index: 3 }
           /* ручка ресайза блока — тот же уголок, что у секции: две линии со
              скруглением. Рисуем сами, а не Tailwind'ом: кит самодостаточен */
           .dumb-board-block-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px;
@@ -968,11 +963,17 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
                   <Show when={editable()}><span class="dumb-board-grip">⠿</span></Show>
                   <span class="dumb-board-title">
                     {s().title}
-                    <Show when={s().subtitle}><span class="dumb-board-sub">{s().subtitle}</span></Show>
+                    <Show when={s().subtitle}>
+                      <span class="dumb-board-sub text-xs font-normal">{s().subtitle}</span>
+                    </Show>
                   </span>
-                  <span class="dumb-board-count">{itemsOf(sid).length}</span>
+                  <span class="dumb-board-count badge badge-sm badge-ghost">
+                    {itemsOf(sid).length}
+                  </span>
                   <Show when={props.sectionActions}>
-                    <span class="dumb-board-actions">{props.sectionActions!(s())}</span>
+                    <span class="dumb-board-actions ml-auto flex gap-1">
+                      {props.sectionActions!(s())}
+                    </span>
                   </Show>
                 </h4>
               </Show>
@@ -1045,7 +1046,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
                     const at = () => cellOf(sid, f().id)
                     return (
                       <div
-                        class="dumb-board-frame"
+                        class="dumb-board-frame border-primary bg-primary/10 rounded-box border-2 border-dashed"
                         aria-hidden="true"
                         style={{
                           'grid-column': `${(at()?.col ?? 0) + 1} / span ${f().w}`,

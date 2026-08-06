@@ -66,29 +66,18 @@ guessed.
 
 ## Styling
 
-Styles are its own, injected, like everywhere else in the kit: neither Tailwind
-nor daisyUI is required. Recolour it with variables on any ancestor:
+Styling is **daisyUI**: `btn`, `input`, `select`, `table`, `alert`, `badge`.
+The package ships no CSS of its own, and that is deliberate: an admin screen
+lives inside your application and has to look like a part of it, not like a
+guest in someone else's theme. Theme, corner radius and colours come from your
+daisyUI — there is nothing to change here.
 
-| variable | default | what it paints |
-| --- | --- | --- |
-| `--dumb-um-fg` | `#0f172a` | primary text |
-| `--dumb-um-dim` | `#475569` | secondary: email, date, column headers |
-| `--dumb-um-bg` | `#fff` | card and table background |
-| `--dumb-um-line` | `rgb(0 0 0 / .14)` | borders |
-| `--dumb-um-primary` | `#1e293b` | the action button |
-| `--dumb-um-accent` | `#2563eb` | focus ring |
-| `--dumb-um-ok` | `#15803d` | active, unban, success banner |
-| `--dumb-um-bad` | `#b91c1c` | banned, delete, error banner |
-| `--dumb-um-row-off` | `rgb(0 0 0 / .05)` | background of a banned row |
-| `--dumb-um-radius` | `10px` | corner radius |
+So Tailwind and daisyUI are required on the consumer side. Spacing and width are
+yours: the `class` prop goes onto the root.
 
-A banned row is marked with **background, not opacity**: faded text is banned in
-this kit, and the row still has to be readable — that is where you find out what
-it was banned for.
-
-The markup keeps an honest structure (`thead`/`tbody`, `button`, `label > input`),
-so your own daisyUI goes on top without wrappers — through `class` and selectors
-on `.dumb-um-*`.
+A banned row is marked with **background** (`bg-base-200`), not opacity: faded
+text is banned in this kit, and the row still has to be readable — what it was
+banned for is in the tooltip.
 
 ## Passwords
 

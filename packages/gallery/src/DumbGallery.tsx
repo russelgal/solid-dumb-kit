@@ -106,19 +106,20 @@ const STYLES = `
           .dumb-gallery { display: grid; gap: var(--dumb-gallery-gap, 10px);
                           grid-template-columns:
                             repeat(auto-fill, var(--dumb-gallery-tile, minmax(120px, 1fr))) }
-          .dumb-gallery-tile { position: relative; overflow: hidden; aspect-ratio: 1;
-                               border-radius: 10px; background: rgb(0 0 0 / .04) }
+          /* скругление и фон плитки — daisyUI (rounded-box, bg-base-200) в разметке */
+          .dumb-gallery-tile { position: relative; overflow: hidden; aspect-ratio: 1 }
           .dumb-gallery-tile img { width: 100%; height: 100%; object-fit: cover; display: block }
           /* пока файл едет — приглушаем и показываем полосу */
           .dumb-gallery-tile[data-status="uploading"] img,
           .dumb-gallery-tile[data-status="queued"] img { opacity: .5 }
           /* ждущий в очереди отличается от идущего: полоса у него не движется */
           .dumb-gallery-tile[data-status="queued"] .dumb-gallery-bar > i { width: 0 !important }
-          .dumb-gallery-tile[data-status="error"] { outline: 2px solid currentColor }
-          .dumb-gallery-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-                              background: rgb(0 0 0 / .12) }
+          .dumb-gallery-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px }
           .dumb-gallery-bar > i { display: block; height: 100%; background: currentColor;
                                   transition: width .12s linear }
+          @media (prefers-reduced-motion: reduce) {
+            .dumb-gallery-bar > i { transition: none }
+          }
           .dumb-gallery-drop { position: relative }
           .dumb-gallery-drop[data-over="1"]::after {
             content: ''; position: absolute; inset: -6px; border-radius: 12px;
@@ -316,7 +317,9 @@ export function DumbGallery(props: DumbGalleryProps) {
         {(item, i) =>
           props.children?.(item, i, () => progressOf(item.id)) ?? (
             <figure
-              class="dumb-gallery-tile"
+              class={`dumb-gallery-tile rounded-box bg-base-200 ${
+                item.status === 'error' ? 'outline-error outline-2' : ''
+              }`}
               data-status={item.status ?? 'local'}
               title={item.error ?? item.name}
               onClick={() => props.onOpen?.(item, i())}
@@ -326,6 +329,7 @@ export function DumbGallery(props: DumbGalleryProps) {
                 {/* жест с кнопки не начнётся: `data-no-drag` знают все движки кита */}
                 <button
                   type="button"
+                  class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"
                   data-no-drag
                   draggable={false}
                   title="убрать"
@@ -335,7 +339,7 @@ export function DumbGallery(props: DumbGalleryProps) {
                 </button>
               </Show>
               <Show when={item.status === 'uploading' || item.status === 'queued'}>
-                <span class="dumb-gallery-bar">
+                <span class="dumb-gallery-bar bg-base-300">
                   <i style={{ width: `${Math.round(progressOf(item.id) * 100)}%` }} />
                 </span>
               </Show>
@@ -345,12 +349,16 @@ export function DumbGallery(props: DumbGalleryProps) {
       </DumbSortableDnd>
 
       <Show when={editable()}>
-        <button type="button" onClick={() => picker.selectFiles(accepted)}>
+        <button
+          type="button"
+          class="btn btn-sm btn-neutral mt-3"
+          onClick={() => picker.selectFiles(accepted)}
+        >
           Выбрать файлы
         </button>
       </Show>
       <Show when={stats().up || stats().bad}>
-        <span data-gallery-stats>
+        <span class="ml-3 text-sm" data-gallery-stats>
           {stats().up ? `заливается: ${stats().up}` : ''}
           {stats().bad ? ` \u00b7 с ошибкой: ${stats().bad}` : ''}
         </span>

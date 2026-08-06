@@ -34,15 +34,11 @@ export type DumbPopoverProps = {
 }
 
 const STYLES = `
+  /* Только привязка к точке и top layer — вид даёт daisyUI (card) в разметке. */
   .dumb-pop-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
                      anchor-name: --dumb-pop-at }
-  .dumb-pop { position: fixed; margin: 0; padding: 0; overflow: visible;
+  .dumb-pop { position: fixed; margin: 0; padding: 0; overflow: visible; background: none;
               width: var(--dumb-pop-w, min(320px, 92vw));
-              border-radius: 12px; font-size: 13px;
-              color: var(--dumb-pop-fg, #0f172a);
-              background: var(--dumb-pop-bg, #fff);
-              border: 1px solid var(--dumb-pop-line, rgb(0 0 0 / .12));
-              box-shadow: 0 12px 34px rgb(0 0 0 / .2);
               position-anchor: --dumb-pop-at;
               /* привязка через anchor(): position-area со span-* Chrome
                  отбрасывает как невалидное, и карточка уезжает в угол */
@@ -50,17 +46,6 @@ const STYLES = `
               left: anchor(--dumb-pop-at right);
               position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline }
   .dumb-pop:popover-open { display: block }
-  .dumb-pop-head { display: flex; align-items: center; gap: 8px;
-                   padding: 9px 12px 4px; font-weight: 600 }
-  .dumb-pop-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                    white-space: nowrap }
-  .dumb-pop-x { flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px;
-                cursor: pointer; font: inherit; background: none;
-                color: var(--dumb-pop-dim, #475569) }
-  .dumb-pop-x:hover { background: var(--dumb-pop-hover, rgb(0 0 0 / .07)) }
-  .dumb-pop-body { padding: 4px 12px 12px }
-  .dumb-pop-foot { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px;
-                   border-top: 1px solid var(--dumb-pop-line, rgb(0 0 0 / .12)) }
 `
 
 export function DumbPopover(props: DumbPopoverProps) {
@@ -116,20 +101,27 @@ export function DumbPopover(props: DumbPopoverProps) {
           <div
             ref={box}
             popover="manual"
-            class={`dumb-pop ${props.class ?? ''}`}
+            class={`dumb-pop card rounded-box bg-base-100 border-base-300 border p-3 shadow-xl ${
+              props.class ?? ''
+            }`}
             style={props.width ? { '--dumb-pop-w': props.width } : undefined}
           >
             <Show when={props.title}>
-              <div class="dumb-pop-head">
-                <div class="dumb-pop-title">{props.title}</div>
-                <button type="button" class="dumb-pop-x" title="закрыть" onClick={close}>
+              <div class="dumb-pop-head mb-2 flex items-center gap-2 font-semibold">
+                <div class="dumb-pop-title flex-1 truncate">{props.title}</div>
+                <button
+                  type="button"
+                  class="dumb-pop-x btn btn-xs btn-circle btn-ghost"
+                  title="закрыть"
+                  onClick={close}
+                >
                   ✕
                 </button>
               </div>
             </Show>
             <div class="dumb-pop-body">{props.children}</div>
             <Show when={props.footer}>
-              <div class="dumb-pop-foot">{props.footer}</div>
+              <div class="dumb-pop-foot mt-3 flex justify-end gap-2">{props.footer}</div>
             </Show>
           </div>
         </>

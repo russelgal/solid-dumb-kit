@@ -94,12 +94,10 @@ const STYLES = `
   /* якорь: пиксель в точке клика, к нему привязывается меню */
   .dumb-menu-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
                       anchor-name: --dumb-menu-at }
-  .dumb-menu { position: fixed; margin: 0; min-width: 190px; padding: 4px;
-               border-radius: 10px; font-size: 13px;
-               color: var(--dumb-menu-fg, #0f172a);
-               background: var(--dumb-menu-bg, #fff);
-               border: 1px solid var(--dumb-menu-line, rgb(0 0 0 / .12));
-               box-shadow: 0 10px 30px rgb(0 0 0 / .18);
+  /* Вид панели — daisyUI (menu, bg-base-100, rounded-box, shadow) в разметке.
+     Здесь остаётся ровно то, чего daisyUI не умеет: привязка к точке клика
+     через anchor positioning и жизнь в top layer. */
+  .dumb-menu { position: fixed; margin: 0; min-width: 190px;
                /* в top layer: ни z-index, ни overflow предков больше не важны */
                overflow: visible;
                /* место выбирает браузер: где не влезает — раскрывается в другую
@@ -113,23 +111,9 @@ const STYLES = `
                /* у края окна браузер сам переворачивает: вверх и/или влево */
                position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline }
   .dumb-menu:popover-open { display: block }
-  .dumb-menu ul { list-style: none; margin: 0; padding: 0 }
-  .dumb-menu-item { display: flex; align-items: center; gap: 8px; width: 100%;
-                    padding: 5px 8px; border: 0; border-radius: 6px; background: none;
-                    font: inherit; color: inherit; text-align: left; cursor: pointer }
-  .dumb-menu-item:hover:not([disabled]),
-  .dumb-menu-item[data-active="1"] { background: var(--dumb-menu-hover, rgb(0 0 0 / .07)) }
-  .dumb-menu-item[disabled] { opacity: .45; cursor: default }
-  .dumb-menu-item[data-danger="1"] { color: var(--dumb-menu-danger, #b91c1c) }
-  .dumb-menu-icon { flex: none; width: 1.1em; height: 1.1em }
-  .dumb-menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                     white-space: nowrap }
-  /* подсказка тусклее текста, но читаемо: серому по серому тут не место */
-  .dumb-menu-hint { flex: none; font-size: .85em; color: var(--dumb-menu-dim, #475569) }
-  .dumb-menu-sep { height: 1px; margin: 4px 6px;
-                   background: var(--dumb-menu-line, rgb(0 0 0 / .12)) }
-  /* стрелка ветки — полным цветом: это указатель, а не украшение */
-  .dumb-menu-more { flex: none; font-size: .9em }
+  /* подсветку с клавиатуры даём тем же классом, что даёт daisyUI наведению */
+  .dumb-menu-item[data-active="1"] { background: var(--dumb-menu-active, rgb(0 0 0 / .07)) }
+  .dumb-menu-item[disabled] { cursor: default }
 
   /* Подменю. Тот же popover, тот же top layer — значит его так же не режет ни
      overflow, ни clip-path предков, и z-index ему не нужен.
@@ -283,7 +267,9 @@ function Panel(props: {
       </Show>
       <div
         ref={el}
-        class={`dumb-menu ${props.depth > 0 ? 'dumb-menu-sub' : ''} ${props.class ?? ''}`}
+        class={`dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${
+          props.depth > 0 ? 'dumb-menu-sub' : ''
+        } ${props.class ?? ''}`}
         popover="manual"
         style={place()}
         tabindex={-1}
@@ -293,12 +279,17 @@ function Panel(props: {
         <ul>
           <For each={props.items}>
             {(it, i) => (
-              <Show when={isItem(it)} fallback={<li class="dumb-menu-sep" role="separator" />}>
+              <Show
+                when={isItem(it)}
+                fallback={<li class="dumb-menu-sep divider my-1" role="separator" />}
+              >
                 <li>
                   <button
                     type="button"
                     role="menuitem"
-                    class="dumb-menu-item"
+                    class={`dumb-menu-item flex w-full items-center gap-2 text-left ${
+                      asItem(it).danger ? 'text-error' : ''
+                    }`}
                     data-active={active() === i() ? '1' : undefined}
                     data-danger={asItem(it).danger ? '1' : undefined}
                     data-sub={branch(it) ? '1' : undefined}
@@ -314,14 +305,16 @@ function Panel(props: {
                     }}
                   >
                     <Show when={asItem(it).icon}>
-                      <span class={`dumb-menu-icon ${asItem(it).icon}`} />
+                      <span class={`dumb-menu-icon size-[1.1em] shrink-0 ${asItem(it).icon}`} />
                     </Show>
-                    <span class="dumb-menu-label">{asItem(it).label}</span>
+                    <span class="dumb-menu-label flex-1 truncate">{asItem(it).label}</span>
                     <Show when={asItem(it).hint}>
-                      <span class="dumb-menu-hint">{asItem(it).hint}</span>
+                      {/* подсказка тусклее текста, но читаемо: base-content/60
+                          и прочая блёклость правилом репы запрещены */}
+                      <span class="dumb-menu-hint text-xs opacity-90">{asItem(it).hint}</span>
                     </Show>
                     <Show when={branch(it)}>
-                      <span class="dumb-menu-more" aria-hidden="true">
+                      <span class="dumb-menu-more text-sm" aria-hidden="true">
                         ▸
                       </span>
                     </Show>

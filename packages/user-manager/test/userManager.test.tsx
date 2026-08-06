@@ -32,11 +32,14 @@ function mount(extra: Partial<Props> = {}) {
   dispose = render(() => <DumbUserManager users={USERS} {...extra} />, host)
 }
 
-const rows = () => Array.from(host.querySelectorAll<HTMLElement>('.dumb-um-row'))
-const rowOf = (name: string) =>
-  rows().find((r) => r.querySelector('.dumb-um-name')?.textContent?.startsWith(name))!
+// Разметка — daisyUI (btn, input, select, table, alert, badge), поэтому за
+// строки и кнопки цепляемся по СТРУКТУРЕ и тексту, а не по классам темы:
+// класс кнопки потребитель волен перекрасить, а `<tbody><tr>` и подпись
+// «Заблокировать» никуда не денутся.
+const rows = () => Array.from(host.querySelectorAll<HTMLElement>('tbody tr'))
+const rowOf = (name: string) => rows().find((r) => r.textContent?.includes(name))!
 const buttonsIn = (row: HTMLElement) =>
-  Array.from(row.querySelectorAll<HTMLButtonElement>('.dumb-um-btn'))
+  Array.from(row.querySelectorAll<HTMLButtonElement>('button'))
 const buttonBy = (row: HTMLElement, text: string) =>
   buttonsIn(row).find((b) => b.textContent?.trim() === text)
 const tick = () => new Promise((r) => setTimeout(r, 0))
@@ -50,10 +53,11 @@ describe('таблица', () => {
 
   it('заблокированную строку метит фоном, а не выцветанием', () => {
     mount()
-    expect(rowOf('Боря').dataset.banned).toBe('1')
-    expect(rowOf('Аня').dataset.banned).toBeUndefined()
-    // причина блокировки не выброшена: она в подсказке
-    expect(rowOf('Боря').querySelector('.dumb-um-state')?.getAttribute('title')).toBe('ушёл')
+    // bg-base-200 — фон строки; выцветший текст в ките запрещён, а прочитать
+    // строку всё равно надо: за что заблокировали, написано в подсказке
+    expect(rowOf('Боря').className).toContain('bg-base-200')
+    expect(rowOf('Аня').className).not.toContain('bg-base-200')
+    expect(rowOf('Боря').querySelector('[title="ушёл"]')).not.toBeNull()
   })
 
   it('без колбэков кнопок действий нет вовсе', () => {
@@ -63,12 +67,12 @@ describe('таблица', () => {
 
   it('форма «выдать доступ» появляется только с onCreate', () => {
     mount()
-    expect(host.querySelector('.dumb-um-form')).toBeNull()
+    expect(host.querySelector('form')).toBeNull()
 
     dispose!()
     host.remove()
     mount({ onCreate: async () => {} })
-    expect(host.querySelector('.dumb-um-form')).not.toBeNull()
+    expect(host.querySelector('form')).not.toBeNull()
   })
 })
 
@@ -118,9 +122,7 @@ describe('действия', () => {
     await tick()
 
     expect(onBan).toHaveBeenCalledWith('u1', '')
-    expect(host.querySelector('.dumb-um-alert[data-kind="ok"]')?.textContent).toContain(
-      'Доступ приостановлен',
-    )
+    expect(host.querySelector('.alert-success')?.textContent).toContain('Доступ приостановлен')
   })
 
   it('удаление требует второго клика', async () => {
@@ -143,9 +145,7 @@ describe('действия', () => {
     buttonBy(rowOf('Аня'), 'Заблокировать')!.click()
     await tick()
 
-    expect(host.querySelector('.dumb-um-alert[data-kind="error"]')?.textContent).toContain(
-      'нет прав на этот домен',
-    )
+    expect(host.querySelector('.alert-error')?.textContent).toContain('нет прав на этот домен')
   })
 
   it('смена пароля показывает его ровно один раз', async () => {
@@ -153,8 +153,8 @@ describe('действия', () => {
     mount({ onSetPassword })
 
     buttonBy(rowOf('Аня'), 'Пароль')!.click()
-    const form = rowOf('Аня').querySelector<HTMLFormElement>('.dumb-um-pw')!
-    const input = form.querySelector<HTMLInputElement>('.dumb-um-input')!
+    const form = rowOf('Аня').querySelector<HTMLFormElement>('form')!
+    const input = form.querySelector<HTMLInputElement>('input')!
     // поле уже заполнено предложенным паролем — его не придумывают руками
     expect(input.value.length).toBeGreaterThan(0)
 
@@ -162,7 +162,7 @@ describe('действия', () => {
     await tick()
 
     expect(onSetPassword).toHaveBeenCalledWith('u1', input.value)
-    expect(host.querySelector('.dumb-um-alert[data-kind="ok"]')?.textContent).toContain(input.value)
+    expect(host.querySelector('.alert-success')?.textContent).toContain(input.value)
   })
 })
 

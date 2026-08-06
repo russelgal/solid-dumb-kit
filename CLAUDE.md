@@ -22,7 +22,7 @@
 - Позиции/размеры элементов снимаются **один раз** через **IntersectionObserver** (`entry.boundingClientRect` считается off-main-thread, без reflow). См. `snapshot()` в `packages/sortable/src/sortableCore.ts`.
 - Движение — **только `transform`** (GPU/compositor), не трогаем layout-свойства.
 - Геометрию скроллера (top/left/clientW/clientH/max) кэшировать **один раз на старте**; покадрово читать только `scrollTop`/`scrollLeft` (это не forced reflow).
-- Стили без зависимости от Tailwind/чужого CSS — структурные стили инлайном или инжектом (компонент самодостаточный).
+- Стили: оформление — daisyUI-классами (см. железное правило ниже), инжектом остаётся только структура жеста (transform, will-change, touch-action).
 
 ## Структура: пакет на фичу, воркспейс pnpm
 Репа — **монорепа**: каждая фича живёт своим npm-пакетом `@solid-dumb-kit/<имя>` в `packages/`, потребитель ставит только то, что взял. Общего пакета-зонтика `solid-dumb-kit` нет: корневой `package.json` приватный и держит витрину, тесты и инструменты.
@@ -95,9 +95,9 @@ pnpm test           # vitest run: тесты пакетов + смоук-мон�
 Перенесено (брать оттуда больше нечего): `Lightbox` → `lightbox`, `ContextMenu` → `context-menu`, `toast` → `toast`, `UserManager` → `user-manager`, утилиты `fmt`/`slug`/`zip`/`imgproxy` → `utils`. Sortable-семейство `SortableList`/`SortableTable`/`SortableGrid` **не переносим никогда**: оно на `@dnd-kit` (см. запрет выше), и всё это давно закрыто своими `sortableCore` + `DumbSortable` + `DumbTable`.
 
 Правила переноса:
-1. Код из донора **не копировать as-is** — он писался под монорепу: там Tailwind-классы и доменные хардкоды (`_pioneer`-specific env, бакеты, названия). Структурные стили — инжектом, доменные значения — через конфиг-функцию с фолбэком на env (пример: `configureImgproxy()` в `packages/utils/src/imgproxy.ts`).
+1. Код из донора **не копировать as-is** — он писался под монорепу с доменными хардкодами (`_pioneer`-specific env, бакеты, названия). Их выносим в конфиг-функцию с фолбэком на env (пример: `configureImgproxy()` в `packages/utils/src/imgproxy.ts`). А вот daisyUI-разметку из донора **оставляем как есть** — она у нас такая же.
 2. Любой перенос проходит проверку «ЖЕЛЕЗНОЕ ПРАВИЛО: никакого reflow» и правило контраста.
-3. Tailwind/daisyUI-классы в разметке пакета — **брак**: без них у потребителя экран разваливается. Заменяются на свои классы плюс `injectStyle` и CSS-переменные с контрастными дефолтами. Так уже пришлось разбирать `UserManager` после переноса — не повторяй.
+3. daisyUI-классы в разметке — норма и требование, снимать их **нельзя**. Однажды `UserManager` уже перевели с daisyUI на свои стили «ради самодостаточности» — это было ошибкой и откатом обошлось. Не повторяй.
 4. Донор — на TS-конфиге монорепы; после переноса обязательно `pnpm build` (dts тоже собирается) и changeset.
 
 ## Примеры и тесты
@@ -207,24 +207,37 @@ bluefable: `cd /Volumes/sites/_booking/research/app && npm run build`.
 
 Публикуем версию → переносим `Unreleased` в новый заголовок с датой и поднимаем `version` в `package.json`.
 
-## Витрина — на daisyUI, и сначала ищем готовый компонент
-В `examples/` и `playground/` оформление берётся из **daisyUI**, а не пишется
-руками. Прежде чем верстать что-то своё, проверь, есть ли это у daisyUI:
-[breadcrumbs](https://daisyui.com/components/breadcrumbs/),
-[menu (в т.ч. file-tree)](https://daisyui.com/components/menu/#file-tree),
-[table](https://daisyui.com/components/table/), кнопки, инпуты, бейджи, модалки.
-Иконки — iconify: [solar](https://icones.js.org/collection/solar) и
-[ph](https://icones.js.org/collection/ph), классами `icon-[solar--folder-bold]`
-(`@plugin "@iconify/tailwind4"` подключён в `playground/src/app.css`).
+## ЖЕЛЕЗНОЕ ПРАВИЛО: ОФОРМЛЕНИЕ — ТОЛЬКО daisyUI, ВЕЗДЕ
 
-Из этого следует требование к САМИМ ПАКЕТАМ: разметку давать такую, на которую
-готовый класс ложится без обёрток. Крошки — `nav > ul > li`, дерево — вложенные
-`ul > li`, таблица — нормальные `thead/tbody`. Свой декор (разделитель крошек и
-т.п.) выноси в CSS-переменную, чтобы его можно было погасить, когда потребитель
-включил свой.
+**Кит, витрина, примеры — всё на daisyUI.** Это решение принято и обсуждению не
+подлежит: спрашивать «а может, свои стили, чтобы пакет был самодостаточным»
+больше не нужно — ответ «нет». Кит используется в проектах ровно с Tailwind и
+daisyUI, и компонент обязан выглядеть частью приложения, а не гостем в чужой
+теме.
 
-Сами пакеты daisyUI и Tailwind по-прежнему **не требуют**: классы приходят
-снаружи (`class`, `icons`, `treeIcons`), дефолт работает и без них.
+- Органы управления — готовыми классами: `btn`, `input`, `select`, `checkbox`,
+  `toggle`, `range`, `table`, `alert`, `badge`, `card`, `menu`, `tabs`, `join`,
+  `tooltip`, `loading loading-spinner`. Прежде чем верстать своё, проверь, есть
+  ли это у daisyUI:
+  [breadcrumbs](https://daisyui.com/components/breadcrumbs/),
+  [menu (в т.ч. file-tree)](https://daisyui.com/components/menu/#file-tree),
+  [table](https://daisyui.com/components/table/).
+- Цвета — токенами темы: `bg-base-100`, `border-base-300`, `text-error`,
+  `text-success`, `btn-neutral`. Своих hex'ов в разметке нет.
+- Иконки — iconify: [solar](https://icones.js.org/collection/solar) и
+  [ph](https://icones.js.org/collection/ph), классами
+  `icon-[solar--folder-bold]` (`@plugin "@iconify/tailwind4"` подключён в
+  `playground/src/app.css`).
+- Разметка — такая, чтобы готовый класс ложился без обёрток: крошки
+  `nav > ul > li`, дерево — вложенные `ul > li`, таблица — `thead/tbody`.
+
+**Свой CSS (инжектом) остаётся только там, где daisyUI бессилен** — это
+структура и механика жеста, а не вид: `position`, `transform`, `will-change`,
+`grid-template`, `touch-action`, `z-index`, `contain`, фоновые градиенты сетки,
+кейфреймы. Всё, что можно назвать «как это выглядит», берётся из daisyUI.
+
+Правило контраста при этом никто не отменял: `text-base-content/60`,
+`text-slate-400` и прочая блёклость запрещены и в daisyUI-классах тоже.
 
 ## ЖЕЛЕЗНОЕ ПРАВИЛО: ВНУТРИ CSS-ЛИТЕРАЛА НЕТ НИ ОДНОЙ ОБРАТНОЙ КАВЫЧКИ
 

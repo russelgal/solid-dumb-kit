@@ -63,46 +63,22 @@ const MONTHS = [
 ]
 
 const STYLES = `
-  .dumb-cal { display: flex; gap: 18px; flex-wrap: wrap;
-              color: var(--dumb-cal-fg, #0f172a); user-select: none }
-  .dumb-cal-month { min-width: 15.5rem }
-  .dumb-cal-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px }
-  .dumb-cal-title { flex: 1; text-align: center; font-weight: 600; font-size: 14px;
-                    text-transform: capitalize }
-  .dumb-cal-nav { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px;
-                  cursor: pointer; font: inherit; background: none; color: inherit }
-  .dumb-cal-nav:hover { background: var(--dumb-cal-hover, rgb(0 0 0 / .07)) }
-  .dumb-cal-nav[disabled] { opacity: .35; cursor: default }
-
+  /* Оформление — daisyUI-классами в разметке (btn, join, bg-base-*, text-error).
+     Здесь остаётся то, чего классом не выразить: сетка недели, диагональная
+     перечёркивающая полоса занятого дня и края выбранного периода. */
+  .dumb-cal { user-select: none }
   .dumb-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr) }
-  .dumb-cal-week { font-size: 11px; text-align: center; padding-bottom: 4px;
-                   color: var(--dumb-cal-dim, #475569) }
-  .dumb-cal-day { position: relative; aspect-ratio: 1; display: grid; place-items: center;
-                  font-size: 13px; border: 0; background: none; font: inherit; color: inherit;
-                  cursor: pointer; line-height: 1 }
-  /* Соседний месяц виден, но приглушён: без него сетка прыгает, а с ним — нет.
-     Приглушение ЦВЕТОМ, а не прозрачностью: число всё ещё читают (в него
-     кликают, им заканчивают период), а opacity уводила его до 2.4:1 к белому. */
-  .dumb-cal-day[data-out="1"] { color: var(--dumb-cal-dim, #475569) }
-  .dumb-cal-day[data-today="1"] { font-weight: 700; text-decoration: underline }
-  .dumb-cal-day:hover:not([disabled]) { background: var(--dumb-cal-hover, rgb(0 0 0 / .07)) }
-  /* середина периода — сплошная полоса, края — скруглены: так видно направление */
-  .dumb-cal-day[data-in="1"] { background: var(--dumb-cal-range, rgb(37 99 235 / .14)) }
-  .dumb-cal-day[data-edge="from"] { border-radius: 8px 0 0 8px }
-  .dumb-cal-day[data-edge="to"] { border-radius: 0 8px 8px 0 }
-  .dumb-cal-day[data-edge="both"] { border-radius: 8px }
-  .dumb-cal-day[data-edge] { background: var(--dumb-cal-accent, #2563eb); color: #fff;
-                             font-weight: 600 }
-  .dumb-cal-day[data-busy="1"] { color: var(--dumb-cal-busy, #b91c1c) }
+  .dumb-cal-day { position: relative; aspect-ratio: 1; display: grid; place-items: center }
   /* занятый день перечёркнут по диагонали — видно и без цвета */
   .dumb-cal-day[data-busy="1"]::after {
     content: ''; position: absolute; inset: 18%;
     background: linear-gradient(to top right, transparent 45%,
-      var(--dumb-cal-busy, #b91c1c) 45%, var(--dumb-cal-busy, #b91c1c) 55%, transparent 55%) }
-  .dumb-cal-day[disabled] { cursor: default; opacity: .3 }
+      currentColor 45%, currentColor 55%, transparent 55%) }
+  .dumb-cal-day[data-edge="from"] { border-radius: 8px 0 0 8px }
+  .dumb-cal-day[data-edge="to"] { border-radius: 0 8px 8px 0 }
+  .dumb-cal-day[data-edge="both"] { border-radius: 8px }
   .dumb-cal-extra { position: absolute; left: 0; right: 0; bottom: 1px; font-size: 9px;
-                    text-align: center; color: var(--dumb-cal-dim, #475569) }
-  .dumb-cal-day[data-edge] .dumb-cal-extra { color: inherit }
+                    text-align: center }
 `
 
 export function DumbDateRange(props: DumbDateRangeProps) {
@@ -177,28 +153,31 @@ export function DumbDateRange(props: DumbDateRangeProps) {
   const canFwd = () => !props.max || diffDays(addMonths(shownMonth(), props.months ?? 1), props.max) < 0
 
   return (
-    <div class={`dumb-cal ${props.class ?? ''}`} onMouseLeave={() => setHover(null)}>
+    <div
+      class={`dumb-cal flex flex-wrap gap-5 ${props.class ?? ''}`}
+      onMouseLeave={() => setHover(null)}
+    >
       <For each={months()}>
         {(month, mi) => (
-          <div class="dumb-cal-month">
-            <div class="dumb-cal-head">
-              <Show when={mi() === 0} fallback={<span class="dumb-cal-nav" />}>
+          <div class="dumb-cal-month min-w-62">
+            <div class="dumb-cal-head mb-1.5 flex items-center gap-1">
+              <Show when={mi() === 0} fallback={<span class="dumb-cal-nav size-8" />}>
                 <button
                   type="button"
-                  class="dumb-cal-nav"
+                  class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"
                   disabled={!canBack()}
                   onClick={() => setShownMonth(addMonths(shownMonth(), -1))}
                 >
                   ‹
                 </button>
               </Show>
-              <div class="dumb-cal-title">
+              <div class="dumb-cal-title flex-1 text-center font-semibold capitalize">
                 {MONTHS[Number(month.slice(5, 7)) - 1]} {month.slice(0, 4)}
               </div>
-              <Show when={mi() === (props.months ?? 1) - 1} fallback={<span class="dumb-cal-nav" />}>
+              <Show when={mi() === (props.months ?? 1) - 1} fallback={<span class="dumb-cal-nav size-8" />}>
                 <button
                   type="button"
-                  class="dumb-cal-nav"
+                  class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"
                   disabled={!canFwd()}
                   onClick={() => setShownMonth(addMonths(shownMonth(), 1))}
                 >
@@ -208,7 +187,9 @@ export function DumbDateRange(props: DumbDateRangeProps) {
             </div>
 
             <div class="dumb-cal-grid">
-              <For each={WEEK}>{(w) => <div class="dumb-cal-week">{w}</div>}</For>
+              <For each={WEEK}>
+                {(w) => <div class="dumb-cal-week pb-1 text-center text-xs font-medium">{w}</div>}
+              </For>
               <For each={monthGrid(month)}>
                 {(day) => {
                   const range = () => shownRange()
@@ -234,7 +215,13 @@ export function DumbDateRange(props: DumbDateRangeProps) {
                   return (
                     <button
                       type="button"
-                      class={`dumb-cal-day ${mark()?.class ?? ''}`}
+                      class={`dumb-cal-day btn btn-ghost btn-sm h-auto min-h-0 p-0 font-normal ${
+                        edge() ? 'btn-active btn-neutral font-semibold' : ''
+                      } ${inRange(day, range()?.from ?? null, range()?.to ?? null) && !edge() ? 'bg-base-300' : ''} ${
+                        isBusy(day) ? 'text-error' : ''
+                      } ${sameMonth(day, month) ? '' : 'italic'} ${
+                        day === today() ? 'font-bold underline' : ''
+                      } ${mark()?.class ?? ''}`}
                       data-out={sameMonth(day, month) ? undefined : '1'}
                       data-today={day === today() ? '1' : undefined}
                       data-busy={isBusy(day) ? '1' : undefined}
