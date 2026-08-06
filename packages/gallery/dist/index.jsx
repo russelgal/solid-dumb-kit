@@ -581,6 +581,8 @@ function DumbSortableDnd(props) {
 }
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect as createEffect2, untrack } from "solid-js";
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;

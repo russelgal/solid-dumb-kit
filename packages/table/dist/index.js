@@ -548,8 +548,6 @@ function createDumbSortable(opts) {
     handle: (id) => (el) => onCleanup(engine.attachHandle(el, id))
   };
 }
-
-// ../shared/dist/index.js
 function prefersReducedMotion2() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

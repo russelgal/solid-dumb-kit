@@ -5,6 +5,8 @@ import { createMemo as createMemo2, For as For2 } from "solid-js";
 import { createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

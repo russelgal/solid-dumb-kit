@@ -460,7 +460,7 @@ function DumbTimeline(props) {
   );
   const settle = (want) => {
     if (free(want)) return want;
-    const sc = scale();
+    const sc = scaleOf(want.row);
     const step = snapOf(sc);
     const at = toMinutes(want.from, sc, "from");
     for (let i = 1; i <= 24; i++) {
@@ -479,29 +479,43 @@ function DumbTimeline(props) {
   const rowGeom = createMemo(() => {
     const tops = /* @__PURE__ */ new Map();
     const heights = [];
+    const offsets = [];
     const items = shownRows();
     let y = 0;
     for (const it of items) {
       const h = it.kind === "group" ? Math.round(rowH() * 0.72) : rowH() * levelsOf(it.row.id);
       if (it.kind === "row") tops.set(it.row.id, y);
+      offsets.push(y);
       heights.push(h);
       y += h;
     }
-    return { tops, heights, total: y, items };
+    offsets.push(y);
+    return { tops, heights, offsets, total: y, items };
+  });
+  const rowOrder = createMemo(() => {
+    const order = /* @__PURE__ */ new Map();
+    props.rows.forEach((r, i) => order.set(r.id, i));
+    return order;
   });
   const rowAtY = (y) => {
-    const { items, heights } = rowGeom();
-    let acc = 0;
-    let lastRow = 0;
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      if (it.kind === "row") {
-        if (y >= acc && y < acc + heights[i]) return rowIds().indexOf(it.row.id);
-        lastRow = rowIds().indexOf(it.row.id);
-      }
-      acc += heights[i];
+    const { items, offsets } = rowGeom();
+    if (!items.length) return 0;
+    let lo = 0;
+    let hi = items.length - 1;
+    while (lo < hi) {
+      const mid = lo + hi + 1 >> 1;
+      if (offsets[mid] <= y) lo = mid;
+      else hi = mid - 1;
     }
-    return Math.max(0, lastRow);
+    for (let i = lo; i >= 0; i--) {
+      const it = items[i];
+      if (it.kind === "row") return rowOrder().get(it.row.id) ?? 0;
+    }
+    for (let i = lo + 1; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === "row") return rowOrder().get(it.row.id) ?? 0;
+    }
+    return 0;
   };
   function swallowNextClick() {
     const kill = (e) => {
@@ -603,20 +617,21 @@ function DumbTimeline(props) {
     const apply = (cx, cy) => {
       if (!origin) return;
       const { x, y } = toLocal(cx, cy);
-      const sc = scale();
       let next;
       if (mode === "move") {
+        const rows = rowIds();
+        const rowIdx = Math.max(0, Math.min(rows.length - 1, rowAtY(y)));
+        const sc = scaleOf(rows[rowIdx]);
         const step = snapOf(sc);
         const shiftedMin = (cx - grabbedAt.x) / sc.colW * sc.stepMin;
         const startMin = toMinutes(startSpan.from, sc, "from") + Math.round(shiftedMin / step) * step;
-        const rows = rowIds();
-        const rowIdx = Math.max(0, Math.min(rows.length - 1, rowAtY(y)));
         const moved2 = moveTo(startSpan, Math.max(0, startMin), sc, rulesOf(rows[rowIdx]));
         const want = { ...startSpan, ...moved2, row: rows[rowIdx] };
         const ok = settle(want);
         if (!ok) return;
         next = ok;
       } else {
+        const sc = scaleOf(startSpan.row);
         const want = snapEdge(x, sc, mode);
         const at = clampEdge(
           startSpan,
@@ -947,12 +962,16 @@ function DumbTimeline(props) {
       });
     }}
   >
-          <For each={rowGeom().heights}>
-            {(h, i) => {
-    const top = () => rowGeom().heights.slice(0, i() + 1).reduce((a, b) => a + b, 0);
-    void h;
-    return <div class="dumb-tl-hline" style={{ top: `${top()}px` }} />;
-  }}
+          {
+    /*
+      Линия под каждым рядом. Её место — накопленная высота
+      (`offsets[i + 1]`), а не сумма среза высот: ряды разной высоты, и
+      пересчёт суммы для каждой линии стоил бы квадрата от числа строк —
+      на десятке строк незаметно, на сотнях уже нет.
+    */
+  }
+          <For each={rowGeom().items}>
+            {(_, i) => <div class="dumb-tl-hline" style={{ top: `${rowGeom().offsets[i() + 1]}px` }} />}
           </For>
           {
     /*

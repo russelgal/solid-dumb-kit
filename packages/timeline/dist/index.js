@@ -469,7 +469,7 @@ function DumbTimeline(props) {
     return sc.stepMin >= Math.max(1, sc.dayEnd - sc.dayStart);
   };
   const canResize = (rowId) => !(dayGrid() && unitOf(rowId) === "hour");
-  createMemo(() => {
+  const daily = createMemo(() => {
     const sc = scale();
     const win = Math.max(1, sc.dayEnd - sc.dayStart);
     return {
@@ -479,10 +479,11 @@ function DumbTimeline(props) {
       colW: sc.colW * win / sc.stepMin
     };
   });
+  const scaleOf = (rowId) => !dayGrid() && unitOf(rowId) === "day" ? daily() : scale();
   const free = (next) => !props.spans.some((s) => s.id !== next.id && s.row === next.row && conflicts(next, s, scale(), gapOf(next.row)));
   const settle = (want) => {
     if (free(want)) return want;
-    const sc = scale();
+    const sc = scaleOf(want.row);
     const step = snapOf(sc);
     const at = toMinutes(want.from, sc, "from");
     for (let i = 1; i <= 24; i++) {
@@ -504,37 +505,52 @@ function DumbTimeline(props) {
   const rowGeom = createMemo(() => {
     const tops = /* @__PURE__ */ new Map();
     const heights = [];
+    const offsets = [];
     const items = shownRows();
     let y = 0;
     for (const it of items) {
       const h = it.kind === "group" ? Math.round(rowH() * 0.72) : rowH() * levelsOf(it.row.id);
       if (it.kind === "row") tops.set(it.row.id, y);
+      offsets.push(y);
       heights.push(h);
       y += h;
     }
+    offsets.push(y);
     return {
       tops,
       heights,
+      offsets,
       total: y,
       items
     };
   });
+  const rowOrder = createMemo(() => {
+    const order = /* @__PURE__ */ new Map();
+    props.rows.forEach((r, i) => order.set(r.id, i));
+    return order;
+  });
   const rowAtY = (y) => {
     const {
       items,
-      heights
+      offsets
     } = rowGeom();
-    let acc = 0;
-    let lastRow = 0;
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      if (it.kind === "row") {
-        if (y >= acc && y < acc + heights[i]) return rowIds().indexOf(it.row.id);
-        lastRow = rowIds().indexOf(it.row.id);
-      }
-      acc += heights[i];
+    if (!items.length) return 0;
+    let lo = 0;
+    let hi = items.length - 1;
+    while (lo < hi) {
+      const mid = lo + hi + 1 >> 1;
+      if (offsets[mid] <= y) lo = mid;
+      else hi = mid - 1;
     }
-    return Math.max(0, lastRow);
+    for (let i = lo; i >= 0; i--) {
+      const it = items[i];
+      if (it.kind === "row") return rowOrder().get(it.row.id) ?? 0;
+    }
+    for (let i = lo + 1; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === "row") return rowOrder().get(it.row.id) ?? 0;
+    }
+    return 0;
   };
   function swallowNextClick() {
     const kill = (e) => {
@@ -649,14 +665,14 @@ function DumbTimeline(props) {
         x,
         y
       } = toLocal(cx, cy);
-      const sc = scale();
       let next;
       if (mode === "move") {
+        const rows = rowIds();
+        const rowIdx = Math.max(0, Math.min(rows.length - 1, rowAtY(y)));
+        const sc = scaleOf(rows[rowIdx]);
         const step = snapOf(sc);
         const shiftedMin = (cx - grabbedAt.x) / sc.colW * sc.stepMin;
         const startMin = toMinutes(startSpan.from, sc, "from") + Math.round(shiftedMin / step) * step;
-        const rows = rowIds();
-        const rowIdx = Math.max(0, Math.min(rows.length - 1, rowAtY(y)));
         const moved2 = moveTo(startSpan, Math.max(0, startMin), sc, rulesOf(rows[rowIdx]));
         const want = {
           ...startSpan,
@@ -667,6 +683,7 @@ function DumbTimeline(props) {
         if (!ok) return;
         next = ok;
       } else {
+        const sc = scaleOf(startSpan.row);
         const want = snapEdge(x, sc, mode);
         const at = clampEdge(startSpan, mode, toMinutes(want, sc, mode), props.spans, sc, gapOf(startSpan.row), rulesOf(startSpan.row));
         if (at === null) return;
@@ -1027,16 +1044,13 @@ function DumbTimeline(props) {
     typeof _ref$2 === "function" ? use(_ref$2, _el$0) : canvas = _el$0;
     insert(_el$0, createComponent(For, {
       get each() {
-        return rowGeom().heights;
+        return rowGeom().items;
       },
-      children: (h, i) => {
-        const top = () => rowGeom().heights.slice(0, i() + 1).reduce((a, b) => a + b, 0);
-        return (() => {
-          var _el$16 = _tmpl$9();
-          effect((_$p) => setStyleProperty(_el$16, "top", `${top()}px`));
-          return _el$16;
-        })();
-      }
+      children: (_, i) => (() => {
+        var _el$16 = _tmpl$9();
+        effect((_$p) => setStyleProperty(_el$16, "top", `${rowGeom().offsets[i() + 1]}px`));
+        return _el$16;
+      })()
     }), null);
     insert(_el$0, createComponent(Show, {
       get when() {

@@ -4,8 +4,6 @@ import { makePersisted } from '@solid-primitives/storage';
 import * as v from 'valibot';
 
 // src/ResizableGrid.tsx
-
-// ../shared/dist/index.js
 function suppressTextSelection() {
   if (typeof document === "undefined") return;
   const s = document.body.style;

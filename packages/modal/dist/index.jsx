@@ -1,7 +1,9 @@
 // src/DumbModal.tsx
-import { Show, createEffect, onCleanup } from "solid-js";
+import { Show, createEffect as createEffect2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -61,7 +63,7 @@ function DumbModal(props) {
     }
     props.onClose();
   }
-  createEffect(() => {
+  createEffect2(() => {
     const want = props.open();
     if (want && !dialog.open) {
       returnTo = document.activeElement ?? null;

@@ -2,8 +2,6 @@ import { delegateEvents, use, insert, createComponent, effect, className, style,
 import { createSignal, onCleanup, createMemo, For } from 'solid-js';
 
 // src/DumbGridDnd.tsx
-
-// ../shared/dist/index.js
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

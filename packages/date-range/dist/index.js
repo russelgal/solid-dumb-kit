@@ -2,8 +2,6 @@ import { delegateEvents, insert, createComponent, effect, className, setAttribut
 import { createSignal, createMemo, For, Show } from 'solid-js';
 
 // src/DumbDateRange.tsx
-
-// ../shared/dist/index.js
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;

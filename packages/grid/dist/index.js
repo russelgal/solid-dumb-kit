@@ -218,8 +218,6 @@ function fitSpan(args) {
   while (h > minH && overlaps({ placed, id, col, row, w, h })) h--;
   return { w, h };
 }
-
-// ../shared/dist/index.js
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

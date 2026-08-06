@@ -546,34 +546,70 @@ function reason(body) {
 }
 
 // src/virtual.ts
+var MAX_SCROLL_HEIGHT = 15e6;
 function createVirtualizer(opts) {
   const overscan = opts.overscan ?? 3;
+  const horizontal = opts.axis === "x";
   let viewH = 0;
   let raf = 0;
   let last = null;
   let dead = false;
   const el = () => opts.scroller();
+  let sumsFor = null;
+  let sums = null;
+  function prefixOf(sizes) {
+    if (sumsFor === sizes && sums && sums.length === sizes.length + 1) return sums;
+    const next = new Float64Array(sizes.length + 1);
+    for (let i = 0; i < sizes.length; i++) next[i + 1] = next[i] + Math.max(0, sizes[i]);
+    sumsFor = sizes;
+    sums = next;
+    return next;
+  }
   function compute() {
+    const sizes = opts.itemSizes?.();
     const size = Math.max(1, opts.itemSize());
-    const cols = Math.max(1, opts.columns?.() ?? 1);
+    const cols = sizes ? 1 : Math.max(1, opts.columns?.() ?? 1);
     const count = Math.max(0, opts.count());
-    const rows = Math.ceil(count / cols);
+    const rows = sizes ? Math.min(count, sizes.length) : Math.ceil(count / cols);
+    const prefix = sizes ? prefixOf(sizes) : null;
     const node2 = el();
-    const scrolled = node2 ? node2.scrollTop : 0;
-    const firstRow = Math.max(0, Math.floor(scrolled / size) - overscan);
-    const visibleRows = Math.ceil(viewH / size) + overscan * 2;
-    const lastRow = Math.min(rows, firstRow + visibleRows);
+    const lead = opts.lead?.() ?? 0;
+    const raw = node2 ? horizontal ? node2.scrollLeft : node2.scrollTop : 0;
+    const scrolled = Math.max(0, raw - lead);
+    const posOf = (row) => prefix ? prefix[Math.min(Math.max(0, row), rows)] : row * size;
+    const rowAt = (pos) => {
+      if (!prefix) return Math.floor(pos / size);
+      let lo = 0;
+      let hi = rows;
+      while (lo < hi) {
+        const mid = lo + hi + 1 >> 1;
+        if (prefix[mid] <= pos) lo = mid;
+        else hi = mid - 1;
+      }
+      return lo;
+    };
+    const real = posOf(rows);
+    const total = Math.min(real, Math.max(viewH, opts.maxHeight ?? MAX_SCROLL_HEIGHT));
+    const runwayReal = Math.max(0, real - viewH);
+    const runwayFake = Math.max(0, total - viewH);
+    const virtual = runwayFake > 0 ? scrolled * runwayReal / runwayFake : 0;
+    const anchorRow = Math.min(Math.max(0, rows - 1), Math.max(0, rowAt(virtual)));
+    const inRow = virtual - posOf(anchorRow);
+    const firstRow = Math.max(0, anchorRow - overscan);
+    const lastRow = Math.min(rows, rowAt(virtual + viewH) + 1 + overscan);
     return {
       start: firstRow * cols,
-      end: Math.min(count, lastRow * cols),
-      offset: firstRow * size,
-      total: rows * size
+      end: Math.min(count, Math.max(firstRow, lastRow) * cols),
+      // верх окна (`scrolled`) минус выехавшая часть якорного ряда минус
+      // запасные ряды сверху; при незажатой распорке это ровно `posOf(firstRow)`
+      offset: scrolled - inRow - (posOf(anchorRow) - posOf(firstRow)),
+      total
     };
   }
   function emit() {
     if (dead) return;
     const next = compute();
-    if (last && last.start === next.start && last.end === next.end && last.total === next.total) {
+    if (last && last.start === next.start && last.end === next.end && last.offset === next.offset && last.total === next.total) {
       return;
     }
     last = next;
@@ -587,12 +623,12 @@ function createVirtualizer(opts) {
     });
   }
   const ro = new ResizeObserver((entries) => {
-    for (const e of entries) viewH = e.contentRect.height;
+    for (const e of entries) viewH = horizontal ? e.contentRect.width : e.contentRect.height;
     emit();
   });
   const node = el();
   if (node) {
-    viewH = node.clientHeight;
+    viewH = horizontal ? node.clientWidth : node.clientHeight;
     node.addEventListener("scroll", onScroll, { passive: true });
     ro.observe(node);
   }
@@ -600,6 +636,7 @@ function createVirtualizer(opts) {
   return {
     refresh: () => {
       last = null;
+      sumsFor = null;
       emit();
     },
     destroy: () => {
@@ -615,10 +652,380 @@ function scrollOffsetFor(args) {
   const row = Math.floor(args.index / cols);
   const top = row * args.itemSize;
   const bottom = top + args.itemSize;
-  if (args.force) return Math.max(0, top);
-  if (top >= args.scrollTop && bottom <= args.scrollTop + args.viewHeight) return null;
-  if (top < args.scrollTop) return top;
-  return bottom - args.viewHeight;
+  const rows = args.count == null ? 0 : Math.ceil(Math.max(0, args.count) / cols);
+  const real = rows * args.itemSize;
+  const total = Math.min(real, Math.max(args.viewHeight, args.maxHeight ?? MAX_SCROLL_HEIGHT));
+  const runwayReal = Math.max(0, real - args.viewHeight);
+  const runwayFake = Math.max(0, total - args.viewHeight);
+  const squeezed = runwayReal > runwayFake;
+  const toScroll = (y) => squeezed ? Math.max(0, y) * runwayFake / runwayReal : Math.max(0, y);
+  const view = squeezed ? args.scrollTop * runwayReal / runwayFake : args.scrollTop;
+  if (args.force) return toScroll(top);
+  if (top >= view && bottom <= view + args.viewHeight) return null;
+  if (top < view) return toScroll(top);
+  return toScroll(bottom - args.viewHeight);
+}
+
+// src/rowIndex.ts
+function rowIndexKernel(port) {
+  var count = 0;
+  var cols = {};
+  var live = null;
+  var shOrder = null;
+  var shCtrl = null;
+  var chan = typeof MessageChannel === "function" ? new MessageChannel() : null;
+  var queued = null;
+  if (chan) {
+    chan.port1.onmessage = function() {
+      var fn = queued;
+      queued = null;
+      if (fn) fn();
+    };
+  }
+  function soon(fn) {
+    if (chan) {
+      queued = fn;
+      chan.port2.postMessage(0);
+      return;
+    }
+    setTimeout(fn, 0);
+  }
+  function now() {
+    return typeof performance === "object" && performance ? performance.now() : Date.now();
+  }
+  function valuesOf(name) {
+    var c = name ? cols[name] : null;
+    return c ? c.values : null;
+  }
+  function comparer(sort) {
+    var vals = valuesOf(sort.column);
+    if (!vals) return null;
+    var sign = sort.dir === "desc" ? -1 : 1;
+    return function(a, b) {
+      var x = vals[a];
+      var y = vals[b];
+      if (x < y) return -sign;
+      if (x > y) return sign;
+      return a - b;
+    };
+  }
+  function matcher(filter) {
+    var col = filter.column ? cols[filter.column] : null;
+    if (!col) return null;
+    var vals = col.values;
+    var text = col.kind === "text";
+    var needle = filter.contains == null ? "" : String(filter.contains).toLowerCase();
+    var min = filter.min;
+    var max = filter.max;
+    if (!needle && min == null && max == null) return null;
+    return function(i) {
+      var v = vals[i];
+      if (min != null && !(v >= min)) return false;
+      if (max != null && !(v <= max)) return false;
+      if (!needle) return true;
+      var s = text ? v : "" + v;
+      return s.toLowerCase().indexOf(needle) !== -1;
+    };
+  }
+  function merge(src, dst, lo, mid, hi, cmp) {
+    var a = lo;
+    var b = mid;
+    var k = lo;
+    while (a < mid && b < hi) {
+      var x = src[a];
+      var y = src[b];
+      if (cmp(x, y) <= 0) {
+        dst[k++] = x;
+        a++;
+      } else {
+        dst[k++] = y;
+        b++;
+      }
+    }
+    while (a < mid) dst[k++] = src[a++];
+    while (b < hi) dst[k++] = src[b++];
+  }
+  function run(msg) {
+    var job = { dead: false };
+    live = job;
+    var id = msg.id;
+    var budget = msg.chunk > 0 ? msg.chunk : 1e5;
+    var started = now();
+    var reported = started;
+    function publish(len, phase) {
+      if (!shCtrl) return;
+      Atomics.store(shCtrl, 1, len);
+      Atomics.store(shCtrl, 2, phase);
+      Atomics.store(shCtrl, 3, id);
+      Atomics.add(shCtrl, 0, 1);
+    }
+    function tell(phase, done2, len) {
+      var t = now();
+      if (t - reported < 60) return;
+      reported = t;
+      publish(len, phase === "filter" ? 0 : 1);
+      port.post({ type: "progress", id, phase, done: done2, matched: len });
+    }
+    var keep = msg.filter ? matcher(msg.filter) : null;
+    var cmp = msg.sort ? comparer(msg.sort) : null;
+    var picked = shOrder ? shOrder : new Uint32Array(count);
+    var m = 0;
+    var i = 0;
+    function filterStep() {
+      if (job.dead) return;
+      var edge = i + budget;
+      if (edge > count) edge = count;
+      if (keep) {
+        for (; i < edge; i++) if (keep(i)) picked[m++] = i;
+      } else {
+        for (; i < edge; i++) picked[m++] = i;
+      }
+      if (i < count) {
+        tell("filter", i / count, m);
+        soon(filterStep);
+        return;
+      }
+      if (!cmp || m < 2) {
+        finish(shOrder ? null : picked.slice(0, m), m);
+        return;
+      }
+      sortStart(picked.slice(0, m));
+    }
+    function sortStart(order) {
+      var n = order.length;
+      var buf = new Uint32Array(n);
+      var src = order;
+      var dst = buf;
+      var width = 1;
+      var at = 0;
+      var passes = Math.ceil(Math.log(n) / Math.LN2);
+      var pass = 0;
+      function sortStep() {
+        if (job.dead) return;
+        var work = 0;
+        while (width < n) {
+          while (at < n) {
+            var mid = at + width;
+            if (mid > n) mid = n;
+            var hi = at + width * 2;
+            if (hi > n) hi = n;
+            merge(src, dst, at, mid, hi, cmp);
+            work += hi - at;
+            at = hi;
+            if (work >= budget) {
+              tell("sort", (pass + at / n) / passes, n);
+              soon(sortStep);
+              return;
+            }
+          }
+          var t = src;
+          src = dst;
+          dst = t;
+          at = 0;
+          width = width * 2;
+          pass++;
+        }
+        if (shOrder) {
+          shOrder.set(src.subarray(0, n), 0);
+          finish(null, n);
+          return;
+        }
+        finish(src, n);
+      }
+      sortStep();
+    }
+    function finish(order, matched) {
+      if (job.dead) return;
+      live = null;
+      publish(matched, 2);
+      var msg2 = {
+        type: "result",
+        id,
+        order,
+        matched,
+        total: count,
+        ms: now() - started
+      };
+      port.post(msg2, order ? [order.buffer] : []);
+    }
+    filterStep();
+  }
+  port.receive(function(msg) {
+    if (!msg) return;
+    if (msg.type === "data") {
+      count = msg.count;
+      cols = msg.columns;
+      shOrder = msg.order ? new Uint32Array(msg.order) : null;
+      shCtrl = msg.ctrl ? new Int32Array(msg.ctrl) : null;
+      return;
+    }
+    if (msg.type === "query") {
+      if (live) live.dead = true;
+      run(msg);
+      return;
+    }
+    if (msg.type === "stop") {
+      if (live) live.dead = true;
+      live = null;
+    }
+  });
+}
+function spawnWorker() {
+  if (typeof Worker !== "function" || typeof Blob !== "function" || typeof URL === "undefined") {
+    return null;
+  }
+  try {
+    const src = "var kernel = " + rowIndexKernel.toString() + ";\nkernel({ post: function (m, t) { self.postMessage(m, t || []) }, receive: function (cb) { self.onmessage = function (e) { cb(e.data) } } });";
+    const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    const worker = new Worker(url);
+    return {
+      worker: true,
+      send: (msg, transfer) => worker.postMessage(msg, transfer ?? []),
+      onMessage: (cb) => {
+        worker.onmessage = (e) => cb(e.data);
+      },
+      close: () => {
+        worker.terminate();
+        URL.revokeObjectURL(url);
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+function spawnInline() {
+  let toHost = () => {
+  };
+  let toKernel = () => {
+  };
+  rowIndexKernel({
+    post: (msg) => toHost(msg),
+    receive: (cb) => {
+      toKernel = cb;
+    }
+  });
+  return {
+    worker: false,
+    send: (msg) => toKernel(msg),
+    onMessage: (cb) => {
+      toHost = cb;
+    },
+    close: () => {
+      toKernel({ type: "stop" });
+    }
+  };
+}
+function sharedMemoryAvailable() {
+  return typeof SharedArrayBuffer === "function" && globalThis.crossOriginIsolated === true;
+}
+function toShared(column) {
+  if (column.kind !== "number") return column;
+  const values = column.values;
+  if (values instanceof Float64Array && values.buffer instanceof SharedArrayBuffer) return column;
+  const copy = new Float64Array(new SharedArrayBuffer(values.length * 8));
+  copy.set(values);
+  return { kind: "number", values: copy };
+}
+function createRowIndex(opts) {
+  const channel = (opts.inline ? null : spawnWorker()) ?? spawnInline();
+  const shared = channel.worker && (opts.shared ?? sharedMemoryAvailable());
+  let seq = 0;
+  let awaiting = 0;
+  let pending = {};
+  let dead = false;
+  let total = 0;
+  let view = null;
+  let ctrl = null;
+  let seen = -1;
+  function readShared(partial, ms) {
+    if (!view || !ctrl) return;
+    const version = Atomics.load(ctrl, 0);
+    if (partial && version === seen) return;
+    seen = version;
+    if (Atomics.load(ctrl, 3) !== awaiting) return;
+    const matched = Atomics.load(ctrl, 1);
+    opts.onResult({
+      // `subarray` — окно в ту же память, без копии
+      order: view.subarray(0, matched),
+      matched,
+      total,
+      ms,
+      query: pending,
+      partial
+    });
+  }
+  channel.onMessage((msg) => {
+    if (dead || !msg || msg.id !== awaiting) return;
+    if (msg.type === "progress") {
+      opts.onProgress?.({ phase: msg.phase, done: msg.done, matched: msg.matched });
+      if (shared && msg.phase === "filter") readShared(true, 0);
+      return;
+    }
+    if (msg.type === "result") {
+      if (shared) {
+        readShared(false, msg.ms);
+        return;
+      }
+      opts.onResult({
+        order: msg.order,
+        matched: msg.matched,
+        total: msg.total,
+        ms: msg.ms,
+        query: pending,
+        partial: false
+      });
+    }
+  });
+  return {
+    threaded: channel.worker,
+    shared,
+    setData: (data) => {
+      if (dead) return;
+      total = data.count;
+      seen = -1;
+      const columns = {};
+      for (const name in data.columns) {
+        columns[name] = shared ? toShared(data.columns[name]) : data.columns[name];
+      }
+      if (shared) {
+        view = new Uint32Array(new SharedArrayBuffer(Math.max(1, data.count) * 4));
+        ctrl = new Int32Array(new SharedArrayBuffer(4 * 4));
+      } else {
+        view = null;
+        ctrl = null;
+      }
+      channel.send({
+        type: "data",
+        count: data.count,
+        columns,
+        order: view ? view.buffer : null,
+        ctrl: ctrl ? ctrl.buffer : null
+      });
+    },
+    query: (q) => {
+      if (dead) return;
+      pending = q;
+      awaiting = ++seq;
+      seen = -1;
+      channel.send({
+        type: "query",
+        id: awaiting,
+        sort: q.sort,
+        filter: q.filter,
+        chunk: opts.chunk
+      });
+    },
+    cancel: () => {
+      if (dead) return;
+      awaiting = ++seq;
+      seen = -1;
+      channel.send({ type: "stop" });
+    },
+    destroy: () => {
+      dead = true;
+      channel.close();
+    }
+  };
 }
 
 // src/dropEntries.ts
@@ -923,4 +1330,4 @@ function putPart(url, chunk, signal, onBytes) {
 }
 var shouldSplit = (file, partSize = 8 * 1024 * 1024) => file.size > partSize;
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };
+export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };

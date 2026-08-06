@@ -577,8 +577,6 @@ function DumbSortableDnd(props) {
     return _el$;
   })();
 }
-
-// ../shared/dist/index.js
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;

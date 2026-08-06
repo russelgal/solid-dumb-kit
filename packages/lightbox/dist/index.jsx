@@ -1,7 +1,9 @@
 // src/DumbLightbox.tsx
-import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { Show, createEffect as createEffect2, createMemo, createSignal, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -78,12 +80,12 @@ function DumbLightbox(props) {
     reset();
     props.onIndexChange(null);
   };
-  createEffect(() => {
+  createEffect2(() => {
     const open = at() !== null;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   });
-  createEffect(() => {
+  createEffect2(() => {
     const i = at();
     if (i === null) return;
     for (const d of [1, -1]) {
@@ -99,7 +101,7 @@ function DumbLightbox(props) {
     if (ev.key === "+" || ev.key === "=") return setZoom((z) => Math.min(8, z * 1.25));
     if (ev.key === "-") return setZoom((z) => Math.max(1, z / 1.25));
   }
-  createEffect(() => {
+  createEffect2(() => {
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
   });

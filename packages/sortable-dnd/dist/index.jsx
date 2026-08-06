@@ -1,7 +1,9 @@
 // src/DumbSortableDnd.tsx
-import { For, createEffect, createMemo } from "solid-js";
+import { For, createEffect as createEffect2, createMemo } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -545,7 +547,7 @@ function DumbSortableDnd(props) {
   const stable = createStableOrder(props.id);
   const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
-  createEffect(() => {
+  createEffect2(() => {
     for (const [id, i] of places()) {
       const el = els.get(id);
       if (!el) continue;

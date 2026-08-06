@@ -2,8 +2,6 @@ import { delegateEvents, use, insert, createComponent, effect, className, setAtt
 import { createEffect, onCleanup, Show } from 'solid-js';
 
 // src/DumbModal.tsx
-
-// ../shared/dist/index.js
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

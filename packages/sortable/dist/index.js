@@ -2,8 +2,6 @@ import { createComponent } from 'solid-js/web';
 import { onCleanup, For } from 'solid-js';
 
 // src/DumbSortable.tsx
-
-// ../shared/dist/index.js
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

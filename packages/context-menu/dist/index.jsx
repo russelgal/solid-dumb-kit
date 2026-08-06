@@ -1,7 +1,9 @@
 // src/DumbContextMenu.tsx
-import { For, Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { For, Show, createEffect as createEffect2, createSignal, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
+import * as solid from "solid-js";
+import { createEffect, untrack } from "solid-js";
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -112,7 +114,7 @@ function DumbContextMenu(props) {
       }
     }
   }
-  createEffect(() => {
+  createEffect2(() => {
     window.addEventListener("contextmenu", onContext);
     window.addEventListener("keydown", onKey);
     const away = (ev) => {
@@ -154,7 +156,7 @@ function DumbContextMenu(props) {
       window.removeEventListener("blur", bail);
     });
   });
-  createEffect(() => {
+  createEffect2(() => {
     if (!open()) return;
     queueMicrotask(() => {
       if (box && !box.matches(":popover-open")) box.showPopover?.();
@@ -225,7 +227,7 @@ function DumbContextMenu(props) {
 }
 
 // src/DumbPopover.tsx
-import { Show as Show2, createEffect as createEffect2, onCleanup as onCleanup2 } from "solid-js";
+import { Show as Show2, createEffect as createEffect3, onCleanup as onCleanup2 } from "solid-js";
 var STYLES2 = `
   .dumb-pop-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
                      anchor-name: --dumb-pop-at }
@@ -262,7 +264,7 @@ function DumbPopover(props) {
     if (box?.matches(":popover-open")) box.hidePopover();
     props.onClose();
   };
-  createEffect2(() => {
+  createEffect3(() => {
     const open = props.at() !== null;
     if (!open) {
       if (box?.matches(":popover-open")) box.hidePopover();
@@ -272,7 +274,7 @@ function DumbPopover(props) {
       if (box && !box.matches(":popover-open")) box.showPopover?.();
     });
   });
-  createEffect2(() => {
+  createEffect3(() => {
     if (props.at() === null) return;
     const onKey = (e) => e.key === "Escape" && close();
     const away = (e) => {

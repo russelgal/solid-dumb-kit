@@ -2,8 +2,6 @@ import { use, insert, createComponent, effect, className, style, template } from
 import { createSignal, onCleanup, createMemo, createEffect, For } from 'solid-js';
 
 // src/DumbSortableDnd.tsx
-
-// ../shared/dist/index.js
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

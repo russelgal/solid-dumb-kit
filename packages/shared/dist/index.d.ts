@@ -226,18 +226,56 @@ type VirtualRange = {
     start: number;
     /** последний + 1 */
     end: number;
-    /** насколько сдвинуть нарисованное вниз, px */
+    /** насколько сдвинуть нарисованное вдоль оси (вниз или вправо), px */
     offset: number;
-    /** высота всего списка, px — под неё растягивается распорка */
+    /** размер распорки, px — НЕ всегда `rows * itemSize`, см. `MAX_SCROLL_HEIGHT` */
     total: number;
 };
+/**
+ * Потолок высоты элемента, за которым браузер начинает врать.
+ *
+ * Высота блока не бесконечна: Chrome обрезает примерно на 33.5 млн px, Firefox
+ * — около 17.8 млн, и дальше распорка просто перестаёт расти, а полоса
+ * прокрутки — соответствовать содержимому. При строке в 28px это всего ~600
+ * тысяч строк на Firefox: миллион строк простой арифметикой уже не берётся.
+ *
+ * Поэтому распорка зажимается этим числом (с запасом под самый строгий
+ * браузер), а прокрутка перестаёт быть один-к-одному: `scrollTop` растягивается
+ * до виртуальной высоты списка. Расплата — строки внутри одного «пикселя»
+ * полосы перескакивают через несколько позиций; на таких объёмах это ровно то
+ * же, что делает нативная полоса прокрутки, только честнее.
+ */
+declare const MAX_SCROLL_HEIGHT = 15000000;
 type VirtualOptions = {
     /** сколько всего элементов */
     count: () => number;
     /** высота строки (или плитки) вместе с зазором, px */
     itemSize: () => number;
+    /**
+     * Размеры рядов поштучно, когда они РАЗНЫЕ. Заявленные, а не измеренные:
+     * шахматка знает высоту строки как «этажей × высота этажа», и это по-прежнему
+     * арифметика без единого обращения к элементам.
+     *
+     * Задан — `itemSize` не используется, `columns` игнорируется (сетка плиток
+     * разной высоты — другая задача, её здесь нет). Массив должен быть НОВЫМ
+     * при изменении: движок узнаёт правку по ссылке, а не по содержимому.
+     * Правишь массив на месте — зови `refresh()`.
+     */
+    itemSizes?: () => ArrayLike<number>;
     /** сколько элементов в ряду; 1 — обычный список */
     columns?: () => number;
+    /**
+     * Вдоль какой оси прокрутка. `y` — обычный список, `x` — шкала времени и
+     * прочие сетки, едущие вбок: читается `scrollLeft` и ширина видимой части.
+     */
+    axis?: 'x' | 'y';
+    /**
+     * Сколько пикселей стоит ПЕРЕД первым рядом внутри того же скроллера:
+     * липкая колонка с названиями, шапка, отступ. Без этой поправки окно
+     * считается сдвинутым ровно на её размер — на шахматке это полдюжины
+     * колонок мимо.
+     */
+    lead?: () => number;
     /** что прокручивается */
     scroller: () => HTMLElement | null;
     /**
@@ -246,6 +284,11 @@ type VirtualOptions = {
      * прокрутке появляется белая полоса.
      */
     overscan?: number;
+    /**
+     * Потолок высоты распорки, px. По умолчанию `MAX_SCROLL_HEIGHT`; ниже имеет
+     * смысл опускать разве что для проверки самого маппинга на коротком списке.
+     */
+    maxHeight?: number;
     /** окно изменилось */
     onChange: (range: VirtualRange) => void;
 };
@@ -270,7 +313,115 @@ declare function scrollOffsetFor(args: {
     scrollTop: number;
     /** прижать к краю, даже если элемент виден */
     force?: boolean;
+    /**
+     * Сколько всего элементов. Нужно только длинным спискам: без этого числа
+     * нельзя понять, зажата ли распорка потолком, и прокрутка к строке
+     * промахнётся тем сильнее, чем длиннее список.
+     */
+    count?: number;
+    /** потолок высоты распорки; по умолчанию `MAX_SCROLL_HEIGHT` */
+    maxHeight?: number;
 }): number | null;
+
+/** Куда сортировать. */
+type SortDir = 'asc' | 'desc';
+/**
+ * Колонка данных. Числа лежат типизированным массивом (8 байт на строку,
+ * клонируются в воркер за миллисекунды), текст — обычным массивом строк.
+ */
+type RowColumn = {
+    kind: 'number';
+    values: Float64Array | number[];
+} | {
+    kind: 'text';
+    values: string[];
+};
+/** Что показывать и в каком порядке. Пустой запрос — исходный порядок. */
+type RowQuery = {
+    sort?: {
+        column: string;
+        dir?: SortDir;
+    };
+    filter?: {
+        column: string;
+        /** подстрока; для числовой колонки ищется по её записи цифрами */
+        contains?: string;
+        /** границы для числовой колонки, включительно */
+        min?: number;
+        max?: number;
+    };
+};
+type RowIndexResult = {
+    /**
+     * Номера строк в порядке показа. В режиме общей памяти это ОКНО в неё, а не
+     * копия: держать его дольше следующего ответа нельзя — перезапишут.
+     */
+    order: Uint32Array;
+    /** сколько строк прошло фильтр */
+    matched: number;
+    /** сколько всего строк было */
+    total: number;
+    /** сколько это считалось, мс */
+    ms: number;
+    /** запрос, к которому относится ответ */
+    query: RowQuery;
+    /**
+     * Работа ещё идёт, это промежуточный улов фильтра. Бывает только в режиме
+     * общей памяти — ровно ради этого он и нужен: строки видно, пока фильтр
+     * досматривает остальной миллион.
+     */
+    partial: boolean;
+};
+type RowIndexProgress = {
+    phase: 'filter' | 'sort';
+    /** доля выполненного, 0…1 */
+    done: number;
+    /** сколько строк отобрано на этот момент */
+    matched: number;
+};
+type RowIndexOptions = {
+    /** готовый порядок */
+    onResult: (result: RowIndexResult) => void;
+    /** долгая работа: сколько уже сделано. Зовётся не чаще ~15 раз в секунду */
+    onProgress?: (progress: RowIndexProgress) => void;
+    /**
+     * Сколько элементов обрабатывать за один заход, прежде чем уступить очереди
+     * сообщений. Меньше — отзывчивее отмена, больше — меньше накладных расходов.
+     */
+    chunk?: number;
+    /**
+     * Считать на главном потоке даже там, где воркер доступен. Нужно ровно для
+     * двух вещей: тестов и наглядного «а вот так оно колом встаёт».
+     */
+    inline?: boolean;
+    /**
+     * Общая память (`SharedArrayBuffer`) вместо пересылки копий. По умолчанию —
+     * когда страница изолирована (`crossOriginIsolated`). Включать вручную имеет
+     * смысл только для проверки: без изоляции конструктор бросит.
+     */
+    shared?: boolean;
+};
+type RowIndex = {
+    /** загрузить данные; в воркер они уезжают копией — зовётся редко */
+    setData: (data: {
+        count: number;
+        columns: Record<string, RowColumn>;
+    }) => void;
+    /** посчитать порядок; предыдущий незаконченный запрос отменяется */
+    query: (q: RowQuery) => void;
+    /**
+     * Бросить текущий расчёт и не ждать ответа. Нужно, когда запрос стал пустым:
+     * гонять миллион строк ради порядка «как в данных» незачем, но и получить
+     * потом ответ на позавчерашний запрос нельзя.
+     */
+    cancel: () => void;
+    /** считает ли отдельный поток (false — воркер не завёлся, работаем инлайном) */
+    readonly threaded: boolean;
+    /** идёт ли обмен через общую память (иначе — копиями) */
+    readonly shared: boolean;
+    destroy: () => void;
+};
+declare function createRowIndex(opts: RowIndexOptions): RowIndex;
 
 /** файл вместе с путём внутри брошенной папки */
 type DroppedFile = {
@@ -435,4 +586,4 @@ declare function uploadMultipart(file: File, ctx: {
 /** стоит ли лить частями: мелкие файлы этого не окупают */
 declare const shouldSplit: (file: File, partSize?: number) => boolean;
 
-export { ACCEL, type AutoScroller, type DroppedFile, EDGE, type Flip, type InlineEdit, type InlineEditOptions, LONGPRESS, MAX_SPEED, MOVE_TOL, type MoveArgs, type MoveKey, type MultipartHandshake, type MultipartOptions, NO_DRAG, type Presigned, type PresignedOptions, type PressGate, type PressGateOptions, type QueueEvents, type StableOrder, type UndoOptions, type UndoStack, type UndoStep, type UploadQueue, type UploadResult, type UploadedPart, type Uploader, type ViewGeom, type Virtual, type VirtualOptions, type VirtualRange, autoScrollSpeed, batch, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };
+export { ACCEL, type AutoScroller, type DroppedFile, EDGE, type Flip, type InlineEdit, type InlineEditOptions, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, type MoveArgs, type MoveKey, type MultipartHandshake, type MultipartOptions, NO_DRAG, type Presigned, type PresignedOptions, type PressGate, type PressGateOptions, type QueueEvents, type RowColumn, type RowIndex, type RowIndexOptions, type RowIndexProgress, type RowIndexResult, type RowQuery, type SortDir, type StableOrder, type UndoOptions, type UndoStack, type UndoStep, type UploadQueue, type UploadResult, type UploadedPart, type Uploader, type ViewGeom, type Virtual, type VirtualOptions, type VirtualRange, autoScrollSpeed, batch, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };

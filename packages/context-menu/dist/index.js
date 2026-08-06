@@ -2,8 +2,6 @@ import { delegateEvents, createComponent, effect, setStyleProperty, use, insert,
 import { createSignal, createEffect, onCleanup, Show, For } from 'solid-js';
 
 // src/DumbContextMenu.tsx
-
-// ../shared/dist/index.js
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
