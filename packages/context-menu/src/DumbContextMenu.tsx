@@ -178,11 +178,17 @@ function Panel(props: {
       .map((it, i) => ({ it, i }))
       .filter(({ it }) => isItem(it) && !asItem(it).disabled)
 
-  /** Подсветили пункт: ветка раскрывается сразу, обычный пункт закрывает ветку. */
-  const highlight = (i: number, x: number, y: number) => {
+  /**
+   * Подсветили пункт. Мышью — ветка раскрывается сразу (наведение и есть
+   * намерение), обычный пункт закрывает чужую ветку. С клавиатуры (`spread:
+   * false`) ветка НЕ раскрывается: иначе стрелка «вниз» проваливалась бы в
+   * подменю, едва пройдя мимо ветки. Открытие с клавиатуры — только → и Enter,
+   * как в системных меню.
+   */
+  const highlight = (i: number, x: number, y: number, spread = true) => {
     setActive(i)
     const it = props.items[i]
-    if (it && branch(it)) setSub({ i, x, y })
+    if (it && branch(it) && spread) setSub({ i, x, y })
     else setSub(null)
   }
 
@@ -212,7 +218,7 @@ function Panel(props: {
         const next = (cur + step + list.length) % list.length
         const i = list[cur < 0 && step < 0 ? list.length - 1 : next].i
         // с клавиатуры координат нет — для фолбэка берём точку открытия панели
-        highlight(i, props.at.x, props.at.y)
+        highlight(i, props.at.x, props.at.y, false)
       },
       focusItem: (btn) => {
         const rows = Array.from(el?.querySelectorAll(':scope > ul > li') ?? [])

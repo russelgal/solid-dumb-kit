@@ -61,6 +61,40 @@ closes, focus moves into the menu and returns afterwards.
 Over an input the menu is **not intercepted**: the browser's own, with "paste",
 is better there.
 
+## Submenus
+
+An item with `items` is a branch: it opens a panel to the side and does nothing
+itself — `run` is not needed and never called on it. The panel is recursive, so
+nesting is unlimited.
+
+```tsx
+{ label: 'Export', items: [
+  { label: 'PNG', run: png },
+  { label: 'SVG', run: svg },
+  { label: 'More…', items: [{ label: 'PDF', run: pdf }] },
+] }
+```
+
+A submenu is the same kind of popover in the top layer: it isn't clipped by an
+ancestor's `overflow` either and needs no `z-index`. Its anchor is its **own** —
+a one-pixel point where the cursor entered the branch item, not the button
+itself: the button sits inside the parent popover, `anchor()` doesn't resolve
+onto elements in the top layer, and the panel would fly off to its static
+position. The browser still picks the side; there are still zero measurements —
+the coordinates come from the event.
+
+The behaviour matches system menus:
+
+- **with the mouse** a branch opens on hover, hovering a plain item closes any
+  open branch;
+- **from the keyboard** highlighting does not open a branch — only `→` and
+  Enter open it (highlighting its first item), `←` goes back to the parent;
+- **Esc** collapses one level at a time: the submenu first, everything from the
+  root;
+- arrows walk the **deepest open** panel;
+- the press-drag-release gesture continues into a submenu: release on a branch
+  and the menu stays, keep dragging into the nested panel.
+
 ## DumbPopover
 
 The same top-layer placement and the same anchoring, but with arbitrary content:

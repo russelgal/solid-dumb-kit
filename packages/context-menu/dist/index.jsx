@@ -85,10 +85,10 @@ function Panel(props) {
   const asItem = (it) => it;
   const branch = (it) => isItem(it) ? (asItem(it).items?.length ?? 0) > 0 : false;
   const pickable = () => props.items.map((it, i) => ({ it, i })).filter(({ it }) => isItem(it) && !asItem(it).disabled);
-  const highlight = (i, x, y) => {
+  const highlight = (i, x, y, spread = true) => {
     setActive(i);
     const it = props.items[i];
-    if (it && branch(it)) setSub({ i, x, y });
+    if (it && branch(it) && spread) setSub({ i, x, y });
     else setSub(null);
   };
   createEffect2(() => {
@@ -112,7 +112,7 @@ function Panel(props) {
         const cur = list.findIndex(({ i: i2 }) => i2 === active());
         const next = (cur + step + list.length) % list.length;
         const i = list[cur < 0 && step < 0 ? list.length - 1 : next].i;
-        highlight(i, props.at.x, props.at.y);
+        highlight(i, props.at.x, props.at.y, false);
       },
       focusItem: (btn) => {
         const rows = Array.from(el?.querySelectorAll(":scope > ul > li") ?? []);

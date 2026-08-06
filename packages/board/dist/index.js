@@ -17,7 +17,11 @@ function injectStyle(id, css) {
   if (typeof document === "undefined") return;
   if (done.has(id)) return;
   done.add(id);
-  if (document.querySelector(`style[data-dumb-kit="${id}"]`)) return;
+  const was = document.querySelector(`style[data-dumb-kit="${id}"]`);
+  if (was) {
+    if (was.textContent !== css) was.textContent = css;
+    return;
+  }
   const el = document.createElement("style");
   el.setAttribute("data-dumb-kit", id);
   el.textContent = css;
