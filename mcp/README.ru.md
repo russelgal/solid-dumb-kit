@@ -91,10 +91,16 @@ claude mcp add --transport http solid-dumb-kit https://solid-dumb-kit.vercel.app
 
 ### Деплой на Vercel
 
+Проект связан с репозиторием, поэтому деплоя как отдельного действия нет:
+пуш в `main` пересобирает и витрину, и снимок. Руками — только если надо
+выкатить незакоммиченное:
+
 ```bash
-npx vercel            # первый раз: логин и вопросы о проекте
-npx vercel --prod
+npx vercel --prod --yes --archive=tgz
 ```
+
+`--archive=tgz` не для красоты: без него CLI уходит перебирать сотни мегабайт
+`node_modules` и висит.
 
 На вопросе про фреймворк выбирай **Other**: сборка описана в `vercel.json`
 (`buildCommand: node mcp/snapshot.mjs`, установка зависимостей отключена — их

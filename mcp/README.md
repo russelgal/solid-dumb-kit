@@ -94,10 +94,16 @@ stdio version against your working copy.
 
 ### Deploying to Vercel
 
+The project is linked to the repository, so deploying is not a separate step:
+a push to `main` rebuilds both the playground and the snapshot. By hand — only
+to ship something uncommitted:
+
 ```bash
-npx vercel            # first time: login and project questions
-npx vercel --prod
+npx vercel --prod --yes --archive=tgz
 ```
+
+`--archive=tgz` is not cosmetic: without it the CLI walks hundreds of megabytes
+of `node_modules` and hangs.
 
 Pick **Other** for the framework: the build is described in `vercel.json`
 (`buildCommand: node mcp/snapshot.mjs`, dependency installation disabled — there
