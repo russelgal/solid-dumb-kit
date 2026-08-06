@@ -3,6 +3,9 @@
   "private": true,
   "description": "SolidJS UI kit: sortable, selection, grids, table, tree — one package per feature",
   "type": "module",
+  "bin": {
+    "solid-dumb-kit-mcp": "./mcp/server.mjs"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -46,6 +46,34 @@ claude mcp add solid-dumb-kit -- node /absolute/path/to/solid-dumb-kit/mcp/serve
 The path is absolute on purpose: the server derives the repo root from its own
 location, so the working directory it is launched from does not matter.
 
+## On another machine
+
+The server's knowledge *is* the repo's files (`packages/*/src`, `docs`,
+`examples`, `CLAUDE.md`), so "install one package from npm" does not work here:
+the repo has to be there. Hence two ways.
+
+**No clone, one command.** The repo root declares a `bin`, so it can be run
+straight from GitHub — npm downloads and caches it itself:
+
+```bash
+claude mcp add solid-dumb-kit -- npx -y github:russelgal/solid-dumb-kit
+```
+
+The whole repository is downloaded (otherwise the server would have nothing to
+read), but that is a few megabytes, once: after that npx serves it from cache.
+To move to a newer state — `npx -y github:russelgal/solid-dumb-kit@main` after
+`npm cache clean --force`, or just clone it.
+
+**With a clone** — if the kit is edited on this machine anyway:
+
+```bash
+git clone git@github.com:russelgal/solid-dumb-kit.git
+claude mcp add solid-dumb-kit -- node "$PWD/solid-dumb-kit/mcp/server.mjs"
+```
+
+That way the server answers from the WORKING copy — unreleased edits, your own
+branches — which is usually what you want while developing the kit itself.
+
 ## Checking it
 
 ```bash
