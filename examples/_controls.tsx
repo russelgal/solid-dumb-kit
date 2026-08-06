@@ -19,14 +19,20 @@ export function Bar(props: { children: JSX.Element }) {
   )
 }
 
-/** Выделенный переключатель — то, что включает режим целиком. */
+/**
+ * Выделенный переключатель — то, что включает режим целиком.
+ *
+ * Без класса `label` из daisyUI: он красит подпись своим цветом с
+ * прозрачностью .6, а это ровно тот блёклый серый, который в ките запрещён
+ * (правило контраста). Раскладку даёт `inline-flex`, цвет — наследуется.
+ */
 export function Switch(props: {
   checked: boolean
   onChange: (v: boolean) => void
   children: JSX.Element
 }) {
   return (
-    <label class="label cursor-pointer gap-2 rounded-full border border-base-300 px-3 py-1">
+    <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-base-300 px-3 py-1">
       <input
         class="toggle toggle-sm toggle-primary"
         type="checkbox"
@@ -45,7 +51,7 @@ export function Check(props: {
   children: JSX.Element
 }) {
   return (
-    <label class="label cursor-pointer gap-2">
+    <label class="inline-flex cursor-pointer items-center gap-2">
       <input
         class="checkbox checkbox-sm"
         type="checkbox"

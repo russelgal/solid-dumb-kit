@@ -22,6 +22,7 @@ import DumbTreeExample from "../../examples/data/DumbTree.example";
 import DumbTableExample from "../../examples/data/DumbTable.example";
 import DumbFinderExample from "../../examples/data/DumbFinder.example";
 import VirtualExample from "../../examples/data/virtual.example";
+import DumbPropsTableExample from "../../examples/data/DumbPropsTable.example";
 import PrimitivesExample from "../../examples/data/primitives.example";
 import Odata1CExample from "../../examples/data/Odata1C.example";
 import UtilsExample from "../../examples/data/utils.example";
@@ -193,6 +194,13 @@ const GROUPS: Array<Group> = [
         pkg: "shared",
         hint: "миллион строк, пул узлов, воркер",
         Comp: VirtualExample,
+      },
+      {
+        id: "props-table",
+        label: "DumbPropsTable",
+        pkg: "props-table",
+        hint: "что пришло в пропсах",
+        Comp: DumbPropsTableExample,
       },
       {
         id: "primitives",
