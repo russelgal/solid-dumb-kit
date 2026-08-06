@@ -22,12 +22,21 @@
 // именно не сошлось, а придуманное «Что-то пошло не так» помогает только тем,
 // кто и так догадался.
 //
-// ОФОРМЛЕНИЕ — daisyUI: btn, input, select, table, alert, badge. Своего CSS у
-// пакета нет вовсе — это экран администратора, он живёт внутри приложения и
-// обязан выглядеть его частью, а не гостем в чужой теме. Тему, скругления и
-// цвета задаёт потребитель через свой daisyUI, менять здесь нечего.
+// ОФОРМЛЕНИЕ — своё, инжектом, как у остальных пакетов кита. Раньше здесь стоял
+// daisyUI (btn, input, select, table, alert, badge) с расчётом «экран живёт
+// внутри приложения и обязан выглядеть его частью». Расчёт неверный: без
+// daisyUI у потребителя тот же экран разваливается в голый HTML, а кит по
+// правилу репы ни Tailwind, ни daisyUI не требует. Поэтому структурные стили —
+// здесь, а вид настраивается двумя способами сразу:
+//
+//   1. CSS-переменные (--dumb-um-fg, --dumb-um-accent, --dumb-um-radius и
+//      прочие) — перекрасить под тему, не трогая разметку;
+//   2. проп `class` на корень плюс обычные селекторы по .dumb-um-* — если
+//      захотелось положить сверху свой daisyUI, разметка этому не мешает:
+//      таблица честная (thead/tbody), кнопки — button, поля — label > input.
 
 import { For, Show, createSignal, type JSX } from 'solid-js'
+import { injectStyle } from '@solid-dumb-kit/shared'
 import { suggestPassword } from './password'
 
 export type UserRow = {
@@ -194,7 +203,95 @@ const RU: Required<UserManagerLabels> = {
     'Новый пароль для ' + user.name + ': ' + pass,
 }
 
+/**
+ * Структурные стили. Цвета — переменными с контрастными фолбэками: вторичный
+ * текст не светлее #475569 (7.5:1 к белому), потому что по правилу репы
+ * приглушённое — это не выцветшее.
+ */
+const STYLES = `
+  .dumb-um { display: flex; flex-direction: column; gap: 16px; font-size: 14px;
+             color: var(--dumb-um-fg, #0f172a) }
+  .dumb-um-title { margin: 0; font-size: 20px; font-weight: 700 }
+  .dumb-um-card { padding: 14px; background: var(--dumb-um-bg, #fff);
+                  border: 1px solid var(--dumb-um-line, rgb(0 0 0 / .14));
+                  border-radius: var(--dumb-um-radius, 10px) }
+  .dumb-um-card-title { margin: 0 0 10px; font-size: 15px; font-weight: 600 }
+
+  .dumb-um-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px }
+  .dumb-um-field { display: flex; flex-direction: column; gap: 3px; font-size: 12px;
+                   color: var(--dumb-um-dim, #475569) }
+  .dumb-um-input, .dumb-um-select {
+    font: inherit; font-size: 13px; padding: 5px 8px; color: var(--dumb-um-fg, #0f172a);
+    background: var(--dumb-um-bg, #fff);
+    border: 1px solid var(--dumb-um-line, rgb(0 0 0 / .28));
+    border-radius: calc(var(--dumb-um-radius, 10px) - 4px) }
+  .dumb-um-input:focus-visible, .dumb-um-select:focus-visible,
+  .dumb-um-btn:focus-visible { outline: 2px solid var(--dumb-um-accent, #2563eb);
+                               outline-offset: 1px }
+  .dumb-um-hint { margin: 8px 0 0; font-size: 12px; color: var(--dumb-um-dim, #475569) }
+
+  .dumb-um-btn { font: inherit; font-size: 13px; padding: 5px 10px; cursor: pointer;
+                 white-space: nowrap; color: var(--dumb-um-fg, #0f172a);
+                 background: none; border: 1px solid transparent;
+                 border-radius: calc(var(--dumb-um-radius, 10px) - 4px) }
+  .dumb-um-btn:hover:not([disabled]) { background: var(--dumb-um-hover, rgb(0 0 0 / .07)) }
+  .dumb-um-btn[disabled] { cursor: default; color: var(--dumb-um-off, #64748b) }
+  .dumb-um-btn[data-kind="primary"] { color: #fff; font-weight: 600;
+                                      background: var(--dumb-um-primary, #1e293b) }
+  .dumb-um-btn[data-kind="primary"]:hover:not([disabled]) {
+    background: var(--dumb-um-primary-hover, #0f172a) }
+  .dumb-um-btn[data-kind="danger"] { color: var(--dumb-um-bad, #b91c1c) }
+  .dumb-um-btn[data-kind="danger-solid"] { color: #fff; font-weight: 600;
+                                           background: var(--dumb-um-bad, #b91c1c) }
+  .dumb-um-btn[data-kind="ok"] { color: var(--dumb-um-ok, #15803d) }
+
+  /* крутилка вместо подписи, пока идёт запрос: кнопка не должна менять ширину */
+  .dumb-um-spin { display: inline-block; width: 13px; height: 13px; vertical-align: -2px;
+                  border: 2px solid currentColor; border-right-color: transparent;
+                  border-radius: 50%; animation: dumb-um-spin .7s linear infinite }
+  @keyframes dumb-um-spin { to { rotate: 1turn } }
+  @media (prefers-reduced-motion: reduce) { .dumb-um-spin { animation: none } }
+
+  .dumb-um-alert { padding: 8px 12px; font-size: 13px;
+                   border-radius: var(--dumb-um-radius, 10px);
+                   border: 1px solid currentColor }
+  .dumb-um-alert[data-kind="error"] { color: var(--dumb-um-bad, #b91c1c);
+                                      background: var(--dumb-um-bad-bg, rgb(185 28 28 / .08)) }
+  .dumb-um-alert[data-kind="ok"] { color: var(--dumb-um-ok, #15803d);
+                                   background: var(--dumb-um-ok-bg, rgb(21 128 61 / .08)) }
+
+  .dumb-um-table-box { overflow-x: auto; background: var(--dumb-um-bg, #fff);
+                       border: 1px solid var(--dumb-um-line, rgb(0 0 0 / .14));
+                       border-radius: var(--dumb-um-radius, 10px) }
+  .dumb-um-table { width: 100%; border-collapse: collapse }
+  .dumb-um-table th, .dumb-um-table td { padding: 8px 12px; text-align: left;
+                                         vertical-align: top;
+                                         border-bottom: 1px solid var(--dumb-um-line, rgb(0 0 0 / .12)) }
+  .dumb-um-table tr:last-child td { border-bottom: 0 }
+  .dumb-um-table th { font-size: 12px; font-weight: 600;
+                      color: var(--dumb-um-dim, #475569) }
+  .dumb-um-table th:last-child, .dumb-um-actions { text-align: right }
+  /* Заблокированную строку помечаем ФОНОМ, а не прозрачностью: выцветший текст
+     в ките запрещён, а прочитать строку всё равно надо — за что и заблокировали */
+  .dumb-um-row[data-banned="1"] { background: var(--dumb-um-row-off, rgb(0 0 0 / .05)) }
+
+  .dumb-um-name { font-weight: 500 }
+  .dumb-um-mail, .dumb-um-date { font-size: 12px; color: var(--dumb-um-dim, #475569) }
+  .dumb-um-date { white-space: nowrap }
+  .dumb-um-badge { margin-left: 6px; padding: 1px 6px; font-size: 11px; font-weight: 500;
+                   border-radius: 999px; color: var(--dumb-um-fg, #0f172a);
+                   background: var(--dumb-um-hover, rgb(0 0 0 / .09)) }
+  .dumb-um-state { font-size: 12px }
+  .dumb-um-state[data-banned="1"] { color: var(--dumb-um-bad, #b91c1c); font-weight: 600 }
+  .dumb-um-state[data-banned="0"] { color: var(--dumb-um-ok, #15803d) }
+  .dumb-um-sessions { color: var(--dumb-um-dim, #475569) }
+  .dumb-um-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px }
+  .dumb-um-pw { display: flex; justify-content: flex-end; gap: 4px; margin-top: 8px }
+`
+
 export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
+  injectStyle('user-manager', STYLES)
+
   /** текст по ключу: сперва то, что дал потребитель, иначе русский дефолт */
   const t = <K extends keyof UserManagerLabels>(key: K): Required<UserManagerLabels>[K] =>
     (props.labels?.[key] ?? RU[key]) as Required<UserManagerLabels>[K]
@@ -259,22 +356,30 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
       .join(' · ')
 
   return (
-    <div class={'flex flex-col gap-4' + (props.class ? ' ' + props.class : '')}>
+    <div class={'dumb-um' + (props.class ? ' ' + props.class : '')}>
       <Show when={(props.title ?? t('title')) !== ''}>
-        <h1 class="text-xl font-bold">{props.title ?? t('title')}</h1>
+        <h1 class="dumb-um-title">{props.title ?? t('title')}</h1>
       </Show>
 
       <Show when={props.onCreate}>
-        <div class="bg-base-100 rounded-box border-base-300 border p-4 shadow-sm">
-          <h2 class="mb-3 font-semibold">{t('createTitle')}</h2>
-          <form class="flex flex-wrap items-end gap-2" onSubmit={create}>
-            <label class="input input-sm w-48">
-              <span class="label">{t('name')}</span>
-              <input value={name()} onInput={e => setName(e.currentTarget.value)} required />
-            </label>
-            <label class="input input-sm w-56">
-              <span class="label">{t('email')}</span>
+        <div class="dumb-um-card">
+          <h2 class="dumb-um-card-title">{t('createTitle')}</h2>
+          <form class="dumb-um-form" onSubmit={create}>
+            <label class="dumb-um-field">
+              {t('name')}
               <input
+                class="dumb-um-input"
+                style={{ width: '11rem' }}
+                value={name()}
+                onInput={e => setName(e.currentTarget.value)}
+                required
+              />
+            </label>
+            <label class="dumb-um-field">
+              {t('email')}
+              <input
+                class="dumb-um-input"
+                style={{ width: '13rem' }}
                 type="email"
                 autocomplete="off"
                 value={email()}
@@ -282,9 +387,11 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                 required
               />
             </label>
-            <label class="input input-sm w-52" title={t('passwordEmpty')}>
-              <span class="label">{t('password')}</span>
+            <label class="dumb-um-field" title={t('passwordEmpty')}>
+              {t('password')}
               <input
+                class="dumb-um-input"
+                style={{ width: '12rem' }}
                 type="text"
                 autocomplete="off"
                 placeholder={t('passwordEmpty')}
@@ -294,67 +401,66 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
             </label>
             <Show when={roles().length > 0}>
               <select
-                class="select select-sm w-44"
+                class="dumb-um-select"
+                style={{ width: '10rem' }}
                 value={role()}
                 onChange={e => setRole(e.currentTarget.value)}
               >
                 <For each={roles()}>{r => <option value={r.value}>{r.label}</option>}</For>
               </select>
             </Show>
-            <button class="btn btn-sm btn-neutral" disabled={busy() === 'create'}>
+            <button class="dumb-um-btn" data-kind="primary" disabled={busy() === 'create'}>
               <Show when={busy() === 'create'} fallback={t('submit')}>
-                <span class="loading loading-spinner loading-sm" />
+                <span class="dumb-um-spin" />
               </Show>
             </button>
           </form>
           <Show when={rolesHint()}>
             {/* подсказку про роли читают, а не проглядывают: без приглушения */}
-            <p class="text-base-content mt-2 text-xs">{rolesHint()}</p>
+            <p class="dumb-um-hint">{rolesHint()}</p>
           </Show>
         </div>
       </Show>
 
       <Show when={error()}>
-        <div role="alert" class="alert alert-error py-2 text-sm">
+        <div role="alert" class="dumb-um-alert" data-kind="error">
           {error()}
         </div>
       </Show>
       <Show when={notice()}>
-        <div role="alert" class="alert alert-success py-2 text-sm">
+        <div role="alert" class="dumb-um-alert" data-kind="ok">
           {notice()}
         </div>
       </Show>
 
-      <div class="bg-base-100 rounded-box border-base-300 overflow-x-auto border shadow-sm">
-        <table class="table">
+      <div class="dumb-um-table-box">
+        <table class="dumb-um-table">
           <thead>
             <tr>
               <th>{t('colUser')}</th>
               <th>{t('colRole')}</th>
               <th>{t('colAccess')}</th>
               <th>{t('colCreated')}</th>
-              <th class="text-right">{t('colActions')}</th>
+              <th>{t('colActions')}</th>
             </tr>
           </thead>
           <tbody>
             <For each={props.users}>
               {u => (
-                // заблокированную строку помечаем фоном, а не прозрачностью:
-                // выцветший текст в ките запрещён, а прочитать его всё равно надо
-                <tr class={u.banned ? 'bg-base-200' : ''}>
+                <tr class="dumb-um-row" data-banned={u.banned ? '1' : undefined}>
                   <td>
-                    <div class="font-medium">
+                    <div class="dumb-um-name">
                       {u.name}
                       <Show when={isSelf(u.id)}>
-                        <span class="badge badge-ghost badge-sm ml-2">{t('you')}</span>
+                        <span class="dumb-um-badge">{t('you')}</span>
                       </Show>
                       <Show when={u.isOwner}>
-                        <span class="badge badge-neutral badge-sm ml-2" title={t('ownerHint')}>
+                        <span class="dumb-um-badge" title={t('ownerHint')}>
                           {t('owner')}
                         </span>
                       </Show>
                     </div>
-                    <div class="text-base-content text-xs">{u.email}</div>
+                    <div class="dumb-um-mail">{u.email}</div>
                   </td>
 
                   <td>
@@ -363,7 +469,8 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                       fallback={roles().find(r => r.value === u.role)?.label ?? u.role}
                     >
                       <select
-                        class="select select-sm w-36"
+                        class="dumb-um-select"
+                        style={{ width: '9rem' }}
                         value={u.role}
                         disabled={busy() === 'role:' + u.id || locked(u)}
                         onChange={e =>
@@ -379,29 +486,29 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                     <Show
                       when={u.banned}
                       fallback={
-                        <span class="text-success text-xs">
+                        <span class="dumb-um-state" data-banned="0">
                           {t('active')}
                           <Show when={u.sessions !== undefined && u.sessions > 0}>
-                            <span class="text-base-content">
+                            <span class="dumb-um-sessions">
                               {' · ' + t('sessions') + ': ' + u.sessions}
                             </span>
                           </Show>
                         </span>
                       }
                     >
-                      <span class="text-error text-xs" title={u.banReason ?? ''}>
+                      <span class="dumb-um-state" data-banned="1" title={u.banReason ?? ''}>
                         {t('banned')}
                       </span>
                     </Show>
                   </td>
 
-                  <td class="text-base-content text-sm whitespace-nowrap">{fmt(u.createdAt)}</td>
+                  <td class="dumb-um-date">{fmt(u.createdAt)}</td>
 
                   <td>
-                    <div class="flex flex-wrap justify-end gap-1">
+                    <div class="dumb-um-actions">
                       <Show when={props.onSetPassword}>
                         <button
-                          class="btn btn-sm btn-ghost"
+                          class="dumb-um-btn"
                           disabled={locked(u)}
                           title={locked(u) ? t('ownerPasswordHint') : t('setPasswordHint')}
                           onClick={() => {
@@ -418,7 +525,7 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                           when={u.banned}
                           fallback={
                             <button
-                              class="btn btn-sm btn-ghost"
+                              class="dumb-um-btn"
                               disabled={isSelf(u.id) || locked(u) || busy() === 'ban:' + u.id}
                               title={
                                 locked(u)
@@ -436,7 +543,8 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                           }
                         >
                           <button
-                            class="btn btn-sm btn-ghost text-success"
+                            class="dumb-um-btn"
+                            data-kind="ok"
                             disabled={busy() === 'unban:' + u.id}
                             onClick={() =>
                               void run('unban:' + u.id, () => props.onUnban!(u.id), t('unbannedOk'))
@@ -449,7 +557,7 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
 
                       <Show when={props.onRevokeSessions}>
                         <button
-                          class="btn btn-sm btn-ghost"
+                          class="dumb-um-btn"
                           disabled={busy() === 'revoke:' + u.id || u.sessions === 0 || locked(u)}
                           title={t('revokeHint')}
                           onClick={() =>
@@ -469,7 +577,8 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                           when={confirmRemove() === u.id}
                           fallback={
                             <button
-                              class="btn btn-sm btn-ghost text-error"
+                              class="dumb-um-btn"
+                              data-kind="danger"
                               disabled={isSelf(u.id) || locked(u)}
                               title={
                                 locked(u)
@@ -485,7 +594,8 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                           }
                         >
                           <button
-                            class="btn btn-sm btn-error"
+                            class="dumb-um-btn"
+                            data-kind="danger-solid"
                             disabled={busy() === 'remove:' + u.id}
                             onClick={() =>
                               void run(
@@ -500,7 +610,7 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                           >
                             {t('removeConfirm')}
                           </button>
-                          <button class="btn btn-sm btn-ghost" onClick={() => setConfirmRemove(null)}>
+                          <button class="dumb-um-btn" onClick={() => setConfirmRemove(null)}>
                             {t('cancel')}
                           </button>
                         </Show>
@@ -509,7 +619,7 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
 
                     <Show when={pwFor() === u.id}>
                       <form
-                        class="mt-2 flex justify-end gap-1"
+                        class="dumb-um-pw"
                         onSubmit={e => {
                           e.preventDefault()
                           const value = pwValue()
@@ -524,15 +634,20 @@ export function DumbUserManager(props: DumbUserManagerProps): JSX.Element {
                         }}
                       >
                         <input
-                          class="input input-sm w-44"
+                          class="dumb-um-input"
+                          style={{ width: '11rem' }}
                           value={pwValue()}
                           onInput={e => setPwValue(e.currentTarget.value)}
                           autocomplete="off"
                         />
-                        <button class="btn btn-sm btn-neutral" disabled={busy() === 'pw:' + u.id}>
+                        <button
+                          class="dumb-um-btn"
+                          data-kind="primary"
+                          disabled={busy() === 'pw:' + u.id}
+                        >
                           {t('apply')}
                         </button>
-                        <button type="button" class="btn btn-sm btn-ghost" onClick={() => setPwFor(null)}>
+                        <button type="button" class="dumb-um-btn" onClick={() => setPwFor(null)}>
                           {t('cancel')}
                         </button>
                       </form>

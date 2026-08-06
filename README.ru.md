@@ -18,6 +18,7 @@
 - **[DumbDateRange](docs/ru/DumbDateRange.md)** — календарь на день или период, занятость видна до клика. Дата — строка, поэтому часовые пояса не сдвигают ночь.
 - **[DumbModal](docs/ru/DumbModal.md)** · **[DumbLightbox](docs/ru/DumbLightbox.md)** · **[DumbContextMenu](docs/ru/DumbContextMenu.md)** · **[DumbToast](docs/ru/DumbToast.md)** — семейство top layer: нативный `<dialog>` и Popover API с anchor positioning, поэтому никто не спорит за `z-index`.
 - **[DumbPropsTable](docs/ru/DumbPropsTable.md)** — отладочная таблица пропсов: имя, тип и значение, включая функции и `undefined`, — то есть ровно то, что `JSON.stringify` молча выбрасывает.
+- **[DumbUserManager](docs/ru/DumbUserManager.md)** — экран администратора: выдать доступ, сменить роль, заблокировать, задать пароль, выкинуть из сессий. Кто стоит за ним, компонент не знает — каждый колбэк необязателен, поэтому один и тот же экран годится и администратору, и тому, кому можно только смотреть.
 - **[Длинные списки](docs/ru/Virtual.md)** — `createVirtualizer`: окно списка считается арифметикой по заявленному размеру строки, элементы не измеряются ни разу. Рядом `createRowIndex` — сортировка и фильтр миллиона строк в воркере, порциями и с отменой устаревшего запроса.
 - **[Odata1C](docs/ru/Odata1C.md)** — клиент стандартного интерфейса OData 1С без привязки к фреймворку: Basic-авторизация, сборка запросов и обход капризов платформы. Работает и в браузере, и в Node.
 
@@ -92,6 +93,8 @@ pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 | `@solid-dumb-kit/context-menu` | `DumbContextMenu`, `DumbPopover` — правый клик и карточки у точки | — |
 | `@solid-dumb-kit/toast` | `DumbToaster`, `toast` — сообщения и вопросы | — |
 | `@solid-dumb-kit/finder` | `DumbFinder` — файлы в хранилище: папки, выделение, заливка, перенос | `@solid-primitives/upload` |
+| `@solid-dumb-kit/user-manager` | `DumbUserManager` — доступ сотрудников: роли, блокировки, пароли, сессии | — |
+| `@solid-dumb-kit/props-table` | `DumbPropsTable` — таблица пропсов прямо из типа | — |
 | `@solid-dumb-kit/odata-1c` | клиент OData 1С — без Solid | — |
 | `@solid-dumb-kit/utils` | формат, slug, zip, imgproxy | `fflate`, `slug` |
 
@@ -130,6 +133,7 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 | `extractImagesFromZip` | утилита | [docs/ru/utils.md#extractimagesfromzip--картинки-из-zip](docs/ru/utils.md#extractimagesfromzip--картинки-из-zip) |
 | `imgproxyUrl` / `configureImgproxy` / `ImgproxyOps` / `ImgproxyConfig` | утилита | [docs/ru/utils.md#imgproxyurl--сборка-url-для-imgproxy](docs/ru/utils.md#imgproxyurl--сборка-url-для-imgproxy) |
 | `DumbPropsTable` / `DumbPropsTableProps` / `dumpProps` / `describe` / `DumpRow` | компонент | [docs/ru/DumbPropsTable.md](docs/ru/DumbPropsTable.md) |
+| `DumbUserManager` / `DumbUserManagerProps` / `UserRow` / `RoleOption` / `UserManagerLabels` / `suggestPassword` | компонент | [docs/ru/DumbUserManager.md](docs/ru/DumbUserManager.md) |
 | `createVirtualizer` / `scrollOffsetFor` / `VirtualOptions` / `VirtualRange` / `MAX_SCROLL_HEIGHT` | примитив | [docs/ru/Virtual.md](docs/ru/Virtual.md) |
 | `createRowIndex` / `RowIndexOptions` / `RowIndexResult` / `RowColumn` / `RowQuery` | примитив | [docs/ru/Virtual.md#createrowindex--сортировка-и-фильтр-вне-главного-потока](docs/ru/Virtual.md#createrowindex--сортировка-и-фильтр-вне-главного-потока) |
 | `OdataClient` / `createOdataClient` / `OdataClientOptions` / `OdataListResponse` | клиент | [docs/ru/Odata1C.md](docs/ru/Odata1C.md) |

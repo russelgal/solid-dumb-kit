@@ -18,6 +18,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[DumbDateRange](docs/DumbDateRange.md)** — a calendar for a day or a range, with occupancy shown before the click. Dates are strings, so timezones can't shift a night.
 - **[DumbModal](docs/DumbModal.md)** · **[DumbLightbox](docs/DumbLightbox.md)** · **[DumbContextMenu](docs/DumbContextMenu.md)** · **[DumbToast](docs/DumbToast.md)** — the top-layer family: native `<dialog>` and the Popover API with anchor positioning, so nothing fights over `z-index`.
 - **[DumbPropsTable](docs/DumbPropsTable.md)** — a debug props table: name, type and value, functions and `undefined` included — exactly what `JSON.stringify` silently drops.
+- **[DumbUserManager](docs/DumbUserManager.md)** — the admin screen: grant access, change a role, ban, set a password, revoke sessions. It has no idea what is behind it — every callback is optional, so the same screen serves an admin and a read-only viewer.
 - **[Long lists](docs/Virtual.md)** — `createVirtualizer`: the list window is arithmetic over a declared row size, elements are never measured. Next to it `createRowIndex` — sorting and filtering a million rows in a worker, in chunks, cancelling stale requests.
 - **[Odata1C](docs/Odata1C.md)** — framework-free client for the 1C standard OData interface: Basic auth, request building, and the platform's quirks handled for you. Runs in the browser and in Node.
 
@@ -92,6 +93,8 @@ Packages split by **how the gesture is driven**. That's the one division that ma
 | `@solid-dumb-kit/context-menu` | `DumbContextMenu`, `DumbPopover` — right click and cards at a point | — |
 | `@solid-dumb-kit/toast` | `DumbToaster`, `toast` — messages and questions | — |
 | `@solid-dumb-kit/finder` | `DumbFinder` — files in a store: folders, selection, upload, move | `@solid-primitives/upload` |
+| `@solid-dumb-kit/user-manager` | `DumbUserManager` — access for staff: roles, bans, passwords, sessions | — |
+| `@solid-dumb-kit/props-table` | `DumbPropsTable` — a props table straight from the type | — |
 | `@solid-dumb-kit/odata-1c` | 1C OData client — no Solid needed | — |
 | `@solid-dumb-kit/utils` | format, slug, zip, imgproxy | `fflate`, `slug` |
 
@@ -130,6 +133,7 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 | `extractImagesFromZip` | util | [docs/utils.md#extractimagesfromzip--images-out-of-a-zip](docs/utils.md#extractimagesfromzip--images-out-of-a-zip) |
 | `imgproxyUrl` / `configureImgproxy` / `ImgproxyOps` / `ImgproxyConfig` | util | [docs/utils.md#imgproxyurl--imgproxy-url-builder](docs/utils.md#imgproxyurl--imgproxy-url-builder) |
 | `DumbPropsTable` / `DumbPropsTableProps` / `dumpProps` / `describe` / `DumpRow` | component | [docs/DumbPropsTable.md](docs/DumbPropsTable.md) |
+| `DumbUserManager` / `DumbUserManagerProps` / `UserRow` / `RoleOption` / `UserManagerLabels` / `suggestPassword` | component | [docs/DumbUserManager.md](docs/DumbUserManager.md) |
 | `createVirtualizer` / `scrollOffsetFor` / `VirtualOptions` / `VirtualRange` / `MAX_SCROLL_HEIGHT` | primitive | [docs/Virtual.md](docs/Virtual.md) |
 | `createRowIndex` / `RowIndexOptions` / `RowIndexResult` / `RowColumn` / `RowQuery` | primitive | [docs/Virtual.md#createrowindex--sorting-and-filtering-off-the-main-thread](docs/Virtual.md#createrowindex--sorting-and-filtering-off-the-main-thread) |
 | `OdataClient` / `createOdataClient` / `OdataClientOptions` / `OdataListResponse` | client | [docs/Odata1C.md](docs/Odata1C.md) |
