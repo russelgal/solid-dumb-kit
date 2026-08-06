@@ -23,6 +23,7 @@ import DumbTableExample from "../../examples/data/DumbTable.example";
 import DumbFinderExample from "../../examples/data/DumbFinder.example";
 import VirtualExample from "../../examples/data/virtual.example";
 import DumbPropsTableExample from "../../examples/data/DumbPropsTable.example";
+import DumbUserManagerExample from "../../examples/data/DumbUserManager.example";
 import PrimitivesExample from "../../examples/data/primitives.example";
 import Odata1CExample from "../../examples/data/Odata1C.example";
 import UtilsExample from "../../examples/data/utils.example";
@@ -194,6 +195,13 @@ const GROUPS: Array<Group> = [
         pkg: "shared",
         hint: "миллион строк, пул узлов, воркер",
         Comp: VirtualExample,
+      },
+      {
+        id: "user-manager",
+        label: "DumbUserManager",
+        pkg: "user-manager",
+        hint: "доступ сотрудников",
+        Comp: DumbUserManagerExample,
       },
       {
         id: "props-table",

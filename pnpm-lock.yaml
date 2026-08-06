@@ -90,6 +90,9 @@ importers:
       '@solid-dumb-kit/tree':
         specifier: workspace:*
         version: link:packages/tree
+      '@solid-dumb-kit/user-manager':
+        specifier: workspace:*
+        version: link:packages/user-manager
       '@solid-dumb-kit/utils':
         specifier: workspace:*
         version: link:packages/utils
@@ -369,10 +372,6 @@ importers:
       solid-js:
         specifier: ^1.8.0
         version: 1.9.14
-    devDependencies:
-      '@solid-dumb-kit/shared':
-        specifier: workspace:*
-        version: link:../shared
 
   packages/utils:
     dependencies:
