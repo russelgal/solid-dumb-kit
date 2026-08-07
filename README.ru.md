@@ -16,6 +16,7 @@
 - **[DumbFinder](docs/ru/DumbFinder.md)** — файловый менеджер по чужому хранилищу: папки, выделение рамкой, заливка броском, перенос перетаскиванием. Про S3 ничего не знает — говорит с адаптером `source`, за которым может стоять что угодно.
 - **[DumbTimeline](docs/ru/DumbTimeline.md)** — шахматка: строки-ресурсы × колонки-время. Сутки, часы и дневная аренда на одной сетке; за жест ни одного замера, а наложение соседей невозможно по устройству.
 - **[DumbDateRange](docs/ru/DumbDateRange.md)** — календарь на день или период, занятость видна до клика. Дата — строка, поэтому часовые пояса не сдвигают ночь.
+- **[DumbDateTimeRange](docs/ru/DumbDateTimeRange.md)** — тот же период, но с временем: лента слотов обводится протяжкой, занятый слот заштрихован, а касание концами — не пересечение: выезд в 12:00 и заезд в 16:00 делят день, как это и бывает.
 - **[DumbModal](docs/ru/DumbModal.md)** · **[DumbLightbox](docs/ru/DumbLightbox.md)** · **[DumbContextMenu](docs/ru/DumbContextMenu.md)** · **[DumbToast](docs/ru/DumbToast.md)** — семейство top layer: нативный `<dialog>` и Popover API с anchor positioning, поэтому никто не спорит за `z-index`.
 - **[DumbPropsTable](docs/ru/DumbPropsTable.md)** — отладочная таблица пропсов: имя, тип и значение, включая функции и `undefined`, — то есть ровно то, что `JSON.stringify` молча выбрасывает.
 - **[DumbUserManager](docs/ru/DumbUserManager.md)** — экран администратора: выдать доступ, сменить роль, заблокировать, задать пароль, выкинуть из сессий. Кто стоит за ним, компонент не знает — каждый колбэк необязателен, поэтому один и тот же экран годится и администратору, и тому, кому можно только смотреть.
@@ -87,7 +88,7 @@ pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 | `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
 | `@solid-dumb-kit/tree` | `DumbTree` — дерево и плоский список | `@solid-primitives/storage` |
 | `@solid-dumb-kit/timeline` | `DumbTimeline` — шахматка: сутки, часы, дневная аренда | — |
-| `@solid-dumb-kit/date-range` | `DumbDateRange` — календарь на день или период | — |
+| `@solid-dumb-kit/date-range` | `DumbDateRange`, `DumbDateTimeRange`, `DumbTimeSelect` — день, период, период с временем | — |
 | `@solid-dumb-kit/modal` | `DumbModal` — нативный `<dialog>` в top layer | — |
 | `@solid-dumb-kit/lightbox` | `DumbLightbox` — просмотрщик картинок | — |
 | `@solid-dumb-kit/context-menu` | `DumbContextMenu`, `DumbPopover` — правый клик и карточки у точки | — |

@@ -16,6 +16,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[DumbFinder](docs/DumbFinder.md)** — a file manager over someone else's storage: folders, rubber-band selection, upload by dropping, move by dragging. Knows nothing about S3 — it talks to a `source` adapter, so anything can sit behind it.
 - **[DumbTimeline](docs/DumbTimeline.md)** — a booking chart: resource rows × time columns. Nights, hours and day-long rentals on one grid; no measurements during a drag, and overlapping neighbours is impossible by construction.
 - **[DumbDateRange](docs/DumbDateRange.md)** — a calendar for a day or a range, with occupancy shown before the click. Dates are strings, so timezones can't shift a night.
+- **[DumbDateTimeRange](docs/DumbDateTimeRange.md)** — the same period, but with time: the strip of slots is drawn by dragging, a busy slot is hatched, and touching at the ends is not an overlap — check-out at 12:00 and check-in at 16:00 share a day, as they do in life.
 - **[DumbModal](docs/DumbModal.md)** · **[DumbLightbox](docs/DumbLightbox.md)** · **[DumbContextMenu](docs/DumbContextMenu.md)** · **[DumbToast](docs/DumbToast.md)** — the top-layer family: native `<dialog>` and the Popover API with anchor positioning, so nothing fights over `z-index`.
 - **[DumbPropsTable](docs/DumbPropsTable.md)** — a debug props table: name, type and value, functions and `undefined` included — exactly what `JSON.stringify` silently drops.
 - **[DumbUserManager](docs/DumbUserManager.md)** — the admin screen: grant access, change a role, ban, set a password, revoke sessions. It has no idea what is behind it — every callback is optional, so the same screen serves an admin and a read-only viewer.
@@ -87,7 +88,7 @@ Packages split by **how the gesture is driven**. That's the one division that ma
 | `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
 | `@solid-dumb-kit/tree` | `DumbTree` — tree and flat list | `@solid-primitives/storage` |
 | `@solid-dumb-kit/timeline` | `DumbTimeline` — booking chart: nights, hours, day rentals | — |
-| `@solid-dumb-kit/date-range` | `DumbDateRange` — calendar for a day or a range | — |
+| `@solid-dumb-kit/date-range` | `DumbDateRange`, `DumbDateTimeRange`, `DumbTimeSelect` — day, period, period with time | — |
 | `@solid-dumb-kit/modal` | `DumbModal` — native `<dialog>` in the top layer | — |
 | `@solid-dumb-kit/lightbox` | `DumbLightbox` — full-screen image viewer | — |
 | `@solid-dumb-kit/context-menu` | `DumbContextMenu`, `DumbPopover` — right click and cards at a point | — |
