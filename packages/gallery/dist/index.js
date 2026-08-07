@@ -1,5 +1,6 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect, setStyleProperty, className, memo, style, template } from 'solid-js/web';
-import { createSignal, onCleanup, createMemo, Show, createEffect, For } from 'solid-js';
+import { delegateEvents, use, insert, createComponent, setAttribute, effect as effect$1, setStyleProperty, className, memo, style, template } from 'solid-js/web';
+import * as solid from 'solid-js';
+import { createSignal, onCleanup, createMemo, Show, For, createEffect } from 'solid-js';
 import { createFileUploader, createDropzone } from '@solid-primitives/upload';
 
 // src/DumbGallery.tsx
@@ -9,6 +10,12 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -538,7 +545,7 @@ function DumbSortableDnd(props) {
   const stable = createStableOrder(props.id);
   const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
-  createEffect(() => {
+  effect(() => {
     for (const [id, i] of places()) {
       const el = els.get(id);
       if (!el) continue;
@@ -565,7 +572,7 @@ function DumbSortableDnd(props) {
         return el;
       }
     }));
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = props.class, _v$2 = props.style;
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
       _p$.t = style(_el$, _v$2, _p$.t);
@@ -942,11 +949,11 @@ function DumbGallery(props) {
           },
           get children() {
             var _el$7 = _tmpl$5(), _el$8 = _el$7.firstChild;
-            effect((_$p) => setStyleProperty(_el$8, "width", `${Math.round(progressOf(item.id) * 100)}%`));
+            effect$1((_$p) => setStyleProperty(_el$8, "width", `${Math.round(progressOf(item.id) * 100)}%`));
             return _el$7;
           }
         }), null);
-        effect((_p$) => {
+        effect$1((_p$) => {
           var _v$4 = `dumb-gallery-tile rounded-box bg-base-200 ${item.status === "error" ? "outline-error outline-2" : ""}`, _v$5 = item.status ?? "local", _v$6 = item.error ?? item.name, _v$7 = item.preview ?? item.url, _v$8 = item.name ?? "";
           _v$4 !== _p$.e && className(_el$4, _p$.e = _v$4);
           _v$5 !== _p$.t && setAttribute(_el$4, "data-status", _p$.t = _v$5);
@@ -991,7 +998,7 @@ function DumbGallery(props) {
         return _el$3;
       }
     }), null);
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = `dumb-gallery-drop ${props.class ?? ""}`, _v$2 = dragOver() && editable() ? "1" : void 0, _v$3 = props.style;
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
       _v$2 !== _p$.t && setAttribute(_el$, "data-over", _p$.t = _v$2);

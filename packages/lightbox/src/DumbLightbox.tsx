@@ -12,13 +12,8 @@
 // каждое нажатие стрелки показывает пустоту на время загрузки, и просмотр
 // превращается в ожидание.
 
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
-import {
-  injectStyle,
-  resolveCloseSide,
-  shouldAnimate,
-  type CloseSideOption,
-} from '@solid-dumb-kit/shared'
+import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { effect, injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type LightboxItem = {
   /** что показывать */
@@ -110,7 +105,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
   )
 
   // диалог открывается и закрывается императивно — сигнал только источник правды
-  createEffect(() => {
+  effect(() => {
     const open = at() !== null
     if (open && !dialog.open) dialog.showModal()
     if (!open && dialog.open) dialog.close()
@@ -120,7 +115,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
    * Соседние тянем заранее. `new Image()` — самый дешёвый способ: браузер
    * положит их в тот же кеш, откуда потом возьмёт `<img>`.
    */
-  createEffect(() => {
+  effect(() => {
     const i = at()
     if (i === null) return
     for (const d of [1, -1]) {
@@ -139,7 +134,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
     // Esc закрывает сам `<dialog>`, но нам надо ещё и сбросить состояние
   }
 
-  createEffect(() => {
+  effect(() => {
     window.addEventListener('keydown', onKey)
     onCleanup(() => window.removeEventListener('keydown', onKey))
   })

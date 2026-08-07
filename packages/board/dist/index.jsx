@@ -1,5 +1,5 @@
 // src/DumbBoard.tsx
-import { For as For2, Show as Show2, createEffect as createEffect2, createMemo as createMemo2, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
+import { For as For2, Show as Show2, createMemo as createMemo2, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
@@ -10,6 +10,12 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 function onMounted(fn) {
   createEffect(() => untrack(fn));
@@ -282,7 +288,7 @@ function createAutoScroller() {
 }
 
 // ../grid/dist/index.js
-import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, memo, setAttribute, className, style, template } from "solid-js/web";
+import { delegateEvents, use, insert, createComponent, effect as effect2, setStyleProperty, memo, setAttribute, className, style, template } from "solid-js/web";
 import { createSignal, onCleanup, createMemo, Show, For } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
@@ -869,7 +875,7 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  createEffect2(() => {
+  effect(() => {
     flip = createFlip(shouldAnimate(props.animate));
   });
   const scroller = createAutoScroller();

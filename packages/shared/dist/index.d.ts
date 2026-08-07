@@ -5,7 +5,7 @@ export { prefersReducedMotion, shouldAnimate } from './motion';
  * на платформу сам; перебивается пропом компонента или общей настройкой.
  */
 export { configureCloseSide, isApplePlatform, resolveCloseSide, type CloseSide, type CloseSideOption, } from './closeSide';
-export { batch, onMounted, watch } from './solidCompat';
+export { batch, effect, onMounted, watch } from './solidCompat';
 /** Разовый инжект стилей в `<head>` — переживает размонтирование компонента. */
 export { injectStyle } from './injectStyle';
 /**

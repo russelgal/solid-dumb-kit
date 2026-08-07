@@ -1,13 +1,5 @@
 // src/DumbFinder.tsx
-import {
-  For as For2,
-  Show as Show2,
-  createEffect as createEffect3,
-  createMemo,
-  createSignal as createSignal2,
-  onCleanup as onCleanup2,
-  untrack as untrack4
-} from "solid-js";
+import { For as For2, Show as Show2, createMemo, createSignal as createSignal2, onCleanup as onCleanup2, untrack as untrack4 } from "solid-js";
 import { createFileUploader } from "@solid-primitives/upload";
 
 // ../selection/dist/index.js
@@ -1064,6 +1056,12 @@ delegateEvents(["mousedown"]);
 // ../shared/dist/index.js
 import * as solid from "solid-js";
 import { createEffect as createEffect2, untrack as untrack3 } from "solid-js";
+var SOLID_2 = !("batch" in solid);
+function effect3(fn) {
+  if (SOLID_2) createEffect2(fn, () => {
+  });
+  else createEffect2(fn);
+}
 var batch2 = solid.batch ?? ((fn) => fn());
 function watch(dep, fn, opts) {
   let first = true;
@@ -2550,7 +2548,7 @@ function DumbFinder(props) {
       wholeFlight = false;
     }
   }
-  createEffect3(() => {
+  effect3(() => {
     if (props.sidebar === false) return;
     if (props.source.tree) {
       if (whole() === null) void loadWhole();
@@ -2596,7 +2594,7 @@ function DumbFinder(props) {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
   }), { defer: true });
-  createEffect3(() => {
+  effect3(() => {
     const cache = sub();
     for (const k of openRows()) if (!(k in cache)) void ensureSub(k);
   });

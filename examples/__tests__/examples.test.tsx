@@ -32,6 +32,7 @@ import DumbBoardEvenExample from '../dnd/DumbBoardEven.example'
 import CssOrderExample from '../lab/CssOrder.example'
 import RawDndExample from '../lab/RawDnd.example'
 import FlipBenchExample from '../lab/FlipBench.example'
+import EventsBenchExample from '../lab/EventsBench.example'
 import OrderKanbanExample from '../lab/OrderKanban.example'
 import OrderBoardExample from '../lab/OrderBoard.example'
 import OrderTableExample from '../lab/OrderTable.example'
@@ -72,6 +73,7 @@ const EXAMPLES = [
   ['CssOrder', CssOrderExample],
   ['RawDnd', RawDndExample],
   ['FlipBench', FlipBenchExample],
+  ['EventsBench', EventsBenchExample],
   ['OrderKanban', OrderKanbanExample],
   ['OrderBoard', OrderBoardExample],
   ['OrderTable', OrderTableExample],

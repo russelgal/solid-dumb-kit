@@ -14,6 +14,7 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var SOLID_2 = !("batch" in solid);
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
 var C = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 };

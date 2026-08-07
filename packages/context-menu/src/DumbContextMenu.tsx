@@ -35,8 +35,8 @@
 // пропускаются, при открытии фокус уходит в меню и возвращается назад при
 // закрытии.
 
-import { For, Show, createEffect, createSignal, onCleanup, type JSX } from 'solid-js'
-import { injectStyle } from '@solid-dumb-kit/shared'
+import { For, Show, createSignal, onCleanup, type JSX } from 'solid-js'
+import { effect, injectStyle } from '@solid-dumb-kit/shared'
 
 export type MenuItem =
   | { kind: 'separator' }
@@ -200,7 +200,7 @@ function Panel(props: {
 
   // Показываем ПОСЛЕ вставки узла: `showPopover` на элементе вне документа
   // бросает. Фокус забирает только корневая панель — стрелки корень и слушает.
-  createEffect(() => {
+  effect(() => {
     queueMicrotask(() => {
       if (el && !el.matches(':popover-open')) el.showPopover?.()
       if (props.depth === 0) el?.focus()
@@ -220,7 +220,7 @@ function Panel(props: {
    * layout не возникает (тот же приём, что и в снимке сортировщика). Снимок
    * ОДИН, на открытие панели: дальше она не двигается.
    */
-  createEffect(() => {
+  effect(() => {
     if (!el) return
     const io = new IntersectionObserver((entries) => {
       const r = entries[entries.length - 1].boundingClientRect
@@ -245,7 +245,7 @@ function Panel(props: {
     return b.left < from ? 'left' : 'right'
   }
 
-  createEffect(() => {
+  effect(() => {
     const api: PanelApi = {
       depth: props.depth,
       get el() {
@@ -512,7 +512,7 @@ export function DumbContextMenu(props: DumbContextMenuProps) {
 
   // Слушатели вешаются один раз на окно: меню открывается по правому клику где
   // угодно внутри цели, а цель может появиться позже.
-  createEffect(() => {
+  effect(() => {
     window.addEventListener('contextmenu', onContext)
     window.addEventListener('keydown', onKey)
     // pointerdown, а не click: закрыть надо ДО того, как клик что-то нажмёт

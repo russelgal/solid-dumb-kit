@@ -1,5 +1,6 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect, style, memo, setStyleProperty, className, template } from 'solid-js/web';
-import { createMemo, createSignal, createEffect, onCleanup, For, Show, untrack } from 'solid-js';
+import { delegateEvents, use, insert, createComponent, setAttribute, effect as effect$1, style, memo, setStyleProperty, className, template } from 'solid-js/web';
+import * as solid from 'solid-js';
+import { createMemo, createSignal, onCleanup, For, Show, createEffect, untrack } from 'solid-js';
 
 // src/DumbBoard.tsx
 function prefersReducedMotion() {
@@ -8,6 +9,12 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 function onMounted(fn) {
   createEffect(() => untrack(fn));
@@ -607,7 +614,7 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  createEffect(() => {
+  effect(() => {
     flip = createFlip(shouldAnimate(props.animate));
   });
   const scroller = createAutoScroller();
@@ -1199,7 +1206,7 @@ function DumbBoard(props) {
             },
             get children() {
               var _el$1 = _tmpl$6();
-              effect((_$p) => style(_el$1, {
+              effect$1((_$p) => style(_el$1, {
                 ...linesOf(s()),
                 opacity: gridVisible() ? "1" : "0"
               }, _$p));
@@ -1223,7 +1230,7 @@ function DumbBoard(props) {
                   get children() {
                     var _el$14 = _tmpl$1();
                     setAttribute(_el$14, "draggable", false);
-                    effect((_p$) => {
+                    effect$1((_p$) => {
                       var _v$12 = props.id(item), _v$13 = props.labels?.resizeBlock ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440";
                       _v$12 !== _p$.e && setAttribute(_el$14, "data-board-block-resize", _p$.e = _v$12);
                       _v$13 !== _p$.t && setAttribute(_el$14, "title", _p$.t = _v$13);
@@ -1235,7 +1242,7 @@ function DumbBoard(props) {
                     return _el$14;
                   }
                 }), null);
-                effect((_p$) => {
+                effect$1((_p$) => {
                   var _v$14 = !!(held() === props.id(item)), _v$15 = props.id(item), _v$16 = editable(), _v$17 = `${(at()?.col ?? 0) + 1} / span ${at()?.w ?? 1}`, _v$18 = `${(at()?.row ?? 0) + 1} / span ${at()?.h ?? 1}`;
                   _v$14 !== _p$.e && _el$13.classList.toggle("held", _p$.e = _v$14);
                   _v$15 !== _p$.t && setAttribute(_el$13, "data-board-block", _p$.t = _v$15);
@@ -1262,7 +1269,7 @@ function DumbBoard(props) {
               const at = () => cellOf(sid, f().id);
               return (() => {
                 var _el$15 = _tmpl$11();
-                effect((_p$) => {
+                effect$1((_p$) => {
                   var _v$19 = `${(at()?.col ?? 0) + 1} / span ${f().w}`, _v$20 = `${(at()?.row ?? 0) + 1} / span ${f().h}`;
                   _v$19 !== _p$.e && setStyleProperty(_el$15, "grid-column", _p$.e = _v$19);
                   _v$20 !== _p$.t && setStyleProperty(_el$15, "grid-row", _p$.t = _v$20);
@@ -1295,7 +1302,7 @@ function DumbBoard(props) {
               })()];
             }
           }), null);
-          effect((_p$) => {
+          effect$1((_p$) => {
             var _v$5 = !!(heldSection() === sid), _v$6 = !!(sizing() === sid), _v$7 = editable(), _v$8 = `span ${spanOf(s())}`, _v$9 = String(showOrder(sid)), _v$0 = String(colsIn(s())), _v$1 = `${rowH()}px`, _v$10 = `${zoneGap()}px`, _v$11 = `${spanSize(s().rows || rowsUsed(sid) + 1, rowH(), zoneGap())}px`;
             _v$5 !== _p$.e && _el$3.classList.toggle("held", _p$.e = _v$5);
             _v$6 !== _p$.t && _el$3.classList.toggle("sizing", _p$.t = _v$6);
@@ -1322,7 +1329,7 @@ function DumbBoard(props) {
         })();
       }
     }));
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = props.class, _v$2 = props.style, _v$3 = String(cols()), _v$4 = `${gap()}px`;
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
       _p$.t = style(_el$, _v$2, _p$.t);

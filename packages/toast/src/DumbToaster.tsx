@@ -10,15 +10,8 @@
 // сообщение об ошибке обязано читаться в любой теме, а не сливаться с фоном.
 
 // onMounted вместо onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
-import { For, Show, createEffect, createSignal, onCleanup, type JSX } from 'solid-js'
-import {
-  createFlip,
-  injectStyle,
-  onMounted,
-  resolveCloseSide,
-  shouldAnimate,
-  type CloseSideOption,
-} from '@solid-dumb-kit/shared'
+import { For, Show, createSignal, onCleanup, type JSX } from 'solid-js'
+import { createFlip, effect, injectStyle, onMounted, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 import { ToastBody, ToastIcon } from './toastLook'
 
@@ -185,7 +178,7 @@ export function DumbToaster(props: DumbToasterProps) {
    * из модалок. Перевсплытие ставит его обратно наверх.
    */
   let was = 0
-  createEffect(() => {
+  effect(() => {
     // летящие считаем наравне с живыми: иначе слой погаснет ровно в тот кадр,
     // когда должен показать полёт последней плашки
     const n = shown().length + flying().length
@@ -278,7 +271,7 @@ export function DumbToaster(props: DumbToasterProps) {
    * лежат с того края, к которому прижата стопка.
    */
   let prevRows: Array<Toast> = []
-  createEffect(() => {
+  effect(() => {
     const now = rows()
     const alive = new Set(now.map((t) => t.id))
     // сколько места освободилось ВЫШЕ по стопке — накапливаем, идя по прошлому

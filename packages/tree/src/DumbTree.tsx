@@ -13,9 +13,9 @@
 // выбранная красится акцентом темы. Свой CSS остался только на полосы и ритм
 // строк в 1lh — классом такого не выразить.
 
-// watch вместо createEffect(on(...)): в Solid 2 `on` не экспортируется (shared/solidCompat)
+// watch вместо effect(on(...)): в Solid 2 `on` не экспортируется (shared/solidCompat)
 import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
-import { injectStyle, watch } from '@solid-dumb-kit/shared'
+import { effect, injectStyle, watch } from '@solid-dumb-kit/shared'
 
 export type TreeNode = {
   id: string

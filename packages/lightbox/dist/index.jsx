@@ -1,5 +1,5 @@
 // src/DumbLightbox.tsx
-import { Show, createEffect as createEffect2, createMemo, createSignal, onCleanup } from "solid-js";
+import { Show, createMemo, createSignal, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
@@ -28,6 +28,12 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -100,12 +106,12 @@ function DumbLightbox(props) {
   const closeButton = () => <button type="button" class="btn btn-sm btn-circle btn-neutral" title="закрыть (Esc)" onClick={close}>
       ✕
     </button>;
-  createEffect2(() => {
+  effect(() => {
     const open = at() !== null;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   });
-  createEffect2(() => {
+  effect(() => {
     const i = at();
     if (i === null) return;
     for (const d of [1, -1]) {
@@ -121,7 +127,7 @@ function DumbLightbox(props) {
     if (ev.key === "+" || ev.key === "=") return setZoom((z) => Math.min(8, z * 1.25));
     if (ev.key === "-") return setZoom((z) => Math.max(1, z / 1.25));
   }
-  createEffect2(() => {
+  effect(() => {
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
   });

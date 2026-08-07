@@ -1,5 +1,5 @@
 // src/DumbModal.tsx
-import { Show, createEffect as createEffect2, onCleanup } from "solid-js";
+import { Show, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
@@ -28,6 +28,12 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 function onMounted(fn) {
   createEffect(() => untrack(fn));
@@ -89,7 +95,7 @@ function DumbModal(props) {
     }
     props.onClose();
   }
-  createEffect2(() => {
+  effect(() => {
     const want = props.open();
     if (want && !dialog.open) {
       returnTo = document.activeElement ?? null;

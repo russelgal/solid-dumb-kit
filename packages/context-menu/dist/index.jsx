@@ -1,5 +1,5 @@
 // src/DumbContextMenu.tsx
-import { For, Show, createEffect as createEffect2, createSignal, onCleanup } from "solid-js";
+import { For, Show, createSignal, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
@@ -21,6 +21,12 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -108,7 +114,7 @@ function Panel(props) {
     if (it && branch(it) && spread) setSub({ i, x, y });
     else setSub(null);
   };
-  createEffect2(() => {
+  effect(() => {
     queueMicrotask(() => {
       if (el && !el.matches(":popover-open")) el.showPopover?.();
       if (props.depth === 0) el?.focus();
@@ -117,7 +123,7 @@ function Panel(props) {
   onCleanup(() => {
     if (el?.matches(":popover-open")) el.hidePopover();
   });
-  createEffect2(() => {
+  effect(() => {
     if (!el) return;
     const io = new IntersectionObserver((entries) => {
       const r = entries[entries.length - 1].boundingClientRect;
@@ -134,7 +140,7 @@ function Panel(props) {
     const from = props.depth === 0 ? props.at.x : props.parentBox?.()?.left ?? props.at.x;
     return b.left < from ? "left" : "right";
   };
-  createEffect2(() => {
+  effect(() => {
     const api = {
       depth: props.depth,
       get el() {
@@ -341,7 +347,7 @@ function DumbContextMenu(props) {
       else if (top.openSub()) queueMicrotask(() => deepest()?.move(1));
     }
   }
-  createEffect2(() => {
+  effect(() => {
     window.addEventListener("contextmenu", onContext);
     window.addEventListener("keydown", onKey);
     const away = (ev) => {
@@ -414,7 +420,7 @@ function DumbContextMenu(props) {
 }
 
 // src/DumbPopover.tsx
-import { Show as Show2, createEffect as createEffect3, onCleanup as onCleanup2 } from "solid-js";
+import { Show as Show2, onCleanup as onCleanup2 } from "solid-js";
 var STYLES2 = `
   /* \u0422\u043E\u043B\u044C\u043A\u043E \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u043A \u0442\u043E\u0447\u043A\u0435 \u0438 top layer \u2014 \u0432\u0438\u0434 \u0434\u0430\u0451\u0442 daisyUI (card) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. */
   .dumb-pop-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
@@ -444,7 +450,7 @@ function DumbPopover(props) {
   const closeButton = () => <button type="button" class="dumb-pop-x btn btn-xs btn-circle btn-ghost" title="закрыть" onClick={close}>
       ✕
     </button>;
-  createEffect3(() => {
+  effect(() => {
     const open = props.at() !== null;
     if (!open) {
       if (box?.matches(":popover-open")) box.hidePopover();
@@ -454,7 +460,7 @@ function DumbPopover(props) {
       if (box && !box.matches(":popover-open")) box.showPopover?.();
     });
   });
-  createEffect3(() => {
+  effect(() => {
     if (props.at() === null) return;
     const onKey = (e) => e.key === "Escape" && close();
     const away = (e) => {

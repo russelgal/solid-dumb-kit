@@ -121,7 +121,7 @@ importers:
         specifier: ^4.4.2
         version: 4.4.2
       solid-js:
-        specifier: ^1.9.14
+        specifier: 1.9.14
         version: 1.9.14
       tailwindcss:
         specifier: ^4.3.3

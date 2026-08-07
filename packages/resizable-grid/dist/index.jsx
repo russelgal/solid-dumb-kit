@@ -6,6 +6,7 @@ import * as v from "valibot";
 // ../shared/dist/index.js
 import * as solid from "solid-js";
 import { createEffect, untrack } from "solid-js";
+var SOLID_2 = !("batch" in solid);
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;

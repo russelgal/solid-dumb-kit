@@ -1,9 +1,15 @@
 // src/DumbTimeline.tsx
-import { For, Show, createEffect as createEffect2, createMemo, createSignal, onCleanup } from "solid-js";
+import { For, Show, createMemo, createSignal, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
 import { createEffect, untrack } from "solid-js";
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 function onMounted(fn) {
   createEffect(() => untrack(fn));
 }
@@ -582,7 +588,7 @@ function DumbTimeline(props) {
     ro.observe(viewport);
     onCleanup(() => ro.disconnect());
   });
-  createEffect2(() => {
+  effect(() => {
     scale();
     if (vpW() > 0) props.onVisibleRange?.(visibleRange());
   });

@@ -284,6 +284,13 @@ const GROUPS: Array<Group> = [
         file: "examples/lab/FlipBench.example.tsx",
       },
       {
+        id: "events-bench",
+        label: "События",
+        pkg: "shared",
+        hint: "делегирование против слушателей",
+        file: "examples/lab/EventsBench.example.tsx",
+      },
+      {
         id: "orderkanban",
         label: "Канбан на order",
         pkg: "shared",

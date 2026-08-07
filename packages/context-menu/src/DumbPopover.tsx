@@ -12,8 +12,8 @@
 // `overflow` предков, не спорит за `z-index`) и ANCHOR POSITIONING — сторону
 // выбирает браузер, ни одного замера с нашей стороны.
 
-import { Show, createEffect, onCleanup, type JSX } from 'solid-js'
-import { injectStyle, resolveCloseSide, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { Show, onCleanup, type JSX } from 'solid-js'
+import { effect, injectStyle, resolveCloseSide, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbPopoverProps = {
   /** где показать; `null` — закрыт */
@@ -73,7 +73,7 @@ export function DumbPopover(props: DumbPopoverProps) {
     </button>
   )
 
-  createEffect(() => {
+  effect(() => {
     const open = props.at() !== null
     if (!open) {
       if (box?.matches(':popover-open')) box.hidePopover()
@@ -85,7 +85,7 @@ export function DumbPopover(props: DumbPopoverProps) {
     })
   })
 
-  createEffect(() => {
+  effect(() => {
     if (props.at() === null) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
     // pointerdown, а не click: закрыть надо ДО того, как клик что-то нажмёт

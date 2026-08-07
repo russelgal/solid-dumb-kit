@@ -30,8 +30,8 @@
 // указателе работает и пальцем.
 
 // onMounted вместо onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
-import { createAutoScroller, createFlip, createStableOrder, injectStyle, onMounted, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
+import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { createAutoScroller, createFlip, createStableOrder, effect, injectStyle, onMounted, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
 // математика сетки общая с DumbGrid — своей у доски только поток секций
 import {
   cellRect, colWidth, gridLinesBackground, packFlow, resolveSpan, rowCount, snapSpan, spanSize,
@@ -331,7 +331,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   const zonePad: Record<string, Slot> = {}
 
   let flip: Flip = createFlip(true)
-  createEffect(() => { flip = createFlip(shouldAnimate(props.animate)) })
+  effect(() => { flip = createFlip(shouldAnimate(props.animate)) })
   const scroller = createAutoScroller()
   onCleanup(() => scroller.stop())
 

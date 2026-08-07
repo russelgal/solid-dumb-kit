@@ -15,13 +15,8 @@
 // клик по `::backdrop` приходит на сам `<dialog>`), и защита от закрытия, когда
 // в форме есть несохранённое.
 
-import { Show, createEffect, onCleanup, type JSX } from 'solid-js'
-import {
-  injectStyle,
-  resolveCloseSide,
-  shouldAnimate,
-  type CloseSideOption,
-} from '@solid-dumb-kit/shared'
+import { Show, onCleanup, type JSX } from 'solid-js'
+import { effect, injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbModalProps = {
   open: () => boolean
@@ -107,7 +102,7 @@ export function DumbModal(props: DumbModalProps) {
     props.onClose()
   }
 
-  createEffect(() => {
+  effect(() => {
     const want = props.open()
     if (want && !dialog.open) {
       // куда вернуть фокус, запоминаем ДО открытия: `showModal` его уже уводит

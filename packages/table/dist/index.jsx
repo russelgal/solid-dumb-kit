@@ -566,6 +566,7 @@ function shouldAnimate2(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion2();
 }
+var SOLID_2 = !("batch" in solid);
 
 // src/DumbTable.tsx
 var withViewTransition = (on, fn) => {

@@ -14,6 +14,7 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var SOLID_2 = !("batch" in solid);
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;

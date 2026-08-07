@@ -1,6 +1,6 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, use, addEventListener, isServer, template } from 'solid-js/web';
 import * as solid from 'solid-js';
-import { createSignal, onCleanup, createMemo, createEffect, untrack, For, Show, createUniqueId } from 'solid-js';
+import { createSignal, onCleanup, createMemo, untrack, For, Show, createEffect, createUniqueId } from 'solid-js';
 import { createFileUploader } from '@solid-primitives/upload';
 import { reconcile } from 'solid-js/store';
 
@@ -1039,6 +1039,12 @@ var STYLES = `
   background: oklch(from currentColor l c h / 0.2);
 }`;
 delegateEvents(["mousedown"]);
+var SOLID_2 = !("batch" in solid);
+function effect3(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 var batch2 = solid.batch ?? ((fn) => fn());
 function watch(dep, fn, opts) {
   let first = true;
@@ -2370,7 +2376,7 @@ function DumbFinder(props) {
       wholeFlight = false;
     }
   }
-  createEffect(() => {
+  effect3(() => {
     if (props.sidebar === false) return;
     if (props.source.tree) {
       if (whole() === null) void loadWhole();
@@ -2429,7 +2435,7 @@ function DumbFinder(props) {
   }), {
     defer: true
   });
-  createEffect(() => {
+  effect3(() => {
     const cache = sub();
     for (const k of openRows()) if (!(k in cache)) void ensureSub(k);
   });

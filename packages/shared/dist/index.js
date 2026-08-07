@@ -32,6 +32,12 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 var batch2 = solid.batch ?? ((fn) => fn());
 function onMounted(fn) {
   createEffect(() => untrack(fn));
@@ -1357,4 +1363,4 @@ function putPart(url, chunk, signal, onBytes) {
 }
 var shouldSplit = (file, partSize = 8 * 1024 * 1024) => file.size > partSize;
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, configureCloseSide, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };
+export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, configureCloseSide, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, effect, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };

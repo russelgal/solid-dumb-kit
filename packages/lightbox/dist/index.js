@@ -1,5 +1,6 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect, setStyleProperty, className, template } from 'solid-js/web';
-import { createSignal, createMemo, createEffect, onCleanup, Show } from 'solid-js';
+import { delegateEvents, use, insert, createComponent, setAttribute, effect as effect$1, setStyleProperty, className, template } from 'solid-js/web';
+import * as solid from 'solid-js';
+import { createSignal, createMemo, Show, createEffect, onCleanup } from 'solid-js';
 
 // src/DumbLightbox.tsx
 function prefersReducedMotion() {
@@ -26,6 +27,12 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -115,12 +122,12 @@ function DumbLightbox(props) {
     _el$.$$click = close;
     return _el$;
   })();
-  createEffect(() => {
+  effect(() => {
     const open = at() !== null;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   });
-  createEffect(() => {
+  effect(() => {
     const i = at();
     if (i === null) return;
     for (const d of [1, -1]) {
@@ -136,7 +143,7 @@ function DumbLightbox(props) {
     if (ev.key === "+" || ev.key === "=") return setZoom((z) => Math.min(8, z * 1.25));
     if (ev.key === "-") return setZoom((z) => Math.max(1, z / 1.25));
   }
-  createEffect(() => {
+  effect(() => {
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
   });
@@ -200,7 +207,7 @@ function DumbLightbox(props) {
         _el$3.addEventListener("wheel", onWheel);
         _el$4.$$dblclick = () => zoom() === 1 ? setZoom(2.5) : reset();
         setAttribute(_el$4, "draggable", false);
-        effect((_p$) => {
+        effect$1((_p$) => {
           var _v$3 = dragging() ? "1" : void 0, _v$4 = cur().url, _v$5 = cur().title ?? "", _v$6 = `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`;
           _v$3 !== _p$.e && setAttribute(_el$3, "data-drag", _p$.e = _v$3);
           _v$4 !== _p$.t && setAttribute(_el$4, "src", _p$.t = _v$4);
@@ -281,7 +288,7 @@ function DumbLightbox(props) {
         }
       })]
     }));
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = `dumb-lightbox ${props.class ?? ""}`, _v$2 = shouldAnimate(props.animate) ? "1" : void 0;
       _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
       _v$2 !== _p$.t && setAttribute(_el$2, "data-animate", _p$.t = _v$2);

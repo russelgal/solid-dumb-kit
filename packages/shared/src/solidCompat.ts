@@ -12,6 +12,30 @@
 import * as solid from 'solid-js'
 import { createEffect, untrack } from 'solid-js'
 
+/**
+ * На какой линии Solid нас собрали. Признак — `batch`: в Solid 2 его убрали,
+ * обновления батчатся сами. Проверяется ОДИН раз на модуль, а не при каждом
+ * вызове.
+ */
+const SOLID_2 = !('batch' in (solid as Record<string, unknown>))
+
+/**
+ * `createEffect(fn)` из Solid 1.
+ *
+ * В Solid 2 эффект стал ДВУХФАЗНЫМ: первая функция вычисляет и трекается,
+ * вторая делает работу и не трекается. Одноаргументная форма там не просто
+ * устарела — она падает с `MISSING_EFFECT_FN`, и вместе с ней валится вся
+ * реактивность (`REACTIVITY_HALTED`).
+ *
+ * Здесь обе линии сведены к привычному одному колбэку: на Solid 2 работа
+ * уезжает во вторую фазу, на Solid 1 всё как было. Нужна пара «следить за
+ * этим — делать то» — бери `watch`, она выразительнее.
+ */
+export function effect(fn: () => void): void {
+  if (SOLID_2) (createEffect as unknown as (c: () => void, e: () => void) => void)(fn, () => {})
+  else createEffect(fn)
+}
+
 /** `solid.batch`, где он есть (Solid 1); в Solid 2 обновления батчатся сами */
 export const batch: <T>(fn: () => T) => T =
   (solid as { batch?: <T>(fn: () => T) => T }).batch ?? ((fn) => fn())

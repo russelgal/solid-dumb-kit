@@ -4,6 +4,7 @@ import { For, Show, createMemo, createSignal, onCleanup } from "solid-js";
 // ../shared/dist/index.js
 import * as solid from "solid-js";
 import { createEffect, untrack } from "solid-js";
+var SOLID_2 = !("batch" in solid);
 function watch(dep, fn, opts) {
   let first = true;
   let prev;

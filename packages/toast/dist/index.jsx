@@ -1,5 +1,5 @@
 // src/DumbToaster.tsx
-import { For, Show as Show2, createEffect as createEffect2, createSignal, onCleanup } from "solid-js";
+import { For, Show as Show2, createSignal, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
@@ -28,6 +28,12 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 function onMounted(fn) {
   createEffect(() => untrack(fn));
@@ -451,7 +457,7 @@ function DumbToaster(props) {
     });
   });
   let was = 0;
-  createEffect2(() => {
+  effect(() => {
     const n = shown().length + flying().length;
     if (!n) {
       if (box?.matches(":popover-open")) box.hidePopover();
@@ -496,7 +502,7 @@ function DumbToaster(props) {
     });
   };
   let prevRows = [];
-  createEffect2(() => {
+  effect(() => {
     const now = rows();
     const alive = new Set(now.map((t) => t.id));
     let freed = 0;
@@ -677,7 +683,7 @@ function DumbToaster(props) {
 }
 
 // src/DumbToastCenter.tsx
-import { For as For2, Show as Show3, createEffect as createEffect3, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
+import { For as For2, Show as Show3, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
 var STYLES2 = `
   /* \u041F\u0430\u043D\u0435\u043B\u044C. \u0417\u0434\u0435\u0441\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430 \u0438 \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430: \u0432\u0438\u0434 \u2014 daisyUI \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435.
      popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0446\u0435\u043D\u0442\u0440\u0438\u0440\u0443\u0435\u0442\u0441\u044F \u0438 \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u043F\u043E \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u043C\u0443 \u2014 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C
@@ -778,13 +784,13 @@ function DumbToastCenter(props) {
       if (panel?.matches(":popover-open")) panel.hidePopover();
     });
   });
-  createEffect3(() => {
+  effect(() => {
     if (!open()) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
     onCleanup2(() => clearInterval(id));
   });
-  createEffect3(() => {
+  effect(() => {
     const show = open();
     queueMicrotask(() => {
       if (!panel) return;

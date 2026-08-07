@@ -3,14 +3,21 @@ import { Show, createMemo as createMemo2, createSignal as createSignal2, onClean
 import { createDropzone, createFileUploader } from "@solid-primitives/upload";
 
 // ../sortable-dnd/dist/index.js
-import { use, insert, createComponent, effect, className, style, template } from "solid-js/web";
-import { createSignal, onCleanup, createMemo, createEffect, For } from "solid-js";
+import { use, insert, createComponent, effect as effect$1, className, style, template } from "solid-js/web";
+import * as solid from "solid-js";
+import { createSignal, onCleanup, createMemo, For, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -540,7 +547,7 @@ function DumbSortableDnd(props) {
   const stable = createStableOrder(props.id);
   const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
-  createEffect(() => {
+  effect(() => {
     for (const [id, i] of places()) {
       const el = els.get(id);
       if (!el) continue;
@@ -567,7 +574,7 @@ function DumbSortableDnd(props) {
         return el;
       }
     }));
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = props.class, _v$2 = props.style;
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
       _p$.t = style(_el$, _v$2, _p$.t);
@@ -581,8 +588,9 @@ function DumbSortableDnd(props) {
 }
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
+import * as solid2 from "solid-js";
 import { createEffect as createEffect2, untrack } from "solid-js";
+var SOLID_22 = !("batch" in solid2);
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
