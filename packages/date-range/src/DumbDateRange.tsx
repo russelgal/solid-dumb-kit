@@ -12,10 +12,10 @@
 // Дата здесь — строка `YYYY-MM-DD`, а не `Date`: см. `dateMath.ts`, там же
 // объяснено, почему это не придирка.
 
-import { For, Show, createMemo, createSignal, type JSX } from 'solid-js'
-import { injectStyle } from '@solid-dumb-kit/shared'
+import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import {
-  addMonths, checkRange, diffDays, inRange, monthGrid, orderRange, reachTo, sameMonth,
+  addDays, addMonths, checkRange, diffDays, inRange, monthGrid, orderRange, reachTo, sameMonth,
   startOfMonth, today, weekIndex, type Day,
 } from './dateMath'
 
@@ -146,6 +146,80 @@ export function DumbDateRange(props: DumbDateRangeProps) {
     props.onChange({ from, to })
   }
 
+  /* ── протяжка по дням ───────────────────────────────────────────────────
+   *
+   * Период набирается и ЖЕСТОМ: нажал на день, повёл, отпустил. Два клика при
+   * этом никуда не делись — короткое нажатие без ведения по-прежнему ставит
+   * начало и ждёт второго клика. Различаем по тому, сменился ли день под
+   * курсором за время нажатия: это тот же признак, по которому система
+   * отличает клик от протаскивания.
+   *
+   * Что под курсором, спрашиваем у браузера РАЗ В КАДР (`elementFromPoint` —
+   * хиттест, ему нужна свежая раскладка, а подсветка предыдущего дня её
+   * портит). Замеров ячеек ноль: ни одного `getBoundingClientRect`.
+   */
+  let hitRaf = 0
+  let hitX = 0
+  let hitY = 0
+
+  const dayAt = (x: number, y: number): { day: Day; blocked: boolean } | null => {
+    const el = document.elementFromPoint(x, y) as HTMLElement | null
+    const btn = el?.closest<HTMLElement>('[data-day]')
+    const day = btn?.dataset.day
+    return day ? { day, blocked: (btn as HTMLButtonElement).disabled } : null
+  }
+
+  function onDayDown(day: Day, ev: PointerEvent) {
+    if (ev.button !== 0 || props.single) return
+    suppressTextSelection()
+    // начало ставим сразу: предпросмотр периода тянется за курсором как обычно
+    setPending(day)
+    setHover(day)
+    let moved = false
+
+    const hit = () => {
+      hitRaf = 0
+      const under = dayAt(hitX, hitY)
+      if (!under) return
+      if (under.day !== day) moved = true
+      // Через занятое протяжка не проходит, а ПРИЛИПАЕТ к его границе: тянуть
+      // сквозь чужую бронь бессмысленно, а бросать жест на полпути — обидно.
+      // Тот же приём, что у полос в шахматке.
+      if (!under.blocked) setHover(under.day)
+      else {
+        const stopAt = limit()
+        if (stopAt && diffDays(day, stopAt) > 0) setHover(addDays(stopAt, -1))
+      }
+    }
+    const move = (e: PointerEvent) => {
+      hitX = e.clientX
+      hitY = e.clientY
+      if (!hitRaf) hitRaf = requestAnimationFrame(hit)
+    }
+    const stop = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', stop)
+      if (hitRaf) cancelAnimationFrame(hitRaf)
+      hitRaf = 0
+      restoreTextSelection()
+    }
+    const up = () => {
+      const end = hover()
+      stop()
+      // Отпустили там же, где нажали, — это КЛИК: оставляем начало висеть и
+      // ждём второго клика, как было всегда. Иначе это протяжка, и период
+      // закрывается сразу.
+      if (!moved || !end || end === day) return
+      pick(end)
+    }
+
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', stop)
+    onCleanup(stop)
+  }
+
   const months = () =>
     Array.from({ length: props.months ?? 1 }, (_, i) => addMonths(shownMonth(), i))
 
@@ -202,9 +276,19 @@ export function DumbDateRange(props: DumbDateRangeProps) {
                     return undefined
                   }
                   const mark = () => marks()[day]
+                  /**
+                   * День ЗА пределом достижимости: от начатого выбора до него
+                   * не дотянуться, потому что раньше стоит чужая бронь.
+                   *
+                   * Сравнение именно `diffDays(l, day) > 0` — «day позже
+                   * предела». Обратный знак означал бы «day РАНЬШЕ предела», то
+                   * есть гасил бы ровно достижимые дни: после первого клика
+                   * весь остаток календаря становился серым, и период было не
+                   * закрыть вовсе.
+                   */
                   const beyond = () => {
                     const l = limit()
-                    return !!l && diffDays(l, day) < 0 && diffDays(pending()!, day) > 0
+                    return !!l && diffDays(l, day) > 0
                   }
                   const blocked = () =>
                     isBusy(day) ||
@@ -222,6 +306,7 @@ export function DumbDateRange(props: DumbDateRangeProps) {
                       } ${sameMonth(day, month) ? '' : 'italic'} ${
                         day === today() ? 'font-bold underline' : ''
                       } ${mark()?.class ?? ''}`}
+                      data-day={day}
                       data-out={sameMonth(day, month) ? undefined : '1'}
                       data-today={day === today() ? '1' : undefined}
                       data-busy={isBusy(day) ? '1' : undefined}
@@ -233,6 +318,7 @@ export function DumbDateRange(props: DumbDateRangeProps) {
                           ?.title ?? mark()?.title
                       }
                       onMouseEnter={() => setHover(day)}
+                      onPointerDown={(ev) => onDayDown(day, ev)}
                       onClick={() => pick(day)}
                     >
                       {Number(day.slice(8, 10))}

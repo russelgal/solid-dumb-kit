@@ -488,7 +488,7 @@ function makePersisted(signal, options = {}) {
   ];
 }
 
-// ../../node_modules/.pnpm/valibot@1.4.2_typescript@6.0.3/node_modules/valibot/dist/index.mjs
+// ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
 var DEFAULT_CONFIG = {
   lang: void 0,

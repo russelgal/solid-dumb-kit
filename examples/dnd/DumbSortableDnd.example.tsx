@@ -11,6 +11,25 @@
 // Тач не поддерживается: HTML5 DnD там не существует. Для пальца — DumbSortable.
 import { createSignal } from 'solid-js'
 import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbSortableDnd.snippets'
+
+const SORT_PROPS = [
+  { name: 'items', type: 'T[]', about: 'Текущий порядок.' },
+  {
+    name: 'setItems',
+    type: '(next: T[]) => void',
+    about: 'Новый порядок. Зовётся ПО ХОДУ жеста, на каждом шаге, — данные всё время совпадают с картинкой.',
+  },
+  { name: 'id', type: '(item: T) => string', about: 'Стабильный ключ элемента.' },
+  { name: 'axis', type: "'y' | 'grid'", def: "'y'", about: 'Список или сетка плиток.' },
+  { name: 'onEnd', type: '(from: number, to: number) => void', about: 'Жест закончен — сюда вешают сохранение, а не на setItems.' },
+  { name: 'disabled', type: 'boolean', def: 'false', about: 'Перетаскивание выключено.' },
+  { name: 'animate', type: 'boolean', def: 'системная настройка', about: 'Расступание соседей; не при prefers-reduced-motion.' },
+  { name: 'children', type: '(item, index) => JSX.Element', about: 'Верни ОДИН корневой элемент — компонент привяжется прямо к нему.' },
+]
 
 type Row = { id: string; n: number; label: string; tall: boolean }
 
@@ -134,6 +153,46 @@ export default function DumbSortableDndExample() {
           </DumbSortableDnd>
         </section>
       </div>
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Список на нативном DnD">
+        <p>
+          API такой же, как у указательного сортировщика: <code>children</code> возвращает твой
+          элемент, компонент цепляет к нему жест. Разница внутри — тянет браузер, и «призрак» под
+          курсором рисует система.
+        </p>
+      </Doc>
+      <Code title="Сортируемый список" code={SNIP.basic} />
+
+      <Doc title="Порядок меняется по ходу">
+        <p>
+          <code>setItems</code> зовётся на каждом шаге, а не один раз на дропе. Так данные всё
+          время совпадают с тем, что видно, и ничего не теряется, если браузер не доставит{' '}
+          <code>drop</code> — например, когда бросили за пределами окна. Сохранять при этом надо в{' '}
+          <code>onEnd</code>, иначе на каждый шаг уедет запрос.
+        </p>
+      </Doc>
+      <Code title="Живой порядок и сохранение" code={SNIP.live} />
+
+      <Doc title="Когда нативный, а когда указательный">
+        <p>
+          Нативный умеет то, чего указательный не умеет в принципе: перенос между окнами и с
+          рабочего стола. Взамен он не работает пальцем — тач в HTML5 DnD не поддерживается. В
+          одном приложении оба спокойно уживаются.
+        </p>
+      </Doc>
+      <Code title="Выбор" code={SNIP.choose} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbSortableDnd</h4>
+      <Props rows={SORT_PROPS} />
+
     </div>
   )
 }

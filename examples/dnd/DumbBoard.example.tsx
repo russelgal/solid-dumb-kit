@@ -6,7 +6,59 @@
 // отдаёт новый массив в `setSections`, а хранишь его ты.
 import { createSignal } from 'solid-js'
 import { DumbBoard, type BoardSection, type BlockLimits } from '@solid-dumb-kit/board'
-import { Bar, Switch, Check, Pick, Btn, Note } from '../_controls'
+import { Bar, Switch, Check, Pick, Btn, Note, Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbBoard.snippets'
+
+const BOARD_PROPS = [
+  { name: 'sections', type: 'BoardSection<T>[]', about: 'Секции вместе с блоками — один массив, он же всё состояние доски.' },
+  {
+    name: 'setSections',
+    type: '(next) => void',
+    about: 'Новая раскладка. Зовётся ПО ХОДУ жеста, на каждом шаге; массив не мутируется.',
+  },
+  { name: 'id', type: '(item: T) => string', about: 'Стабильный ключ блока.' },
+  { name: 'onMove', type: '(item, toSection, toIndex) => void', about: 'Блок переехал — сюда вешают сохранение.' },
+  { name: 'onSectionMove', type: '(from, to) => void', about: 'Секцию перетащили за заголовок.' },
+  { name: 'onSectionResize', type: '(id, { span, rows }) => void', about: 'Секция сменила размер: колонок доски и строк сетки блоков.' },
+  {
+    name: 'blockSpan',
+    type: '(item) => number | доля',
+    def: '1',
+    about: "Сколько колонок зоны занимает блок. Кроме числа принимается доля ('half', '1/3').",
+  },
+  {
+    name: 'blockLimits',
+    type: '(item) => BlockLimits',
+    about: 'Пределы в ячейках. minW работает дважды: до него блок ужмётся, чтобы влезть в остаток строки, и ниже него не пустит ресайз.',
+  },
+  { name: 'blockRows', type: '(item) => number', def: '1', about: 'Высота блока в строках сетки зоны.' },
+  {
+    name: 'onBlockResize',
+    type: '(item, { w, h }) => void',
+    about: 'Пока проп не задан, у блоков нет ни ручки, ни жеста: размер живёт в твоих данных.',
+  },
+  { name: 'cols', type: 'number', def: '12', about: 'Колонок у самой доски.' },
+  { name: 'gap / zoneGap', type: 'number', def: '14 / 8', about: 'Зазор доски и зазор внутри секции, px.' },
+  { name: 'rowHeight', type: 'number', def: '76', about: 'Шаг строки внутри секции — он же высота ячейки зоны.' },
+  { name: 'minSpan', type: 'number', def: '3', about: 'Минимальная ширина секции в колонках.' },
+  { name: 'showGrid', type: "boolean | 'drag'", def: "'drag'", about: 'Разметка сетки внутри секций.' },
+  { name: 'editable', type: 'boolean', def: 'true', about: 'Без неё нет ни жестов, ни ручек, ни единого слушателя на блоках.' },
+  { name: 'resizable', type: 'boolean', def: 'true', about: 'Разрешить ресайз секций.' },
+  { name: 'sectionActions', type: '(section) => JSX.Element', about: 'Свои кнопки в правой части шапки секции.' },
+  { name: 'children', type: '(item, section) => JSX.Element', about: 'Верни ОДИН корневой элемент — доска привяжется прямо к нему.' },
+]
+
+const SECTION_PROPS = [
+  { name: 'id', type: 'string', about: 'Ключ секции — он же приходит в onMove и accepts.' },
+  { name: 'items', type: 'T[]', about: 'Блоки этой секции; порядок в массиве = порядок на экране.' },
+  { name: 'title / subtitle', type: 'JSX.Element', about: 'Заголовок (он же ручка переноса секции) и приписка мельче. Нет заголовка — нет и шапки.' },
+  { name: 'cols', type: 'number', def: '3', about: 'Колонок внутри секции.' },
+  { name: 'span', type: 'number', def: 'половина', about: 'Ширина секции в колонках доски.' },
+  { name: 'rows', type: 'number', def: 'по содержимому', about: 'Высота в строках сетки блоков.' },
+  { name: 'accepts', type: '(from: string) => boolean', about: 'Пускать ли сюда блоки из секции from.' },
+]
 
 type Widget = { id: string; title: string; kind: string; w: number; h: number } & BlockLimits
 
@@ -212,6 +264,60 @@ export default function DumbBoardExample() {
           </article>
         )}
       </DumbBoard>
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Секции и блоки">
+        <p>
+          Доска — это секции с сеткой блоков внутри. Всё состояние умещается в один массив: у
+          секции есть свои блоки, своя ширина на доске и своя внутренняя сетка. Разметку блока
+          отдаёт <code>children</code> — доска цепляет жест прямо к возвращённому элементу.
+        </p>
+      </Doc>
+      <Code title="Доска на две секции" code={SNIP.basic} />
+
+      <Doc title="Данные не отстают от картинки">
+        <p>
+          <code>setSections</code> зовётся на каждом шаге жеста, а не один раз на дропе: браузер
+          может не доставить <code>drop</code> (например, бросили за окном), и тогда «отложенное»
+          применение потеряло бы перенос. Сохранять при этом надо в событиях —{' '}
+          <code>onMove</code>, <code>onSectionMove</code>, <code>onSectionResize</code>, — иначе на
+          каждый кадр уедет запрос.
+        </p>
+      </Doc>
+      <Code title="Где сохранять" code={SNIP.state} />
+
+      <Doc title="Размер блока">
+        <p>
+          Ширина задаётся колонками зоны или долей. <code>minW</code> работает дважды: до него блок
+          согласен ужаться, чтобы влезть в остаток строки вместо переезда вниз, и ниже него его не
+          пустит ресайз. Ужатая ширина нигде не хранится — на свободном месте блок сам вернётся к
+          своей.
+        </p>
+      </Doc>
+      <Code title="Ширина, пределы, ручка" code={SNIP.sizes} />
+
+      <Doc title="Настройка секций">
+        <p>
+          Секция сама решает, кого принимать: <code>accepts</code> получает имя секции, откуда
+          тянут. Плюс свои кнопки в шапке, разметка сетки во время жеста и режим просмотра —{' '}
+          <code>editable={"{false}"}</code> не оставляет на блоках ни одного слушателя.
+        </p>
+      </Doc>
+      <Code title="Секции и приём" code={SNIP.sections} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbBoard</h4>
+      <Props rows={BOARD_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">BoardSection</h4>
+      <Props rows={SECTION_PROPS} />
+
     </div>
   )
 }

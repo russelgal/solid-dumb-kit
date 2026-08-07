@@ -6,6 +6,23 @@
 // touches the network on mount (the smoke test mounts this file too).
 import { createSignal, For, Show } from 'solid-js'
 import { createOdataClient, odataString, toBase64, OdataError } from '@solid-dumb-kit/odata-1c'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './Odata1C.snippets'
+
+const CLIENT_API = [
+  { name: 'createOdataClient', type: '(opts) => OdataClient', about: 'baseUrl, login/password либо готовый token, свой fetch и timeoutMs.' },
+  { name: 'list', type: '(resource, params?) => Promise<OdataListResponse>', about: 'Список с $select, $filter, $top, $skip. Формат ответа — JSON без метаданных.' },
+  { name: 'one', type: '(entity, refKey, select?) => Promise', about: 'Один объект по ключу.' },
+  { name: 'count', type: '(resource, filter?) => Promise<number>', about: 'Сколько всего: 1С не отдаёт $count, клиент считает сам.' },
+  { name: 'tailPage', type: '(resource, opts) => Promise', about: 'Последняя страница без выкачивания всего списка.' },
+  { name: 'request', type: '(method, resource, opts?) => Promise', about: 'Произвольный запрос, когда готового метода не хватает.' },
+  { name: 'url', type: '(resource, params?) => string', about: 'Собрать адрес: параметры кодируются вручную (%20, а не +).' },
+  { name: 'odataString', type: '(s: string) => string', about: 'Экранировать строку для фильтра — апостроф удваивается.' },
+  { name: 'toBase64', type: '(s: string) => string', about: 'Basic-токен из логина и пароля.' },
+  { name: 'OdataError', type: 'class', about: 'Ошибка с разобранным odata.error из тела: описание 1С полезнее, чем «500».' },
+]
 
 /** Готовые запросы: показывают приёмы, ради которых клиент и написан */
 const PRESETS = [
@@ -228,6 +245,45 @@ export default function Odata1CExample() {
         </table>
         <p class="mt-2 text-xs text-base-content">Апостроф внутри строки удваивается — иначе фильтр разъедется на полуслове.</p>
       </section>
+
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Клиент">
+        <p>
+          Тонкая обёртка над <code>fetch</code>: авторизация, тайм-аут, сборка адреса и разбор
+          ответа. Никакой модели данных 1С кит не знает и знать не хочет — справочники и документы
+          у всех свои.
+        </p>
+      </Doc>
+      <Code title="Список" code={SNIP.basic} />
+
+      <Doc title="Методы">
+        <p>
+          <code>count</code> существует потому, что 1С не отдаёт <code>$count</code> — клиент
+          считает сам. <code>tailPage</code> — потому что «в конец списка» пользователи жмут чаще,
+          чем кажется, а выкачивать ради этого всё нельзя.
+        </p>
+      </Doc>
+      <Code title="one, count, tailPage" code={SNIP.methods} />
+
+      <Doc title="Строки и ошибки">
+        <p>
+          Апостроф в названии («Труба 1/2&apos;») ломает запрос ровно так же, как кавычка в SQL,
+          поэтому строки в фильтрах экранируются функцией, а не руками. Ошибки приходят
+          типизированными: у 1С в теле лежит собственное описание, и оно куда полезнее кода ответа.
+        </p>
+      </Doc>
+      <Code title="odataString и OdataError" code={SNIP.strings} />
+
+      <h4 class="mt-6 text-lg font-semibold">OdataClient</h4>
+      <Props rows={CLIENT_API} />
 
     </div>
   )

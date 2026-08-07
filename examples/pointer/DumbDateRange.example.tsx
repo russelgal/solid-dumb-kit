@@ -9,7 +9,40 @@
 import { createSignal } from 'solid-js'
 import { DumbDateRange, addDays, daysBetween, today, type BusySpan, type Day } from '@solid-dumb-kit/date-range'
 import { DumbToaster, toast } from '@solid-dumb-kit/toast'
-import { Bar, Check, Note, Pick } from '../_controls'
+import { Bar, Check, Code, Doc, Note, Pick, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbDateRange.snippets'
+
+const RANGE_PROPS = [
+  {
+    name: 'value',
+    type: '() => { from: Day; to: Day } | null',
+    about: 'Выбранный период. Day — строка YYYY-MM-DD, для одиночной даты to === from.',
+  },
+  { name: 'onChange', type: '(next) => void', about: 'Период выбран или сброшен.' },
+  { name: 'single', type: 'boolean', def: 'false', about: 'Одна дата вместо периода.' },
+  { name: 'busy', type: '() => BusySpan[]', about: 'Занятые отрезки: перечёркнуты и не дают через себя перепрыгнуть.' },
+  {
+    name: 'marks',
+    type: '() => Record<Day, { title?, class? }>',
+    about: 'Праздники и выходные: подсветить, но выбирать можно.',
+  },
+  { name: 'months', type: 'number', def: '1', about: 'Сколько месяцев показывать разом.' },
+  { name: 'min / max', type: 'Day', about: 'Границы, за которые нельзя.' },
+  { name: 'minNights / maxNights', type: 'number', about: 'Ограничение длины периода.' },
+  { name: 'dayExtra', type: '(day: Day) => JSX.Element', about: 'Что дописать в углу дня — обычно цену за сутки.' },
+  { name: 'onReject', type: '(why: string) => void', about: 'Выбрать не вышло: сюда приходит причина, готовая к показу.' },
+]
+
+const MATH_API = [
+  { name: 'today / toDay', type: '() => Day / (d: Date) => Day', about: 'Сегодня и перевод даты в строку YYYY-MM-DD.' },
+  { name: 'addDays / addMonths', type: '(day, n) => Day', about: 'Сдвиг без часовых поясов и мутаций.' },
+  { name: 'daysBetween / diffDays', type: '(from, to) => number', about: 'Сколько суток между днями.' },
+  { name: 'overlaps', type: '(a, b) => boolean', about: 'Пересекаются ли два отрезка — та же проверка, что у занятости.' },
+  { name: 'checkRange', type: '(args) => { ok } | { ok: false, why }', about: 'Полная проверка периода: границы, длина, занятость. Ею же пользуется календарь.' },
+  { name: 'monthGrid / weekIndex', type: '(day) => Day[][] / (day) => number', about: 'Сетка месяца и номер недели — для своей разметки календаря.' },
+]
 
 const T = today()
 
@@ -111,6 +144,57 @@ export default function DumbDateRangeExample() {
         Попробуй начать период до брони и дотянуть за неё: календарь не даст и скажет почему.
         Обратный порядок кликов тоже работает — концы меняются местами сами.
       </Note>
+
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="День — это строка">
+        <p>
+          Никакого <code>Date</code> в API: день — <code>YYYY-MM-DD</code>, ровно то, что уезжает в
+          базу и приходит с сервера. Часовые пояса и переходы на летнее время не участвуют вовсе, а
+          сравнение дат превращается в сравнение строк.
+        </p>
+      </Doc>
+      <Code title="Период" code={SNIP.basic} />
+
+      <Doc title="Занятость и ограничения">
+        <p>
+          Занятые отрезки не только красятся, но и держат выбор: период, перепрыгивающий через
+          занятое, не соберётся. Отказ приходит в <code>onReject</code> уже человеческой фразой —
+          её можно сразу показать плашкой, а не переводить коды в текст.
+        </p>
+      </Doc>
+      <Code title="Занято, праздники, пределы" code={SNIP.busy} />
+
+      <Doc title="Цена в углу дня">
+        <p>
+          <code>dayExtra</code> дописывает в ячейку что угодно — тариф, остаток мест, значок. Для
+          одной даты вместо периода есть <code>single</code>: тогда <code>to</code> совпадает с{' '}
+          <code>from</code>, и форма работает с тем же типом.
+        </p>
+      </Doc>
+      <Code title="Тариф и одиночная дата" code={SNIP.extra} />
+
+      <Doc title="Арифметика отдельно от календаря">
+        <p>
+          Проверять занятость и считать ночи приходится и там, где календаря нет: на сервере, перед
+          записью в базу, в отчёте. Поэтому вся математика выложена наружу тем же пакетом — и{' '}
+          <code>checkRange</code> в приложении даёт тот же ответ, что и в интерфейсе.
+        </p>
+      </Doc>
+      <Code title="Даты без разметки" code={SNIP.math} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbDateRange</h4>
+      <Props rows={RANGE_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">Арифметика дат</h4>
+      <Props rows={MATH_API} />
 
       <DumbToaster />
     </div>

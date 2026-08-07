@@ -29,7 +29,7 @@
     }
   },
   "scripts": {
-    "build": "tsup --config ../../configs/tsup.ts",
+    "build": "tsup --config ../../configs/tsup.ts && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "publishConfig": {

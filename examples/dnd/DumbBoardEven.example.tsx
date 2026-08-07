@@ -13,7 +13,10 @@
 // блока, а не прыгают через полстроки.
 import { createSignal } from 'solid-js'
 import { DumbBoard, type BoardSection } from '@solid-dumb-kit/board'
-import { Bar, Switch, Check, Pick, Btn, Note } from '../_controls'
+import { Bar, Switch, Check, Pick, Btn, Note, Code, Doc } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbBoardEven.snippets'
 
 /** Ширина в колонках зоны. Высоты нет вовсе — она у всех одна. */
 type Card = { id: string; title: string; value: string; note: string; w: number }
@@ -204,6 +207,33 @@ export default function DumbBoardEvenExample() {
           </article>
         )}
       </DumbBoard>
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это сделано</h4>
+
+      <Doc title="Одинаковая высота — это данные, а не режим">
+        <p>
+          Ровные строки получаются оттого, что <code>blockRows</code> отдаёт одно и то же число
+          всем карточкам. Отдельного «режима дашборда» в ките нет и не нужно: движок здесь тот же,
+          что и на соседней вкладке с блоками разного калибра.
+        </p>
+      </Doc>
+      <Code title="Общая высота" code={SNIP.even} />
+
+      <Doc title="Разная высота">
+        <p>
+          Если высота у каждого своя, меняется ровно одна строчка — <code>blockRows</code> начинает
+          читать её из данных. Строки станут рваными, зато блоки смогут быть крупнее соседей. Всё
+          остальное поведение сохраняется.
+        </p>
+      </Doc>
+      <Code title="Своя высота у каждого" code={SNIP.ragged} />
+
+      <p class="mt-3 max-w-[92ch] text-sm">
+        Полный список пропсов — на вкладке <b>DumbBoard</b>.
+      </p>
+
     </div>
   )
 }

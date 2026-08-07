@@ -1,7 +1,11 @@
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 import { devS3 } from './devS3'
+import { snippets } from './snippets'
+import { kitMeta } from './kitMeta'
 
 // Tailwind — ТОЛЬКО здесь, в витрине. В самих пакетах его нет и не будет:
 // потребитель волен верстать чем угодно, а кит даёт поведение и структурные
@@ -10,6 +14,9 @@ import { devS3 } from './devS3'
 // Витрина собирается из ИСХОДНИКОВ пакетов, а не из их `dist`: условие
 // `solid-dumb-kit-source` выбирает в `exports` ветку с `src`, поэтому правка в
 // любом пакете видна в демо сразу, без пересборки и без алиасов.
+// __dirname в ESM-конфиге не существует — собираем из import.meta.url
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
 export default defineConfig({
   // `.env` лежит в корне репы, а корень витрины — `playground/`
   envDir: '..',
@@ -20,7 +27,9 @@ export default defineConfig({
   // `devS3` — ручки к хранилищу для вкладок DumbGallery и DumbFinder (подпись
   // на заливку, листинг, удаление, перенос), только в дев: у плагина
   // `apply: 'serve'`, в сборку он не попадает.
-  plugins: [tailwindcss(), solid(), devS3()],
+  // `snippets` идёт до solid: он подменяет модули `*.snippets.ts` готовой
+  // разметкой Shiki, посчитанной здесь же, в Node (см. playground/snippets.ts).
+  plugins: [tailwindcss(), snippets(), kitMeta(resolve(__dirname, '..')), solid(), devS3()],
   resolve: {
     conditions: ['solid-dumb-kit-source', 'development', 'browser'],
   },

@@ -16,7 +16,26 @@
 //    список, без единой кнопки. Это не отдельный режим, а отсутствие пропсов.
 import { createSignal } from 'solid-js'
 import { DumbUserManager, type UserRow } from '@solid-dumb-kit/user-manager'
-import { Bar, Check, Note } from '../_controls'
+import { Bar, Check, Note, Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbUserManager.snippets'
+
+const UM_PROPS = [
+  { name: 'users', type: 'UserRow[]', about: 'Кого показывать. Данные тянет приложение — панель ничего не грузит сама.' },
+  { name: 'roles', type: 'RoleOption[]', about: 'Словарь ролей. Пусто — роль показывается текстом, без выбора.' },
+  { name: 'currentUserId', type: 'string', about: 'Кто смотрит: себе нельзя блокировку и удаление.' },
+  { name: 'defaultRole', type: 'string', about: 'Роль по умолчанию в форме создания.' },
+  { name: 'onCreate', type: '({ name, email, password, role }) => Promise', about: 'Не задан — формы «выдать доступ» нет.' },
+  { name: 'onSetRole', type: '(userId, role) => Promise', about: 'Не задан — роль показывается текстом.' },
+  { name: 'onSetPassword', type: '(userId, password) => Promise', about: 'Смена пароля администратором.' },
+  { name: 'onBan / onUnban', type: '(userId, reason?) => Promise', about: 'Блокировка с причиной и разблокировка.' },
+  { name: 'onRevokeSessions', type: '(userId) => Promise', about: 'Разлогинить везде.' },
+  { name: 'onRemove', type: '(userId) => Promise', about: 'Удаление учётной записи.' },
+  { name: 'formatDate', type: '(iso: string) => string', def: 'как пришло', about: 'Формат даты создания.' },
+  { name: 'title / labels', type: 'string / UserManagerLabels', about: 'Заголовок и тексты кнопок — панель встраивается в чужой экран.' },
+  { name: 'class', type: 'string', about: 'Отступы и ширину задаёт потребитель.' },
+]
 
 const ROLES = [
   { value: 'admin', label: 'Админ', hint: 'всё, включая пользователей' },
@@ -137,6 +156,44 @@ export default function DumbUserManagerExample() {
           onRemove={editable() ? edit.onRemove : undefined}
         />
       </div>
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Список и роли">
+        <p>
+          Панель ничего не грузит и никуда не ходит: данные приходят пропом, действия уходят
+          обработчиками. Поэтому она одинаково работает и с REST, и с GraphQL, и с чем угодно ещё —
+          а <code>currentUserId</code> нужен ровно для одного: не дать заблокировать себя.
+        </p>
+      </Doc>
+      <Code title="Пользователи" code={SNIP.basic} />
+
+      <Doc title="Возможности — по обработчикам">
+        <p>
+          Кнопка появляется тогда и только тогда, когда задан её обработчик. Так панель не обещает
+          того, чего приложение не умеет: нет <code>onRemove</code> — нет и удаления, и объяснять
+          пользователю, почему кнопка не работает, не приходится.
+        </p>
+      </Doc>
+      <Code title="Все действия" code={SNIP.actions} />
+
+      <Doc title="Тексты и оформление">
+        <p>
+          Заголовок, подписи и формат даты задаются снаружи. Разметка — daisyUI, поэтому панель
+          выглядит частью приложения, а не гостем: тема, размеры и цвета берутся из него.
+        </p>
+      </Doc>
+      <Code title="Подписи и класс" code={SNIP.look} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbUserManager</h4>
+      <Props rows={UM_PROPS} />
+
     </div>
   )
 }

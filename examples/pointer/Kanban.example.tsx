@@ -4,6 +4,36 @@
 // (Popover API) — его не режет overflow, так что колонки могут скроллиться.
 import { createSignal, For, Show } from 'solid-js'
 import { createSortableGroup } from '@solid-dumb-kit/sortable'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './Kanban.snippets'
+
+const GROUP_PROPS = [
+  {
+    name: 'onEnd',
+    type: '(from, to) => void',
+    about: 'Перенос завершён: { list, index } откуда и куда. Данные перекладывает потребитель.',
+  },
+  { name: 'disabled', type: '() => boolean', def: 'false', about: 'Выключить перенос целиком.' },
+  { name: 'pressDelay', type: 'number', def: '350', about: 'Палец: сколько держать до старта, иначе доску не прокрутить.' },
+  { name: 'mousePressDelay', type: 'number', def: '0', about: 'Мышь: удержание до старта, 0 — выключено.' },
+  { name: 'mouseThreshold', type: 'number', def: '6', about: 'Мышь: сколько пройти до старта, чтобы клик остался кликом.' },
+  {
+    name: 'animate',
+    type: 'boolean',
+    def: 'системная настройка',
+    about: 'Расступание карточек и приземление клона. Не задан — анимируем, но не при prefers-reduced-motion.',
+  },
+]
+
+const LIST_API = [
+  { name: 'group.list(name, opts)', type: 'SortableListHandle', about: 'Зарегистрировать зону. opts.order — визуальный порядок id, opts.accepts — кого принимать.' },
+  { name: 'list.container', type: '(el) => void', about: 'ref на контейнер колонки.' },
+  { name: 'list.bind(id)', type: '(el) => void', about: 'ref на карточку. Ручка — потомок с [data-drag-handle].' },
+  { name: 'group.activeList()', type: '() => string | null', about: 'Над какой зоной указатель прямо сейчас — для подсветки.' },
+  { name: 'group.draggingId()', type: '() => string | null', about: 'Что летит за курсором — чтобы приглушить оригинал.' },
+]
 
 type Card = { id: string; title: string; tag: string; hue: number }
 
@@ -180,6 +210,58 @@ export default function KanbanExample() {
           }}
         </For>
       </div>
+
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Канбан живёт в пакете сортировки — отдельного ставить не нужно.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Зоны и порядок">
+        <p>
+          Группа создаётся один раз, а колонки регистрируются в ней по именам. Зона отдаёт только
+          свой видимый порядок; куда что переложить — решает <code>onEnd</code> у потребителя. Из
+          рефов нужны два: контейнер зоны и каждая карточка.
+        </p>
+      </Doc>
+      <Code title="Доска" code={SNIP.basic} />
+
+      <Doc title="Кто кого принимает">
+        <p>
+          <code>accepts</code> получает имя зоны, ОТКУДА тянут, и решает, пускать ли. Так делаются
+          односторонние колонки: в «Готово» только с ревью, из архива — никуда.
+        </p>
+      </Doc>
+      <Code title="Правила приёма" code={SNIP.accepts} />
+
+      <Doc title="Обратная связь">
+        <p>
+          Подсветку зоны и приглушение оригинала рисует потребитель — кит лишь говорит, что
+          происходит: <code>activeList()</code> и <code>draggingId()</code>. Никаких навязанных
+          классов, поэтому доска выглядит как остальное приложение.
+        </p>
+      </Doc>
+      <Code title="Подсветка колонки" code={SNIP.feedback} />
+
+      <Doc title="Почему это отдельный движок">
+        <p>
+          Внутри одного списка достаточно <code>DumbSortable</code>. Перенос между контейнерами —
+          другая задача: нужен общий снимок всех зон (иначе зону под курсором пришлось бы искать
+          замерами, то есть forced layout в кадре), оригинал должен остаться в потоке, чтобы
+          колонки не схлопывались, а лететь обязан клон в top layer — иначе его обрежет{' '}
+          <code>overflow</code> прокручиваемой колонки.
+        </p>
+      </Doc>
+      <Code title="Опции группы" code={SNIP.why} />
+
+      <h4 class="mt-6 text-lg font-semibold">createSortableGroup</h4>
+      <Props rows={GROUP_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">Зона и состояние жеста</h4>
+      <Props rows={LIST_API} />
 
     </div>
   )

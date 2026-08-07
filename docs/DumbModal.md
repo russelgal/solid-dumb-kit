@@ -49,3 +49,41 @@ Exactly what the browser doesn't do:
 If the window is about a specific element on the page, use
 [`DumbPopover`](DumbContextMenu.md). A modal in the middle of a booking chart
 covers the very booking it describes, and you have to find it again afterwards.
+
+## A modal question: `modal.confirm`
+
+The browser's `confirm()` blocks the whole tab and gives you no way to spell out
+what will actually happen. `modal.confirm` means the same thing, but as a window
+and a promise.
+
+```tsx
+import { DumbModalHost, modal } from '@solid-dumb-kit/modal'
+
+// ONCE per app, next to the root
+<DumbModalHost />
+
+// ask from anywhere: the bus lives in a module and knows nothing about markup
+const ok = await modal.confirm('Delete the booking permanently?', {
+  title: 'Deletion',
+  yes: 'Delete',
+  no: 'Cancel',
+  danger: true,
+})
+```
+
+Questions form a **queue** and never interrupt each other: `current()` tells what
+is on screen, `pending()` how many are waiting.
+
+| | |
+| --- | --- |
+| `modal.confirm(text, opts)` | `Promise<boolean>`; dismissed without an answer — `false` |
+| `modal.ask(text, actions, opts)` | several answers; returns the pressed `value`, or `opts.dismiss` |
+| `modal.alert(text, opts)` | a message with one button |
+| `modal.current() / pending()` | what is on screen and how many are queued |
+| `createModalBus()` | your own bus: tests, two independent areas |
+
+`dismissible: false` — the question has no safe default, so it cannot be closed
+without answering.
+
+A corner toast (`toast.confirm` from [`@solid-dumb-kit/toast`](DumbToast.md)) is
+for when work continues; a window is for when it has stopped.

@@ -11,6 +11,24 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var configured = "auto";
+var apple = null;
+function isApplePlatform() {
+  if (apple !== null) return apple;
+  const nav = typeof navigator === "undefined" ? null : navigator;
+  if (!nav) return apple = false;
+  const uaData = nav.userAgentData;
+  const src = uaData?.platform || nav.platform || nav.userAgent || "";
+  apple = /mac|iphone|ipad|ipod/i.test(src);
+  return apple;
+}
+function resolveCloseSide(explicit) {
+  const pick = explicit && explicit !== "auto" ? explicit : configured;
+  if (pick !== "auto") return pick;
+  const nav = typeof navigator === "undefined" ? null : navigator;
+  if (!nav) return "left";
+  return isApplePlatform() ? "left" : "right";
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -78,6 +96,10 @@ function DumbLightbox(props) {
     reset();
     props.onIndexChange(null);
   };
+  const side = () => resolveCloseSide(props.closeSide);
+  const closeButton = () => <button type="button" class="btn btn-sm btn-circle btn-neutral" title="закрыть (Esc)" onClick={close}>
+      ✕
+    </button>;
   createEffect2(() => {
     const open = at() !== null;
     if (open && !dialog.open) dialog.showModal();
@@ -165,6 +187,7 @@ function DumbLightbox(props) {
     class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"
     data-at="top"
   >
+              <Show when={side() === "left"}>{closeButton()}</Show>
               <span class="dumb-lightbox-title min-w-0 flex-1 truncate">{cur().title}</span>
               <Show when={props.items.length > 1}>
                 <span class="dumb-lightbox-count tabular-nums">
@@ -176,14 +199,7 @@ function DumbLightbox(props) {
                   1:1
                 </button>
               </Show>
-              <button
-    type="button"
-    class="btn btn-sm btn-circle btn-neutral"
-    title="закрыть (Esc)"
-    onClick={close}
-  >
-                ✕
-              </button>
+              <Show when={side() === "right"}>{closeButton()}</Show>
             </div>
 
             <Show when={props.items.length > 1}>

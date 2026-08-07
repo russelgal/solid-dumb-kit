@@ -13,7 +13,7 @@
 // выбирает браузер, ни одного замера с нашей стороны.
 
 import { Show, createEffect, onCleanup, type JSX } from 'solid-js'
-import { injectStyle } from '@solid-dumb-kit/shared'
+import { injectStyle, resolveCloseSide, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbPopoverProps = {
   /** где показать; `null` — закрыт */
@@ -30,6 +30,8 @@ export type DumbPopoverProps = {
   keepOnOutside?: boolean
   /** ширина, css; по умолчанию `min(320px, 92vw)` */
   width?: string
+  /** сторона крестика; по умолчанию по платформе: macOS слева, иначе справа */
+  closeSide?: CloseSideOption
   class?: string
 }
 
@@ -39,6 +41,10 @@ const STYLES = `
                      anchor-name: --dumb-pop-at }
   .dumb-pop { position: fixed; margin: 0; padding: 0; overflow: visible; background: none;
               width: var(--dumb-pop-w, min(320px, 92vw));
+              /* UA даёт [popover] inset: 0, и при flip-inline у правого края
+                 наш anchor() уезжает в right, а в left приходит ноль от UA —
+                 карточка прыгает к левому краю окна. Гасим явно */
+              right: auto; bottom: auto;
               position-anchor: --dumb-pop-at;
               /* привязка через anchor(): position-area со span-* Chrome
                  отбрасывает как невалидное, и карточка уезжает в угол */
@@ -57,6 +63,15 @@ export function DumbPopover(props: DumbPopoverProps) {
     if (box?.matches(':popover-open')) box.hidePopover()
     props.onClose()
   }
+
+  /** сторона крестика: проп, общая настройка приложения или платформа */
+  const side = () => resolveCloseSide(props.closeSide)
+  // кнопка одна, а мест два — поэтому функция, а не копия разметки
+  const closeButton = () => (
+    <button type="button" class="dumb-pop-x btn btn-xs btn-circle btn-ghost" title="закрыть" onClick={close}>
+      ✕
+    </button>
+  )
 
   createEffect(() => {
     const open = props.at() !== null
@@ -108,15 +123,9 @@ export function DumbPopover(props: DumbPopoverProps) {
           >
             <Show when={props.title}>
               <div class="dumb-pop-head mb-2 flex items-center gap-2 font-semibold">
+                <Show when={side() === 'left'}>{closeButton()}</Show>
                 <div class="dumb-pop-title flex-1 truncate">{props.title}</div>
-                <button
-                  type="button"
-                  class="dumb-pop-x btn btn-xs btn-circle btn-ghost"
-                  title="закрыть"
-                  onClick={close}
-                >
-                  ✕
-                </button>
+                <Show when={side() === 'right'}>{closeButton()}</Show>
               </div>
             </Show>
             <div class="dumb-pop-body">{props.children}</div>

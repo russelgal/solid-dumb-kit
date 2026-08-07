@@ -10,6 +10,25 @@
 // шапку, виджет — за его тело.
 import { createMemo, createSignal, For } from 'solid-js'
 import { createDumbGridGroup, DumbGrid, type DumbGridItem, type DumbGridLayout } from '@solid-dumb-kit/grid'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './Board.snippets'
+
+const GROUP_PROPS = [
+  {
+    name: 'onTransfer',
+    type: '(from, to) => void',
+    about: 'Блок переехал в другую сетку: from { grid, id, index }, to { grid, index, x, y }. Затрагивает две раскладки, поэтому идёт наружу.',
+  },
+  { name: 'onOver', type: '(grid: string | null) => void', about: 'Над какой сеткой сейчас указатель — для подсветки приёмника.' },
+  {
+    name: 'onActive',
+    type: '({ grid, id, kind }) => void',
+    about: 'Идёт жест: какая сетка, какой блок и что именно — move или resize.',
+  },
+  { name: 'group / name (у DumbGrid)', type: 'DumbGridGroupHandle / string', about: 'Подключить сетку к группе и назвать её. Имя обязательно, когда задана группа.' },
+]
 
 type Widget = { id: string; title: string; hue: number }
 type Section = { id: string; title: string }
@@ -226,6 +245,47 @@ export default function BoardExample() {
         labels={{ remove: 'Убрать секцию' }}
         blockStyle={{ cursor: 'default' }}
       />
+
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Всё это — тот же пакет сетки, отдельного ставить не нужно.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Сетка внутри блока">
+        <p>
+          <code>content</code> — обычная функция, поэтому блоком может быть что угодно, включая
+          другую сетку со своей раскладкой и своим ключом хранения. Никакого особого «режима
+          вложенности» не существует.
+        </p>
+      </Doc>
+      <Code title="Сетка в сетке" code={SNIP.nested} />
+
+      <Doc title="Кто ловит жест">
+        <p>
+          Спор между внешней и внутренней сеткой решают метки в разметке, а не порядок
+          обработчиков: жест берёт та сетка, чей <code>[data-grid-block]</code> ближе к цели.
+          Элементы сортировщиков помечены <code>[data-flip-id]</code> и сеткой пропускаются — так
+          внутри блока спокойно живёт список со своим драгом.
+        </p>
+      </Doc>
+      <Code title="Метки и чужие жесты" code={SNIP.marks} />
+
+      <Doc title="Перенос между сетками">
+        <p>
+          Переезд затрагивает сразу две раскладки, поэтому он и вынесен в группу: сетки продолжают
+          сами двигать и растягивать свои блоки, а наружу уходит только событие переезда. Летит при
+          этом клон в top layer — оригинал остаётся на месте приглушённым, иначе{' '}
+          <code>overflow</code> секции обрезал бы блок на границе.
+        </p>
+      </Doc>
+      <Code title="Группа сеток" code={SNIP.group} />
+
+      <h4 class="mt-6 text-lg font-semibold">createDumbGridGroup</h4>
+      <Props rows={GROUP_PROPS} />
 
     </div>
   )

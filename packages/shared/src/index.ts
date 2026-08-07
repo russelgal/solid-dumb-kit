@@ -11,6 +11,18 @@
 /** Анимации: анимировать или молча выключиться при prefers-reduced-motion. */
 export { prefersReducedMotion, shouldAnimate } from './motion'
 
+/**
+ * Сторона кнопки закрытия: в macOS слева, в Windows/Linux справа. Кит смотрит
+ * на платформу сам; перебивается пропом компонента или общей настройкой.
+ */
+export {
+  configureCloseSide,
+  isApplePlatform,
+  resolveCloseSide,
+  type CloseSide,
+  type CloseSideOption,
+} from './closeSide'
+
 // совместимость Solid 1 ↔ Solid 2: пропавшие в Solid 2 API берём только отсюда
 export { batch, onMounted, watch } from './solidCompat'
 

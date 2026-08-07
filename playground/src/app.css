@@ -699,3 +699,23 @@ html .dumb-tl {
     @apply btn btn-ghost btn-xs cursor-grab px-1 text-base-content/40 active:cursor-grabbing;
   }
 }
+
+/* Подсветка сниппетов доки. Shiki отработал на сборке и положил ОБЕ палитры в
+   переменные (`--shiki-light` / `--shiki-dark`) — какую взять, решает тема
+   витрины. Фон гасим: блок кода уже стоит на `bg-base-200` своей рамки. */
+.dumb-shiki .shiki,
+.dumb-shiki .shiki span {
+  color: var(--shiki-light);
+  background-color: transparent;
+}
+
+[data-theme='dark'] .dumb-shiki .shiki,
+[data-theme='dark'] .dumb-shiki .shiki span,
+[data-theme='scifi'] .dumb-shiki .shiki,
+[data-theme='scifi'] .dumb-shiki .shiki span {
+  color: var(--shiki-dark);
+}
+
+.dumb-shiki .shiki {
+  margin: 0;
+}

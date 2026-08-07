@@ -7,17 +7,36 @@
 // happy-dom не знает Popover API: `showPopover` компонент зовёт через `?.()`,
 // так что подпорка не нужна вовсе.
 
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render } from 'solid-js/web'
 import { DumbToaster, createToastBus, type ToastBus } from '../src'
 
 let host: HTMLDivElement
 let dispose: (() => void) | null = null
 
+// Соседи по стопке разъезжаются через FLIP (`Element.animate`), а happy-dom
+// Web Animations не знает вовсе. Подкладываем заглушку: тестам важно, что
+// нарисовано, а не как оно доехало.
+const noAnim = !Element.prototype.animate
+beforeEach(() => {
+  if (noAnim) {
+    // @ts-expect-error среда без Web Animations — дорисовываем минимум
+    Element.prototype.animate = () => ({
+      finished: Promise.resolve(),
+      cancel() {},
+      finish() {},
+      addEventListener() {},
+      onfinish: null,
+    })
+  }
+})
+
 afterEach(() => {
   dispose?.()
   dispose = null
   host?.remove()
+  // @ts-expect-error снимаем заглушку, чтобы она не текла в соседние файлы
+  if (noAnim) delete Element.prototype.animate
 })
 
 function mount(bus: ToastBus) {
@@ -26,7 +45,11 @@ function mount(bus: ToastBus) {
   dispose = render(() => <DumbToaster bus={bus} />, host)
 }
 
-const toasts = () => Array.from(host.querySelectorAll('.dumb-toast'))
+// Погашенная плашка не исчезает мгновенно: она улетает в центр уведомлений и
+// ещё несколько кадров висит в DOM как `.dumb-toast-leave`. Живыми считаем
+// только те, что не улетают.
+const toasts = () =>
+  Array.from(host.querySelectorAll('.dumb-toast:not(.dumb-toast-leave)'))
 const textOf = (i = 0) => toasts()[i]?.querySelector('.dumb-toast-text')?.textContent
 const buttons = (i = 0) =>
   Array.from(toasts()[i]?.querySelectorAll<HTMLButtonElement>('button') ?? [])
@@ -52,14 +75,13 @@ describe('разметка', () => {
     expect(toasts()[1].getAttribute('role')).toBe('status')
   })
 
-  it('повтор показывает счётчиком, а не второй плашкой', () => {
+  it('повтор рисуется отдельной плашкой, а не счётчиком', () => {
     const bus = createToastBus()
     mount(bus)
     bus.error('Не залилось')
     bus.error('Не залилось')
 
-    expect(toasts()).toHaveLength(1)
-    expect(toasts()[0].querySelector('.dumb-toast-count')?.textContent).toBe('2')
+    expect(toasts()).toHaveLength(2)
   })
 
   it('больше max плашек разом не показывает', () => {

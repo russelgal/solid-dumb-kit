@@ -4,6 +4,24 @@ import { For, Show, createEffect as createEffect2, createSignal, onCleanup } fro
 // ../shared/dist/index.js
 import * as solid from "solid-js";
 import { createEffect, untrack } from "solid-js";
+var configured = "auto";
+var apple = null;
+function isApplePlatform() {
+  if (apple !== null) return apple;
+  const nav = typeof navigator === "undefined" ? null : navigator;
+  if (!nav) return apple = false;
+  const uaData = nav.userAgentData;
+  const src = uaData?.platform || nav.platform || nav.userAgent || "";
+  apple = /mac|iphone|ipad|ipod/i.test(src);
+  return apple;
+}
+function resolveCloseSide(explicit) {
+  const pick = explicit && explicit !== "auto" ? explicit : configured;
+  if (pick !== "auto") return pick;
+  const nav = typeof navigator === "undefined" ? null : navigator;
+  if (!nav) return "left";
+  return isApplePlatform() ? "left" : "right";
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -31,6 +49,14 @@ var STYLES = `
   .dumb-menu { position: fixed; margin: 0; min-width: 190px;
                /* \u0432 top layer: \u043D\u0438 z-index, \u043D\u0438 overflow \u043F\u0440\u0435\u0434\u043A\u043E\u0432 \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0432\u0430\u0436\u043D\u044B */
                overflow: visible;
+               /* \u0421\u0411\u0420\u041E\u0421 UA-\u0421\u0422\u0418\u041B\u042F POPOVER. \u0411\u0440\u0430\u0443\u0437\u0435\u0440 \u0434\u0430\u0451\u0442 [popover] inset: 0, \u0438
+                  right/bottom \u043E\u0441\u0442\u0430\u044E\u0442\u0441\u044F \u043D\u0443\u043B\u044F\u043C\u0438, \u0434\u0430\u0436\u0435 \u043A\u043E\u0433\u0434\u0430 \u043C\u044B \u0437\u0430\u0434\u0430\u043B\u0438 top/left.
+                  \u041F\u043E\u043A\u0430 \u043C\u0435\u043D\u044E \u0440\u0430\u0441\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u0432\u043F\u0440\u0430\u0432\u043E-\u0432\u043D\u0438\u0437, \u044D\u0442\u043E \u043D\u0435\u0437\u0430\u043C\u0435\u0442\u043D\u043E (\u0432 \u0441\u043F\u043E\u0440\u0435
+                  left \u043F\u043E\u0431\u0435\u0436\u0434\u0430\u0435\u0442 right). \u0410 \u0432\u043E\u0442 flip-inline \u0443 \u043F\u0440\u0430\u0432\u043E\u0433\u043E \u043A\u0440\u0430\u044F \u043C\u0435\u043D\u044F\u0435\u0442
+                  \u043C\u0435\u0441\u0442\u0430\u043C\u0438 \u041B\u0415\u0412\u041E\u0415 \u0438 \u041F\u0420\u0410\u0412\u041E\u0415 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F: \u043D\u0430\u0448\u0435 anchor() \u0443\u0435\u0437\u0436\u0430\u0435\u0442 \u0432
+                  right, \u0430 \u0432 left \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442 \u043D\u043E\u043B\u044C \u043E\u0442 UA \u2014 \u0438 \u043C\u0435\u043D\u044E \u043F\u0440\u044B\u0433\u0430\u0435\u0442 \u043A \u043B\u0435\u0432\u043E\u043C\u0443
+                  \u043A\u0440\u0430\u044E \u044D\u043A\u0440\u0430\u043D\u0430. \u042F\u0432\u043D\u044B\u0435 auto \u0443\u0431\u0438\u0440\u0430\u044E\u0442 \u044D\u0442\u043E\u0442 \u043D\u043E\u043B\u044C. */
+               right: auto; bottom: auto;
                /* \u043C\u0435\u0441\u0442\u043E \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442 \u0431\u0440\u0430\u0443\u0437\u0435\u0440: \u0433\u0434\u0435 \u043D\u0435 \u0432\u043B\u0435\u0437\u0430\u0435\u0442 \u2014 \u0440\u0430\u0441\u043A\u0440\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u0432 \u0434\u0440\u0443\u0433\u0443\u044E
                   \u0441\u0442\u043E\u0440\u043E\u043D\u0443. \u041D\u0438 \u043E\u0434\u043D\u043E\u0433\u043E \u0437\u0430\u043C\u0435\u0440\u0430 \u0441 \u043D\u0430\u0448\u0435\u0439 \u0441\u0442\u043E\u0440\u043E\u043D\u044B */
                position-anchor: --dumb-menu-at;
@@ -49,22 +75,29 @@ var STYLES = `
   /* \u041F\u043E\u0434\u043C\u0435\u043D\u044E. \u0422\u043E\u0442 \u0436\u0435 popover, \u0442\u043E\u0442 \u0436\u0435 top layer \u2014 \u0437\u043D\u0430\u0447\u0438\u0442 \u0435\u0433\u043E \u0442\u0430\u043A \u0436\u0435 \u043D\u0435 \u0440\u0435\u0436\u0435\u0442 \u043D\u0438
      overflow, \u043D\u0438 clip-path \u043F\u0440\u0435\u0434\u043A\u043E\u0432, \u0438 z-index \u0435\u043C\u0443 \u043D\u0435 \u043D\u0443\u0436\u0435\u043D.
 
-     \u042F\u043A\u043E\u0440\u044C \u0443 \u043D\u0435\u0433\u043E \u0421\u0412\u041E\u0419 \u2014 \u043F\u0438\u043A\u0441\u0435\u043B\u044C \u0432 \u0442\u043E\u0447\u043A\u0435, \u0433\u0434\u0435 \u043A\u0443\u0440\u0441\u043E\u0440 \u0432\u043E\u0448\u0451\u043B \u0432 \u043F\u0443\u043D\u043A\u0442-\u0432\u0435\u0442\u043A\u0443. \u041D\u0435
-     \u0441\u0430\u043C\u0430 \u043A\u043D\u043E\u043F\u043A\u0430: \u043E\u043D\u0430 \u043B\u0435\u0436\u0438\u0442 \u0432\u043D\u0443\u0442\u0440\u0438 \u0440\u043E\u0434\u0438\u0442\u0435\u043B\u044C\u0441\u043A\u043E\u0433\u043E popover, \u0430 \u043D\u0430 \u044D\u043B\u0435\u043C\u0435\u043D\u0442 \u0432 top
-     layer anchor() \u043D\u0435 \u0440\u0430\u0437\u0440\u0435\u0448\u0430\u0435\u0442\u0441\u044F, \u0438 \u043F\u0430\u043D\u0435\u043B\u044C \u0443\u0435\u0437\u0436\u0430\u0435\u0442 \u0432 \u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0443\u044E \u043F\u043E\u0437\u0438\u0446\u0438\u044E.
-     \u0421\u0442\u043E\u0440\u043E\u043D\u0443, \u043A\u0430\u043A \u0438 \u0443 \u043A\u043E\u0440\u043D\u0435\u0432\u043E\u0433\u043E \u043C\u0435\u043D\u044E, \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442 \u0431\u0440\u0430\u0443\u0437\u0435\u0440; \u0437\u0430\u043C\u0435\u0440\u043E\u0432 \u043F\u043E-\u043F\u0440\u0435\u0436\u043D\u0435\u043C\u0443
-     \u043D\u043E\u043B\u044C \u2014 \u043A\u043E\u043E\u0440\u0434\u0438\u043D\u0430\u0442\u044B \u0431\u0435\u0440\u0443\u0442\u0441\u044F \u0438\u0437 \u0441\u043E\u0431\u044B\u0442\u0438\u044F, \u0430 \u043D\u0435 \u0438\u0437 \u0440\u0430\u0441\u043A\u043B\u0430\u0434\u043A\u0438. */
-  .dumb-menu-sub { top: anchor(top); left: anchor(right);
-                   /* \u043D\u0435\u043C\u043D\u043E\u0433\u043E \u0432\u0432\u0435\u0440\u0445, \u0447\u0442\u043E\u0431\u044B \u043F\u0435\u0440\u0432\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430 \u043F\u043E\u0434\u043C\u0435\u043D\u044E \u043E\u043A\u0430\u0437\u0430\u043B\u0430\u0441\u044C \u043D\u0430
-                      \u0443\u0440\u043E\u0432\u043D\u0435 \u043F\u0443\u043D\u043A\u0442\u0430, \u0430 \u043D\u0435 \u043F\u043E\u0434 \u043A\u0443\u0440\u0441\u043E\u0440\u043E\u043C */
-                   margin-top: -6px; margin-left: 2px;
+     \u042F\u043A\u043E\u0440\u0435\u0439 \u0443 \u043D\u0435\u0433\u043E \u0414\u0412\u0410, \u0438 \u043E\u0431\u0430 \u0437\u0430\u0434\u0430\u043D\u044B \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u043E\u0439 (\u0441\u043C. place()): \u043F\u043E \u0432\u0435\u0440\u0442\u0438\u043A\u0430\u043B\u0438 \u2014
+     \u0441\u0430\u043C \u043F\u0443\u043D\u043A\u0442-\u0432\u0435\u0442\u043A\u0430 (\u043F\u0435\u0440\u0432\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430 \u043F\u043E\u0434\u043C\u0435\u043D\u044E \u0432\u0441\u0442\u0430\u0451\u0442 \u043D\u0430 \u0435\u0433\u043E \u0443\u0440\u043E\u0432\u0435\u043D\u044C), \u043F\u043E
+     \u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u0438 \u2014 \u041F\u0410\u041D\u0415\u041B\u042C \u0446\u0435\u043B\u0438\u043A\u043E\u043C (\u043F\u043E\u0434\u043C\u0435\u043D\u044E \u043F\u0440\u0438\u043B\u0435\u0433\u0430\u0435\u0442 \u043A \u0435\u0451 \u043A\u0440\u0430\u044E \u0438 \u043D\u0435 \u043D\u0430\u043F\u043E\u043B\u0437\u0430\u0435\u0442
+     \u043D\u0430 \u0442\u0435\u043A\u0441\u0442 \u043F\u0443\u043D\u043A\u0442\u043E\u0432). \u0420\u0430\u043D\u044C\u0448\u0435 \u044F\u043A\u043E\u0440\u0435\u043C \u0431\u044B\u043B\u0430 \u0442\u043E\u0447\u043A\u0430 \u043A\u0443\u0440\u0441\u043E\u0440\u0430 \u2014 \u043E\u0442\u0442\u043E\u0433\u043E \u043F\u043E\u0434\u043C\u0435\u043D\u044E \u0438
+     \u0440\u0430\u0441\u043A\u0440\u044B\u0432\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0441\u0440\u0435\u0434\u0438 \u0440\u043E\u0434\u0438\u0442\u0435\u043B\u044F, \u043D\u0430\u043A\u0440\u044B\u0432\u0430\u044F \u043F\u043E\u043B\u043E\u0432\u0438\u043D\u0443 \u043D\u0430\u0434\u043F\u0438\u0441\u0438.
+
+     \u041E\u0431\u0430 \u044F\u043A\u043E\u0440\u044F \u043B\u0435\u0436\u0430\u0442 \u0432\u043D\u0443\u0442\u0440\u0438 \u0440\u043E\u0434\u0438\u0442\u0435\u043B\u044C\u0441\u043A\u043E\u0433\u043E popover, \u0438 \u044D\u0442\u043E \u0437\u0430\u043A\u043E\u043D\u043D\u043E: \u043E\u043D \u043F\u043E\u043A\u0430\u0437\u0430\u043D
+     \u0440\u0430\u043D\u044C\u0448\u0435 \u043F\u043E\u0434\u043C\u0435\u043D\u044E, \u0430 \u0437\u043D\u0430\u0447\u0438\u0442 \u0434\u043B\u044F anchor() \u0432\u0438\u0434\u0435\u043D.
+
+     \u0421\u0442\u043E\u0440\u043E\u043D\u0443 \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442 \u0431\u0440\u0430\u0443\u0437\u0435\u0440: flip-inline \u0443 \u043F\u0440\u0430\u0432\u043E\u0433\u043E \u043A\u0440\u0430\u044F \u043E\u0442\u0440\u0430\u0436\u0430\u0435\u0442 \u0438 inset, \u0438
+     margin \u2014 \u043F\u043E\u0434\u043C\u0435\u043D\u044E \u0443\u0445\u043E\u0434\u0438\u0442 \u0432\u043B\u0435\u0432\u043E \u043E\u0442 \u043F\u0430\u043D\u0435\u043B\u0438 \u0442\u0435\u043C \u0436\u0435 \u0437\u0430\u0437\u043E\u0440\u043E\u043C. \u0417\u0430\u043C\u0435\u0440\u043E\u0432 \u043D\u043E\u043B\u044C. */
+  .dumb-menu-sub { /* -5px = padding \u043F\u0430\u043D\u0435\u043B\u0438 (p-1) + \u0435\u0451 \u0440\u0430\u043C\u043A\u0430: \u0431\u0435\u0437 \u043D\u0438\u0445 \u043F\u0435\u0440\u0432\u0430\u044F
+                      \u0441\u0442\u0440\u043E\u043A\u0430 \u043F\u043E\u0434\u043C\u0435\u043D\u044E \u0432\u0441\u0442\u0430\u043B\u0430 \u0431\u044B \u043D\u0430 5px \u043D\u0438\u0436\u0435 \u0441\u0432\u043E\u0435\u0433\u043E \u043F\u0443\u043D\u043A\u0442\u0430 */
+                   margin-top: -5px; margin-left: 2px;
                    position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block }
 `;
 function Panel(props) {
   const [active, setActive] = createSignal(-1);
   const [sub, setSub] = createSignal(null);
+  const [box, setBox] = createSignal(null);
   let el;
-  const subAnchor = `--dumb-sub-${props.depth + 1}`;
+  const panelAnchor = `--dumb-menu-p${props.depth}`;
+  const itemAnchor = `--dumb-menu-i${props.depth}`;
   const isItem = (it) => it.kind !== "separator";
   const asItem = (it) => it;
   const branch = (it) => isItem(it) ? (asItem(it).items?.length ?? 0) > 0 : false;
@@ -84,6 +117,23 @@ function Panel(props) {
   onCleanup(() => {
     if (el?.matches(":popover-open")) el.hidePopover();
   });
+  createEffect2(() => {
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      const r = entries[entries.length - 1].boundingClientRect;
+      if (!r.width) return;
+      setBox({ left: r.left, right: r.right });
+      io.disconnect();
+    });
+    io.observe(el);
+    onCleanup(() => io.disconnect());
+  });
+  const side = () => {
+    const b = box();
+    if (!b) return props.side ?? "right";
+    const from = props.depth === 0 ? props.at.x : props.parentBox?.()?.left ?? props.at.x;
+    return b.left < from ? "left" : "right";
+  };
   createEffect2(() => {
     const api = {
       depth: props.depth,
@@ -120,12 +170,24 @@ function Panel(props) {
     onCleanup(props.register(api));
   });
   const place = () => {
+    const own = { "anchor-name": panelAnchor };
     const anchored = window.CSS?.supports?.("anchor-name: --x");
-    if (anchored) return props.anchor ? { "position-anchor": props.anchor } : {};
+    if (anchored) {
+      if (props.depth === 0) return own;
+      const up = props.depth - 1;
+      const at = `--dumb-menu-p${up}`;
+      return {
+        ...own,
+        "position-anchor": at,
+        top: `anchor(--dumb-menu-i${up} top)`,
+        ...props.side === "left" ? { left: "auto", right: `anchor(${at} left)`, "margin-left": "0", "margin-right": "2px" } : { left: `anchor(${at} right)` }
+      };
+    }
     const p = props.at;
-    const flipX = p.x > window.innerWidth / 2;
+    const flipX = props.side === "left" || p.x > window.innerWidth / 2;
     const flipY = p.y > window.innerHeight / 2;
     return {
+      ...own,
       left: flipX ? "auto" : `${p.x}px`,
       right: flipX ? `${window.innerWidth - p.x}px` : "auto",
       top: flipY ? "auto" : `${p.y}px`,
@@ -133,23 +195,6 @@ function Panel(props) {
     };
   };
   return <>
-      {
-    /* Свой якорь — обычный div в документе, а НЕ кнопка-родитель.
-       Кнопка лежит внутри родительского popover, то есть в top layer, и
-       `anchor()` на неё не разрешается: inset становится auto, а панель
-       уезжает в статическую позицию — левый нижний угол экрана. У корневого
-       меню якорь ровно такой же, и там всё работает; повторяем механизм. */
-  }
-      <Show when={props.depth > 0}>
-        <div
-    class="dumb-menu-anchor"
-    style={{
-      left: `${props.at.x}px`,
-      top: `${props.at.y}px`,
-      "anchor-name": props.anchor
-    }}
-  />
-      </Show>
       <div
     ref={el}
     class={`dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${props.depth > 0 ? "dumb-menu-sub" : ""} ${props.class ?? ""}`}
@@ -176,6 +221,7 @@ function Panel(props) {
     aria-haspopup={branch(it) ? "menu" : void 0}
     aria-expanded={branch(it) ? sub()?.i === i() ? "true" : "false" : void 0}
     disabled={asItem(it).disabled}
+    style={sub()?.i === i() ? { "anchor-name": itemAnchor } : void 0}
     onMouseEnter={(ev) => highlight(i(), ev.clientX, ev.clientY)}
     onClick={(ev) => {
       if (branch(it)) return void highlight(i(), ev.clientX, ev.clientY);
@@ -214,8 +260,9 @@ function Panel(props) {
         {(s) => <Panel
     items={asItem(props.items[s().i]).items}
     depth={props.depth + 1}
-    anchor={subAnchor}
     at={{ x: s().x, y: s().y }}
+    side={side()}
+    parentBox={box}
     onRun={props.onRun}
     register={props.register}
     class={props.class}
@@ -374,6 +421,10 @@ var STYLES2 = `
                      anchor-name: --dumb-pop-at }
   .dumb-pop { position: fixed; margin: 0; padding: 0; overflow: visible; background: none;
               width: var(--dumb-pop-w, min(320px, 92vw));
+              /* UA \u0434\u0430\u0451\u0442 [popover] inset: 0, \u0438 \u043F\u0440\u0438 flip-inline \u0443 \u043F\u0440\u0430\u0432\u043E\u0433\u043E \u043A\u0440\u0430\u044F
+                 \u043D\u0430\u0448 anchor() \u0443\u0435\u0437\u0436\u0430\u0435\u0442 \u0432 right, \u0430 \u0432 left \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442 \u043D\u043E\u043B\u044C \u043E\u0442 UA \u2014
+                 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u043F\u0440\u044B\u0433\u0430\u0435\u0442 \u043A \u043B\u0435\u0432\u043E\u043C\u0443 \u043A\u0440\u0430\u044E \u043E\u043A\u043D\u0430. \u0413\u0430\u0441\u0438\u043C \u044F\u0432\u043D\u043E */
+              right: auto; bottom: auto;
               position-anchor: --dumb-pop-at;
               /* \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u0447\u0435\u0440\u0435\u0437 anchor(): position-area \u0441\u043E span-* Chrome
                  \u043E\u0442\u0431\u0440\u0430\u0441\u044B\u0432\u0430\u0435\u0442 \u043A\u0430\u043A \u043D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u043E\u0435, \u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u0443\u0435\u0437\u0436\u0430\u0435\u0442 \u0432 \u0443\u0433\u043E\u043B */
@@ -389,6 +440,10 @@ function DumbPopover(props) {
     if (box?.matches(":popover-open")) box.hidePopover();
     props.onClose();
   };
+  const side = () => resolveCloseSide(props.closeSide);
+  const closeButton = () => <button type="button" class="dumb-pop-x btn btn-xs btn-circle btn-ghost" title="закрыть" onClick={close}>
+      ✕
+    </button>;
   createEffect3(() => {
     const open = props.at() !== null;
     if (!open) {
@@ -430,15 +485,9 @@ function DumbPopover(props) {
   >
             <Show2 when={props.title}>
               <div class="dumb-pop-head mb-2 flex items-center gap-2 font-semibold">
+                <Show2 when={side() === "left"}>{closeButton()}</Show2>
                 <div class="dumb-pop-title flex-1 truncate">{props.title}</div>
-                <button
-    type="button"
-    class="dumb-pop-x btn btn-xs btn-circle btn-ghost"
-    title="закрыть"
-    onClick={close}
-  >
-                  ✕
-                </button>
+                <Show2 when={side() === "right"}>{closeButton()}</Show2>
               </div>
             </Show2>
             <div class="dumb-pop-body">{props.children}</div>

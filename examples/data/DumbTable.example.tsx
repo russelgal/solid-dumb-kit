@@ -4,6 +4,64 @@ import { createSignal, createMemo } from 'solid-js'
 import { SelectionArea } from '@solid-dumb-kit/selection'
 import { DumbTable, DumbPagination, type DumbColumn } from '@solid-dumb-kit/table'
 import { fmtPrice, fmtNum } from '@solid-dumb-kit/utils'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbTable.snippets'
+
+const TABLE_PROPS = [
+  { name: 'rows', type: 'T[]', about: 'Строки. Таблица их не режет и не пагинирует — что дали, то и покажет.' },
+  { name: 'columns', type: 'DumbColumn<T>[]', about: 'Описание колонок.' },
+  { name: 'rowId', type: '(row, index) => string', def: 'индекс', about: 'Стабильный ключ строки — нужен перетаскиванию.' },
+  { name: 'sort / order', type: "string / 'asc' | 'desc'", about: 'Активная сортировка. Вместе с onSort включает СЕРВЕРНЫЙ режим.' },
+  {
+    name: 'onSort',
+    type: '(key, order) => void',
+    about: 'Есть — сортирует сервер; нет — таблица сама. Третий клик сбрасывает и присылает (null, null).',
+  },
+  { name: 'noSortRemoval', type: 'boolean', def: 'false', about: 'Убрать третий клик-сброс: только asc ⇄ desc.' },
+  {
+    name: 'sortDescFirst',
+    type: 'boolean',
+    def: 'как у TanStack',
+    about: 'Направление первого клика. По умолчанию текстовые колонки начинают с asc, числовые с desc.',
+  },
+  { name: 'onReorder', type: '(from, to) => void', about: 'Включает драг строк. Индексы — в текущем показанном порядке.' },
+  {
+    name: 'handle',
+    type: 'JSX.Element | false',
+    about: 'Содержимое ручки. false — ручки нет, строка тянется целиком; тогда задайте dragThreshold.',
+  },
+  { name: 'dragThreshold', type: 'number', def: '0', about: 'Сколько px пройти мышью до старта драга.' },
+  { name: 'onRowClick', type: '(row, index) => void', about: 'Клик по строке. Колонки со stopClick его не пускают.' },
+  { name: 'loading / empty', type: 'boolean / JSX.Element', about: 'Приглушить на время загрузки; что показать вместо пустой таблицы.' },
+  {
+    name: 'viewTransition',
+    type: 'boolean',
+    def: 'false',
+    about: 'Анимировать смену сортировки. Имеет смысл в клиентском режиме; строкам нужен уникальный view-transition-name.',
+  },
+  { name: 'animate', type: 'boolean', def: 'системная настройка', about: 'Анимация драга строк; не при prefers-reduced-motion.' },
+  { name: 'rowClass / rowStyle', type: '(row, index) => …', about: 'Класс и стиль на строку — например уникальный view-transition-name.' },
+]
+
+const COLUMN_PROPS = [
+  { name: 'key', type: 'string', about: 'Ключ колонки: id для сортировки и путь к значению по умолчанию.' },
+  { name: 'label', type: 'JSX.Element', about: 'Содержимое <th>.' },
+  { name: 'sortable', type: 'boolean', def: 'false', about: 'Разрешить сортировку по колонке.' },
+  { name: 'render', type: '(row, index) => JSX.Element', about: 'Содержимое <td>; по умолчанию — значение по key.' },
+  { name: 'value', type: '(row) => unknown', about: 'Значение для сортировки, когда оно считается, а не лежит в поле.' },
+  { name: 'align / width', type: "'left' | 'center' | 'right' / string", about: 'Выравнивание и ширина колонки.' },
+  { name: 'class / headClass', type: 'string', about: 'Класс на <th> и <td> либо только на <th>.' },
+  { name: 'stopClick', type: 'boolean', def: 'false', about: 'Не пускать клик по ячейке в onRowClick — для кнопок и полей внутри.' },
+]
+
+const PAGINATION_PROPS = [
+  { name: 'page / total / pageSize', type: 'number', about: 'Текущая страница, всего строк, размер страницы.' },
+  { name: 'onPageChange', type: '(page: number) => void', about: 'Переключили страницу.' },
+  { name: 'pageSizes / onPageSizeChange', type: 'number[] / (size) => void', about: 'Переключатель размера страницы.' },
+  { name: 'summary', type: '({ page, pages, total }) => string', about: 'Подпись слева; по умолчанию «total · page/pages».' },
+]
 
 type Product = {
   id: string
@@ -227,6 +285,69 @@ export default function DumbTableExample() {
           summary={({ page, pages, total }) => `${total} товаров · страница ${page} из ${pages}`}
         />
       </div>
+
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Колонки">
+        <p>
+          Колонка — это ключ, заголовок и, если нужно, своя отрисовка ячейки. Модель строк и
+          сортировку держит TanStack Table: своего мы не пишем принципиально — это ровно та задача,
+          где чужая проверенная библиотека лучше собственной.
+        </p>
+      </Doc>
+      <Code title="Таблица" code={SNIP.basic} />
+
+      <Doc title="Кто сортирует">
+        <p>
+          Наличие <code>onSort</code> и есть переключатель режима: нет — таблица сортирует сама,
+          есть — она только рисует стрелку, а данные приходят от вас. Третий клик по заголовку
+          сбрасывает сортировку и присылает <code>(null, null)</code>.
+        </p>
+      </Doc>
+      <Code title="Клиент и сервер" code={SNIP.sort} />
+
+      <Doc title="Перетаскивание строк">
+        <p>
+          Индексы приходят в ТЕКУЩЕМ показанном порядке, поэтому при пагинации к ним прибавляется
+          смещение страницы. Пока активна сортировка, драг выключается сам: <code>from → to</code>{' '}
+          описывают показанный порядок, а он при сортировке не совпадает с порядком данных.
+        </p>
+      </Doc>
+      <Code title="Ручка и порядок" code={SNIP.drag} />
+
+      <Doc title="Пагинация — отдельно">
+        <p>
+          Таблица не режет строки: это решение потребителя — страница, бесконечная прокрутка или
+          вообще всё сразу. <code>DumbPagination</code> лишь рисует пагинатор и говорит, куда
+          переключились.
+        </p>
+      </Doc>
+      <Code title="Страницы" code={SNIP.pagination} />
+
+      <Doc title="Грабли TanStack">
+        <p>
+          Самая частая: колонке нужен доступ к значению. Без него TanStack считает её
+          display-колонкой, <code>getCanSort()</code> всегда <code>false</code>, и сортировка молча
+          выключается — даже с <code>sortable: true</code>.
+        </p>
+      </Doc>
+      <Code title="Что ломается чаще всего" code={SNIP.gotcha} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbTable</h4>
+      <Props rows={TABLE_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbColumn</h4>
+      <Props rows={COLUMN_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbPagination</h4>
+      <Props rows={PAGINATION_PROPS} />
 
     </div>
   )

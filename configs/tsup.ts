@@ -48,5 +48,13 @@ export default defineConfig(config => {
   // общего кода друг другу не мешают: единственное состояние на уровне модуля —
   // кэш `done` в `injectStyle`, и тот подстрахован проверкой самого документа,
   // так что второй экземпляр не вставит стиль повторно. Всё остальное фабрики.
-  return opts.map((o) => ({ ...o, noExternal: [/^@solid-dumb-kit\//] }))
+  // Типы собирает НЕ tsup, а сам `tsc` (шаг рядом в скрипте пакета). Причина:
+  // tsup вкомпилировал в себя `rollup-plugin-dts@6.1.1`, а тот с TypeScript 7
+  // падает на `useCaseSensitiveFileNames` — и dts-шаг ронял сборку каждого
+  // пакета. Обновить плагин через override нельзя, он внутри бандла tsup.
+  //
+  // Заодно так быстрее: `tsc --emitDeclarationOnly` не бандлит типы в один
+  // файл, а раскладывает их рядом с модулями. `types: dist/index.d.ts` от
+  // этого не страдает — index реэкспортит соседей.
+  return opts.map((o) => ({ ...o, dts: false, noExternal: [/^@solid-dumb-kit\//] }))
 })

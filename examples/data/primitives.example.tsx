@@ -19,6 +19,20 @@ import {
 } from '@solid-dumb-kit/shared'
 import { fmtSize } from '@solid-dumb-kit/utils'
 import { Bar, Btn, Note } from '../_controls'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './primitives.snippets'
+
+const PRIMITIVES = [
+  { name: 'createUndoStack', type: '(opts?) => UndoStack', about: 'Отмена действий парами «сделать/отменить». Шаг с undo: null честно обрывает цепочку.' },
+  { name: 'moveIndex', type: '(key, args) => number | null', about: 'Куда уводит клавиша в списке или сетке. null — клавиша не про перемещение, гасить событие не надо.' },
+  { name: 'moveSelection', type: '(args) => { selected, anchor }', about: 'Что становится выделено: Shift тянет диапазон от якоря, Ctrl переносит курсор, не трогая выделение.' },
+  { name: 'createInlineEdit', type: '(opts) => InlineEdit', about: 'Правка на месте: Enter сохраняет, Esc забывает, ошибка не съедает набранное.' },
+  { name: 'readDropEntries', type: '(dataTransfer) => Promise<DroppedFile[]>', about: 'Обход брошенного дерева папок: обычный files отдаёт папку пустой.' },
+  { name: 'hasDirectories', type: '(dataTransfer) => boolean', about: 'Есть ли в броске папки — чтобы предупредить, что чтение займёт время.' },
+  { name: 'uploadMultipart / shouldSplit', type: '(file, opts) => Promise', about: 'Заливка большого файла частями: обрыв стоит одного куска, а не всего файла.' },
+]
 
 const START = ['Отчёт', 'Договор', 'Смета', 'Акт', 'Приказ', 'Заявка', 'Счёт', 'Накладная']
 
@@ -214,6 +228,64 @@ export default function PrimitivesExample() {
           </ul>
         </div>
       </Show>
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Примитивы лежат в общем пакете — том же, что FLIP, автопрокрутка и виртуализатор.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Отмена">
+        <p>
+          Стек хранит пары «сделать/отменить», а не снимки состояния: снимок большого списка стоит
+          памяти, а вернуть им можно далеко не всё. Шаг, который отменить нельзя — удаление без
+          корзины, перезапись файла, — помечается честно и обрывает цепочку за собой, вместо того
+          чтобы обещать несбыточное «назад».
+        </p>
+      </Doc>
+      <Code title="createUndoStack" code={SNIP.undo} />
+
+      <Doc title="Клавиатура по списку">
+        <p>
+          Чистая арифметика: ни DOM, ни фокуса. <code>moveIndex</code> отвечает, куда уводит
+          клавиша, и возвращает <code>null</code>, если клавиша не про перемещение — тогда её нельзя
+          гасить. <code>moveSelection</code> отдельно решает, что стало выделено: Shift тянет
+          диапазон от якоря, Ctrl переносит курсор, не трогая выделение.
+        </p>
+      </Doc>
+      <Code title="moveIndex и moveSelection" code={SNIP.roving} />
+
+      <Doc title="Правка на месте">
+        <p>
+          Enter сохраняет, Esc забывает — а вот ошибка сохранения НЕ съедает набранное: поле
+          остаётся с тем, что человек напечатал, и его можно поправить, а не набирать заново.
+        </p>
+      </Doc>
+      <Code title="createInlineEdit" code={SNIP.inline} />
+
+      <Doc title="Брошенные папки">
+        <p>
+          <code>dataTransfer.files</code> отдаёт брошенную папку пустой — файлы лежат в записях, и
+          дерево надо обходить самому. Здесь это уже сделано: наружу приходят файлы вместе с их
+          относительными путями, годными для ключей в хранилище.
+        </p>
+      </Doc>
+      <Code title="readDropEntries" code={SNIP.drops} />
+
+      <Doc title="Большие файлы">
+        <p>
+          Многочастная заливка нужна ровно для одного: обрыв связи должен стоить одного куска, а не
+          часа работы. Подписи частей и сборку делает ваш сервер — кит режет файл, шлёт куски и
+          считает прогресс.
+        </p>
+      </Doc>
+      <Code title="uploadMultipart" code={SNIP.multipart} />
+
+      <h4 class="mt-6 text-lg font-semibold">Примитивы shared</h4>
+      <Props rows={PRIMITIVES} />
+
     </div>
   )
 }

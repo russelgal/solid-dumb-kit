@@ -1,0 +1,103 @@
+// Сниппеты доки к примеру DumbBoard.
+//
+// Отдельный файл, потому что подсветка считается НА СБОРКЕ: плагин
+// playground/snippets.ts выполняет этот модуль в Node, гонит каждую строку
+// через Shiki и подменяет экспорт на { code, html }. Отсюда два требования: в
+// файле только строки и ни одного импорта.
+export default {
+  install: 'pnpm add @solid-dumb-kit/board',
+
+  basic: [
+    "import { createSignal } from 'solid-js'",
+    "import { DumbBoard, type BoardSection } from '@solid-dumb-kit/board'",
+    '',
+    'type Card = { id: string; text: string }',
+    '',
+    'const [sections, setSections] = createSignal<BoardSection<Card>[]>([',
+    "  { id: 'todo', title: 'Бэклог', span: 6, cols: 2, items: [] },",
+    "  { id: 'done', title: 'Готово', span: 6, cols: 2, items: [] },",
+    '])',
+    '',
+    '<DumbBoard',
+    '  sections={sections()}',
+    '  setSections={setSections}',
+    '  id={(c) => c.id}',
+    '  onMove={(card, toSection, toIndex) => api.move(card.id, toSection, toIndex)}',
+    '>',
+    '  {(card) => <div class="card bg-base-100 p-3">{card.text}</div>}',
+    '</DumbBoard>',
+  ].join('\n'),
+
+  state: [
+    '// Секции вместе с блоками — ОДИН массив, он же всё состояние доски.',
+    '// setSections зовётся ПО ХОДУ жеста, на каждом шаге: данные всё время',
+    '// совпадают с картинкой, и ничего не теряется, если браузер не доставит',
+    '// drop. Массив не мутируется — приходит новый.',
+    '//',
+    '// Сохранять надо в событиях, а не в setSections: onMove, onSectionMove,',
+    '// onSectionResize, onBlockResize.',
+    '<DumbBoard',
+    '  sections={sections()}',
+    '  setSections={setSections}',
+    '  id={(c) => c.id}',
+    '  onMove={(item, toSection, toIndex) => save(item, toSection, toIndex)}',
+    '  onSectionMove={(from, to) => saveSectionOrder(from, to)}',
+    '  onSectionResize={(id, size) => saveSectionSize(id, size)}',
+    '  onBlockResize={(item, size) => saveBlockSize(item.id, size)}',
+    '>',
+    '  {(card) => <Card data={card} />}',
+    '</DumbBoard>',
+  ].join('\n'),
+
+  sizes: [
+    '// Ширина блока — колонками зоны или долей; предел minW работает дважды:',
+    '// до него блок согласен ужаться, чтобы влезть в остаток строки вместо',
+    '// переезда вниз, и ниже него его не пустит ресайз. Ужатая ширина нигде не',
+    '// хранится: на свободном месте блок сам вернётся к blockSpan.',
+    '<DumbBoard',
+    '  sections={sections()}',
+    '  setSections={setSections}',
+    '  id={(c) => c.id}',
+    "  blockSpan={(c) => (c.wide ? 'half' : 1)}",
+    '  blockLimits={() => ({ minW: 1, maxW: 3, minH: 1, maxH: 4 })}',
+    '  blockRows={(c) => c.rows ?? 1}',
+    '  // без onBlockResize у блоков нет ни ручки, ни жеста: размер живёт',
+    '  // в твоих данных, и менять его без спроса доска не станет',
+    '  onBlockResize={(c, size) => setSize(c.id, size)}',
+    '/>',
+  ].join('\n'),
+
+  sections: [
+    '// Секция задаёт свою ширину на доске (span), свою сетку (cols) и правило',
+    '// приёма: accepts получает имя секции, ОТКУДА тянут.',
+    'const sections = [',
+    '  {',
+    "    id: 'review',",
+    "    title: 'На ревью',",
+    "    subtitle: 'ждут проверки',",
+    '    span: 4,   // колонок доски',
+    '    cols: 2,   // колонок внутри секции',
+    '    rows: 3,',
+    "    accepts: (from) => from !== 'archive',",
+    '    items: cards,',
+    '  },',
+    ']',
+    '',
+    '// свои кнопки в шапке секции',
+    '<DumbBoard',
+    '  sections={sections}',
+    '  setSections={setSections}',
+    '  id={(c) => c.id}',
+    '  sectionActions={(s) => (',
+    '    <button class="btn btn-xs" onClick={() => addTo(s.id)}>',
+    '      +',
+    '    </button>',
+    '  )}',
+    '  showGrid="drag"',
+    '  editable={editable()}',
+    '/>',
+  ].join('\n'),
+}
+
+/** язык там, где это не tsx */
+export const langs = { install: 'sh' }

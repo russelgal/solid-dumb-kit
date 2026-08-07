@@ -13,7 +13,12 @@
 // превращается в ожидание.
 
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
-import { injectStyle, shouldAnimate } from '@solid-dumb-kit/shared'
+import {
+  injectStyle,
+  resolveCloseSide,
+  shouldAnimate,
+  type CloseSideOption,
+} from '@solid-dumb-kit/shared'
 
 export type LightboxItem = {
   /** что показывать */
@@ -33,6 +38,8 @@ export type DumbLightboxProps = {
   animate?: boolean
   /** свой низ: скачать, удалить, поделиться */
   actions?: (item: LightboxItem, index: number) => JSX.Element
+  /** сторона крестика; по умолчанию по платформе: macOS слева, иначе справа */
+  closeSide?: CloseSideOption
   class?: string
 }
 
@@ -93,6 +100,14 @@ export function DumbLightbox(props: DumbLightboxProps) {
     reset()
     props.onIndexChange(null)
   }
+
+  /** сторона крестика: проп, общая настройка приложения или платформа */
+  const side = () => resolveCloseSide(props.closeSide)
+  const closeButton = () => (
+    <button type="button" class="btn btn-sm btn-circle btn-neutral" title="закрыть (Esc)" onClick={close}>
+      ✕
+    </button>
+  )
 
   // диалог открывается и закрывается императивно — сигнал только источник правды
   createEffect(() => {
@@ -198,6 +213,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
               class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"
               data-at="top"
             >
+              <Show when={side() === 'left'}>{closeButton()}</Show>
               <span class="dumb-lightbox-title min-w-0 flex-1 truncate">{cur().title}</span>
               <Show when={props.items.length > 1}>
                 <span class="dumb-lightbox-count tabular-nums">
@@ -209,14 +225,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
                   1:1
                 </button>
               </Show>
-              <button
-                type="button"
-                class="btn btn-sm btn-circle btn-neutral"
-                title="закрыть (Esc)"
-                onClick={close}
-              >
-                ✕
-              </button>
+              <Show when={side() === 'right'}>{closeButton()}</Show>
             </div>
 
             <Show when={props.items.length > 1}>

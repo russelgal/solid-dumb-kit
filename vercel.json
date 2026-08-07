@@ -10,7 +10,8 @@
     }
   },
   "rewrites": [
-    { "source": "/mcp", "destination": "/api/mcp" }
+    { "source": "/mcp", "destination": "/api/mcp" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "cleanUrls": true
 }

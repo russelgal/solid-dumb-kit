@@ -5,7 +5,63 @@
 // Nothing here measures a single element: column width comes from a
 // ResizeObserver on the container, everything else is arithmetic.
 import { createSignal, For, Show } from 'solid-js'
-import { Bar, Switch, Check, Pick, Btn } from '../_controls'
+import { Bar, Switch, Check, Pick, Btn, Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbGrid.snippets'
+
+const GRID_PROPS = [
+  { name: 'items', type: 'DumbGridItem[]', about: 'Блоки: id и content-функция. Набором владеет потребитель.' },
+  {
+    name: 'mode',
+    type: "'flow' | 'dense' | 'free'",
+    def: "'flow'",
+    about: 'Течь по порядку, затыкать дырки или стоять по своим {x, y}.',
+  },
+  { name: 'cols', type: 'number', def: '12', about: 'Колонок в сетке.' },
+  { name: 'rowHeight', type: 'number', def: '80', about: 'Высота строки, px.' },
+  { name: 'gap / gapX / gapY', type: 'number', def: '12', about: 'Зазор, px.' },
+  { name: 'storageKey', type: 'string', about: 'Ключ localStorage. Без него раскладка живёт только в памяти.' },
+  { name: 'layout / onLayout', type: 'DumbGridLayout / (next) => void', about: 'Внешнее управление раскладкой — вместо storageKey, когда она едет на сервер.' },
+  {
+    name: 'onRemove',
+    type: '(id: string) => void',
+    about: 'Задан — на блоках появляется ✕. Убрать блок из items потребитель должен сам; кит чистит за ним раскладку.',
+  },
+  { name: 'group / name', type: 'DumbGridGroupHandle / string', about: 'Группа сеток: с ней блок можно перетащить в соседнюю сетку.' },
+  { name: 'resizable', type: 'boolean', def: 'true', about: 'Разрешён ли ресайз блоков.' },
+  {
+    name: 'editable',
+    type: 'boolean',
+    def: 'true',
+    about: 'false — боевой экран: отдельная ветка рендера без ручек, кнопок и обработчиков.',
+  },
+  { name: 'disabled', type: 'boolean', def: 'false', about: 'Жесты выключены, но разметка редактора остаётся — например, пока идёт сохранение.' },
+  { name: 'showGrid', type: "boolean | 'drag'", def: "'drag'", about: 'Разметка сетки: во время жеста, всегда или никогда. Один элемент-подложка с градиентом.' },
+  {
+    name: 'spareRows',
+    type: 'number',
+    def: '2 в free, 0 в потоке',
+    about: 'Запас пустых строк под раскладкой. Постоянный: расти во время жеста нельзя — появится полоса прокрутки и собьёт шаг колонок.',
+  },
+  { name: 'pressDelay / mouseThreshold', type: 'number', def: '350 / —', about: 'Пороги старта: удержание для пальца, расстояние для мыши.' },
+  { name: 'animate', type: 'boolean', def: 'системная настройка', about: 'Расступание и приземление; не при prefers-reduced-motion.' },
+  { name: 'blockClass / blockStyle', type: 'string / JSX.CSSProperties', about: 'Оформление блока-обёртки.' },
+]
+
+const ITEM_PROPS = [
+  { name: 'id', type: 'string', about: 'Ключ блока — по нему хранится раскладка.' },
+  { name: 'content', type: '() => JSX.Element', about: 'Содержимое блока.' },
+  {
+    name: 'w',
+    type: "number | 'half' | 'third' | '5/12' | …",
+    def: '1',
+    about: 'Ширина: колонками или долей сетки. Доля округляется ВНИЗ, иначе N блоков по 1/N не влезут в строку.',
+  },
+  { name: 'h', type: 'number', def: '1', about: 'Высота в строках.' },
+  { name: 'x / y', type: 'number', about: 'Стартовая клетка в режиме free. В потоке не нужны — это мусор в сторе.' },
+  { name: 'minW / maxW / minH / maxH', type: 'SpanValue / number', about: 'Пределы ресайза; ширина — тоже числом или пресетом.' },
+]
 import { DumbGrid, type DumbGridItem } from '@solid-dumb-kit/grid'
 
 const STORAGE_KEY = 'example:dumb-grid'
@@ -188,6 +244,79 @@ export default function DumbGridExample() {
           blockStyle={{ cursor: 'default' }}
         />
       </Show>
+
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Дашборд">
+        <p>
+          Размеры блоков целые: <code>w</code> колонок на <code>h</code> строк. Ширина колонки
+          известна из <code>ResizeObserver</code>, поэтому все позиции считаются арифметикой — по
+          блокам не снимается ни одного прямоугольника. Позиции проставляются явно
+          (<code>grid-column-start</code>), а не авто-потоком: иначе браузер домысливал бы
+          раскладку и она расходилась бы с расчётом.
+        </p>
+      </Doc>
+      <Code title="Сетка с сохранением" code={SNIP.basic} />
+
+      <Doc title="Три режима">
+        <p>
+          Компакции и каскада коллизий нет ни в одном режиме — это сознательно, дашборд не должен
+          перекладываться сам. В потоковых блоки текут по порядку, а расступание соседей считается
+          вычитанием двух раскладок. В <code>free</code> соседи не двигаются вовсе: дроп на занятое
+          отклоняется, ресайз обрезается по свободному месту.
+        </p>
+      </Doc>
+      <Code title="flow, dense, free" code={SNIP.modes} />
+
+      <Doc title="Ширина долями">
+        <p>
+          Кроме числа колонок ширину можно задать долей сетки. Доля округляется ВНИЗ: иначе три
+          блока по <code>third</code> не влезли бы в строку на неделящейся сетке. Движок при этом
+          работает только числами — пресеты разрешаются на границе.
+        </p>
+      </Doc>
+      <Code title="Доли и пределы" code={SNIP.size} />
+
+      <Doc title="Где живёт раскладка">
+        <p>
+          Проще всего отдать её киту вместе с <code>storageKey</code>. Если раскладка едет на
+          сервер — берётся пара <code>layout</code> / <code>onLayout</code>. И в обоих случаях
+          сохранённое стоит прогонять через <code>mergeLayout</code>: набор блоков меняется, а в
+          хранилище лежит вчерашний снимок.
+        </p>
+      </Doc>
+      <Code title="Своё хранилище" code={SNIP.state} />
+
+      <Doc title="Просмотр против редактирования">
+        <p>
+          <code>editable={"{false}"}</code> — это отдельная ветка рендера, а не флаг: ref навешивается
+          при создании элемента, так что «выключить потом» означало бы оставить слушатели висеть.{' '}
+          <code>disabled</code> — другое: обвязка остаётся, глушатся только жесты.
+        </p>
+      </Doc>
+      <Code title="Боевой экран" code={SNIP.view} />
+
+      <Doc title="Две сетки рядом">
+        <p>
+          Перенос блока между сетками — отдельный движок (<code>createDumbGridGroup</code>): весь
+          жест там живёт в координатах чужого контейнера, и веткой в основном коде это не
+          выражается. Локальные перестановки каждая сетка по-прежнему делает сама.
+        </p>
+      </Doc>
+      <Code title="Группа сеток" code={SNIP.group} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbGrid</h4>
+      <Props rows={GRID_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbGridItem</h4>
+      <Props rows={ITEM_PROPS} />
 
     </div>
   )

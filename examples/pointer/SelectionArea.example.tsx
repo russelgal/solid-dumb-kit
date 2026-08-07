@@ -4,6 +4,36 @@
 // case the band is clamped to the container and auto-scroll drives the window.
 import { createSignal, For, type JSX } from 'solid-js'
 import { SelectionArea } from '@solid-dumb-kit/selection'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './SelectionArea.snippets'
+
+const AREA_PROPS = [
+  { name: 'selectables', type: 'string', about: 'CSS-селектор того, что выделяется. Всё остальное внутри области рамка не трогает.' },
+  { name: 'selected', type: '() => Set<string>', about: 'Текущее выделение. Состояние держит потребитель — кит его не хранит.' },
+  { name: 'onChange', type: '(sel: Set<string>) => void', about: 'Выделение изменилось; зовётся в кадре, пока тянут рамку.' },
+  { name: 'onStop', type: '(sel: Set<string>) => void', about: 'Жест завершён — сюда вешают сохранение: один вызов вместо десятков.' },
+  {
+    name: 'onBeforeStart',
+    type: '(ev: PointerEvent) => boolean | void',
+    about: 'Вернули false — рамка не начнётся. Так отдают жест ручке драга, кнопке или полю ввода.',
+  },
+  { name: 'keyAttr', type: 'string', def: 'data-key', about: 'Из какого атрибута брать ключ элемента.' },
+  {
+    name: 'intersect',
+    type: "'touch' | 'cover' | 'center'",
+    def: "'touch'",
+    about: 'Что считать попаданием: касание рамкой, полное накрытие или накрытый центр.',
+  },
+  { name: 'threshold', type: 'number', def: '10', about: 'Сколько пикселей пройти до появления рамки — чтобы клик оставался кликом.' },
+  { name: 'areaClass', type: 'string', about: 'Класс на прямоугольник рамки.' },
+  {
+    name: 'style',
+    type: 'JSX.CSSProperties',
+    about: 'Стили контейнера. Если список прокручивается, overflow вешается сюда — автопрокрутку кит подхватит.',
+  },
+]
 
 const ICONS = ['🗂️', '🖼️', '🎵', '🎬', '📄', '📦', '🧩', '🗒️']
 const files = (n: number, prefix: string) =>
@@ -102,6 +132,56 @@ export default function SelectionAreaExample() {
         items={LONG}
       />
 
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Рамка на списке">
+        <p>
+          Компонент оборачивает контейнер и ловит указатель, а что выделять — говорит селектор.
+          Ключ берётся из <code>data-key</code>, так что в <code>Set</code> приходят те же
+          идентификаторы, что и в данных. Выделение хранит потребитель: кит его не дублирует и не
+          «теряет» при перерисовке.
+        </p>
+      </Doc>
+      <Code title="Список с рамкой" code={SNIP.basic} />
+
+      <Doc title="Ни одного замера за жест">
+        <p>
+          Позиции элементов снимаются ОДИН раз на старте — через IntersectionObserver, который
+          считает прямоугольники вне главного потока. Дальше в кадре только арифметика: никаких{' '}
+          <code>getBoundingClientRect</code> по сотням карточек. Ровно из-за обратного из репы
+          выкинут <code>@viselect/vanilla</code>: он мерил каждый элемент на каждое движение.
+        </p>
+      </Doc>
+      <Code title="Режим попадания и порог" code={SNIP.intersect} />
+
+      <Doc title="Когда рамку начинать нельзя">
+        <p>
+          В одном контейнере часто живут и рамка, и драг, и кнопки. <code>onBeforeStart</code>{' '}
+          решает спор: вернули <code>false</code> — жест не стартует и событие достаётся тому, кто
+          под курсором. А <code>onStop</code> отделяет «пока тянут» от «дотянули»: сохранять надо
+          во втором, иначе на каждый кадр уедет запрос.
+        </p>
+      </Doc>
+      <Code title="Отдать жест ручке и сохранить в конце" code={SNIP.guard} />
+
+      <Doc title="Своя разметка: обёртка и движок">
+        <p>
+          Компонент — тонкий слой над <code>createSelectionArea</code>: если контейнер чужой
+          (виртуальный список, готовая таблица), берётся обёртка — она вешает отписки на{' '}
+          <code>onCleanup</code>. Ниже неё лежит <code>createSelectionEngine</code>, который про
+          Solid не знает вовсе и возвращает <code>destroy()</code>.
+        </p>
+      </Doc>
+      <Code title="Без компонента" code={SNIP.engine} />
+
+      <h4 class="mt-6 text-lg font-semibold">SelectionArea</h4>
+      <Props rows={AREA_PROPS} />
     </div>
   )
 }

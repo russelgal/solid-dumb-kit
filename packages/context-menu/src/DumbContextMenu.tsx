@@ -100,6 +100,14 @@ const STYLES = `
   .dumb-menu { position: fixed; margin: 0; min-width: 190px;
                /* в top layer: ни z-index, ни overflow предков больше не важны */
                overflow: visible;
+               /* СБРОС UA-СТИЛЯ POPOVER. Браузер даёт [popover] inset: 0, и
+                  right/bottom остаются нулями, даже когда мы задали top/left.
+                  Пока меню раскрывается вправо-вниз, это незаметно (в споре
+                  left побеждает right). А вот flip-inline у правого края меняет
+                  местами ЛЕВОЕ и ПРАВОЕ значения: наше anchor() уезжает в
+                  right, а в left приходит ноль от UA — и меню прыгает к левому
+                  краю экрана. Явные auto убирают этот ноль. */
+               right: auto; bottom: auto;
                /* место выбирает браузер: где не влезает — раскрывается в другую
                   сторону. Ни одного замера с нашей стороны */
                position-anchor: --dumb-menu-at;
@@ -118,15 +126,20 @@ const STYLES = `
   /* Подменю. Тот же popover, тот же top layer — значит его так же не режет ни
      overflow, ни clip-path предков, и z-index ему не нужен.
 
-     Якорь у него СВОЙ — пиксель в точке, где курсор вошёл в пункт-ветку. Не
-     сама кнопка: она лежит внутри родительского popover, а на элемент в top
-     layer anchor() не разрешается, и панель уезжает в статическую позицию.
-     Сторону, как и у корневого меню, выбирает браузер; замеров по-прежнему
-     ноль — координаты берутся из события, а не из раскладки. */
-  .dumb-menu-sub { top: anchor(top); left: anchor(right);
-                   /* немного вверх, чтобы первая строка подменю оказалась на
-                      уровне пункта, а не под курсором */
-                   margin-top: -6px; margin-left: 2px;
+     Якорей у него ДВА, и оба заданы разметкой (см. place()): по вертикали —
+     сам пункт-ветка (первая строка подменю встаёт на его уровень), по
+     горизонтали — ПАНЕЛЬ целиком (подменю прилегает к её краю и не наползает
+     на текст пунктов). Раньше якорем была точка курсора — оттого подменю и
+     раскрывалось посреди родителя, накрывая половину надписи.
+
+     Оба якоря лежат внутри родительского popover, и это законно: он показан
+     раньше подменю, а значит для anchor() виден.
+
+     Сторону выбирает браузер: flip-inline у правого края отражает и inset, и
+     margin — подменю уходит влево от панели тем же зазором. Замеров ноль. */
+  .dumb-menu-sub { /* -5px = padding панели (p-1) + её рамка: без них первая
+                      строка подменю встала бы на 5px ниже своего пункта */
+                   margin-top: -5px; margin-left: 2px;
                    position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block }
 `
 
@@ -138,10 +151,12 @@ const STYLES = `
 function Panel(props: {
   items: Array<MenuItem>
   depth: number
-  /** имя якоря родительского пункта; у корня его нет — он цепляется за клик */
-  anchor?: string
   /** координаты для браузеров без anchor positioning */
   at: { x: number; y: number }
+  /** куда раскрылся родитель: подменю продолжает путь в ту же сторону */
+  side?: 'right' | 'left'
+  /** снимок родительской панели — по нему видно, в какую сторону ушли мы сами */
+  parentBox?: () => { left: number; right: number } | null
   /** выполнили пункт — закрыть всё меню */
   onRun: () => void
   register: (api: PanelApi) => () => void
@@ -149,10 +164,17 @@ function Panel(props: {
 }) {
   const [active, setActive] = createSignal(-1)
   const [sub, setSub] = createSignal<{ i: number; x: number; y: number } | null>(null)
+  /** где панель оказалась — снимается ОДИН раз, IntersectionObserver'ом */
+  const [box, setBox] = createSignal<{ left: number; right: number } | null>(null)
   let el!: HTMLDivElement
 
-  /** Имя якоря для СВОЕГО подменю: у каждой глубины своё, открыт всегда один путь. */
-  const subAnchor = `--dumb-sub-${props.depth + 1}`
+  /**
+   * Имена якорей этой панели: сама панель и её раскрытая ветка. Открыт всегда
+   * один путь, поэтому хватает имени на глубину — подменю берёт имена родителя
+   * арифметикой (`depth - 1`), передавать их пропом незачем.
+   */
+  const panelAnchor = `--dumb-menu-p${props.depth}`
+  const itemAnchor = `--dumb-menu-i${props.depth}`
 
   const isItem = (it: MenuItem) => it.kind !== 'separator'
   const asItem = (it: MenuItem) => it as Extract<MenuItem, { label: string }>
@@ -187,6 +209,41 @@ function Panel(props: {
   onCleanup(() => {
     if (el?.matches(':popover-open')) el.hidePopover()
   })
+
+  /**
+   * КУДА ПАНЕЛЬ РАСКРЫЛАСЬ. Сторону выбрал браузер, а знать её надо нам: у
+   * правого края родитель уходит влево, и подменю обязано идти туда же —
+   * иначе оно вернётся вправо и накроет собой родителя.
+   *
+   * Спрашиваем не `getBoundingClientRect`, а IntersectionObserver: его
+   * `boundingClientRect` браузер считает сам, вне главного потока, forced
+   * layout не возникает (тот же приём, что и в снимке сортировщика). Снимок
+   * ОДИН, на открытие панели: дальше она не двигается.
+   */
+  createEffect(() => {
+    if (!el) return
+    const io = new IntersectionObserver((entries) => {
+      const r = entries[entries.length - 1].boundingClientRect
+      // пока popover не показан, размеров нет — ждём следующей порции
+      if (!r.width) return
+      setBox({ left: r.left, right: r.right })
+      io.disconnect()
+    })
+    io.observe(el)
+    onCleanup(() => io.disconnect())
+  })
+
+  /**
+   * Сторона этой панели: сравниваем её левый край с тем, от чего она
+   * отталкивалась, — у корня это точка клика, у подменю левый край родителя.
+   * Снимка ещё нет — идём тем же путём, что и родитель.
+   */
+  const side = (): 'right' | 'left' => {
+    const b = box()
+    if (!b) return props.side ?? 'right'
+    const from = props.depth === 0 ? props.at.x : (props.parentBox?.()?.left ?? props.at.x)
+    return b.left < from ? 'left' : 'right'
+  }
 
   createEffect(() => {
     const api: PanelApi = {
@@ -234,13 +291,31 @@ function Panel(props: {
    * окна, не раскладка элементов, forced reflow они не вызывают.
    */
   const place = (): JSX.CSSProperties => {
+    // панель сама себе якорь: за неё цепляется подменю уровнем ниже
+    const own: JSX.CSSProperties = { 'anchor-name': panelAnchor }
     // `window.CSS`, а не голое `CSS`: имя занято константой со стилями
     const anchored = window.CSS?.supports?.('anchor-name: --x')
-    if (anchored) return props.anchor ? { 'position-anchor': props.anchor } : {}
+    if (anchored) {
+      if (props.depth === 0) return own
+      // подменю: верх — по своему пункту, бок — по краю всей панели, в ту же
+      // сторону, куда ушёл родитель. Не влезет — браузер вернёт обратно сам
+      // (position-try-fallbacks), поэтому это предпочтение, а не приказ
+      const up = props.depth - 1
+      const at = `--dumb-menu-p${up}`
+      return {
+        ...own,
+        'position-anchor': at,
+        top: `anchor(--dumb-menu-i${up} top)`,
+        ...(props.side === 'left'
+          ? { left: 'auto', right: `anchor(${at} left)`, 'margin-left': '0', 'margin-right': '2px' }
+          : { left: `anchor(${at} right)` }),
+      }
+    }
     const p = props.at
-    const flipX = p.x > window.innerWidth / 2
+    const flipX = props.side === 'left' || p.x > window.innerWidth / 2
     const flipY = p.y > window.innerHeight / 2
     return {
+      ...own,
       left: flipX ? 'auto' : `${p.x}px`,
       right: flipX ? `${window.innerWidth - p.x}px` : 'auto',
       top: flipY ? 'auto' : `${p.y}px`,
@@ -250,21 +325,6 @@ function Panel(props: {
 
   return (
     <>
-      {/* Свой якорь — обычный div в документе, а НЕ кнопка-родитель.
-          Кнопка лежит внутри родительского popover, то есть в top layer, и
-          `anchor()` на неё не разрешается: inset становится auto, а панель
-          уезжает в статическую позицию — левый нижний угол экрана. У корневого
-          меню якорь ровно такой же, и там всё работает; повторяем механизм. */}
-      <Show when={props.depth > 0}>
-        <div
-          class="dumb-menu-anchor"
-          style={{
-            left: `${props.at.x}px`,
-            top: `${props.at.y}px`,
-            'anchor-name': props.anchor,
-          }}
-        />
-      </Show>
       <div
         ref={el}
         class={`dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${
@@ -296,6 +356,9 @@ function Panel(props: {
                     aria-haspopup={branch(it) ? 'menu' : undefined}
                     aria-expanded={branch(it) ? (sub()?.i === i() ? 'true' : 'false') : undefined}
                     disabled={asItem(it).disabled}
+                    // якорем становится только раскрытая ветка: по ней подменю
+                    // выравнивается по вертикали
+                    style={sub()?.i === i() ? { 'anchor-name': itemAnchor } : undefined}
                     onMouseEnter={(ev) => highlight(i(), ev.clientX, ev.clientY)}
                     onClick={(ev) => {
                       // ветка не выполняется — по клику она просто раскрывается
@@ -333,8 +396,9 @@ function Panel(props: {
           <Panel
             items={asItem(props.items[s().i]).items!}
             depth={props.depth + 1}
-            anchor={subAnchor}
             at={{ x: s().x, y: s().y }}
+            side={side()}
+            parentBox={box}
             onRun={props.onRun}
             register={props.register}
             class={props.class}

@@ -17,7 +17,54 @@ import {
 import { DumbLightbox } from "@solid-dumb-kit/lightbox";
 import { DumbToaster, toast } from "@solid-dumb-kit/toast";
 import { DumbContextMenu } from "@solid-dumb-kit/context-menu";
-import { Bar, Switch, Note } from "../_controls";
+import { Bar, Switch, Note, Code, Doc, Props } from "../_controls";
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from "./DumbFinder.snippets";
+
+const FINDER_PROPS = [
+  { name: "source", type: "FinderSource", about: "Чем говорить с хранилищем — весь договор с сервером умещается в него." },
+  { name: "path / onPathChange", type: "string / (prefix) => void", about: "Открытая папка. Не задан — файндер водит себя сам, начиная с корня." },
+  { name: "selected / onSelectionChange", type: "Set<string> / (keys) => void", about: "Выделенные ключи. Не задан — держит у себя." },
+  { name: "view / onViewChange", type: "FinderView / (view) => void", about: "Плитками или списком. Не задан — плитками, переключатель в тулбаре." },
+  { name: "accept", type: "string", def: "всё", about: "Что пускать в выбор файлов." },
+  { name: "concurrency", type: "number", def: "3", about: "Сколько файлов тянуть одновременно." },
+  { name: "rootLabel", type: "string", def: "«Всё»", about: "Как называется корень в крошках." },
+  { name: "tile", type: "string", def: "minmax(132px, 1fr)", about: "Ширина плитки — css-трек." },
+  { name: "height", type: "string", def: "60vh", about: "Высота области с файлами." },
+  { name: "sidebar / sidebarWidth", type: "boolean / string", def: "true / 265px", about: "Дерево папок слева." },
+  { name: "treeKey", type: "string", def: "dumb-finder", about: "Ключ localStorage для раскрытых веток дерева." },
+  {
+    name: "icons",
+    type: "Partial<Record<…, string>>",
+    about: "Значки видов файлов и кнопок — CSS-классы, а не разметка. Не задан — эмодзи, чтобы пакет работал без иконочного набора.",
+  },
+];
+
+const SOURCE_API = [
+  {
+    name: "list",
+    type: "(prefix, { signal }) => Promise<FinderEntry[]>",
+    about: "ТОЛЬКО прямое содержимое папки: рекурсию файндер не просит никогда.",
+  },
+  {
+    name: "tree",
+    type: "({ signal }) => Promise<FinderEntry[]>",
+    about: "Все папки разом — дерево строится целиком с первого вздоха. У S3 это один рекурсивный листинг, дешевле десятка запросов по веткам.",
+  },
+  { name: "upload", type: "FinderUploader", about: "Не задан — заливки нет: ни кнопки, ни приёма броском." },
+  { name: "remove", type: "(keys) => Promise<void>", about: "Не задан — нет удаления." },
+  { name: "move", type: "(keys, toPrefix) => Promise<void>", about: "Не задан — нет переноса: ни перетаскиванием, ни кнопкой." },
+  { name: "mkdir", type: "(prefix) => Promise<void>", about: "Не задан — нет создания папок." },
+];
+
+const SOURCES = [
+  { name: "createS3Source", type: "(opts) => FinderSource", about: "S3-совместимое: Garage, MinIO, AWS. Сервер подписывает, файл идёт мимо приложения." },
+  { name: "createNodeSource", type: "(opts) => FinderSource", about: "Простой сервер с папками на диске: файл идёт через него." },
+  { name: "createWebdavSource", type: "(opts) => FinderSource", about: "Nextcloud, ownCloud, любой mod_dav — PROPFIND и компания." },
+  { name: "createHttpSource", type: "(opts) => FinderSource", about: "Общая основа, если ручки называются иначе." },
+  { name: "createMemorySource", type: "(opts) => FinderSource", about: "В памяти вкладки: витрина без сервера, оффлайн, тесты." },
+];
 
 /**
  * Значки — Solar через iconify (`@plugin "@iconify/tailwind4"` в `app.css`).
@@ -227,6 +274,60 @@ export default function DumbFinderExample() {
       />
 
       <DumbLightbox items={shots()} index={shown} onIndexChange={setShown} />
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Источник решает всё">
+        <p>
+          Файндер не знает ни про S3, ни про WebDAV — он знает про <code>FinderSource</code>. Готовых
+          источников пять, и переключение между ними не трогает разметку: та же панель работает и с
+          памятью вкладки, и с боевым хранилищем.
+        </p>
+      </Doc>
+      <Code title="Файндер на S3" code={SNIP.basic} />
+
+      <Doc title="Свой источник">
+        <p>
+          Обязательна только <code>list</code>, и возвращать она должна ТОЛЬКО прямое содержимое
+          папки: рекурсию файндер не просит никогда, а десять тысяч ключей одним списком подвесят
+          вкладку. Остальные функции включают возможности: нет <code>remove</code> — нет удаления,
+          нет <code>upload</code> — нет ни кнопки, ни приёма файлов броском.
+        </p>
+      </Doc>
+      <Code title="Пять функций" code={SNIP.source} />
+
+      <Doc title="Управляемый режим">
+        <p>
+          По умолчанию файндер водит себя сам. Но путь, выделение и вид можно поднять наружу — чтобы
+          папка жила в адресе страницы, а выделение читал соседний компонент.
+        </p>
+      </Doc>
+      <Code title="Путь и выделение снаружи" code={SNIP.controlled} />
+
+      <Doc title="Значки и размеры">
+        <p>
+          Иконки приходят КЛАССАМИ, а не разметкой: набор выбирает потребитель, и его же
+          Tailwind собирает из этих строк. Не задали — файндер нарисует эмодзи и будет работать без
+          иконочного пакета вовсе.
+        </p>
+      </Doc>
+      <Code title="Оформление" code={SNIP.look} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbFinder</h4>
+      <Props rows={FINDER_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">FinderSource</h4>
+      <Props rows={SOURCE_API} />
+
+      <h4 class="mt-6 text-lg font-semibold">Готовые источники</h4>
+      <Props rows={SOURCES} />
+
       <DumbToaster />
     </div>
   );

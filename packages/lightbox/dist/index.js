@@ -9,6 +9,24 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var configured = "auto";
+var apple = null;
+function isApplePlatform() {
+  if (apple !== null) return apple;
+  const nav = typeof navigator === "undefined" ? null : navigator;
+  if (!nav) return apple = false;
+  const uaData = nav.userAgentData;
+  const src = uaData?.platform || nav.platform || nav.userAgent || "";
+  apple = /mac|iphone|ipad|ipod/i.test(src);
+  return apple;
+}
+function resolveCloseSide(explicit) {
+  const pick = explicit && explicit !== "auto" ? explicit : configured;
+  if (pick !== "auto") return pick;
+  const nav = typeof navigator === "undefined" ? null : navigator;
+  if (!nav) return "left";
+  return isApplePlatform() ? "left" : "right";
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -26,14 +44,15 @@ function injectStyle(id, css) {
 }
 
 // src/DumbLightbox.tsx
-var _tmpl$ = /* @__PURE__ */ template(`<dialog>`);
-var _tmpl$2 = /* @__PURE__ */ template(`<div class=dumb-lightbox-stage><img class=dumb-lightbox-img>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<span class="dumb-lightbox-count tabular-nums"> / `);
-var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral">1:1`);
-var _tmpl$5 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"data-at=top><span class="dumb-lightbox-title min-w-0 flex-1 truncate"></span><button type=button class="btn btn-sm btn-circle btn-neutral"title="\u0437\u0430\u043A\u0440\u044B\u0442\u044C (Esc)">\u2715`);
-var _tmpl$6 = /* @__PURE__ */ template(`<button type=button class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"data-side=prev title="\u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F (\u2190)">\u2039`);
-var _tmpl$7 = /* @__PURE__ */ template(`<button type=button class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"data-side=next title="\u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F (\u2192)">\u203A`);
-var _tmpl$8 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center justify-center gap-3 p-3 text-sm text-white"data-at=bottom>`);
+var _tmpl$ = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-circle btn-neutral"title="\u0437\u0430\u043A\u0440\u044B\u0442\u044C (Esc)">\u2715`);
+var _tmpl$2 = /* @__PURE__ */ template(`<dialog>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<div class=dumb-lightbox-stage><img class=dumb-lightbox-img>`);
+var _tmpl$4 = /* @__PURE__ */ template(`<span class="dumb-lightbox-count tabular-nums"> / `);
+var _tmpl$5 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral">1:1`);
+var _tmpl$6 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"data-at=top><span class="dumb-lightbox-title min-w-0 flex-1 truncate">`);
+var _tmpl$7 = /* @__PURE__ */ template(`<button type=button class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"data-side=prev title="\u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F (\u2190)">\u2039`);
+var _tmpl$8 = /* @__PURE__ */ template(`<button type=button class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"data-side=next title="\u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F (\u2192)">\u203A`);
+var _tmpl$9 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center justify-center gap-3 p-3 text-sm text-white"data-at=bottom>`);
 var STYLES = `
   /* \u0422\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430 \u0438 \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430 \u0437\u0443\u043C\u0430. \u041A\u043D\u043E\u043F\u043A\u0438 \u2014 daisyUI (btn) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435; \u043D\u0430\u0434
      \u0442\u0451\u043C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u0438\u043D\u043A\u043E\u0439 \u043E\u043D\u0438 \u0438\u0434\u0443\u0442 \u0432 btn-neutral, \u0447\u0442\u043E\u0431\u044B \u0447\u0438\u0442\u0430\u0442\u044C\u0441\u044F \u043D\u0430 \u043B\u044E\u0431\u043E\u043C \u0444\u043E\u043D\u0435. */
@@ -90,6 +109,12 @@ function DumbLightbox(props) {
     reset();
     props.onIndexChange(null);
   };
+  const side = () => resolveCloseSide(props.closeSide);
+  const closeButton = () => (() => {
+    var _el$ = _tmpl$();
+    _el$.$$click = close;
+    return _el$;
+  })();
   createEffect(() => {
     const open = at() !== null;
     if (open && !dialog.open) dialog.showModal();
@@ -153,34 +178,34 @@ function DumbLightbox(props) {
     setDragging(false);
   }
   return (() => {
-    var _el$ = _tmpl$();
-    _el$.addEventListener("cancel", (ev) => {
+    var _el$2 = _tmpl$2();
+    _el$2.addEventListener("cancel", (ev) => {
       ev.preventDefault();
       close();
     });
-    _el$.addEventListener("close", () => at() !== null && close());
+    _el$2.addEventListener("close", () => at() !== null && close());
     var _ref$ = dialog;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : dialog = _el$;
-    insert(_el$, createComponent(Show, {
+    typeof _ref$ === "function" ? use(_ref$, _el$2) : dialog = _el$2;
+    insert(_el$2, createComponent(Show, {
       get when() {
         return item();
       },
       children: (cur) => [(() => {
-        var _el$2 = _tmpl$2(), _el$3 = _el$2.firstChild;
-        _el$2.$$click = (ev) => ev.target === ev.currentTarget && close();
-        _el$2.addEventListener("pointercancel", onUp);
-        _el$2.$$pointerup = onUp;
-        _el$2.$$pointermove = onMove;
-        _el$2.$$pointerdown = onDown;
-        _el$2.addEventListener("wheel", onWheel);
-        _el$3.$$dblclick = () => zoom() === 1 ? setZoom(2.5) : reset();
-        setAttribute(_el$3, "draggable", false);
+        var _el$3 = _tmpl$3(), _el$4 = _el$3.firstChild;
+        _el$3.$$click = (ev) => ev.target === ev.currentTarget && close();
+        _el$3.addEventListener("pointercancel", onUp);
+        _el$3.$$pointerup = onUp;
+        _el$3.$$pointermove = onMove;
+        _el$3.$$pointerdown = onDown;
+        _el$3.addEventListener("wheel", onWheel);
+        _el$4.$$dblclick = () => zoom() === 1 ? setZoom(2.5) : reset();
+        setAttribute(_el$4, "draggable", false);
         effect((_p$) => {
           var _v$3 = dragging() ? "1" : void 0, _v$4 = cur().url, _v$5 = cur().title ?? "", _v$6 = `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`;
-          _v$3 !== _p$.e && setAttribute(_el$2, "data-drag", _p$.e = _v$3);
-          _v$4 !== _p$.t && setAttribute(_el$3, "src", _p$.t = _v$4);
-          _v$5 !== _p$.a && setAttribute(_el$3, "alt", _p$.a = _v$5);
-          _v$6 !== _p$.o && setStyleProperty(_el$3, "transform", _p$.o = _v$6);
+          _v$3 !== _p$.e && setAttribute(_el$3, "data-drag", _p$.e = _v$3);
+          _v$4 !== _p$.t && setAttribute(_el$4, "src", _p$.t = _v$4);
+          _v$5 !== _p$.a && setAttribute(_el$4, "alt", _p$.a = _v$5);
+          _v$6 !== _p$.o && setStyleProperty(_el$4, "transform", _p$.o = _v$6);
           return _p$;
         }, {
           e: void 0,
@@ -188,44 +213,59 @@ function DumbLightbox(props) {
           a: void 0,
           o: void 0
         });
-        return _el$2;
+        return _el$3;
       })(), (() => {
-        var _el$4 = _tmpl$5(), _el$5 = _el$4.firstChild, _el$9 = _el$5.nextSibling;
-        insert(_el$5, () => cur().title);
-        insert(_el$4, createComponent(Show, {
+        var _el$5 = _tmpl$6(), _el$6 = _el$5.firstChild;
+        insert(_el$5, createComponent(Show, {
+          get when() {
+            return side() === "left";
+          },
+          get children() {
+            return closeButton();
+          }
+        }), _el$6);
+        insert(_el$6, () => cur().title);
+        insert(_el$5, createComponent(Show, {
           get when() {
             return props.items.length > 1;
           },
           get children() {
-            var _el$6 = _tmpl$3(), _el$7 = _el$6.firstChild;
-            insert(_el$6, () => (at() ?? 0) + 1, _el$7);
-            insert(_el$6, () => props.items.length, null);
-            return _el$6;
+            var _el$7 = _tmpl$4(), _el$8 = _el$7.firstChild;
+            insert(_el$7, () => (at() ?? 0) + 1, _el$8);
+            insert(_el$7, () => props.items.length, null);
+            return _el$7;
           }
-        }), _el$9);
-        insert(_el$4, createComponent(Show, {
+        }), null);
+        insert(_el$5, createComponent(Show, {
           get when() {
             return zoom() !== 1;
           },
           get children() {
-            var _el$8 = _tmpl$4();
-            _el$8.$$click = reset;
-            return _el$8;
+            var _el$9 = _tmpl$5();
+            _el$9.$$click = reset;
+            return _el$9;
           }
-        }), _el$9);
-        _el$9.$$click = close;
-        return _el$4;
+        }), null);
+        insert(_el$5, createComponent(Show, {
+          get when() {
+            return side() === "right";
+          },
+          get children() {
+            return closeButton();
+          }
+        }), null);
+        return _el$5;
       })(), createComponent(Show, {
         get when() {
           return props.items.length > 1;
         },
         get children() {
           return [(() => {
-            var _el$0 = _tmpl$6();
+            var _el$0 = _tmpl$7();
             _el$0.$$click = () => go(-1);
             return _el$0;
           })(), (() => {
-            var _el$1 = _tmpl$7();
+            var _el$1 = _tmpl$8();
             _el$1.$$click = () => go(1);
             return _el$1;
           })()];
@@ -235,7 +275,7 @@ function DumbLightbox(props) {
           return props.actions;
         },
         get children() {
-          var _el$10 = _tmpl$8();
+          var _el$10 = _tmpl$9();
           insert(_el$10, () => props.actions(cur(), at() ?? 0));
           return _el$10;
         }
@@ -243,16 +283,16 @@ function DumbLightbox(props) {
     }));
     effect((_p$) => {
       var _v$ = `dumb-lightbox ${props.class ?? ""}`, _v$2 = shouldAnimate(props.animate) ? "1" : void 0;
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _v$2 !== _p$.t && setAttribute(_el$, "data-animate", _p$.t = _v$2);
+      _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
+      _v$2 !== _p$.t && setAttribute(_el$2, "data-animate", _p$.t = _v$2);
       return _p$;
     }, {
       e: void 0,
       t: void 0
     });
-    return _el$;
+    return _el$2;
   })();
 }
-delegateEvents(["pointerdown", "pointermove", "pointerup", "click", "dblclick"]);
+delegateEvents(["click", "pointerdown", "pointermove", "pointerup", "dblclick"]);
 
 export { DumbLightbox };

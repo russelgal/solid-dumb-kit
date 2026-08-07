@@ -3,6 +3,37 @@
 // every class here is this example's looks, nothing the kit asks for.
 import { createSignal, For } from 'solid-js'
 import { DumbSortable } from '@solid-dumb-kit/sortable'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbSortable.snippets'
+
+const SORTABLE_PROPS = [
+  { name: 'items', type: 'T[]', about: 'Текущий порядок. Источник истины — у потребителя.' },
+  { name: 'setItems', type: '(next: T[]) => void', about: 'Новый порядок на дропе. Кит сам ничего не перекладывает.' },
+  { name: 'id', type: '(item: T) => string', about: 'Стабильный ключ элемента: по нему снимается снимок и считается перестановка.' },
+  {
+    name: 'axis',
+    type: "'y' | 'grid'",
+    def: "'y'",
+    about: 'Список или плитки. В grid соседи расступаются и по горизонтали.',
+  },
+  { name: 'disabled', type: '() => boolean', def: 'false', about: 'Выключить драг — например, пока активна сортировка по колонке.' },
+  { name: 'pressDelay', type: 'number', def: '250', about: 'Палец: сколько держать до старта. Иначе страницу не прокрутить.' },
+  { name: 'mousePressDelay', type: 'number', def: '0', about: 'Мышь: удержание до старта, 0 — сразу.' },
+  { name: 'mouseThreshold', type: 'number', def: '6', about: 'Мышь: сколько пройти до старта. Иначе не кликнуть.' },
+  {
+    name: 'animate',
+    type: 'boolean',
+    def: 'системная настройка',
+    about: 'Расступание соседей и приземление. Не задан — анимируем, но молча выключаемся при prefers-reduced-motion.',
+  },
+  {
+    name: 'children',
+    type: '(item, index) => JSX.Element',
+    about: 'Верни ОДИН корневой элемент — компонент цепляет драг прямо к нему. Ручка — потомок с [data-drag-handle].',
+  },
+]
 
 type Row = { id: string; label: string }
 const rows = (n: number): Row[] =>
@@ -112,6 +143,61 @@ export default function DumbSortableExample() {
       </div>
 
       <Promo />
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Список">
+        <p>
+          Ни рефов, ни директив, ни обёрток вокруг элементов: <code>children</code> возвращает твой
+          DOM-узел, компонент берёт именно его и цепляет к нему жест. Контейнер, теги, классы и
+          прокрутка остаются твоими — кит не просит ни строчки своего CSS.
+        </p>
+      </Doc>
+      <Code title="Сортируемый список" code={SNIP.basic} />
+
+      <Doc title="Ручка и кнопки">
+        <p>
+          Потомок с <code>[data-drag-handle]</code> становится ручкой — тогда за остальной элемент
+          можно выделять текст. Кнопки внутри строки помечаются <code>[data-no-drag]</code>: с них
+          жест не стартует, и «удалить» остаётся кликом, а не случайным переносом.
+        </p>
+      </Doc>
+      <Code title="Ручка и защита кнопок" code={SNIP.handle} />
+
+      <Doc title="Сетка">
+        <p>
+          <code>axis="grid"</code> — те же плитки, но расступание считается в двух измерениях.
+          Раскладку по-прежнему делает твой CSS-грид: кит только двигает <code>transform</code>.
+        </p>
+      </Doc>
+      <Code title="Плитки" code={SNIP.grid} />
+
+      <Doc title="Пороги: палец и мышь — разное">
+        <p>
+          Пальцем жест обязан начинаться по удержанию, иначе страница перестанет прокручиваться.
+          Мышью — по пройденному расстоянию, иначе пропадёт обычный клик. Поэтому пороги отдельные,
+          а не один «универсальный».
+        </p>
+      </Doc>
+      <Code title="Пороги и выключение" code={SNIP.thresholds} />
+
+      <Doc title="Между списками — другой движок">
+        <p>
+          Перенос из колонки в колонку — это <code>createSortableGroup</code>, а не проп у списка:
+          там общий снимок всех зон, клон в top layer и своё правило приёма (<code>accepts</code>).
+          Внутри одного списка он не нужен и только мешал бы.
+        </p>
+      </Doc>
+      <Code title="Канбан" code={SNIP.group} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbSortable</h4>
+      <Props rows={SORTABLE_PROPS} />
 
     </div>
   )

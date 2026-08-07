@@ -2,6 +2,21 @@
 // fmt (ru-RU numbers/dates/sizes), genSlug, imgproxyUrl and extractImagesFromZip.
 import { createSignal, For, Show, onCleanup } from 'solid-js'
 import { Rub0, Rub2, Rub4, Rub0R, RubR2, fmtNum, fmtPrice, fmtDate, fmtDateTime, fmtDateTimeShort, fmtTime, fmtDateMonth, timeAgo, fmtSize, genSlug, extractImagesFromZip, imgproxyUrl, configureImgproxy } from '@solid-dumb-kit/utils'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './utils.snippets'
+
+const UTILS_API = [
+  { name: 'Rub0 / Rub2 / Rub4 / Rub0R / RubR2', type: '(v) => string', about: 'Рубли с нужным числом знаков; варианты с R — со знаком валюты слева.' },
+  { name: 'fmtNum / fmtPrice', type: '(v) => string', about: 'Разряды пробелами; цена ноль превращается в «—»: в прайсе это «нет цены».' },
+  { name: 'fmtDate / fmtDateTime / fmtDateTimeShort / fmtTime / fmtDateMonth', type: '(v) => string', about: 'Даты по-русски. Принимают строку, Date и число.' },
+  { name: 'timeAgo', type: '(v) => string', about: '«5 минут назад» — для лент и журналов.' },
+  { name: 'fmtSize', type: '(bytes) => string', about: 'Размер файла: КБ, МБ, ГБ.' },
+  { name: 'genSlug', type: '(s) => string', about: 'Транслитерация в url-строку. Синхронная — можно звать прямо в обработчике ввода.' },
+  { name: 'imgproxyUrl / configureImgproxy', type: '(src, ops) => string', about: 'Подписанные ссылки на превью. Домены и ключи приходят из окружения, в пакете их нет.' },
+  { name: 'extractImagesFromZip', type: '(file) => Promise<File[]>', about: 'Распаковка. fflate грузится динамически — кто зипы не открывает, тот распаковщик и не тащит.' },
+]
 
 function Row(props: { call: string; value: string }) {
   return (
@@ -145,6 +160,61 @@ export default function UtilsExample() {
           </div>
         </Show>
       </section>
+
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Деньги и числа">
+        <p>
+          Форматирование денег вынесено в отдельные функции, а не в один вызов с опциями: в
+          интерфейсе их видов ровно столько, и каждый раз выбирать разряды заново — верный способ
+          получить в соседних таблицах разные цены. Ноль в цене превращается в прочерк: в прайсе
+          это «нет цены», а не «бесплатно».
+        </p>
+      </Doc>
+      <Code title="Рубли и числа" code={SNIP.fmt} />
+
+      <Doc title="Даты">
+        <p>
+          Принимают строку, <code>Date</code> и число — чтобы не приводить тип на каждом вызове.
+          Формат русский и одинаковый во всём приложении.
+        </p>
+      </Doc>
+      <Code title="Даты и «назад»" code={SNIP.dates} />
+
+      <Doc title="Слаги">
+        <p>
+          Транслитерация синхронная: словарь лежит в самом пакете, поэтому вызов можно делать прямо
+          в обработчике ввода — адрес обновляется, пока печатают название.
+        </p>
+      </Doc>
+      <Code title="genSlug" code={SNIP.slug} />
+
+      <Doc title="Превью картинок">
+        <p>
+          Адреса и ключи приходят из окружения через <code>configureImgproxy</code> — в пакете нет
+          ни одного домена. Это и есть разница с донорским кодом, где всё было прибито гвоздями к
+          одному проекту.
+        </p>
+      </Doc>
+      <Code title="imgproxy" code={SNIP.images} />
+
+      <Doc title="Распаковка">
+        <p>
+          <code>fflate</code> грузится ДИНАМИЧЕСКИ, внутри самой функции: приложение, которое зипы
+          не открывает, не тащит распаковщик в бандл вовсе.
+        </p>
+      </Doc>
+      <Code title="extractImagesFromZip" code={SNIP.zip} />
+
+      <h4 class="mt-6 text-lg font-semibold">Утилиты</h4>
+      <Props rows={UTILS_API} />
 
     </div>
   )

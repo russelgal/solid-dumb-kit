@@ -15,7 +15,58 @@ import {
   type Uploader,
 } from "@solid-dumb-kit/gallery";
 import { DumbLightbox } from "@solid-dumb-kit/lightbox";
-import { Bar, Switch, Check, Pick, Btn, Note } from "../_controls";
+import { Bar, Switch, Check, Pick, Btn, Note, Code, Doc, Props } from "../_controls";
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from "./DumbGallery.snippets";
+
+const GALLERY_PROPS = [
+  { name: "items", type: "GalleryItem[]", about: "Что показано. Источник истины — у потребителя." },
+  {
+    name: "setItems",
+    type: "(next: GalleryItem[]) => void",
+    about: "Добавили, переставили, удалили, долилось — новый набор целиком.",
+  },
+  {
+    name: "upload",
+    type: "Uploader",
+    about: "Чем заливать. Не задан — галерея локальная: файлы живут в браузере и пропадут с перезагрузкой.",
+  },
+  { name: "concurrency", type: "number", def: "3", about: "Сколько файлов тянуть одновременно." },
+  { name: "accept", type: "string", def: "image/*", about: "Что пускать в выбор." },
+  { name: "multiple", type: "boolean", def: "true", about: "Можно ли выбрать несколько разом." },
+  { name: "max", type: "number", about: "Больше стольких не принимать." },
+  { name: "tile", type: "string", def: "minmax(120px, 1fr)", about: "Ширина плитки — css-трек грида." },
+  { name: "gap", type: "number", def: "10", about: "Зазор сетки, px." },
+  {
+    name: "editable",
+    type: "boolean",
+    def: "true",
+    about: "Правка. Без неё нет ни выбора файлов, ни перестановки, ни крестика удаления.",
+  },
+  { name: "onOpen", type: "(item, index) => void", about: "Клик по плитке — например, открыть просмотр в лайтбоксе." },
+  {
+    name: "children",
+    type: "(item, index, progress) => JSX.Element",
+    about: "Своя плитка. Прогресс (0…1) приходит третьим аргументом, а не полем items — он меняется десятки раз в секунду.",
+  },
+  {
+    name: "animate",
+    type: "boolean",
+    def: "системная настройка",
+    about: "Перестановка плиток. Не задан — анимируем, но не при prefers-reduced-motion.",
+  },
+];
+
+const ITEM_PROPS = [
+  { name: "id", type: "string", about: "Ключ плитки." },
+  { name: "url", type: "string", about: "Адрес, по которому картинка живёт после заливки." },
+  { name: "preview", type: "string", about: "objectURL выбранного файла: показывается, пока он есть." },
+  { name: "name / size", type: "string / number", about: "Имя и размер файла." },
+  { name: "status", type: "GalleryStatus", about: "local, queued, uploading, done, error — по нему рисуется полоса и обводка." },
+  { name: "error", type: "string", about: "Что пошло не так при заливке." },
+  { name: "key", type: "string", about: "Ключ в хранилище — приходит из транспорта." },
+];
 
 /**
  * Поддельная заливка: тянет полосу до конца за пару секунд и умеет падать.
@@ -217,6 +268,57 @@ export default function DumbGalleryExample() {
           ещё раз для тех же файлов.
         </p>
       </Show>
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Локальная галерея">
+        <p>
+          Без <code>upload</code> ничего никуда не уходит: выбранные файлы живут в браузере как{" "}
+          <code>objectURL</code>. Этого хватает форме, где всё отправляется разом при сохранении, —
+          и это же режим, в котором удобно смотреть на перестановку плиток.
+        </p>
+      </Doc>
+      <Code title="Плитки без заливки" code={SNIP.basic} />
+
+      <Doc title="Заливка по подписанной ссылке">
+        <p>
+          Сервер подписывает URL, браузер кладёт файл прямо в хранилище — трафик идёт мимо
+          приложения. Очередь держит <code>concurrency</code> потоков, снятая плитка обрывает свой
+          запрос по-настоящему, а упавшую можно позвать заново теми же файлами.
+        </p>
+      </Doc>
+      <Code title="S3-совместимое хранилище" code={SNIP.upload} />
+
+      <Doc title="Вид и режим просмотра">
+        <p>
+          Раскладка задаётся css-треком и зазором, а <code>editable={"{false}"}</code> убирает
+          правку целиком: ни выбора файлов, ни перестановки, ни крестика. Клик по плитке отдаётся
+          наружу — обычно им открывают лайтбокс.
+        </p>
+      </Doc>
+      <Code title="Сетка и просмотр" code={SNIP.look} />
+
+      <Doc title="Своя плитка">
+        <p>
+          <code>children</code> отдаёт разметку плитки целиком. Прогресс приходит ТРЕТЬИМ
+          аргументом, а не полем в <code>items</code>, и это принципиально: он меняется десятки раз
+          в секунду, и живи он в данных — на каждый процент перерисовывался бы весь список.
+        </p>
+      </Doc>
+      <Code title="children" code={SNIP.custom} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbGallery</h4>
+      <Props rows={GALLERY_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">GalleryItem</h4>
+      <Props rows={ITEM_PROPS} />
+
     </div>
   );
 }

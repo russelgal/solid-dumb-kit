@@ -13,7 +13,30 @@
 // между колонками и есть причина, по которой пакет существует.
 import { createSignal, For } from 'solid-js'
 import { DumbPropsTable, dumpProps } from '@solid-dumb-kit/props-table'
-import { Bar, Btn, Check, Note, Pick } from '../_controls'
+import { Bar, Btn, Check, Note, Pick, Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbPropsTable.snippets'
+
+const PT_PROPS = [
+  { name: 'value', type: 'object', about: 'Объект пропсов — или любой другой.' },
+  { name: 'title', type: 'string', about: 'Заголовок над таблицей.' },
+  { name: 'depth', type: 'number', def: '1', about: 'Насколько глубоко разворачивать вложенные объекты; 0 — не разворачивать.' },
+  { name: 'maxItems', type: 'number', def: '8', about: 'Сколько элементов массива показывать; остальные схлопываются в «…».' },
+  { name: 'skip', type: 'string[]', about: 'Не раскрывать эти ключи верхнего уровня: rows, spans — там тысячи строк.' },
+  { name: 'indent', type: 'number', about: 'Отступ на уровень вложенности, px.' },
+  { name: 'headless', type: 'boolean', def: 'false', about: 'Без шапки: в узкой панели она только занимает строку.' },
+  { name: 'class', type: 'string', about: 'Класс на корень — оформление на отладочной панели должно быть ваше.' },
+]
+
+const DUMP_ROW = [
+  { name: 'key / path', type: 'string', about: 'Ключ на своём уровне и полный путь от корня: scale.stepMin.' },
+  { name: 'depth', type: 'number', about: 'Глубина вложенности, 0 — верхний уровень.' },
+  { name: 'type', type: 'string', about: 'typeof значения.' },
+  { name: 'kind', type: 'DumpKind', about: 'object | array | function | primitive — по нему панель и красит строку.' },
+  { name: 'value', type: 'string', about: 'Короткое человекочитаемое представление.' },
+  { name: 'raw', type: 'unknown', about: 'Сырое значение — вдруг вызывающему нужно больше.' },
+]
 
 /** игрушечные пропсы: всё, что обычно и приходит компоненту */
 const build = (opts: { rows: number; readonly: boolean; theme: string; withHandler: boolean }) => ({
@@ -131,6 +154,48 @@ export default function DumbPropsTableExample() {
           </For>
         </div>
       </div>
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Что пришло в компонент">
+        <p>
+          Показывается ВСЁ, включая функции: половина отладки — это выяснить, что проп вообще не
+          доехал или доехал не тем. Ключи читаются с самого объекта, а Solid объявляет пропсы
+          перечислимыми геттерами, так что панель видит их без всяких обёрток.
+        </p>
+      </Doc>
+      <Code title="Панель в компоненте" code={SNIP.basic} />
+
+      <Doc title="Что показывать">
+        <p>
+          Вложенные объекты разворачиваются и идут ПЕРВЫМИ: в них обычно и кроется причина «почему
+          не работает». Массивы схлопываются до первых элементов и счётчика — дамп двух тысяч броней
+          никому не нужен, а тяжёлые ключи проще пропустить целиком.
+        </p>
+      </Doc>
+      <Code title="Глубина и пропуски" code={SNIP.options} />
+
+      <Doc title="Без разметки">
+        <p>
+          Тот же разбор доступен функцией — она не зависит от Solid и годится в тестах и в логе:{' '}
+          <code>console.table(dumpProps(props))</code> читается заметно лучше, чем развёрнутый
+          объект в консоли.
+        </p>
+      </Doc>
+      <Code title="dumpProps" code={SNIP.dump} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbPropsTable</h4>
+      <Props rows={PT_PROPS} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumpRow</h4>
+      <Props rows={DUMP_ROW} />
+
     </div>
   )
 }

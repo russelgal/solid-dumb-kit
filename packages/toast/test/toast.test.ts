@@ -1,5 +1,5 @@
-// Шина сообщений: очередь, схлопывание повторов, таймеры, вопрос вместо
-// confirm(). Ни DOM, ни Solid тут нет — проверяется чистая механика.
+// Шина сообщений: очередь, история, таймеры, вопрос вместо confirm().
+// Ни DOM, ни Solid тут нет — проверяется чистая механика.
 //
 // Каждый тест берёт СВОЮ шину (`createToastBus`), а не общий синглтон `toast`:
 // у синглтона состояние переживает файл целиком, и порядок тестов начал бы
@@ -17,17 +17,28 @@ describe('очередь', () => {
     const id = bus.error('Не залилось')
 
     expect(bus.list()).toHaveLength(1)
-    expect(bus.list()[0]).toMatchObject({ id, kind: 'error', text: 'Не залилось', count: 1 })
+    expect(bus.list()[0]).toMatchObject({ id, kind: 'error', text: 'Не залилось' })
   })
 
-  it('одинаковые сообщения схлопывает в одно со счётчиком', () => {
+  it('повторы НЕ схлопывает: пять неудачных файлов — пять сообщений', () => {
     const bus = createToastBus()
     bus.error('Не залилось')
     bus.error('Не залилось')
     bus.error('Не залилось')
 
-    expect(bus.list()).toHaveLength(1)
-    expect(bus.list()[0].count).toBe(3)
+    // счётчик «×3» врал бы про историю: каждая неудача — своя строка, и в
+    // центре уведомлений их потом читают поштучно
+    expect(bus.list()).toHaveLength(3)
+    expect(new Set(bus.list().map((t) => t.id)).size).toBe(3)
+  })
+
+  it('погашенное уходит в историю, а не пропадает', () => {
+    const bus = createToastBus()
+    const id = bus.success('Сохранено')
+    bus.dismiss(id)
+
+    expect(bus.list()).toHaveLength(0)
+    expect(bus.history().map((t) => t.text)).toContain('Сохранено')
   })
 
   it('разные сообщения — разные плашки', () => {
@@ -105,8 +116,7 @@ describe('вопрос вместо confirm()', () => {
   it('confirm отдаёт true на подтверждении и false на отказе', async () => {
     const bus = createToastBus()
 
-    // Тексты РАЗНЫЕ: одинаковые схлопнулись бы в одну плашку с кнопками от
-    // первого вопроса, и второй промис не дождался бы ответа никогда.
+    // Тексты разные — чтобы вопросы не путались глазами в отладке.
     const yes = bus.confirm('Удалить папку?')
     bus.list()[0].actions![0].run!()
     await expect(yes).resolves.toBe(true)

@@ -23,6 +23,7 @@ import DumbTimelineExample from '../pointer/DumbTimeline.example'
 import DumbModalExample from '../pointer/DumbModal.example'
 import DumbToastExample from '../pointer/DumbToast.example'
 import DumbDateRangeExample from '../pointer/DumbDateRange.example'
+import DumbDateTimeRangeExample from '../pointer/DumbDateTimeRange.example'
 import DumbPropsTableExample from '../data/DumbPropsTable.example'
 import DumbUserManagerExample from '../data/DumbUserManager.example'
 import DumbSortableDndExample from '../dnd/DumbSortableDnd.example'
@@ -87,6 +88,7 @@ const EXAMPLES = [
   ['DumbModal', DumbModalExample],
   ['DumbToast', DumbToastExample],
   ['DumbDateRange', DumbDateRangeExample],
+  ['DumbDateTimeRange', DumbDateTimeRangeExample],
   ['DumbPropsTable', DumbPropsTableExample],
   ['DumbUserManager', DumbUserManagerExample],
 ] as const

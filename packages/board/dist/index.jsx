@@ -285,7 +285,7 @@ function createAutoScroller() {
 import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, memo, setAttribute, className, style, template } from "solid-js/web";
 import { createSignal, onCleanup, createMemo, Show, For } from "solid-js";
 
-// ../../node_modules/.pnpm/valibot@1.4.2_typescript@6.0.3/node_modules/valibot/dist/index.mjs
+// ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
 var DEFAULT_CONFIG = {
   lang: void 0,

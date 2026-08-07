@@ -61,3 +61,39 @@ looks foreign in any theme, and you can't write in it what exactly will happen.
 A button is `{ label, run, kind: 'primary' | 'danger', keepOpen }`.
 `DumbToaster` takes `position`, `max`, its own `bus`, and a custom toast via
 `children`.
+
+## Notification center
+
+A dismissed toast doesn't disappear — it flies to the edge, into a history
+panel, like on macOS. The panel and its bell with an unread counter live in the
+same top layer (Popover API), so they sit above modals without a single
+`z-index`.
+
+```tsx
+// both are mounted ONCE per app, usually next to the root
+<DumbToaster position="bottom-right" max={6} />
+<DumbToastCenter />
+```
+
+The bell can be turned off (`bell={false}`) and the panel opened by your own
+button — `toast.toggleHistory()` is callable from anywhere, the bus lives in a
+module.
+
+| | |
+| --- | --- |
+| `toast.history()` | what has been read and dismissed |
+| `toast.unread()` | unread counter |
+| `toast.forget(id)` / `toast.clearHistory()` | drop one entry / clear history |
+| `toast.toggleHistory()` | open or close the panel |
+| `toast.pause() / resume()` | stop timers (the toaster does this under the cursor) |
+
+`DumbToastCenter` takes `side`, `bell`, `title`, `closeSide`, `animate`, and a
+custom history row via `children`.
+
+## A toast question or a modal question
+
+`toast.confirm` is for when work continues: you asked about a row in a list,
+answered, moved on. When work has stopped and an answer is mandatory — closing a
+window with unsaved changes, wiping data — the question must be modal, on top of
+what it is about: `modal.confirm` from
+[`@solid-dumb-kit/modal`](DumbModal.md).

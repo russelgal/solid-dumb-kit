@@ -6,6 +6,21 @@
 // DumbGrid со своим указательным жестом.
 import { createSignal, For } from 'solid-js'
 import { createDumbGridDndGroup, DumbGridDnd, type DumbGridDndItem } from '@solid-dumb-kit/grid-dnd'
+import { Code, Doc, Props } from '../_controls'
+// Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
+// сюда приезжает уже готовая разметка (playground/snippets.ts).
+import SNIP from './DumbGridDnd.snippets'
+
+const DND_PROPS = [
+  { name: 'items', type: 'DumbGridDndItem[]', about: 'Блоки: id, content и размер (w колонок, h строк).' },
+  { name: 'cols', type: 'number', def: '12', about: 'Колонок в сетке.' },
+  { name: 'rowHeight', type: 'number', def: '80', about: 'Высота строки, px.' },
+  { name: 'gap', type: 'number', def: '12', about: 'Зазор, px.' },
+  { name: 'onReorder', type: '(from: number, to: number) => void', about: 'Перестановка внутри этой сетки. Данные перекладывает потребитель.' },
+  { name: 'disabled', type: 'boolean', def: 'false', about: 'Перетаскивание выключено — рисуется просто сетка.' },
+  { name: 'group / name', type: 'DumbGridDndGroupHandle / string', about: 'Группа сеток: с ней блок можно утащить в соседнюю.' },
+  { name: 'blockClass / blockStyle', type: 'string / JSX.CSSProperties', about: 'Оформление блока-обёртки.' },
+]
 
 type Widget = { id: string; title: string; hue: number; w: number; h: number }
 
@@ -103,6 +118,46 @@ export default function DumbGridDndExample() {
         <Board side="left" title="Продажи" />
         <Board side="right" title="Операционка" />
       </div>
+
+
+      <hr class="my-6 border-base-300" />
+
+      <h4 class="text-lg font-semibold">Как это подключить</h4>
+      <p class="mt-1 max-w-[92ch] text-sm">
+        Пакет ставится отдельно от остального кита — потребитель берёт только то, что взял.
+      </p>
+      <Code title="Установка" code={SNIP.install} />
+
+      <Doc title="Сетка на нативном DnD">
+        <p>
+          Тот же дашборд, но жест ведёт браузер: он рисует «призрак», он же решает, над какой зоной
+          курсор. Нам остаётся арифметика клетки — та же самая, что и у указательной сетки{' '}
+          (<code>gridMath</code> общий).
+        </p>
+      </Doc>
+      <Code title="Дашборд" code={SNIP.basic} />
+
+      <Doc title="Несколько сеток">
+        <p>
+          В группе блок переезжает из сетки в сетку. Зону под курсором тут вообще не приходится
+          вычислять: <code>dragover</code> прилетает от той сетки, над которой указатель, — это
+          главное, что даёт нативный DnD взамен потерянного тача.
+        </p>
+      </Doc>
+      <Code title="Группа сеток" code={SNIP.group} />
+
+      <Doc title="Когда какая сетка">
+        <p>
+          <code>DumbGridDnd</code> и <code>DumbGrid</code> — ДВЕ независимые реализации, и это
+          осознанно: попытка свести их одним флагом ломала рабочее поведение. Нативный вариант
+          умеет перенос из другого окна и с рабочего стола, но не работает пальцем; указательный
+          работает везде и даёт покадровый ресайз. Общая у них только математика.
+        </p>
+      </Doc>
+      <Code title="Выбор" code={SNIP.choose} />
+
+      <h4 class="mt-6 text-lg font-semibold">DumbGridDnd</h4>
+      <Props rows={DND_PROPS} />
 
     </div>
   )

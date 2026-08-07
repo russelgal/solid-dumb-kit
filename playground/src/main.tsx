@@ -1,45 +1,25 @@
 import "./app.css";
 import { render } from "solid-js/web";
-import { createEffect, createMemo, createSignal, For, Show, onCleanup, type JSX } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  lazy,
+  Show,
+  Suspense,
+  onCleanup,
+  type JSX,
+} from "solid-js";
+import { A, Navigate, Route, Router, useLocation, useNavigate } from "@solidjs/router";
 
-import ThemeShowcase from "./ThemeShowcase";
+import { compOf } from "./examples";
+// Версии пакетов и даты их последней правки — посчитаны на сборке из
+// package.json и git (см. playground/kitMeta.ts), в браузер приезжает таблица.
+import KIT_META from "virtual:kit-meta";
 
-import SelectionAreaExample from "../../examples/pointer/SelectionArea.example";
-import DumbSortableExample from "../../examples/pointer/DumbSortable.example";
-import KanbanExample from "../../examples/pointer/Kanban.example";
-import ResizableGridExample from "../../examples/pointer/ResizableGrid.example";
-import DumbGalleryExample from "../../examples/pointer/DumbGallery.example";
-import DumbLightboxExample from "../../examples/pointer/DumbLightbox.example";
-import ContextMenuExample from "../../examples/pointer/ContextMenu.example";
-import DumbModalExample from "../../examples/pointer/DumbModal.example";
-import DumbToastExample from "../../examples/pointer/DumbToast.example";
-import DumbDateRangeExample from "../../examples/pointer/DumbDateRange.example";
-import DumbTimelineExample from "../../examples/pointer/DumbTimeline.example";
-import DumbGridExample from "../../examples/pointer/DumbGrid.example";
-import BoardExample from "../../examples/pointer/Board.example";
-
-import DumbGridDndExample from "../../examples/dnd/DumbGridDnd.example";
-import DumbSortableDndExample from "../../examples/dnd/DumbSortableDnd.example";
-import DumbBoardExample from "../../examples/dnd/DumbBoard.example";
-import DumbBoardEvenExample from "../../examples/dnd/DumbBoardEven.example";
-
-import DumbTreeExample from "../../examples/data/DumbTree.example";
-import DumbTableExample from "../../examples/data/DumbTable.example";
-import DumbFinderExample from "../../examples/data/DumbFinder.example";
-import VirtualExample from "../../examples/data/virtual.example";
-import DumbPropsTableExample from "../../examples/data/DumbPropsTable.example";
-import DumbUserManagerExample from "../../examples/data/DumbUserManager.example";
-import PrimitivesExample from "../../examples/data/primitives.example";
-import Odata1CExample from "../../examples/data/Odata1C.example";
-import UtilsExample from "../../examples/data/utils.example";
-
-import RawDndExample from "../../examples/lab/RawDnd.example";
-import CssOrderExample from "../../examples/lab/CssOrder.example";
-import FlipBenchExample from "../../examples/lab/FlipBench.example";
-import OrderKanbanExample from "../../examples/lab/OrderKanban.example";
-import OrderBoardExample from "../../examples/lab/OrderBoard.example";
-import OrderTableExample from "../../examples/lab/OrderTable.example";
-import OrderTreeExample from "../../examples/lab/OrderTree.example";
+/** Куда ведут все ссылки «исходник» — репозиторий кита на GitHub. */
+const REPO = "https://github.com/russelgal/solid-dumb-kit";
 
 /** Вкладка витрины. `pkg` — какой пакет ставить, чтобы пример заработал. */
 type Tab = {
@@ -47,7 +27,8 @@ type Tab = {
   label: string;
   hint: string;
   pkg?: string;
-  Comp: () => JSX.Element;
+  /** Путь к исходнику от корня репы: и чанк, и ссылка «исходник» в навбаре. */
+  file: string;
 };
 
 type Group = { title: string; note: string; items: Array<Tab> };
@@ -68,91 +49,98 @@ const GROUPS: Array<Group> = [
         label: "SelectionArea",
         pkg: "selection",
         hint: "рамка выделения",
-        Comp: SelectionAreaExample,
+        file: "examples/pointer/SelectionArea.example.tsx",
       },
       {
         id: "sortable",
         label: "DumbSortable",
         pkg: "sortable",
         hint: "список и сетка",
-        Comp: DumbSortableExample,
+        file: "examples/pointer/DumbSortable.example.tsx",
       },
       {
         id: "kanban",
         label: "Kanban",
         pkg: "sortable",
         hint: "между колонками",
-        Comp: KanbanExample,
+        file: "examples/pointer/Kanban.example.tsx",
       },
       {
         id: "gallery",
         label: "DumbGallery",
         pkg: "gallery",
         hint: "картинки: выбор, порядок, заливка",
-        Comp: DumbGalleryExample,
+        file: "examples/pointer/DumbGallery.example.tsx",
       },
       {
         id: "lightbox",
         label: "DumbLightbox",
         pkg: "lightbox",
         hint: "просмотр во весь экран",
-        Comp: DumbLightboxExample,
+        file: "examples/pointer/DumbLightbox.example.tsx",
       },
       {
         id: "menu",
         label: "DumbContextMenu",
         pkg: "context-menu",
         hint: "правый клик + тосты",
-        Comp: ContextMenuExample,
+        file: "examples/pointer/ContextMenu.example.tsx",
       },
       {
         id: "modal",
         label: "DumbModal",
         pkg: "modal",
         hint: "нативный dialog в top layer",
-        Comp: DumbModalExample,
+        file: "examples/pointer/DumbModal.example.tsx",
       },
       {
         id: "toast",
         label: "DumbToast",
         pkg: "toast",
-        hint: "очередь сообщений и вопрос",
-        Comp: DumbToastExample,
+        hint: "сообщения, вопрос и модалка",
+        file: "examples/pointer/DumbToast.example.tsx",
       },
       {
         id: "daterange",
         label: "DumbDateRange",
         pkg: "date-range",
         hint: "период с занятостью",
-        Comp: DumbDateRangeExample,
+        file: "examples/pointer/DumbDateRange.example.tsx",
+      },
+      {
+        id: "datetime",
+        label: "DumbDateTimeRange",
+        pkg: "date-range",
+        hint: "период с временем, слоты",
+        file: "examples/pointer/DumbDateTimeRange.example.tsx",
       },
       {
         id: "timeline",
         label: "DumbTimeline",
         pkg: "timeline",
         hint: "шахматка: брони по дням",
-        Comp: DumbTimelineExample,
+        file: "examples/pointer/DumbTimeline.example.tsx",
       },
       {
         id: "grid",
         label: "ResizableGrid",
         pkg: "resizable-grid",
         hint: "панели с ресайзом",
-        Comp: ResizableGridExample,
+        file: "examples/pointer/ResizableGrid.example.tsx",
       },
       {
         id: "dashboard",
         label: "DumbGrid",
         pkg: "grid",
         hint: "дашборд",
-        Comp: DumbGridExample,
+        file: "examples/pointer/DumbGrid.example.tsx",
       },
       {
         id: "board",
         label: "Вложенные сетки",
         pkg: "grid",
         hint: "сетка в сетке",
-        Comp: BoardExample,
+        file: "examples/pointer/Board.example.tsx",
       },
     ],
   },
@@ -165,28 +153,28 @@ const GROUPS: Array<Group> = [
         label: "DumbGridDnd",
         pkg: "grid-dnd",
         hint: "сетка на HTML5 DnD",
-        Comp: DumbGridDndExample,
+        file: "examples/dnd/DumbGridDnd.example.tsx",
       },
       {
         id: "sortdnd",
         label: "DumbSortableDnd",
         pkg: "sortable-dnd",
         hint: "список и сетка плиток",
-        Comp: DumbSortableDndExample,
+        file: "examples/dnd/DumbSortableDnd.example.tsx",
       },
       {
         id: "board2",
         label: "DumbBoard",
         pkg: "board",
         hint: "секции, блоки, ресайз",
-        Comp: DumbBoardExample,
+        file: "examples/dnd/DumbBoard.example.tsx",
       },
       {
         id: "dashboard2",
         label: "Дашборд на DumbBoard",
         pkg: "board",
         hint: "карточки одной высоты",
-        Comp: DumbBoardEvenExample,
+        file: "examples/dnd/DumbBoardEven.example.tsx",
       },
     ],
   },
@@ -199,63 +187,63 @@ const GROUPS: Array<Group> = [
         label: "DumbTree",
         pkg: "tree",
         hint: "дерево и плоский список",
-        Comp: DumbTreeExample,
+        file: "examples/data/DumbTree.example.tsx",
       },
       {
         id: "table",
         label: "DumbTable",
         pkg: "table",
         hint: "TanStack + драг строк",
-        Comp: DumbTableExample,
+        file: "examples/data/DumbTable.example.tsx",
       },
       {
         id: "finder",
         label: "DumbFinder",
         pkg: "finder",
         hint: "файлы в хранилище",
-        Comp: DumbFinderExample,
+        file: "examples/data/DumbFinder.example.tsx",
       },
       {
         id: "virtual",
         label: "createVirtualizer",
         pkg: "shared",
         hint: "миллион строк, пул узлов, воркер",
-        Comp: VirtualExample,
+        file: "examples/data/virtual.example.tsx",
       },
       {
         id: "user-manager",
         label: "DumbUserManager",
         pkg: "user-manager",
         hint: "доступ сотрудников",
-        Comp: DumbUserManagerExample,
+        file: "examples/data/DumbUserManager.example.tsx",
       },
       {
         id: "props-table",
         label: "DumbPropsTable",
         pkg: "props-table",
         hint: "что пришло в пропсах",
-        Comp: DumbPropsTableExample,
+        file: "examples/data/DumbPropsTable.example.tsx",
       },
       {
         id: "primitives",
         label: "Примитивы",
         pkg: "shared",
         hint: "отмена, клавиатура, правка",
-        Comp: PrimitivesExample,
+        file: "examples/data/primitives.example.tsx",
       },
       {
         id: "odata1c",
         label: "Odata1C",
         pkg: "odata-1c",
         hint: "клиент 1С, без Solid",
-        Comp: Odata1CExample,
+        file: "examples/data/Odata1C.example.tsx",
       },
       {
         id: "utils",
         label: "utils",
         pkg: "utils",
         hint: "формат, slug, zip",
-        Comp: UtilsExample,
+        file: "examples/data/utils.example.tsx",
       },
     ],
   },
@@ -267,7 +255,7 @@ const GROUPS: Array<Group> = [
         id: "theme",
         label: "Тема",
         hint: "палитра, кнопки, формы, декор",
-        Comp: ThemeShowcase,
+        file: "playground/src/ThemeShowcase.tsx",
       },
     ],
   },
@@ -279,49 +267,49 @@ const GROUPS: Array<Group> = [
         id: "rawdnd",
         label: "Нативный DnD с нуля",
         hint: "три обработчика, без анимаций",
-        Comp: RawDndExample,
+        file: "examples/lab/RawDnd.example.tsx",
       },
       {
         id: "cssorder",
         label: "CSS order + FLIP",
         pkg: "shared",
         hint: "сортировка без перестановки DOM",
-        Comp: CssOrderExample,
+        file: "examples/lab/CssOrder.example.tsx",
       },
       {
         id: "flipbench",
         label: "Замер vs снимок",
         pkg: "shared",
         hint: "сколько стоит померить",
-        Comp: FlipBenchExample,
+        file: "examples/lab/FlipBench.example.tsx",
       },
       {
         id: "orderkanban",
         label: "Канбан на order",
         pkg: "shared",
         hint: "колонки и переезды",
-        Comp: OrderKanbanExample,
+        file: "examples/lab/OrderKanban.example.tsx",
       },
       {
         id: "orderboard",
         label: "Доска на order",
         pkg: "shared",
         hint: "вложенные сетки и ресайз",
-        Comp: OrderBoardExample,
+        file: "examples/lab/OrderBoard.example.tsx",
       },
       {
         id: "ordertable",
         label: "Таблица на order",
         pkg: "shared",
         hint: "subgrid + сортировка",
-        Comp: OrderTableExample,
+        file: "examples/lab/OrderTable.example.tsx",
       },
       {
         id: "ordertree",
         label: "Дерево на order",
         pkg: "shared",
         hint: "перенос между уровнями",
-        Comp: OrderTreeExample,
+        file: "examples/lab/OrderTree.example.tsx",
       },
     ],
   },
@@ -329,13 +317,18 @@ const GROUPS: Array<Group> = [
 
 const TABS = GROUPS.flatMap((g) => g.items);
 
-// Навигация по hash: вкладка живёт в URL (#kanban), поэтому на конкретный
-// пример можно дать прямую ссылку, а F5 не сбрасывает выбор. Hash, а не
-// history API — демо стоит на GitHub Pages, где /solid-dumb-kit/kanban отдал бы 404.
-const fromHash = (): string => {
-  const id = location.hash.replace(/^#/, "");
-  return TABS.some((t) => t.id === id) ? id : TABS[0].id;
-};
+// Навигация — обычные пути (`/kanban`), `@solidjs/router` поверх history API.
+// Раньше был самопис на hash: зеркало стояло на GitHub Pages, где `/kanban`
+// отдавал 404. Зеркало выключено, витрина живёт на Vercel, а там прямой заход
+// на любой путь заворачивается на `index.html` (см. `rewrites` в `vercel.json`).
+//
+// База берётся из Vite (`base` в `playground/vite.config.ts`): на Vercel это
+// корень домена, локально — подпуть `/solid-dumb-kit/`. Роутеру нужен путь без
+// завершающего слэша.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+/** Путь примера. Слэш обязателен: без него `A` считает ссылку относительной. */
+const hrefOf = (id: string) => `/${id}`;
 
 /**
  * Тема витрины. Светлая `nord`, `dark` — на ней сразу видно захардкоженный
@@ -362,14 +355,68 @@ const readTheme = (): Theme => {
   return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "nord";
 };
 
+/**
+ * Подпись в меню. Префикс `Dumb` у половины пунктов одинаковый, глаз цепляется
+ * за него вместо имени компонента — режем при отрисовке. В `matches` остаётся
+ * полное имя, поэтому поиск по «dumbtable» продолжает находить.
+ */
+const short = (label: string) => label.replace(/^Dumb/, "");
+
+/**
+ * Меню: те же группы, но пункты внутри — по алфавиту ОТОБРАЖАЕМОЙ подписи
+ * (то есть уже без `Dumb`). Подписи вперемешку латиница и кириллица, поэтому
+ * `localeCompare`, а не сравнение строк.
+ *
+ * Отдельный список, а не сортировка `GROUPS` на месте: по исходному порядку
+ * считается `TABS[0]` — вкладка по умолчанию, и менять её сортировкой меню
+ * незачем.
+ */
+const MENU: Group[] = GROUPS.map((g) => ({
+  ...g,
+  items: [...g.items].sort((a, b) => short(a.label).localeCompare(short(b.label), "ru")),
+}));
+
+/**
+ * Дата правки пакета — коротко: «7 авг 2026». Хвосты русской локали («г.» и
+ * точку после месяца) срезаем: в строке шапки они только шумят.
+ */
+const fmtDate = (iso: string) =>
+  new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", year: "numeric" })
+    .format(new Date(iso))
+    .replace(/\s*г\.$/, "")
+    .replace(".", "");
+
+/** В какой группе лежит пример — для крошек в навбаре. */
+const groupOf = (id: string) => GROUPS.find((g) => g.items.some((t) => t.id === id))?.title ?? "";
+
 /** Совпадение по названию, подсказке и имени пакета — регистр не важен. */
 const matches = (t: Tab, q: string): boolean => {
   const hay = `${t.label} ${t.hint} ${t.pkg ?? ""} ${t.id}`.toLowerCase();
   return q.split(/\s+/).every((w) => hay.includes(w));
 };
 
-function App() {
-  const [tab, setTab] = createSignal(fromHash());
+/**
+ * Каркас витрины: сайдбар слева, пример справа. Роутер отдаёт его как layout,
+ * поэтому при переходе перерисовывается только `props.children` — меню, поиск
+ * и состояние свёрнутых групп переезд между примерами переживают.
+ */
+function App(props: { children?: JSX.Element }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  /**
+   * Id текущего примера. `location.pathname` приходит ВМЕСТЕ с базой: роутер
+   * приклеивает её к паттернам роутов, а не срезает из адреса, — поэтому базу
+   * снимаем сами. Локально витрина живёт на `/solid-dumb-kit/`, и без этого
+   * текущей вкладкой оказывалась сама база: ни подсветки в меню, ни крошек,
+   * ни ссылки на исходник.
+   */
+  const tab = () => {
+    const path = location.pathname;
+    const rel = BASE && path.startsWith(BASE) ? path.slice(BASE.length) : path;
+    return rel.replace(/^\/+/, "").split("/")[0];
+  };
+  /** Описание открытой вкладки: крошки и ссылки на гит в навбаре берут его. */
+  const current = () => TABS.find((t) => t.id === tab());
   const [theme, setTheme] = createSignal<Theme>(readTheme());
 
   // Поиск по меню. Тридцать примеров в четырёх группах — это два экрана
@@ -400,10 +447,11 @@ function App() {
 
   const groups = createMemo(() => {
     const q = query().trim().toLowerCase();
-    if (!q) return GROUPS;
-    return GROUPS.map((g) => ({ ...g, items: g.items.filter((t) => matches(t, q)) })).filter(
-      (g) => g.items.length > 0,
-    );
+    if (!q) return MENU;
+    return MENU.map((g) => ({
+      ...g,
+      items: g.items.filter((t) => matches(t, q)),
+    })).filter((g) => g.items.length > 0);
   });
   /** Плоский список видимого — по нему ходят стрелки в поле поиска. */
   const visible = createMemo(() => groups().flatMap((g) => g.items));
@@ -418,9 +466,13 @@ function App() {
     localStorage.setItem("sd-theme", theme());
   });
 
-  const onHash = () => setTab(fromHash());
-  window.addEventListener("hashchange", onHash);
-  onCleanup(() => window.removeEventListener("hashchange", onHash));
+  // Заголовок вкладки браузера — по текущему примеру: с настоящими путями
+  // страницу кладут в закладки и ищут в истории, а «solid-dumb-kit» на всех
+  // тридцати пунктах там неразличим.
+  createEffect(() => {
+    const t = TABS.find((x) => x.id === tab());
+    document.title = t ? `${t.label} · solid-dumb-kit` : "solid-dumb-kit";
+  });
 
   let searchEl: HTMLInputElement | undefined;
 
@@ -428,8 +480,7 @@ function App() {
   // обязательна, иначе слэш перестанет печататься в примерах с инпутами.
   const onKey = (e: KeyboardEvent) => {
     const el = e.target as HTMLElement | null;
-    const typing =
-      !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+    const typing = !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
     const hotK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
     if (hotK || (e.key === "/" && !typing)) {
       e.preventDefault();
@@ -457,180 +508,300 @@ function App() {
     if (e.key === "Enter") {
       const id = cursorId();
       if (id) {
-        location.hash = id;
+        navigate(hrefOf(id));
         searchEl?.blur();
       }
     }
   };
 
   return (
-    <div class="flex min-h-screen items-start">
-      {/* Свёрнутый сайдбар — узкая полоса с одной кнопкой: навигация никогда не
-          пропадает совсем, иначе на GitHub Pages из примера некуда вернуться. */}
-      <Show when={hidden()}>
-        <div class="sticky top-0 flex h-screen w-10 shrink-0 flex-col items-center gap-2 border-r border-base-300 bg-base-200 py-3">
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs"
-            title="Показать навигацию (⌘K)"
-            aria-label="Показать навигацию"
-            onClick={toggleNav}
-          >
-            ☰
-          </button>
+    <div class="flex min-h-screen flex-col">
+      {/* Навбар daisyUI — общая шапка витрины: где мы сейчас, выбор темы и
+          ссылки в репозиторий. Высота 3.5rem зашита и здесь, и в `top`/`height`
+          сайдбара ниже: он липнет ПОД навбаром, а не под ним. */}
+      {/* Ширины блоков — `flex-1`/`w-auto`, а не дефолтные 50/50 от daisyUI:
+          с ними сумма половин плюс отступы превышала строку, и навбар
+          переносился в две. */}
+      <header class="navbar sticky top-0 z-30 min-h-14 flex-nowrap gap-3 border-b border-base-300 bg-base-100 px-3">
+        <div class="navbar-start w-auto min-w-0 flex-1 gap-2">
+          <A class="text-base font-semibold no-underline" href={hrefOf(TABS[0].id)}>
+            solid-dumb-kit
+          </A>
+
+          {/* Где мы сейчас. Хлебные крошки daisyUI: группа → пример, и в них же
+              видно, что подпись в меню урезана (там без `Dumb`), а тут полная. */}
+          <Show when={current()}>
+            {(t) => (
+              <div class="hidden min-w-0 sm:block">
+                <div class="breadcrumbs min-w-0 py-0 text-sm">
+                  <ul>
+                    <li>{groupOf(t().id)}</li>
+                    <li class="font-medium">{t().label}</li>
+                  </ul>
+                </div>
+                {/* когда пакет правился в последний раз. Дата берётся из git по
+                    КАТАЛОГУ пакета: правка витрины не должна выглядеть как
+                    обновление всего кита. */}
+                <Show when={t().pkg && KIT_META[t().pkg!]?.updated}>
+                  {(iso) => (
+                    <div class="text-xs leading-none">обновлён {fmtDate(iso())}</div>
+                  )}
+                </Show>
+              </div>
+            )}
+          </Show>
         </div>
-      </Show>
 
-      <Show when={!hidden()}>
-        <aside class="sticky top-0 flex h-screen w-68 shrink-0 flex-col border-r border-base-300 bg-base-200">
-          <div class="flex items-center gap-1 px-3 pt-3">
+        <div class="navbar-end w-auto shrink-0 gap-2">
+          {/* Тема — `join` из всех вариантов, а не кнопка «следующая по кругу»:
+              видно и текущую, и куда можно переключиться, одним взглядом. */}
+          <div class="join" role="group" aria-label="Тема витрины">
+            <For each={THEMES}>
+              {(th) => (
+                <button
+                  type="button"
+                  class="btn join-item btn-sm"
+                  classList={{ "btn-primary": theme() === th }}
+                  aria-pressed={theme() === th}
+                  title={`Тема ${th}`}
+                  onClick={() => setTheme(th)}
+                >
+                  {THEME_LABEL[th]}
+                </button>
+              )}
+            </For>
+          </div>
+
+          {/* Ссылки на гит: исходник открытого примера, пакет, из которого он
+              собран, и репозиторий целиком. Пути к исходникам приходят из того
+              же поля `file`, по которому грузится чанк. */}
+          <div class="join" role="group" aria-label="Исходники на GitHub">
+            <Show when={current()}>
+              {(t) => (
+                <a
+                  class="btn join-item btn-sm"
+                  href={`${REPO}/blob/main/${t().file}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`Исходник примера: ${t().file}`}
+                >
+                  <span class="icon-[ph--file-code-bold] size-4" aria-hidden="true" />
+                  исходник
+                </a>
+              )}
+            </Show>
+            <Show when={current()?.pkg}>
+              {(pkg) => (
+                <a
+                  class="btn join-item btn-sm"
+                  href={`${REPO}/tree/main/packages/${pkg()}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={
+                    KIT_META[pkg()]?.updated
+                      ? `Пакет @solid-dumb-kit/${pkg()} — правился ${fmtDate(KIT_META[pkg()]!.updated!)}`
+                      : `Пакет @solid-dumb-kit/${pkg()}`
+                  }
+                >
+                  <span class="icon-[ph--package-bold] size-4" aria-hidden="true" />
+                  {pkg()}
+                  {/* версия пакета рядом с именем: по ней сразу видно, что
+                      именно ставить, а дата ниже говорит, насколько свежее */}
+                  <Show when={KIT_META[pkg()]?.version}>
+                    {(v) => <span class="badge badge-sm badge-ghost">{v()}</span>}
+                  </Show>
+                </a>
+              )}
+            </Show>
             <a
-              class="min-w-0 flex-1 truncate text-base font-semibold no-underline"
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                location.hash = TABS[0].id;
-              }}
+              class="btn join-item btn-sm"
+              href={REPO}
+              target="_blank"
+              rel="noreferrer"
+              title="Репозиторий кита"
             >
-              solid-dumb-kit
+              <span class="icon-[ph--github-logo-bold] size-4" aria-hidden="true" />
             </a>
+          </div>
+        </div>
+      </header>
 
-            {/* Переключатель темы. Кнопка, а не `swap`: тем больше двух, и подпись
-                с названием понятнее иконки-состояния. Клик — следующая по кругу. */}
+      <div class="flex min-h-0 flex-1 items-start">
+        {/* Сайдбар скрыт — остаётся узкая полоса с одной кнопкой: навигация
+            никогда не пропадает совсем, иначе из примера некуда вернуться. */}
+        <Show when={hidden()}>
+          <div class="sticky top-14 flex h-[calc(100vh-3.5rem)] w-10 shrink-0 flex-col items-center border-r border-base-300 bg-base-200 py-3">
             <button
               type="button"
-              class="btn btn-ghost btn-xs"
-              title={`Тема: ${theme()} — переключить`}
-              aria-label={`Тема ${theme()}, переключить`}
-              onClick={() => setTheme(THEMES[(THEMES.indexOf(theme()) + 1) % THEMES.length])}
-            >
-              {THEME_LABEL[theme()]}
-            </button>
-            <button
-              type="button"
-              class="btn btn-ghost btn-xs"
-              title="Скрыть навигацию"
-              aria-label="Скрыть навигацию"
+              class="btn btn-ghost btn-sm"
+              title="Показать навигацию (⌘K)"
+              aria-label="Показать навигацию"
               onClick={toggleNav}
             >
-              ⇤
+              ☰
             </button>
           </div>
+        </Show>
 
-          <div class="px-3 pt-2 pb-1">
-            <label class="input input-sm w-full">
-              <span aria-hidden="true">⌕</span>
-              <input
-                ref={searchEl}
-                type="search"
-                value={query()}
-                placeholder="поиск примера"
-                aria-label="Поиск примера"
-                onInput={(e) => {
-                  setQuery(e.currentTarget.value);
-                  setCursor(0);
-                }}
-                onKeyDown={onSearchKey}
-              />
-              <kbd class="kbd kbd-xs">/</kbd>
-            </label>
-            <Show when={searching()}>
-              <div class="px-1 pt-1 text-xs">
-                {visible().length === 0
-                  ? "ничего не найдено"
-                  : `найдено: ${visible().length} · ↑↓ выбрать, Enter открыть`}
+        <Show when={!hidden()}>
+          <aside class="sticky top-14 flex h-[calc(100vh-3.5rem)] w-68 shrink-0 flex-col border-r border-base-300 bg-base-200">
+            <div class="px-3 pt-3 pb-1">
+              <div class="flex items-center gap-1">
+                <label class="input input-sm min-w-0 flex-1">
+                  <span aria-hidden="true">⌕</span>
+                  <input
+                    ref={searchEl}
+                    type="search"
+                    value={query()}
+                    placeholder="поиск примера"
+                    aria-label="Поиск примера"
+                    onInput={(e) => {
+                      setQuery(e.currentTarget.value);
+                      setCursor(0);
+                    }}
+                    onKeyDown={onSearchKey}
+                  />
+                  <kbd class="kbd kbd-xs">/</kbd>
+                </label>
+                {/* Кнопка сворачивания живёт при самом меню, а не в общей шапке:
+                    она управляет сайдбаром, и рядом с ним ей и место. */}
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm px-2"
+                  title="Скрыть навигацию"
+                  aria-label="Скрыть навигацию"
+                  onClick={toggleNav}
+                >
+                  ⇤
+                </button>
               </div>
-            </Show>
-          </div>
+              <Show when={searching()}>
+                <div class="px-1 pt-1 text-xs">
+                  {visible().length === 0
+                    ? "ничего не найдено"
+                    : `найдено: ${visible().length} · ↑↓ выбрать, Enter открыть`}
+                </div>
+              </Show>
+            </div>
 
-          {/* `flex-nowrap` обязателен: у daisyUI `.menu` — это flex-колонка с
+            {/* `flex-nowrap` обязателен: у daisyUI `.menu` — это flex-колонка с
               `flex-wrap: wrap`, и при ограниченной высоте (тут `flex-1`) она
               переносит группы во ВТОРУЮ колонку вместо прокрутки — половина
               меню уезжает за край сайдбара. */}
-          <ul class="menu min-h-0 w-full flex-1 flex-nowrap gap-0.5 overflow-x-hidden overflow-y-auto p-2 [scrollbar-gutter:stable]">
-            <For each={groups()}>
-              {(group) => (
-                <li>
-                  {/* Аккордеон на `details` — разметка daisyUI для вложенного
+            <ul class="menu min-h-0 w-full flex-1 flex-nowrap gap-0.5 overflow-x-hidden overflow-y-auto p-2 [scrollbar-gutter:stable]">
+              <For each={groups()}>
+                {(group) => (
+                  <li>
+                    {/* Аккордеон на `details` — разметка daisyUI для вложенного
                       меню: раскрытие держит браузер, нам остаётся состояние. */}
-                  <details open={isOpen(group.title)}>
-                    <summary
-                      class="text-primary text-base font-semibold"
-                      title={group.note}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (!searching()) toggleGroup(group.title);
-                      }}
-                    >
-                      <span class="flex-1">{group.title}</span>
-                      <span class="badge badge-sm badge-ghost">{group.items.length}</span>
-                    </summary>
+                    <details open={isOpen(group.title)}>
+                      <summary
+                        class="text-primary text-base font-semibold"
+                        title={group.note}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (!searching()) toggleGroup(group.title);
+                        }}
+                      >
+                        <span class="flex-1">{group.title}</span>
+                        <span class="badge badge-sm badge-ghost">{group.items.length}</span>
+                      </summary>
 
-                    <ul class="gap-0.5">
-                      <For each={group.items}>
-                        {(t) => (
-                          <li>
-                            <a
-                              class="py-1.5"
-                              classList={{
-                                "menu-active": tab() === t.id,
-                                // курсор поиска: рамкой, а не фоном — фон уже
-                                // занят активной вкладкой, и они бы спорили
-                                "outline outline-primary": searching() && cursorId() === t.id,
-                              }}
-                              href={`#${t.id}`}
-                              aria-current={tab() === t.id ? "page" : undefined}
-                              title={t.pkg ? `${t.hint} · @solid-dumb-kit/${t.pkg}` : t.hint}
-                            >
-                              {/* Пункт меню у daisyUI — grid в СТРОКУ: без обёртки
+                      <ul class="gap-0.5">
+                        <For each={group.items}>
+                          {(t) => (
+                            <li>
+                              {/* `A`, а не голый `<a>`: обычная ссылка перезагрузила
+                                бы страницу целиком вместо перехода по роутеру. */}
+                              <A
+                                class="py-1.5"
+                                classList={{
+                                  "menu-active": tab() === t.id,
+                                  // курсор поиска: рамкой, а не фоном — фон уже
+                                  // занят активной вкладкой, и они бы спорили
+                                  "outline outline-primary": searching() && cursorId() === t.id,
+                                }}
+                                href={hrefOf(t.id)}
+                                aria-current={tab() === t.id ? "page" : undefined}
+                                title={t.pkg ? `${t.hint} · @solid-dumb-kit/${t.pkg}` : t.hint}
+                                // Чанк примера — уже на наведении и на фокусе с
+                                // клавиатуры: между hover и кликом обычно хватает
+                                // времени скачать его целиком.
+                                onMouseEnter={() => compOf(t.file).preload?.()}
+                                onFocus={() => compOf(t.file).preload?.()}
+                              >
+                                {/* Пункт меню у daisyUI — grid в СТРОКУ: без обёртки
                                   подпись, описание и имя пакета встали бы рядом и
                                   налезли друг на друга. Оборачиваем в один блок. */}
-                              <span class="flex min-w-0 flex-col leading-snug">
-                                <span class="truncate font-medium">{t.label}</span>
-                                {/* Подсказка и пакет — только у текущего пункта и
+                                <span class="flex min-w-0 flex-col leading-snug">
+                                  <span class="truncate font-medium">{short(t.label)}</span>
+                                  {/* Подсказка и пакет — только у текущего пункта и
                                     в поиске: тридцать пунктов по три строки и
                                     делали из меню простыню. Остальным хватает
                                     подсказки в `title`. */}
-                                <Show when={tab() === t.id || searching()}>
-                                  <span class="truncate text-xs">{t.hint}</span>
-                                </Show>
-                                <Show when={tab() === t.id && t.pkg}>
-                                  <span class="truncate font-mono text-[10.5px]">
-                                    @solid-dumb-kit/{t.pkg}
-                                  </span>
-                                </Show>
-                              </span>
-                            </a>
-                          </li>
-                        )}
-                      </For>
-                    </ul>
-                  </details>
-                </li>
-              )}
-            </For>
-          </ul>
+                                  <Show when={tab() === t.id || searching()}>
+                                    <span class="truncate text-xs">{t.hint}</span>
+                                  </Show>
+                                  <Show when={tab() === t.id && t.pkg}>
+                                    <span class="truncate font-mono text-[10.5px]">
+                                      @solid-dumb-kit/{t.pkg}
+                                    </span>
+                                  </Show>
+                                </span>
+                              </A>
+                            </li>
+                          )}
+                        </For>
+                      </ul>
+                    </details>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </aside>
+        </Show>
 
-          <a
-            class="link link-primary block shrink-0 border-t border-base-300 px-4 py-2 text-sm"
-            href="https://github.com/russelgal/solid-dumb-kit"
+        {/* Заглушка на время загрузки чанка. Видна редко: при переходе роутер
+            держит навигацию в `startTransition`, поэтому предыдущий пример
+            остаётся на экране, — реально она показывается на первом заходе. */}
+        <main class="min-w-0 flex-1">
+          <Suspense
+            fallback={
+              <div class="flex min-h-[60vh] items-center justify-center gap-3 text-base">
+                <span class="loading loading-spinner loading-md" />
+                загружаем пример…
+              </div>
+            }
           >
-            GitHub ↗
-          </a>
-        </aside>
-      </Show>
-
-      <main class="min-w-0 flex-1">
-        <For each={TABS}>
-          {(t) => (
-            <Show when={tab() === t.id}>
-              <t.Comp />
-            </Show>
-          )}
-        </For>
-      </main>
+            {props.children}
+          </Suspense>
+        </main>
+      </div>
     </div>
   );
 }
 
-render(() => <App />, document.getElementById("root")!);
+// Старые ссылки жили на hash (`#kanban`) — переводим их на путь ДО старта
+// роутера, иначе закладка откроет корень и молча потеряет пример.
+const legacy = location.hash.replace(/^#\/?/, "");
+if (legacy && TABS.some((t) => t.id === legacy)) {
+  history.replaceState(null, "", `${BASE}${hrefOf(legacy)}`);
+}
+
+render(
+  () => (
+    <Router base={BASE} root={App}>
+      {/* Корень и любой мусорный путь — на первый пример. `Navigate`, а не
+          рендер компонента: адрес в строке должен совпадать с тем, что показано,
+          иначе кнопка «назад» ведёт себя непредсказуемо. */}
+      <Route path="/" component={() => <Navigate href={hrefOf(TABS[0].id)} />} />
+      {/* Обычный `map`, а не `For`: роутер читает описание роутов один раз при
+          старте, реактивный список ему тут не нужен и только мешает. */}
+      {TABS.map((t) => (
+        <Route path={hrefOf(t.id)} component={compOf(t.file)} />
+      ))}
+      <Route path="*" component={() => <Navigate href={hrefOf(TABS[0].id)} />} />
+    </Router>
+  ),
+  document.getElementById("root")!,
+);
