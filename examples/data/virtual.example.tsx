@@ -67,6 +67,18 @@ const VIRT_API = [
 const ROW = 28
 /** ширина колонки, когда список едет вбок */
 const COL = 132
+/**
+ * Запас рядов сверх окна. По вертикали — экран, по горизонтали — четыре.
+ *
+ * Разница не в оси, а в полосе прокрутки: ползунок горизонтальной полосы на
+ * ста тысячах колонок — доли пикселя, и любое его движение уносит окно на
+ * десятки экранов за кадр. Пока главный поток считает новое окно, на месте
+ * уехавших колонок пусто, и запас — единственное, что там стоит. Полностью
+ * такой рывок не закрывается ничем: fast-grid держит в разметке около десяти
+ * экранов строк ровно по этой причине.
+ */
+const SPARE_Y = 20
+const SPARE_X = 32
 /** сколько строк вообще имеет смысл рисовать без виртуализации */
 const PLAIN_CAP = 100_000
 
@@ -193,6 +205,14 @@ export default function VirtualExample() {
         itemSize: () => (ax === 'x' ? COL : ROW),
         axis: ax,
         scroller: () => scroller,
+        // Запас — примерно экран в каждую сторону, а не пара рядов. Дырок при
+        // прокрутке нет и с тремя (проверено замером: кадры ровные, окно
+        // успевает обновиться в том же кадре), но брошенное колесо и рывок
+        // полосы уносят окно дальше, чем главный поток успевает посчитать, и
+        // тогда запас — единственное, что стоит на этом месте. Fast-grid
+        // держит в разметке около 236 строк при двух десятках видимых ровно
+        // по этой причине.
+        overscan: ax === 'x' ? SPARE_X : SPARE_Y,
         onChange: setRange,
       })
       // окно зависит от числа видимых строк и от режима — пересчитываем явно,
@@ -221,11 +241,11 @@ export default function VirtualExample() {
     const r = range()
     const need = Math.max(0, r.end - r.start)
     let pool = untrack(slots)
-    if (pool.length < need + 2) {
+    if (pool.length < need) {
       // пул только растёт: ужимать его при уменьшении окна — это снова
       // удалять узлы, то есть ровно то, от чего мы уходим
       const grown = pool.slice()
-      while (grown.length < need + 2) {
+      while (grown.length < need) {
         const [at, put] = createSignal(-1)
         grown.push({ at, put })
       }
@@ -233,9 +253,14 @@ export default function VirtualExample() {
       setSlots(pool)
     }
     const size = pool.length
+    const total = untrack(shown)
     for (let s = 0; s < size; s++) {
       const base = r.start + ((((s - r.start) % size) + size) % size)
-      pool[s].put(base < r.end ? base : -1)
+      // Слот сверх окна получает не «пусто», а следующую строку списка: она
+      // всё равно стоит за краем скроллера, зато слот занят настоящими данными
+      // и прятать его не надо. Пустым (`-1`) слот остаётся только в самом
+      // хвосте, когда строк уже не осталось.
+      pool[s].put(base < total ? base : -1)
     }
   })
 
@@ -271,7 +296,9 @@ export default function VirtualExample() {
         style={{
           ...(sideways() ? { width: `${COL}px` } : { height: `${ROW}px` }),
           transform: sideways() ? `translateX(${shift()}px)` : `translateY(${shift()}px)`,
-          visibility: row() < 0 ? 'hidden' : 'visible',
+          // прятать нечего, пока слоту достаётся строка; `hidden` остаётся
+          // только на хвосте списка, где строк уже нет
+          visibility: row() < 0 ? 'hidden' : undefined,
         }}
       >
         <span
