@@ -15,9 +15,8 @@
       "destination": "/api/mcp"
     },
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "cleanUrls": true
+  ]
 }

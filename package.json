@@ -13,7 +13,7 @@
     "fable": "claude --model fable --dangerously-skip-permissions ",
     "build": "pnpm -r --filter './packages/*' run build",
     "demo": "vite playground",
-    "demo:build": "vite build playground",
+    "demo:build": "vite build playground && cp playground/dist/index.html playground/dist/404.html",
     "dev": "pnpm -r --parallel --filter './packages/*' run dev",
     "dev:s3:clean": "node scripts/dev-s3-clean.mjs",
     "release": "pnpm build && node scripts/tag.mjs",
