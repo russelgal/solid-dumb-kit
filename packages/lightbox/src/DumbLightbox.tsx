@@ -13,7 +13,7 @@
 // превращается в ожидание.
 
 import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
-import { effect, injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { effect, injectStyle, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type LightboxItem = {
   /** что показывать */
@@ -105,11 +105,16 @@ export function DumbLightbox(props: DumbLightboxProps) {
   )
 
   // диалог открывается и закрывается императивно — сигнал только источник правды
-  effect(() => {
-    const open = at() !== null
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  })
+  // watch, а не effect: в Solid 2 первая фаза эффекта выполняется НЕМЕДЛЕННО,
+  // когда ref ещё не проставлен, и `dialog` тут был бы undefined. У watch
+  // работа уходит во вторую фазу — после монтирования.
+  watch(
+    () => at() !== null,
+    (open) => {
+      if (open && !dialog.open) dialog.showModal()
+      if (!open && dialog.open) dialog.close()
+    },
+  )
 
   /**
    * Соседние тянем заранее. `new Image()` — самый дешёвый способ: браузер

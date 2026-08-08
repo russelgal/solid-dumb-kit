@@ -37,7 +37,7 @@
     "@solid-dumb-kit/shared": "workspace:*"
   },
   "peerDependencies": {
-    "solid-js": "^1.8.0"
+    "solid-js": ">=2.0.0-beta.30"
   },
   "publishConfig": {
     "access": "public"

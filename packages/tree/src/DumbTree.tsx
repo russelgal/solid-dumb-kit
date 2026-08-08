@@ -15,7 +15,7 @@
 
 // watch вместо effect(on(...)): в Solid 2 `on` не экспортируется (shared/solidCompat)
 import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
-import { effect, injectStyle, watch } from '@solid-dumb-kit/shared'
+import { effect, injectStyle, onMounted, watch } from '@solid-dumb-kit/shared'
 
 export type TreeNode = {
   id: string
@@ -191,7 +191,10 @@ function Branch(p: {
   // Тянем при создании ветки. Для корней это старт, для вложенных — момент
   // первого раскрытия: ветка рендерится только раскрытой, значит и запрос
   // уходит ровно тогда, когда в неё полезли.
-  if (!p.nodes) load()
+  //
+  // Через onMounted, а не прямым вызовом: `load` пишет в сигнал, а Solid 2
+  // запрещает запись прямо в теле компонента (REACTIVE_WRITE_IN_OWNED_SCOPE).
+  if (!p.nodes) onMounted(load)
   // сменился ключ обновления — перечитываем то, что уже тянули
   watch(
     () => p.tree.refreshKey?.(),

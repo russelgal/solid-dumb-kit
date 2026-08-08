@@ -1,6 +1,6 @@
 import { delegateEvents, use, insert, createComponent, setAttribute, effect as effect$1, setStyleProperty, className, template } from 'solid-js/web';
 import * as solid from 'solid-js';
-import { createSignal, createMemo, Show, createEffect, onCleanup } from 'solid-js';
+import { createSignal, createMemo, Show, createEffect, untrack, onCleanup } from 'solid-js';
 
 // src/DumbLightbox.tsx
 function prefersReducedMotion() {
@@ -33,6 +33,19 @@ function effect(fn) {
   if (SOLID_2) createEffect(fn, () => {
   });
   else createEffect(fn);
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  const step = (value) => {
+    const skip = first && (false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -122,8 +135,7 @@ function DumbLightbox(props) {
     _el$.$$click = close;
     return _el$;
   })();
-  effect(() => {
-    const open = at() !== null;
+  watch(() => at() !== null, (open) => {
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   });

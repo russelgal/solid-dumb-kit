@@ -1,12 +1,18 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, use, addEventListener, isServer, template } from 'solid-js/web';
-import * as solid from 'solid-js';
+import * as solid2 from 'solid-js';
 import { createSignal, onCleanup, createMemo, untrack, For, Show, createEffect, createUniqueId } from 'solid-js';
 import { createFileUploader } from '@solid-primitives/upload';
 import { reconcile } from 'solid-js/store';
 
 // src/DumbFinder.tsx
+var SOLID_2 = !("batch" in solid2);
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var EDGE = 48;
 var MAX_SPEED = 18;
@@ -1039,24 +1045,25 @@ var STYLES = `
   background: oklch(from currentColor l c h / 0.2);
 }`;
 delegateEvents(["mousedown"]);
-var SOLID_2 = !("batch" in solid);
+var SOLID_22 = !("batch" in solid2);
 function effect3(fn) {
-  if (SOLID_2) createEffect(fn, () => {
+  if (SOLID_22) createEffect(fn, () => {
   });
   else createEffect(fn);
 }
-var batch2 = solid.batch ?? ((fn) => fn());
+var batch2 = solid2.batch ?? ((fn) => fn());
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  createEffect(() => {
-    const value = dep();
+  const step = (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
     if (!skip) untrack(() => fn(value, before));
-  });
+  };
+  if (SOLID_22) createEffect(dep, step);
+  else createEffect(() => step(dep()));
 }
 var done2 = /* @__PURE__ */ new Set();
 function injectStyle2(id, css) {

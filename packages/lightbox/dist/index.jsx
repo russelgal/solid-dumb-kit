@@ -35,6 +35,19 @@ function effect(fn) {
   });
   else createEffect(fn);
 }
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  const step = (value) => {
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -106,11 +119,13 @@ function DumbLightbox(props) {
   const closeButton = () => <button type="button" class="btn btn-sm btn-circle btn-neutral" title="закрыть (Esc)" onClick={close}>
       ✕
     </button>;
-  effect(() => {
-    const open = at() !== null;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  });
+  watch(
+    () => at() !== null,
+    (open) => {
+      if (open && !dialog.open) dialog.showModal();
+      if (!open && dialog.open) dialog.close();
+    }
+  );
   effect(() => {
     const i = at();
     if (i === null) return;

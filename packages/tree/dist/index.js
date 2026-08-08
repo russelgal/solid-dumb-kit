@@ -1,18 +1,29 @@
 import { delegateEvents, insert, createComponent, effect, className, setAttribute, style, memo, spread, mergeProps, template } from 'solid-js/web';
+import * as solid from 'solid-js';
 import { createSignal, createMemo, Show, For, createEffect, untrack } from 'solid-js';
 
 // src/DumbTree.tsx
+var SOLID_2 = !("batch" in solid);
+function onMounted(fn) {
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
+}
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  createEffect(() => {
-    const value = dep();
+  const step = (value) => {
     const skip = first && (opts?.defer);
     first = false;
     const before = prev;
     prev = value;
     if (!skip) untrack(() => fn(value, before));
-  });
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -132,7 +143,7 @@ function Branch(p) {
     setBusy(true);
     fn(p.parentId).then(setLoaded).catch(() => setLoaded([])).finally(() => setBusy(false));
   };
-  if (!p.nodes) load();
+  if (!p.nodes) onMounted(load);
   watch(() => p.tree.refreshKey?.(), () => {
     if (loaded()) load();
   }, {

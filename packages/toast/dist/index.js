@@ -35,7 +35,12 @@ function effect(fn) {
   else createEffect(fn);
 }
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -483,17 +488,6 @@ function DumbToaster(props) {
       if (box?.matches(":popover-open")) box.hidePopover();
     });
   });
-  let was = 0;
-  effect(() => {
-    const n = shown().length + flying().length;
-    if (!n) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-    } else if (n !== was) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-      box?.showPopover?.();
-    }
-    was = n;
-  });
   const shown = () => {
     tick();
     const all = bus().list();
@@ -506,6 +500,17 @@ function DumbToaster(props) {
   };
   const rows = () => [...stacked(), ...flying()].sort((a, b) => a.id - b.id);
   const isLeaving = (t) => flying().some((x) => x.id === t.id);
+  let was = 0;
+  effect(() => {
+    const n = shown().length + flying().length;
+    if (!n) {
+      if (box?.matches(":popover-open")) box.hidePopover();
+    } else if (n !== was) {
+      if (box?.matches(":popover-open")) box.hidePopover();
+      box?.showPopover?.();
+    }
+    was = n;
+  });
   const stacked = () => shown().filter((t) => !t.at);
   const anchored = () => shown().filter((t) => t.at);
   const fly = () => (props.position ?? "bottom-right").endsWith("left") ? "left" : "right";

@@ -49,6 +49,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0))
 describe('показ', () => {
   it('закрытый лайтбокс картинки не держит', async () => {
     mount(null)
+    await settle()
     await tick()
     expect(dialog().open).toBe(false)
     expect(img()).toBeNull()

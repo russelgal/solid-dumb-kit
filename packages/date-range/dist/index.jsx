@@ -8,14 +8,15 @@ var SOLID_2 = !("batch" in solid);
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  createEffect(() => {
-    const value = dep();
+  const step = (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
     if (!skip) untrack(() => fn(value, before));
-  });
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {

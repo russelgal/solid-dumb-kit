@@ -17,7 +17,12 @@ function effect(fn) {
   else createEffect(fn);
 }
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {

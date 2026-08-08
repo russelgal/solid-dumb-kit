@@ -55,36 +55,39 @@ const buttons = (i = 0) =>
   Array.from(toasts()[i]?.querySelectorAll<HTMLButtonElement>('button') ?? [])
 
 describe('разметка', () => {
-  it('рисует то, что положили в шину', () => {
+  it('рисует то, что положили в шину', async () => {
     const bus = createToastBus()
     mount(bus)
     bus.success('Сохранено')
+    await settle()
 
     expect(toasts()).toHaveLength(1)
     expect(textOf()).toBe('Сохранено')
     expect(toasts()[0].getAttribute('data-kind')).toBe('success')
   })
 
-  it('ошибку помечает role=alert, остальное — role=status', () => {
+  it('ошибку помечает role=alert, остальное — role=status', async () => {
     const bus = createToastBus()
     mount(bus)
     bus.error('Не залилось')
     bus.info('Идёт заливка')
+    await settle()
 
     expect(toasts()[0].getAttribute('role')).toBe('alert')
     expect(toasts()[1].getAttribute('role')).toBe('status')
   })
 
-  it('повтор рисуется отдельной плашкой, а не счётчиком', () => {
+  it('повтор рисуется отдельной плашкой, а не счётчиком', async () => {
     const bus = createToastBus()
     mount(bus)
     bus.error('Не залилось')
     bus.error('Не залилось')
+    await settle()
 
     expect(toasts()).toHaveLength(2)
   })
 
-  it('больше max плашек разом не показывает', () => {
+  it('больше max плашек разом не показывает', async () => {
     const bus = createToastBus()
     host = document.createElement('div')
     document.body.appendChild(host)
@@ -93,17 +96,19 @@ describe('разметка', () => {
     bus.info('Раз', { ttl: 0 })
     bus.info('Два', { ttl: 0 })
     bus.info('Три', { ttl: 0 })
+    await settle()
 
     expect(toasts()).toHaveLength(2)
   })
 })
 
 describe('кнопки', () => {
-  it('нажатие зовёт действие и закрывает плашку', () => {
+  it('нажатие зовёт действие и закрывает плашку', async () => {
     const bus = createToastBus()
     mount(bus)
     const run = vi.fn()
     bus.ask('Удалить папку?', [{ label: 'Удалить', run }])
+    await settle()
 
     buttons()[0].click()
 
@@ -111,31 +116,37 @@ describe('кнопки', () => {
     expect(toasts()).toHaveLength(0)
   })
 
-  it('keepOpen оставляет плашку висеть', () => {
+  it('keepOpen оставляет плашку висеть', async () => {
     const bus = createToastBus()
     mount(bus)
     bus.ask('Повторить?', [{ label: 'Ещё раз', keepOpen: true }])
+    await settle()
 
     buttons()[0].click()
 
     expect(toasts()).toHaveLength(1)
   })
 
-  it('у вопроса крестика нет, у обычной плашки есть', () => {
+  it('у вопроса крестика нет, у обычной плашки есть', async () => {
     const bus = createToastBus()
     mount(bus)
 
     bus.ask('Удалить?', [{ label: 'Да' }])
+
+    await settle()
     expect(toasts()[0].querySelector('.dumb-toast-close')).toBeNull()
 
     bus.info('Просто сообщение', { ttl: 0 })
+
+    await settle()
     expect(toasts()[1].querySelector('.dumb-toast-close')).not.toBeNull()
   })
 
-  it('крестик снимает плашку', () => {
+  it('крестик снимает плашку', async () => {
     const bus = createToastBus()
     mount(bus)
     bus.info('Уйди', { ttl: 0 })
+    await settle()
 
     toasts()[0].querySelector<HTMLButtonElement>('.dumb-toast-close')!.click()
 

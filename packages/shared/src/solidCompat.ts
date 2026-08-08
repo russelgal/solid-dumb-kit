@@ -14,8 +14,7 @@ import { createEffect, untrack } from 'solid-js'
 
 /**
  * На какой линии Solid нас собрали. Признак — `batch`: в Solid 2 его убрали,
- * обновления батчатся сами. Проверяется ОДИН раз на модуль, а не при каждом
- * вызове.
+ * обновления батчатся сами. Считается ОДИН раз на модуль.
  */
 const SOLID_2 = !('batch' in (solid as Record<string, unknown>))
 
@@ -27,9 +26,12 @@ const SOLID_2 = !('batch' in (solid as Record<string, unknown>))
  * устарела — она падает с `MISSING_EFFECT_FN`, и вместе с ней валится вся
  * реактивность (`REACTIVITY_HALTED`).
  *
- * Здесь обе линии сведены к привычному одному колбэку: на Solid 2 работа
- * уезжает во вторую фазу, на Solid 1 всё как было. Нужна пара «следить за
- * этим — делать то» — бери `watch`, она выразительнее.
+ * Здесь обе линии сведены к привычному одному колбэку. ВАЖНО: на Solid 2 тело
+ * попадает в фазу ВЫЧИСЛЕНИЯ, а в ней запрещено писать в сигналы
+ * (`REACTIVE_WRITE_IN_OWNED_SCOPE`). Поэтому `effect` годится для «прочитать и
+ * потрогать DOM», а если внутри есть запись в сигнал — бери `watch` (следить
+ * за этим — делать то) или `onMounted`: у них работа уходит во вторую фазу,
+ * где запись разрешена.
  */
 export function effect(fn: () => void): void {
   if (SOLID_2) (createEffect as unknown as (c: () => void, e: () => void) => void)(fn, () => {})
@@ -42,7 +44,13 @@ export const batch: <T>(fn: () => T) => T =
 
 /** `onMount` из Solid 1: эффект, выполненный один раз после монтирования */
 export function onMounted(fn: () => void): void {
-  createEffect(() => untrack(fn))
+  if (SOLID_2) {
+    // вторая фаза: она и есть «эффект». Там разрешено писать в сигналы, а в
+    // первой (вычисление) Solid 2 это запрещает — REACTIVE_WRITE_IN_OWNED_SCOPE
+    ;(createEffect as unknown as (c: () => void, e: () => void) => void)(() => {}, fn)
+  } else {
+    createEffect(() => untrack(fn))
+  }
 }
 
 /**
@@ -56,12 +64,17 @@ export function watch<T>(
 ): void {
   let first = true
   let prev: T | undefined
-  createEffect(() => {
-    const value = dep()
+
+  // На Solid 2 это ровно двухфазный эффект и есть: следим первой функцией,
+  // работаем второй. На Solid 1 сводим к одному createEffect.
+  const step = (value: T) => {
     const skip = first && (opts?.defer ?? false)
     first = false
     const before = prev
     prev = value
     if (!skip) untrack(() => fn(value, before))
-  })
+  }
+
+  if (SOLID_2) (createEffect as unknown as (c: () => T, e: (v: T) => void) => void)(dep, step)
+  else createEffect(() => step(dep()))
 }

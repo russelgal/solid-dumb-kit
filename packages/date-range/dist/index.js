@@ -1,18 +1,21 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, className, memo, style, template } from 'solid-js/web';
+import * as solid from 'solid-js';
 import { createSignal, createMemo, For, Show, onCleanup, createEffect, untrack } from 'solid-js';
 
 // src/DumbDateRange.tsx
+var SOLID_2 = !("batch" in solid);
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  createEffect(() => {
-    const value = dep();
+  const step = (value) => {
     const skip = first && (opts?.defer);
     first = false;
     const before = prev;
     prev = value;
     if (!skip) untrack(() => fn(value, before));
-  });
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {

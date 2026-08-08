@@ -4,9 +4,16 @@ import { createFileUploader } from "@solid-primitives/upload";
 
 // ../selection/dist/index.js
 import { use, insert, effect, className, style, template } from "solid-js/web";
+import * as solid from "solid-js";
 import { onCleanup, createEffect, untrack } from "solid-js";
+var SOLID_2 = !("batch" in solid);
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var EDGE = 48;
 var MAX_SPEED = 18;
@@ -1054,26 +1061,27 @@ var STYLES = `
 delegateEvents(["mousedown"]);
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
+import * as solid2 from "solid-js";
 import { createEffect as createEffect2, untrack as untrack3 } from "solid-js";
-var SOLID_2 = !("batch" in solid);
+var SOLID_22 = !("batch" in solid2);
 function effect3(fn) {
-  if (SOLID_2) createEffect2(fn, () => {
+  if (SOLID_22) createEffect2(fn, () => {
   });
   else createEffect2(fn);
 }
-var batch2 = solid.batch ?? ((fn) => fn());
+var batch2 = solid2.batch ?? ((fn) => fn());
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  createEffect2(() => {
-    const value = dep();
+  const step = (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
     if (!skip) untrack3(() => fn(value, before));
-  });
+  };
+  if (SOLID_22) createEffect2(dep, step);
+  else createEffect2(() => step(dep()));
 }
 var done2 = /* @__PURE__ */ new Set();
 function injectStyle2(id, css) {
