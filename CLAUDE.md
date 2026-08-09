@@ -51,6 +51,7 @@
 каждого пакета **закоммичен** (кит ставится прямо с GitHub, поэтому собранное
 лежит в репе), а `pnpm test` гоняет vitest на happy-dom.
 
+- **Тронул `dependencies` — пересобери лок и закоммить его.** Локально расхождение невидимо: `pnpm install` без флагов молча доустанавливает, тесты и сборка идут на уже разложенных `node_modules`. Vercel ставит с `--frozen-lockfile` и падает с `ERR_PNPM_OUTDATED_LOCKFILE`, не дойдя до кода. Перед пушем гоняй `pnpm check` — это ровно то, что делает деплой (`--frozen-lockfile`, снимок MCP, сборка витрины), плюс тесты и сборка пакетов.
 - `pnpm-workspace.yaml` объявляет воркспейс `packages/*` и `onlyBuiltDependencies: [esbuild]` (pnpm 10 блокирует postinstall-скрипты; без esbuild сборка падает).
 - Версии поднимаются **changesets**: правка, которую увидит потребитель, сопровождается файлом в `.changeset/` в том же коммите. Без него `changeset version` пакет не тронет, и фикс уедет в никуда.
 - `@solid-primitives/storage` **запинен на 4.3.4** (без `^`): в 4.4.0 сломана инференция типов `makePersisted` — dts-сборка `ResizableGrid` падает. Апать только вместе с проверкой `pnpm build`.

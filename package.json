@@ -17,6 +17,7 @@
     "dev": "pnpm -r --parallel --filter './packages/*' run dev",
     "dev:s3:clean": "node scripts/dev-s3-clean.mjs",
     "release": "pnpm build && node scripts/tag.mjs",
+    "check": "pnpm install --frozen-lockfile && pnpm test && pnpm build && node mcp/snapshot.mjs && pnpm demo:build",
     "test": "vitest run",
     "test:watch": "vitest",
     "version": "changeset version && pnpm i --no-frozen-lockfile && git add ."
