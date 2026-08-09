@@ -5,7 +5,8 @@
 Images: pick, look, reorder, upload.
 
 Assembled from things that already exist: file picking and drop-into-window come
-from [`@solid-primitives/upload`](https://primitives.solidjs.community/package/upload),
+from `createFilePicker` in `@solid-dumb-kit/shared` (`@solid-primitives/upload`
+used to sit here, but it broke twice in a row — see [Findings](Findings.md)),
 reordering from [`DumbSortableDnd`](GlobalDnd.md), uploading from a queue
 with a transport you supply.
 

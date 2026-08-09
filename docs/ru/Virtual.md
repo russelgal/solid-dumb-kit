@@ -10,7 +10,7 @@
 import { createVirtualizer, createRowIndex } from '@solid-dumb-kit/shared'
 ```
 
-Живьём — вкладка [`#virtual`](https://russelgal.github.io/solid-dumb-kit/#virtual),
+Живьём — вкладка [`/virtual`](https://solid-dumb-kit.vercel.app/virtual),
 исходник в [`examples/data/virtual.example.tsx`](../../examples/data/virtual.example.tsx).
 
 ## `createVirtualizer` — окно без единого замера

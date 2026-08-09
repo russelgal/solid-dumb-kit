@@ -15,7 +15,7 @@ import { DumbPropsTable } from '@solid-dumb-kit/props-table'
 <DumbPropsTable value={props} title="DumbTimeline" skip={['rows', 'spans']} />
 ```
 
-Live — the [`#props-table`](https://russelgal.github.io/solid-dumb-kit/#props-table) tab.
+Live — the [`/props-table`](https://solid-dumb-kit.vercel.app/props-table) tab.
 
 ## Why, when `JSON.stringify` exists
 

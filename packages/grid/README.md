@@ -9,7 +9,7 @@
 pnpm add @solid-dumb-kit/grid
 ```
 
-Peer-зависимость: `solid-js@^1.8.0`. Тянет за собой: `@solid-primitives/storage`, `valibot`.
+Peer-зависимости: `solid-js` и `@solidjs/web` — вторая линия Solid (`>=2.0.0-beta.30`). Тянет за собой: `valibot`.
 
 ## Документация
 

@@ -10,7 +10,7 @@ number when there are a million rows and they have to be sorted or filtered.
 import { createVirtualizer, createRowIndex } from '@solid-dumb-kit/shared'
 ```
 
-Live — the [`#virtual`](https://russelgal.github.io/solid-dumb-kit/#virtual) tab,
+Live — the [`/virtual`](https://solid-dumb-kit.vercel.app/virtual) tab,
 source in [`examples/data/virtual.example.tsx`](../examples/data/virtual.example.tsx).
 
 ## `createVirtualizer` — a window without a single measurement
