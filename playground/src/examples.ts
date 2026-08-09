@@ -22,7 +22,7 @@ type Loader = () => Promise<ExampleModule>;
  * а следом «Failed to run dependency scan» и дев без пре-бандлинга.
  *
  * Примеры грузятся по требованию: отдельный чанк на каждый, и в стартовый
- * бандл витрины не тащатся все три десятка разом (там и таблица TanStack, и
+ * бандл витрины не тащатся все три десятка разом (там и таблица, и
  * распаковка zip, и клиент хранилища). Чанк подгружается при первом показе, а
  * `preload` дёргается ещё на наведении мыши в меню.
  */
@@ -72,6 +72,7 @@ const MODULES: Record<string, Loader> = {
   "examples/lab/RawDnd.example.tsx": () => import("../../examples/lab/RawDnd.example"),
   "examples/lab/CssOrder.example.tsx": () => import("../../examples/lab/CssOrder.example"),
   "examples/lab/FlipBench.example.tsx": () => import("../../examples/lab/FlipBench.example"),
+  "examples/lab/EventsBench.example.tsx": () => import("../../examples/lab/EventsBench.example"),
   "examples/lab/OrderKanban.example.tsx": () => import("../../examples/lab/OrderKanban.example"),
   "examples/lab/OrderBoard.example.tsx": () => import("../../examples/lab/OrderBoard.example"),
   "examples/lab/OrderTable.example.tsx": () => import("../../examples/lab/OrderTable.example"),

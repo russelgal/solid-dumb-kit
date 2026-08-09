@@ -1,9 +1,213 @@
 import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, memo, setAttribute, className, style, template } from 'solid-js/web';
-import { createSignal, onCleanup, createMemo, Show, For } from 'solid-js';
-import { makePersisted } from '@solid-primitives/storage';
+import * as solid from 'solid-js';
+import { createSignal, onCleanup, createMemo, Show, For, createEffect, untrack } from 'solid-js';
 import * as v from 'valibot';
 
 // src/DumbGrid.tsx
+function prefersReducedMotion() {
+  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+function shouldAnimate(explicit) {
+  if (explicit !== void 0) return explicit;
+  return !prefersReducedMotion();
+}
+var SOLID_2 = !("batch" in solid);
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  const step = (value) => {
+    const skip = first && (opts?.defer);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
+}
+function createPersisted(key, initial, opts = {}) {
+  const store = opts.storage ?? safeStorage();
+  const stringify = opts.stringify ?? ((v2) => JSON.stringify(v2));
+  const parse = opts.parse ?? ((raw2) => JSON.parse(raw2));
+  let start = initial;
+  const raw = store?.getItem(key);
+  if (raw != null) {
+    try {
+      const parsed = parse(raw);
+      if (parsed !== void 0) start = parsed;
+    } catch {
+    }
+  }
+  const [value, setValue] = createSignal(start);
+  watch(value, (v2) => {
+    try {
+      store?.setItem(key, stringify(v2));
+    } catch {
+    }
+  }, { defer: true });
+  return [value, setValue];
+}
+function safeStorage() {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch {
+    return null;
+  }
+}
+var EDGE = 48;
+var MAX_SPEED = 18;
+var ACCEL = 3.5;
+function scrollParent(el, includeSelf = false) {
+  let n = includeSelf ? el : el.parentElement;
+  while (n) {
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === "auto" || oy === "scroll" || oy === "overlay") && n.scrollHeight > n.clientHeight) return n;
+    n = n.parentElement;
+  }
+  return null;
+}
+function measure(scroller) {
+  if (scroller) {
+    const r = scroller.getBoundingClientRect();
+    return {
+      top: r.top,
+      left: r.left,
+      clientH: scroller.clientHeight,
+      clientW: scroller.clientWidth,
+      max: scroller.scrollHeight - scroller.clientHeight,
+      scrollW: scroller.scrollWidth,
+      scrollH: scroller.scrollHeight,
+      winX: window.scrollX,
+      winY: window.scrollY
+    };
+  }
+  const se = document.scrollingElement || document.documentElement;
+  return {
+    top: 0,
+    left: 0,
+    clientH: window.innerHeight,
+    clientW: window.innerWidth,
+    max: se.scrollHeight - window.innerHeight,
+    scrollW: se.scrollWidth,
+    scrollH: se.scrollHeight,
+    winX: 0,
+    winY: 0
+  };
+}
+function scrollOf(scroller) {
+  return scroller ? { sx: scroller.scrollLeft, sy: scroller.scrollTop } : { sx: window.scrollX, sy: window.scrollY };
+}
+function doScroll(scroller, dx, dy) {
+  if (scroller) {
+    if (dy) scroller.scrollTop += dy;
+  } else {
+    window.scrollBy(dx, dy);
+  }
+}
+function viewOrigin(geom, winX, winY) {
+  return { top: geom.top - (winY - geom.winY), left: geom.left - (winX - geom.winX) };
+}
+function autoScrollSpeed(args) {
+  const { pointerY, viewTop, clientH, scrollY, scrollMax } = args;
+  const distTop = pointerY - viewTop;
+  const distBot = viewTop + clientH - pointerY;
+  if (distTop < EDGE && scrollY > 0) {
+    const over = (EDGE - distTop) / EDGE;
+    return -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+  }
+  if (distBot < EDGE && scrollY < scrollMax) {
+    const over = (EDGE - distBot) / EDGE;
+    return Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
+  }
+  return 0;
+}
+function suppressTextSelection() {
+  if (typeof document === "undefined") return;
+  const s = document.body.style;
+  s.userSelect = "none";
+  s.webkitUserSelect = "none";
+  const sel = window.getSelection?.();
+  if (sel && !sel.isCollapsed) sel.removeAllRanges();
+}
+function restoreTextSelection() {
+  if (typeof document === "undefined") return;
+  const s = document.body.style;
+  s.userSelect = "";
+  s.webkitUserSelect = "";
+}
+var NO_DRAG = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
+function targetIsInteractive(ev) {
+  return ev.target instanceof Element && !!ev.target.closest(NO_DRAG);
+}
+function focusInside(el) {
+  const active = document.activeElement;
+  return !!active && active !== document.body && active !== el && el.contains(active);
+}
+var LONGPRESS = 350;
+var MOVE_TOL = 10;
+function createPressGate(opts = {}) {
+  const pressDelay = opts.pressDelay ?? LONGPRESS;
+  const mousePress = opts.mousePressDelay ?? 0;
+  const mouseThresh = opts.mouseThreshold ?? 0;
+  let wait = null;
+  const clear = () => {
+    if (!wait) return;
+    if (wait.timer) clearTimeout(wait.timer);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onCancel);
+    window.removeEventListener("pointercancel", onCancel);
+    wait = null;
+  };
+  const listen = () => {
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onCancel);
+    window.addEventListener("pointercancel", onCancel);
+  };
+  function onMove(ev) {
+    if (!wait || ev.pointerId !== wait.pid) return;
+    const moved = Math.abs(ev.clientX - wait.x) > wait.thresh || Math.abs(ev.clientY - wait.y) > wait.thresh;
+    if (!moved) return;
+    if (wait.mode === "press") {
+      clear();
+      return;
+    }
+    const w = wait;
+    clear();
+    w.start(ev.clientX, ev.clientY);
+  }
+  function onCancel(ev) {
+    if (wait && ev.pointerId === wait.pid) clear();
+  }
+  return {
+    arm(ev, start) {
+      if (wait) return;
+      const touch = ev.pointerType === "touch";
+      const delay = touch ? pressDelay : mousePress;
+      if (delay > 0) {
+        wait = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "press", thresh: MOVE_TOL, start };
+        wait.timer = setTimeout(() => {
+          const w = wait;
+          clear();
+          if (w) {
+            if (touch) navigator.vibrate?.(8);
+            w.start(w.x, w.y);
+          }
+        }, delay);
+        listen();
+        return;
+      }
+      if (!touch && mouseThresh > 0) {
+        wait = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "dist", thresh: mouseThresh, start };
+        listen();
+        return;
+      }
+      ev.preventDefault();
+      start(ev.clientX, ev.clientY);
+    },
+    pending: () => wait !== null,
+    cancel: clear
+  };
+}
 
 // src/gridMath.ts
 function clamp(n, lo, hi) {
@@ -217,167 +421,6 @@ function fitSpan(args) {
   while (w > minW && overlaps({ placed, id, col, row, w, h })) w--;
   while (h > minH && overlaps({ placed, id, col, row, w, h })) h--;
   return { w, h };
-}
-function prefersReducedMotion() {
-  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-function shouldAnimate(explicit) {
-  if (explicit !== void 0) return explicit;
-  return !prefersReducedMotion();
-}
-var EDGE = 48;
-var MAX_SPEED = 18;
-var ACCEL = 3.5;
-function scrollParent(el, includeSelf = false) {
-  let n = includeSelf ? el : el.parentElement;
-  while (n) {
-    const oy = getComputedStyle(n).overflowY;
-    if ((oy === "auto" || oy === "scroll" || oy === "overlay") && n.scrollHeight > n.clientHeight) return n;
-    n = n.parentElement;
-  }
-  return null;
-}
-function measure(scroller) {
-  if (scroller) {
-    const r = scroller.getBoundingClientRect();
-    return {
-      top: r.top,
-      left: r.left,
-      clientH: scroller.clientHeight,
-      clientW: scroller.clientWidth,
-      max: scroller.scrollHeight - scroller.clientHeight,
-      scrollW: scroller.scrollWidth,
-      scrollH: scroller.scrollHeight,
-      winX: window.scrollX,
-      winY: window.scrollY
-    };
-  }
-  const se = document.scrollingElement || document.documentElement;
-  return {
-    top: 0,
-    left: 0,
-    clientH: window.innerHeight,
-    clientW: window.innerWidth,
-    max: se.scrollHeight - window.innerHeight,
-    scrollW: se.scrollWidth,
-    scrollH: se.scrollHeight,
-    winX: 0,
-    winY: 0
-  };
-}
-function scrollOf(scroller) {
-  return scroller ? { sx: scroller.scrollLeft, sy: scroller.scrollTop } : { sx: window.scrollX, sy: window.scrollY };
-}
-function doScroll(scroller, dx, dy) {
-  if (scroller) {
-    if (dy) scroller.scrollTop += dy;
-  } else {
-    window.scrollBy(dx, dy);
-  }
-}
-function viewOrigin(geom, winX, winY) {
-  return { top: geom.top - (winY - geom.winY), left: geom.left - (winX - geom.winX) };
-}
-function autoScrollSpeed(args) {
-  const { pointerY, viewTop, clientH, scrollY, scrollMax } = args;
-  const distTop = pointerY - viewTop;
-  const distBot = viewTop + clientH - pointerY;
-  if (distTop < EDGE && scrollY > 0) {
-    const over = (EDGE - distTop) / EDGE;
-    return -Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-  }
-  if (distBot < EDGE && scrollY < scrollMax) {
-    const over = (EDGE - distBot) / EDGE;
-    return Math.min(MAX_SPEED * ACCEL, MAX_SPEED * over);
-  }
-  return 0;
-}
-function suppressTextSelection() {
-  if (typeof document === "undefined") return;
-  const s = document.body.style;
-  s.userSelect = "none";
-  s.webkitUserSelect = "none";
-  const sel = window.getSelection?.();
-  if (sel && !sel.isCollapsed) sel.removeAllRanges();
-}
-function restoreTextSelection() {
-  if (typeof document === "undefined") return;
-  const s = document.body.style;
-  s.userSelect = "";
-  s.webkitUserSelect = "";
-}
-var NO_DRAG = 'input, textarea, select, option, button, a, label, [contenteditable=""], [contenteditable="true"], [data-no-drag]';
-function targetIsInteractive(ev) {
-  return ev.target instanceof Element && !!ev.target.closest(NO_DRAG);
-}
-function focusInside(el) {
-  const active = document.activeElement;
-  return !!active && active !== document.body && active !== el && el.contains(active);
-}
-var LONGPRESS = 350;
-var MOVE_TOL = 10;
-function createPressGate(opts = {}) {
-  const pressDelay = opts.pressDelay ?? LONGPRESS;
-  const mousePress = opts.mousePressDelay ?? 0;
-  const mouseThresh = opts.mouseThreshold ?? 0;
-  let wait = null;
-  const clear = () => {
-    if (!wait) return;
-    if (wait.timer) clearTimeout(wait.timer);
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onCancel);
-    window.removeEventListener("pointercancel", onCancel);
-    wait = null;
-  };
-  const listen = () => {
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onCancel);
-    window.addEventListener("pointercancel", onCancel);
-  };
-  function onMove(ev) {
-    if (!wait || ev.pointerId !== wait.pid) return;
-    const moved = Math.abs(ev.clientX - wait.x) > wait.thresh || Math.abs(ev.clientY - wait.y) > wait.thresh;
-    if (!moved) return;
-    if (wait.mode === "press") {
-      clear();
-      return;
-    }
-    const w = wait;
-    clear();
-    w.start(ev.clientX, ev.clientY);
-  }
-  function onCancel(ev) {
-    if (wait && ev.pointerId === wait.pid) clear();
-  }
-  return {
-    arm(ev, start) {
-      if (wait) return;
-      const touch = ev.pointerType === "touch";
-      const delay = touch ? pressDelay : mousePress;
-      if (delay > 0) {
-        wait = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "press", thresh: MOVE_TOL, start };
-        wait.timer = setTimeout(() => {
-          const w = wait;
-          clear();
-          if (w) {
-            if (touch) navigator.vibrate?.(8);
-            w.start(w.x, w.y);
-          }
-        }, delay);
-        listen();
-        return;
-      }
-      if (!touch && mouseThresh > 0) {
-        wait = { pid: ev.pointerId, x: ev.clientX, y: ev.clientY, timer: 0, mode: "dist", thresh: mouseThresh, start };
-        listen();
-        return;
-      }
-      ev.preventDefault();
-      start(ev.clientX, ev.clientY);
-    },
-    pending: () => wait !== null,
-    cancel: clear
-  };
 }
 
 // src/gridCore.ts
@@ -1525,16 +1568,11 @@ function DumbGrid(props) {
   const rowH = () => props.rowHeight ?? DEFAULT_ROW_H;
   const gapX = () => props.gapX ?? props.gap ?? DEFAULT_GAP;
   const gapY = () => props.gapY ?? props.gap ?? DEFAULT_GAP;
-  const persisted = props.storageKey ? makePersisted(createSignal(null), {
-    name: props.storageKey,
-    serialize: (l) => JSON.stringify(l ?? []),
-    deserialize: (raw) => {
-      try {
-        const parsed = v.safeParse(LayoutSchema, JSON.parse(raw));
-        return parsed.success ? parsed.output : null;
-      } catch {
-        return null;
-      }
+  const persisted = props.storageKey ? createPersisted(props.storageKey, null, {
+    stringify: (l) => JSON.stringify(l ?? []),
+    parse: (raw) => {
+      const parsed = v.safeParse(LayoutSchema, JSON.parse(raw));
+      return parsed.success ? parsed.output : null;
     }
   }) : null;
   const [memory, setMemory] = createSignal(null);

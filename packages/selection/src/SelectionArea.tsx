@@ -1,7 +1,8 @@
 // onMounted вместо onMount: в Solid 2 onMount не экспортируется, а JSX кита
 // компилируется у потребителя (см. shared/solidCompat)
-import { type JSX } from 'solid-js'
+
 import { onMounted } from '@solid-dumb-kit/shared'
+import type { JSX } from '@solidjs/web'
 import { createSelectionArea } from './solid'
 import type { IntersectMode } from './selectionMath'
 

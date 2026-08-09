@@ -29,7 +29,29 @@ export default defineConfig({
   // `apply: 'serve'`, в сборку он не попадает.
   // `snippets` идёт до solid: он подменяет модули `*.snippets.ts` готовой
   // разметкой Shiki, посчитанной здесь же, в Node (см. playground/snippets.ts).
-  plugins: [tailwindcss(), snippets(), kitMeta(resolve(__dirname, '..')), solid(), devS3()],
+  plugins: [
+    tailwindcss(),
+    snippets(),
+    kitMeta(resolve(__dirname, '..')),
+    // Фильтр задан руками: у плагина третьей линии по умолчанию
+    // `include: 'src/**'` и `exclude: node_modules/**`, а нам нужно шире.
+    // Витрина собирает JSX из трёх мест вне `playground/src` — примеры,
+    // исходники пакетов и `@solidjs/router`: во второй линии он отдаёт по
+    // условию `solid` не сборку, а JSX-исходник, и без трансформации
+    // rolldown просто не видит его экспортов («Router is not exported»).
+    solid({
+      filter: {
+        include: [
+          'src/**/*.{jsx,tsx,ts,js}',
+          '../examples/**/*.{jsx,tsx}',
+          '../packages/*/src/**/*.{jsx,tsx}',
+          '**/node_modules/@solidjs/router/dist/**/*.jsx',
+        ],
+        exclude: '**/node_modules/**/*.{ts,js,mjs,cjs}',
+      },
+    }),
+    devS3(),
+  ],
   resolve: {
     conditions: ['solid-dumb-kit-source', 'development', 'browser'],
   },

@@ -13,7 +13,8 @@
 // частью приложения. Стекло — `backdrop-blur`: это утилита Tailwind, а не наш
 // CSS, и в тёмной теме оно работает так же.
 
-import { Show, type JSX } from 'solid-js'
+import { Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { Toast, ToastKind } from './toast'
 
 /** цвет значка по виду сообщения: токен темы, а не свой hex */

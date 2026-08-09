@@ -1,5 +1,6 @@
-import { delegateEvents, use, insert, createComponent, memo, effect, className, setAttribute, setStyleProperty, template } from 'solid-js/web';
-import { createSignal, createEffect, onCleanup, For, Show, untrack } from 'solid-js';
+import { delegateEvents, use, insert, createComponent, memo, effect as effect$1, className, setAttribute, setStyleProperty, template } from 'solid-js/web';
+import * as solid from 'solid-js';
+import { createSignal, onCleanup, For, Show, createEffect, untrack } from 'solid-js';
 
 // src/DumbToaster.tsx
 function prefersReducedMotion() {
@@ -27,8 +28,19 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -338,11 +350,11 @@ function ToastIcon(props) {
       },
       get children() {
         var _el$2 = _tmpl$();
-        effect(() => className(_el$2, `${props.t.icon} size-[1.2em]`));
+        effect$1(() => className(_el$2, `${props.t.icon} size-[1.2em]`));
         return _el$2;
       }
     }));
-    effect(() => className(_el$, `dumb-toast-icon grid shrink-0 place-items-center font-bold ${box()} ${kindTone(props.t.kind)}`));
+    effect$1(() => className(_el$, `dumb-toast-icon grid shrink-0 place-items-center font-bold ${box()} ${kindTone(props.t.kind)}`));
     return _el$;
   })();
 }
@@ -476,17 +488,6 @@ function DumbToaster(props) {
       if (box?.matches(":popover-open")) box.hidePopover();
     });
   });
-  let was = 0;
-  createEffect(() => {
-    const n = shown().length + flying().length;
-    if (!n) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-    } else if (n !== was) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-      box?.showPopover?.();
-    }
-    was = n;
-  });
   const shown = () => {
     tick();
     const all = bus().list();
@@ -499,6 +500,17 @@ function DumbToaster(props) {
   };
   const rows = () => [...stacked(), ...flying()].sort((a, b) => a.id - b.id);
   const isLeaving = (t) => flying().some((x) => x.id === t.id);
+  let was = 0;
+  effect(() => {
+    const n = shown().length + flying().length;
+    if (!n) {
+      if (box?.matches(":popover-open")) box.hidePopover();
+    } else if (n !== was) {
+      if (box?.matches(":popover-open")) box.hidePopover();
+      box?.showPopover?.();
+    }
+    was = n;
+  });
   const stacked = () => shown().filter((t) => !t.at);
   const anchored = () => shown().filter((t) => t.at);
   const fly = () => (props.position ?? "bottom-right").endsWith("left") ? "left" : "right";
@@ -522,7 +534,7 @@ function DumbToaster(props) {
     });
   };
   let prevRows = [];
-  createEffect(() => {
+  effect(() => {
     const now = rows();
     const alive = new Set(now.map((t) => t.id));
     let freed = 0;
@@ -589,7 +601,7 @@ function DumbToaster(props) {
   const closeButton = (t) => (() => {
     var _el$ = _tmpl$5();
     _el$.$$click = () => bus().dismiss(t.id);
-    effect(() => setAttribute(_el$, "data-side", side()));
+    effect$1(() => setAttribute(_el$, "data-side", side()));
     return _el$;
   })();
   const [pointer, setPointer] = createSignal({
@@ -655,7 +667,7 @@ function DumbToaster(props) {
               if (!a.keepOpen) bus().dismiss(t.id);
             };
             insert(_el$4, () => a.label);
-            effect((_p$) => {
+            effect$1((_p$) => {
               var _v$10 = actionClass(a.kind), _v$11 = a.kind;
               _v$10 !== _p$.e && className(_el$4, _p$.e = _v$10);
               _v$11 !== _p$.t && setAttribute(_el$4, "data-kind", _p$.t = _v$11);
@@ -667,7 +679,7 @@ function DumbToaster(props) {
             return _el$4;
           })()
         }), null);
-        effect((_p$) => {
+        effect$1((_p$) => {
           var _v$4 = `dumb-toast ${cardClass} ${isLeaving(t) ? "dumb-toast-leave" : ""}`, _v$5 = t.id, _v$6 = t.kind, _v$7 = isLeaving(t) ? "true" : void 0, _v$8 = t.kind === "error" ? "alert" : "status", _v$9 = shift(t) ? `translateX(${shift(t)}px)` : void 0, _v$0 = shift(t) ? String(Math.max(0.15, 1 - Math.abs(shift(t)) / SWIPE_FADE)) : void 0, _v$1 = dragging(t) ? "1" : void 0;
           _v$4 !== _p$.e && className(_el$3, _p$.e = _v$4);
           _v$5 !== _p$.t && setAttribute(_el$3, "data-toast-id", _p$.t = _v$5);
@@ -699,7 +711,7 @@ function DumbToaster(props) {
         t
       })
     }), null);
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = `dumb-toaster ${props.class ?? ""}`, _v$2 = props.position ?? "bottom-right", _v$3 = fly();
       _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
       _v$2 !== _p$.t && setAttribute(_el$2, "data-at", _p$.t = _v$2);
@@ -735,7 +747,7 @@ function DumbToaster(props) {
     const spot = spotOf(p.t);
     return [(() => {
       var _el$5 = _tmpl$52();
-      effect((_p$) => {
+      effect$1((_p$) => {
         var _v$12 = `${spot.x}px`, _v$13 = `${spot.y}px`;
         _v$12 !== _p$.e && setStyleProperty(_el$5, "left", _p$.e = _v$12);
         _v$13 !== _p$.t && setStyleProperty(_el$5, "top", _p$.t = _v$13);
@@ -778,7 +790,7 @@ function DumbToaster(props) {
             if (!a.keepOpen) bus().dismiss(p.t.id);
           };
           insert(_el$7, () => a.label);
-          effect((_p$) => {
+          effect$1((_p$) => {
             var _v$16 = actionClass(a.kind), _v$17 = a.kind;
             _v$16 !== _p$.e && className(_el$7, _p$.e = _v$16);
             _v$17 !== _p$.t && setAttribute(_el$7, "data-kind", _p$.t = _v$17);
@@ -790,7 +802,7 @@ function DumbToaster(props) {
           return _el$7;
         })()
       }), null);
-      effect((_p$) => {
+      effect$1((_p$) => {
         var _v$14 = p.t.kind, _v$15 = p.t.kind === "error" ? "alert" : "status";
         _v$14 !== _p$.e && setAttribute(_el$6, "data-kind", _p$.e = _v$14);
         _v$15 !== _p$.t && setAttribute(_el$6, "role", _p$.t = _v$15);
@@ -914,13 +926,13 @@ function DumbToastCenter(props) {
       if (panel?.matches(":popover-open")) panel.hidePopover();
     });
   });
-  createEffect(() => {
+  effect(() => {
     if (!open()) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
     onCleanup(() => clearInterval(id));
   });
-  createEffect(() => {
+  effect(() => {
     const show = open();
     queueMicrotask(() => {
       if (!panel) return;
@@ -936,7 +948,7 @@ function DumbToastCenter(props) {
   const forgetButton = (t) => (() => {
     var _el$2 = _tmpl$23();
     _el$2.$$click = () => bus().forget(t.id);
-    effect(() => setAttribute(_el$2, "data-side", closeAt()));
+    effect$1(() => setAttribute(_el$2, "data-side", closeAt()));
     return _el$2;
   })();
   return [createComponent(Show, {
@@ -958,8 +970,8 @@ function DumbToastCenter(props) {
           return _el$6;
         }
       }), null);
-      effect((_p$) => {
-        var _v$ = side(), _v$2 = `\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F${unread() ? `: \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0445 ${unread()}` : ""}`, _v$3 = open();
+      effect$1((_p$) => {
+        var _v$ = side(), _v$2 = `\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F${unread() ? `: \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0445 ${unread()}` : ""}`, _v$3 = open() ? "true" : "false";
         _v$ !== _p$.e && setAttribute(_el$3, "data-side", _p$.e = _v$);
         _v$2 !== _p$.t && setAttribute(_el$4, "aria-label", _p$.t = _v$2);
         _v$3 !== _p$.a && setAttribute(_el$4, "aria-expanded", _p$.a = _v$3);
@@ -1028,13 +1040,13 @@ function DumbToastCenter(props) {
               t
             }), _el$12);
             insert(_el$12, () => ago(t.time, now()));
-            effect(() => setAttribute(_el$11, "data-kind", t.kind));
+            effect$1(() => setAttribute(_el$11, "data-kind", t.kind));
             return _el$11;
           })()
         });
       }
     }));
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$4 = `dumb-center bg-base-100 border-base-300 shadow-2xl ${side() === "right" ? "border-l" : "border-r"} ${props.class ?? ""}`, _v$5 = side(), _v$6 = shouldAnimate(props.animate) ? "1" : "0", _v$7 = props.title ?? "\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F";
       _v$4 !== _p$.e && className(_el$7, _p$.e = _v$4);
       _v$5 !== _p$.t && setAttribute(_el$7, "data-side", _p$.t = _v$5);

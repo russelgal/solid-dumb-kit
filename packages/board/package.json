@@ -35,10 +35,12 @@
   },
   "devDependencies": {
     "@solid-dumb-kit/grid": "workspace:*",
-    "@solid-dumb-kit/shared": "workspace:*"
+    "@solid-dumb-kit/shared": "workspace:*",
+    "@solidjs/web": "2.0.0-beta.32"
   },
   "peerDependencies": {
-    "solid-js": "^1.8.0"
+    "@solidjs/web": ">=2.0.0-beta.30",
+    "solid-js": ">=2.0.0-beta.30"
   },
   "publishConfig": {
     "access": "public"

@@ -1,11 +1,5 @@
 // src/DumbTable.tsx
-import { For as For2, Show, createSignal, createMemo } from "solid-js";
-import {
-  createSolidTable,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel
-} from "@tanstack/solid-table";
+import { For as For2, Show, createSignal as createSignal2, createMemo } from "solid-js";
 
 // ../sortable/dist/index.js
 import { createComponent } from "solid-js/web";
@@ -558,7 +552,7 @@ function createDumbSortable(opts) {
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion2() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -566,6 +560,7 @@ function shouldAnimate2(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion2();
 }
+var SOLID_2 = !("batch" in solid);
 
 // src/DumbTable.tsx
 var withViewTransition = (on, fn) => {
@@ -579,59 +574,57 @@ function SortMark(props) {
     </span>;
 }
 function DumbTable(props) {
-  const [localSort, setLocalSort] = createSignal([]);
+  const [localSort, setLocalSort] = createSignal2(null);
   const serverMode = () => !!props.onSort;
-  const sorting = () => serverMode() ? props.sort ? [{ id: props.sort, desc: props.order === "desc" }] : [] : localSort();
-  const defs = () => props.columns.map((c) => ({
-    id: c.key,
-    // accessorFn обязателен: без него TanStack считает колонку display-колонкой,
-    // getCanSort() всегда false и сортировка молча выключается — даже когда
-    // сортирует сервер и само значение не используется.
-    accessorFn: (row) => c.value ? c.value(row) : row[c.key],
-    header: () => c.label ?? c.key,
-    enableSorting: !!c.sortable,
-    ...props.sortDescFirst === void 0 ? {} : { sortDescFirst: props.sortDescFirst },
-    cell: (ctx) => c.render ? c.render(ctx.row.original, ctx.row.index) : String(ctx.getValue() ?? ""),
-    meta: { col: c }
-  }));
-  const table = createSolidTable({
-    get data() {
-      return props.rows;
-    },
-    get columns() {
-      return defs();
-    },
-    state: {
-      get sorting() {
-        return sorting();
-      }
-    },
-    get manualSorting() {
-      return serverMode();
-    },
-    // третий клик по заголовку снимает сортировку (asc → desc → без сортировки)
-    get enableSortingRemoval() {
-      return !props.noSortRemoval;
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === "function" ? updater(sorting()) : updater;
-      if (serverMode()) {
-        if (next.length) props.onSort(next[0].id, next[0].desc ? "desc" : "asc");
-        else props.onSort(null, null);
-      } else {
-        withViewTransition(props.viewTransition, () => setLocalSort(next));
-      }
-    },
-    getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel()
+  const colFor = (key) => props.columns.find((c) => c.key === key);
+  const valueOf = (c, row) => c.value ? c.value(row) : row[c.key];
+  const firstDesc = (c) => {
+    if (props.sortDescFirst !== void 0) return props.sortDescFirst;
+    const sample = props.rows.find((r) => valueOf(c, r) != null);
+    return sample !== void 0 && typeof valueOf(c, sample) === "number";
+  };
+  const nextSort = (c, cur) => {
+    if (!cur || cur.key !== c.key) return { key: c.key, desc: firstDesc(c) };
+    if (cur.desc === firstDesc(c)) return { key: c.key, desc: !cur.desc };
+    return props.noSortRemoval ? { key: c.key, desc: firstDesc(c) } : null;
+  };
+  const sortOf = () => serverMode() ? props.sort ? { key: props.sort, desc: props.order === "desc" } : null : localSort();
+  function toggleSort(c) {
+    if (!c.sortable) return;
+    const next = nextSort(c, sortOf());
+    if (serverMode()) {
+      if (next) props.onSort(next.key, next.desc ? "desc" : "asc");
+      else props.onSort(null, null);
+      return;
+    }
+    withViewTransition(props.viewTransition, () => {
+      setLocalSort(next);
+    });
+  }
+  const compare = (a, b) => {
+    const aNil = a === null || a === void 0 || a === "";
+    const bNil = b === null || b === void 0 || b === "";
+    if (aNil || bNil) return aNil && bNil ? 0 : aNil ? 1 : -1;
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    if (a instanceof Date && b instanceof Date) return a.getTime() - b.getTime();
+    if (typeof a === "boolean" && typeof b === "boolean") return Number(a) - Number(b);
+    return String(a).localeCompare(String(b), "ru", { numeric: true, sensitivity: "base" });
+  };
+  const visibleRows = createMemo(() => {
+    const s = sortOf();
+    if (!s || serverMode()) return props.rows;
+    const c = colFor(s.key);
+    if (!c) return props.rows;
+    return props.rows.map((row, i) => ({ row, i })).sort((x, y) => {
+      const d = compare(valueOf(c, x.row), valueOf(c, y.row));
+      return d !== 0 ? s.desc ? -d : d : x.i - y.i;
+    }).map((x) => x.row);
   });
-  const visibleRows = createMemo(() => table.getRowModel().rows.map((r) => r.original));
-  const rowOf = (original) => table.getRowModel().rows.find((r) => r.original === original);
-  const dragDisabled = () => !props.onReorder || sorting().length > 0;
+  const idOf = (row, index) => props.rowId?.(row, index) ?? String(index);
+  const dragDisabled = () => !props.onReorder || sortOf() !== null;
   const withHandle = () => props.handle !== false;
   const sortable = createDumbSortable({
-    order: () => table.getRowModel().rows.map((r) => r.id),
+    order: () => visibleRows().map((r, i) => idOf(r, i)),
     disabled: dragDisabled,
     mouseThreshold: props.dragThreshold,
     get animate() {
@@ -639,7 +632,6 @@ function DumbTable(props) {
     },
     onEnd: (from, to) => props.onReorder?.(from, to)
   });
-  const colOf = (columnDef) => columnDef.meta.col;
   const cellStyle = (c) => ({
     "text-align": c.align ?? "left",
     ...c.width ? { width: c.width } : {}
@@ -655,30 +647,25 @@ function DumbTable(props) {
       <Show when={visibleRows().length} fallback={props.empty}>
         <table class={`table ${props.tableClass ?? ""}`}>
           <thead class={props.headClass}>
-            <For2 each={table.getHeaderGroups()}>
-              {(hg) => <tr>
-                  <Show when={props.onReorder && withHandle()}>
-                    <th class="w-px" />
-                  </Show>
-                  <For2 each={hg.headers}>
-                    {(header) => {
-    const c = () => colOf(header.column.columnDef);
-    const canSort = () => header.column.getCanSort();
-    return <th
-      class={`${c().class ?? ""} ${c().headClass ?? ""}`.trim() || void 0}
-      classList={{ "cursor-pointer select-none": canSort() }}
-      style={{ ...cellStyle(c()), "white-space": "nowrap" }}
-      onClick={header.column.getToggleSortingHandler()}
-    >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          <Show when={canSort()}>
-                            <SortMark dir={header.column.getIsSorted()} />
-                          </Show>
-                        </th>;
-  }}
-                  </For2>
-                </tr>}
-            </For2>
+            <tr>
+              <Show when={props.onReorder && withHandle()}>
+                <th class="w-px" />
+              </Show>
+              <For2 each={props.columns}>
+                {(c) => <th
+    class={`${c.class ?? ""} ${c.headClass ?? ""} ${c.sortable ? "cursor-pointer select-none" : ""}`.trim() || void 0}
+    style={{ ...cellStyle(c), "white-space": "nowrap" }}
+    onClick={() => toggleSort(c)}
+  >
+                    {c.label ?? c.key}
+                    <Show when={c.sortable}>
+                      <SortMark
+    dir={sortOf()?.key === c.key ? sortOf().desc ? "desc" : "asc" : false}
+  />
+                    </Show>
+                  </th>}
+              </For2>
+            </tr>
           </thead>
 
           <tbody>
@@ -686,47 +673,37 @@ function DumbTable(props) {
               <tr aria-hidden="true" style={{ height: `${props.spacerTop}px` }} />
             </Show>
             <For2 each={visibleRows()}>
-              {(original) => {
-    const row = () => rowOf(original);
-    return <tr
-      ref={props.onReorder ? sortable.bind(row().id) : void 0}
-      data-key={row().id}
-      class={props.rowClass?.(original, row().index)}
-      style={{
-        cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
-        ...props.rowStyle?.(original, row().index)
-      }}
-      onClick={() => props.onRowClick?.(original, row().index)}
-    >
+              {(row, index) => <tr
+    ref={props.onReorder ? sortable.bind(idOf(row, index())) : void 0}
+    data-key={idOf(row, index())}
+    class={props.rowClass?.(row, index())}
+    style={{
+      cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
+      ...props.rowStyle?.(row, index())
+    }}
+    onClick={() => props.onRowClick?.(row, index())}
+  >
                   <Show when={props.onReorder && withHandle()}>
                     <td class="w-px" onClick={(e) => e.stopPropagation()}>
                       <span
-      data-drag-handle
-      class="inline-block touch-none"
-      classList={{
-        "cursor-not-allowed text-base-content": dragDisabled(),
-        "cursor-grab": !dragDisabled()
-      }}
-      title={dragDisabled() ? "reset sorting to reorder" : "drag"}
-    >
+    data-drag-handle
+    class={`inline-block touch-none ${dragDisabled() ? "cursor-not-allowed" : "cursor-grab"}`}
+    title={dragDisabled() ? "reset sorting to reorder" : "drag"}
+  >
                         {props.handle ?? "\u283F"}
                       </span>
                     </td>
                   </Show>
-                  <For2 each={row().getVisibleCells()}>
-                    {(cell) => {
-      const c = () => colOf(cell.column.columnDef);
-      return <td
-        class={c().class}
-        style={cellStyle(c())}
-        onClick={c().stopClick ? (e) => e.stopPropagation() : void 0}
-      >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>;
-    }}
+                  <For2 each={props.columns}>
+                    {(c) => <td
+    class={c.class}
+    style={cellStyle(c)}
+    onClick={c.stopClick ? (e) => e.stopPropagation() : void 0}
+  >
+                        {c.render ? c.render(row, index()) : String(valueOf(c, row) ?? "")}
+                      </td>}
                   </For2>
-                </tr>;
-  }}
+                </tr>}
             </For2>
             <Show when={props.spacerBottom}>
               <tr aria-hidden="true" style={{ height: `${props.spacerBottom}px` }} />

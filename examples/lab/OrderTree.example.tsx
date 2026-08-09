@@ -29,8 +29,8 @@
 // `level * indent`.
 //
 // Бросить ветку внутрь самой себя нельзя — её щели и строки исключаются из целей.
-import { createSignal, onCleanup, onMount, For, Show } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
+import { createSignal, onCleanup, For, Show } from 'solid-js'
+import { createAutoScroller, createFlip, onMounted, type Flip } from '@solid-dumb-kit/shared'
 
 type Node = { id: string; label: string; kind: string }
 
@@ -143,7 +143,7 @@ export default function OrderTreeExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMount(() => {
+  onMounted(() => {
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true

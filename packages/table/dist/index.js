@@ -1,6 +1,5 @@
-import { delegateEvents, insert, createComponent, memo, addEventListener, effect, className, classList, style, setStyleProperty, use, setAttribute, template } from 'solid-js/web';
+import { delegateEvents, insert, createComponent, memo, effect, className, style, setStyleProperty, use, setAttribute, addEventListener, template } from 'solid-js/web';
 import { createSignal, createMemo, Show, For, onCleanup } from 'solid-js';
-import { createSolidTable, getSortedRowModel, getCoreRowModel, flexRender } from '@tanstack/solid-table';
 
 // src/DumbTable.tsx
 function prefersReducedMotion() {
@@ -558,14 +557,14 @@ function shouldAnimate2(explicit) {
 // src/DumbTable.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<span aria-hidden=true class="ml-1 inline-block">`);
 var _tmpl$2 = /* @__PURE__ */ template(`<progress class="progress progress-primary mb-1 h-1 w-full">`);
-var _tmpl$3 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<tfoot>`);
-var _tmpl$5 = /* @__PURE__ */ template(`<table><thead></thead><tbody>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<div>`);
-var _tmpl$7 = /* @__PURE__ */ template(`<th class=w-px>`);
-var _tmpl$8 = /* @__PURE__ */ template(`<tr>`);
-var _tmpl$9 = /* @__PURE__ */ template(`<th style=white-space:nowrap>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<td class=w-px><span data-drag-handle class="inline-block touch-none">`);
+var _tmpl$3 = /* @__PURE__ */ template(`<th class=w-px>`);
+var _tmpl$4 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
+var _tmpl$5 = /* @__PURE__ */ template(`<tfoot>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<table><thead><tr></tr></thead><tbody>`);
+var _tmpl$7 = /* @__PURE__ */ template(`<div>`);
+var _tmpl$8 = /* @__PURE__ */ template(`<th style=white-space:nowrap>`);
+var _tmpl$9 = /* @__PURE__ */ template(`<td class=w-px><span data-drag-handle>`);
+var _tmpl$0 = /* @__PURE__ */ template(`<tr>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<td>`);
 var withViewTransition = (on, fn) => {
   const doc = document;
@@ -583,66 +582,75 @@ function SortMark(props) {
   })();
 }
 function DumbTable(props) {
-  const [localSort, setLocalSort] = createSignal([]);
+  const [localSort, setLocalSort] = createSignal(null);
   const serverMode = () => !!props.onSort;
-  const sorting = () => serverMode() ? props.sort ? [{
-    id: props.sort,
+  const colFor = (key) => props.columns.find((c) => c.key === key);
+  const valueOf = (c, row) => c.value ? c.value(row) : row[c.key];
+  const firstDesc = (c) => {
+    if (props.sortDescFirst !== void 0) return props.sortDescFirst;
+    const sample = props.rows.find((r) => valueOf(c, r) != null);
+    return sample !== void 0 && typeof valueOf(c, sample) === "number";
+  };
+  const nextSort = (c, cur) => {
+    if (!cur || cur.key !== c.key) return {
+      key: c.key,
+      desc: firstDesc(c)
+    };
+    if (cur.desc === firstDesc(c)) return {
+      key: c.key,
+      desc: !cur.desc
+    };
+    return props.noSortRemoval ? {
+      key: c.key,
+      desc: firstDesc(c)
+    } : null;
+  };
+  const sortOf = () => serverMode() ? props.sort ? {
+    key: props.sort,
     desc: props.order === "desc"
-  }] : [] : localSort();
-  const defs = () => props.columns.map((c) => ({
-    id: c.key,
-    // accessorFn обязателен: без него TanStack считает колонку display-колонкой,
-    // getCanSort() всегда false и сортировка молча выключается — даже когда
-    // сортирует сервер и само значение не используется.
-    accessorFn: (row) => c.value ? c.value(row) : row[c.key],
-    header: () => c.label ?? c.key,
-    enableSorting: !!c.sortable,
-    ...props.sortDescFirst === void 0 ? {} : {
-      sortDescFirst: props.sortDescFirst
-    },
-    cell: (ctx) => c.render ? c.render(ctx.row.original, ctx.row.index) : String(ctx.getValue() ?? ""),
-    meta: {
-      col: c
+  } : null : localSort();
+  function toggleSort(c) {
+    if (!c.sortable) return;
+    const next = nextSort(c, sortOf());
+    if (serverMode()) {
+      if (next) props.onSort(next.key, next.desc ? "desc" : "asc");
+      else props.onSort(null, null);
+      return;
     }
-  }));
-  const table = createSolidTable({
-    get data() {
-      return props.rows;
-    },
-    get columns() {
-      return defs();
-    },
-    state: {
-      get sorting() {
-        return sorting();
-      }
-    },
-    get manualSorting() {
-      return serverMode();
-    },
-    // третий клик по заголовку снимает сортировку (asc → desc → без сортировки)
-    get enableSortingRemoval() {
-      return !props.noSortRemoval;
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === "function" ? updater(sorting()) : updater;
-      if (serverMode()) {
-        if (next.length) props.onSort(next[0].id, next[0].desc ? "desc" : "asc");
-        else props.onSort(null, null);
-      } else {
-        withViewTransition(props.viewTransition, () => setLocalSort(next));
-      }
-    },
-    getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel()
+    withViewTransition(props.viewTransition, () => {
+      setLocalSort(next);
+    });
+  }
+  const compare = (a, b) => {
+    const aNil = a === null || a === void 0 || a === "";
+    const bNil = b === null || b === void 0 || b === "";
+    if (aNil || bNil) return aNil && bNil ? 0 : aNil ? 1 : -1;
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    if (a instanceof Date && b instanceof Date) return a.getTime() - b.getTime();
+    if (typeof a === "boolean" && typeof b === "boolean") return Number(a) - Number(b);
+    return String(a).localeCompare(String(b), "ru", {
+      numeric: true,
+      sensitivity: "base"
+    });
+  };
+  const visibleRows = createMemo(() => {
+    const s = sortOf();
+    if (!s || serverMode()) return props.rows;
+    const c = colFor(s.key);
+    if (!c) return props.rows;
+    return props.rows.map((row, i) => ({
+      row,
+      i
+    })).sort((x, y) => {
+      const d = compare(valueOf(c, x.row), valueOf(c, y.row));
+      return d !== 0 ? s.desc ? -d : d : x.i - y.i;
+    }).map((x) => x.row);
   });
-  const visibleRows = createMemo(() => table.getRowModel().rows.map((r) => r.original));
-  const rowOf = (original) => table.getRowModel().rows.find((r) => r.original === original);
-  const dragDisabled = () => !props.onReorder || sorting().length > 0;
+  const idOf = (row, index) => props.rowId?.(row, index) ?? String(index);
+  const dragDisabled = () => !props.onReorder || sortOf() !== null;
   const withHandle = () => props.handle !== false;
   const sortable = createDumbSortable({
-    order: () => table.getRowModel().rows.map((r) => r.id),
+    order: () => visibleRows().map((r, i) => idOf(r, i)),
     disabled: dragDisabled,
     mouseThreshold: props.dragThreshold,
     get animate() {
@@ -650,7 +658,6 @@ function DumbTable(props) {
     },
     onEnd: (from, to) => props.onReorder?.(from, to)
   });
-  const colOf = (columnDef) => columnDef.meta.col;
   const cellStyle = (c) => ({
     "text-align": c.align ?? "left",
     ...c.width ? {
@@ -658,7 +665,7 @@ function DumbTable(props) {
     } : {}
   });
   return (() => {
-    var _el$2 = _tmpl$6();
+    var _el$2 = _tmpl$7();
     insert(_el$2, createComponent(Show, {
       get when() {
         return props.loading;
@@ -675,159 +682,136 @@ function DumbTable(props) {
         return props.empty;
       },
       get children() {
-        var _el$4 = _tmpl$5(), _el$5 = _el$4.firstChild, _el$6 = _el$5.nextSibling;
-        insert(_el$5, createComponent(For, {
-          get each() {
-            return table.getHeaderGroups();
-          },
-          children: (hg) => (() => {
-            var _el$0 = _tmpl$8();
-            insert(_el$0, createComponent(Show, {
-              get when() {
-                return memo(() => !!props.onReorder)() && withHandle();
-              },
-              get children() {
-                return _tmpl$7();
-              }
-            }), null);
-            insert(_el$0, createComponent(For, {
-              get each() {
-                return hg.headers;
-              },
-              children: (header) => {
-                const c = () => colOf(header.column.columnDef);
-                const canSort = () => header.column.getCanSort();
-                return (() => {
-                  var _el$10 = _tmpl$9();
-                  addEventListener(_el$10, "click", header.column.getToggleSortingHandler(), true);
-                  insert(_el$10, () => flexRender(header.column.columnDef.header, header.getContext()), null);
-                  insert(_el$10, createComponent(Show, {
-                    get when() {
-                      return canSort();
-                    },
-                    get children() {
-                      return createComponent(SortMark, {
-                        get dir() {
-                          return header.column.getIsSorted();
-                        }
-                      });
-                    }
-                  }), null);
-                  effect((_p$) => {
-                    var _v$3 = `${c().class ?? ""} ${c().headClass ?? ""}`.trim() || void 0, _v$4 = {
-                      "cursor-pointer select-none": canSort()
-                    }, _v$5 = {
-                      ...cellStyle(c())
-                    };
-                    _v$3 !== _p$.e && className(_el$10, _p$.e = _v$3);
-                    _p$.t = classList(_el$10, _v$4, _p$.t);
-                    _p$.a = style(_el$10, _v$5, _p$.a);
-                    return _p$;
-                  }, {
-                    e: void 0,
-                    t: void 0,
-                    a: void 0
-                  });
-                  return _el$10;
-                })();
-              }
-            }), null);
-            return _el$0;
-          })()
-        }));
+        var _el$4 = _tmpl$6(), _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$8 = _el$5.nextSibling;
         insert(_el$6, createComponent(Show, {
           get when() {
-            return props.spacerTop;
+            return memo(() => !!props.onReorder)() && withHandle();
           },
           get children() {
-            var _el$7 = _tmpl$3();
-            effect((_$p) => setStyleProperty(_el$7, "height", `${props.spacerTop}px`));
-            return _el$7;
+            return _tmpl$3();
           }
         }), null);
         insert(_el$6, createComponent(For, {
           get each() {
-            return visibleRows();
+            return props.columns;
           },
-          children: (original) => {
-            const row = () => rowOf(original);
-            return (() => {
-              var _el$11 = _tmpl$8();
-              _el$11.$$click = () => props.onRowClick?.(original, row().index);
-              var _ref$ = props.onReorder ? sortable.bind(row().id) : void 0;
-              typeof _ref$ === "function" && use(_ref$, _el$11);
-              insert(_el$11, createComponent(Show, {
-                get when() {
-                  return memo(() => !!props.onReorder)() && withHandle();
-                },
-                get children() {
-                  var _el$12 = _tmpl$0(), _el$13 = _el$12.firstChild;
-                  _el$12.$$click = (e) => e.stopPropagation();
-                  insert(_el$13, () => props.handle ?? "\u283F");
-                  effect((_p$) => {
-                    var _v$6 = {
-                      "cursor-not-allowed text-base-content": dragDisabled(),
-                      "cursor-grab": !dragDisabled()
-                    }, _v$7 = dragDisabled() ? "reset sorting to reorder" : "drag";
-                    _p$.e = classList(_el$13, _v$6, _p$.e);
-                    _v$7 !== _p$.t && setAttribute(_el$13, "title", _p$.t = _v$7);
-                    return _p$;
-                  }, {
-                    e: void 0,
-                    t: void 0
-                  });
-                  return _el$12;
-                }
-              }), null);
-              insert(_el$11, createComponent(For, {
-                get each() {
-                  return row().getVisibleCells();
-                },
-                children: (cell) => {
-                  const c = () => colOf(cell.column.columnDef);
-                  return (() => {
-                    var _el$14 = _tmpl$1();
-                    addEventListener(_el$14, "click", c().stopClick ? (e) => e.stopPropagation() : void 0, true);
-                    insert(_el$14, () => flexRender(cell.column.columnDef.cell, cell.getContext()));
-                    effect((_p$) => {
-                      var _v$1 = c().class, _v$10 = cellStyle(c());
-                      _v$1 !== _p$.e && className(_el$14, _p$.e = _v$1);
-                      _p$.t = style(_el$14, _v$10, _p$.t);
-                      return _p$;
-                    }, {
-                      e: void 0,
-                      t: void 0
-                    });
-                    return _el$14;
-                  })();
-                }
-              }), null);
-              effect((_p$) => {
-                var _v$8 = row().id, _v$9 = props.rowClass?.(original, row().index), _v$0 = {
-                  cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
-                  ...props.rowStyle?.(original, row().index)
-                };
-                _v$8 !== _p$.e && setAttribute(_el$11, "data-key", _p$.e = _v$8);
-                _v$9 !== _p$.t && className(_el$11, _p$.t = _v$9);
-                _p$.a = style(_el$11, _v$0, _p$.a);
-                return _p$;
-              }, {
-                e: void 0,
-                t: void 0,
-                a: void 0
-              });
-              return _el$11;
-            })();
+          children: (c) => (() => {
+            var _el$10 = _tmpl$8();
+            _el$10.$$click = () => toggleSort(c);
+            insert(_el$10, () => c.label ?? c.key, null);
+            insert(_el$10, createComponent(Show, {
+              get when() {
+                return c.sortable;
+              },
+              get children() {
+                return createComponent(SortMark, {
+                  get dir() {
+                    return memo(() => sortOf()?.key === c.key)() ? sortOf().desc ? "desc" : "asc" : false;
+                  }
+                });
+              }
+            }), null);
+            effect((_p$) => {
+              var _v$3 = `${c.class ?? ""} ${c.headClass ?? ""} ${c.sortable ? "cursor-pointer select-none" : ""}`.trim() || void 0, _v$4 = {
+                ...cellStyle(c)
+              };
+              _v$3 !== _p$.e && className(_el$10, _p$.e = _v$3);
+              _p$.t = style(_el$10, _v$4, _p$.t);
+              return _p$;
+            }, {
+              e: void 0,
+              t: void 0
+            });
+            return _el$10;
+          })()
+        }), null);
+        insert(_el$8, createComponent(Show, {
+          get when() {
+            return props.spacerTop;
+          },
+          get children() {
+            var _el$9 = _tmpl$4();
+            effect((_$p) => setStyleProperty(_el$9, "height", `${props.spacerTop}px`));
+            return _el$9;
           }
         }), null);
-        insert(_el$6, createComponent(Show, {
+        insert(_el$8, createComponent(For, {
+          get each() {
+            return visibleRows();
+          },
+          children: (row, index) => (() => {
+            var _el$11 = _tmpl$0();
+            _el$11.$$click = () => props.onRowClick?.(row, index());
+            var _ref$ = props.onReorder ? sortable.bind(idOf(row, index())) : void 0;
+            typeof _ref$ === "function" && use(_ref$, _el$11);
+            insert(_el$11, createComponent(Show, {
+              get when() {
+                return memo(() => !!props.onReorder)() && withHandle();
+              },
+              get children() {
+                var _el$12 = _tmpl$9(), _el$13 = _el$12.firstChild;
+                _el$12.$$click = (e) => e.stopPropagation();
+                insert(_el$13, () => props.handle ?? "\u283F");
+                effect((_p$) => {
+                  var _v$5 = `inline-block touch-none ${dragDisabled() ? "cursor-not-allowed" : "cursor-grab"}`, _v$6 = dragDisabled() ? "reset sorting to reorder" : "drag";
+                  _v$5 !== _p$.e && className(_el$13, _p$.e = _v$5);
+                  _v$6 !== _p$.t && setAttribute(_el$13, "title", _p$.t = _v$6);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0
+                });
+                return _el$12;
+              }
+            }), null);
+            insert(_el$11, createComponent(For, {
+              get each() {
+                return props.columns;
+              },
+              children: (c) => (() => {
+                var _el$14 = _tmpl$1();
+                addEventListener(_el$14, "click", c.stopClick ? (e) => e.stopPropagation() : void 0, true);
+                insert(_el$14, (() => {
+                  var _c$2 = memo(() => !!c.render);
+                  return () => _c$2() ? c.render(row, index()) : String(valueOf(c, row) ?? "");
+                })());
+                effect((_p$) => {
+                  var _v$0 = c.class, _v$1 = cellStyle(c);
+                  _v$0 !== _p$.e && className(_el$14, _p$.e = _v$0);
+                  _p$.t = style(_el$14, _v$1, _p$.t);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0
+                });
+                return _el$14;
+              })()
+            }), null);
+            effect((_p$) => {
+              var _v$7 = idOf(row, index()), _v$8 = props.rowClass?.(row, index()), _v$9 = {
+                cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
+                ...props.rowStyle?.(row, index())
+              };
+              _v$7 !== _p$.e && setAttribute(_el$11, "data-key", _p$.e = _v$7);
+              _v$8 !== _p$.t && className(_el$11, _p$.t = _v$8);
+              _p$.a = style(_el$11, _v$9, _p$.a);
+              return _p$;
+            }, {
+              e: void 0,
+              t: void 0,
+              a: void 0
+            });
+            return _el$11;
+          })()
+        }), null);
+        insert(_el$8, createComponent(Show, {
           get when() {
             return props.spacerBottom;
           },
           get children() {
-            var _el$8 = _tmpl$3();
-            effect((_$p) => setStyleProperty(_el$8, "height", `${props.spacerBottom}px`));
-            return _el$8;
+            var _el$0 = _tmpl$4();
+            effect((_$p) => setStyleProperty(_el$0, "height", `${props.spacerBottom}px`));
+            return _el$0;
           }
         }), null);
         insert(_el$4, createComponent(Show, {
@@ -835,9 +819,9 @@ function DumbTable(props) {
             return props.footer;
           },
           get children() {
-            var _el$9 = _tmpl$4();
-            insert(_el$9, () => props.footer);
-            return _el$9;
+            var _el$1 = _tmpl$5();
+            insert(_el$1, () => props.footer);
+            return _el$1;
           }
         }), null);
         effect((_p$) => {

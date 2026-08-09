@@ -10,15 +10,9 @@
 // сообщение об ошибке обязано читаться в любой теме, а не сливаться с фоном.
 
 // onMounted вместо onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
-import { For, Show, createEffect, createSignal, onCleanup, type JSX } from 'solid-js'
-import {
-  createFlip,
-  injectStyle,
-  onMounted,
-  resolveCloseSide,
-  shouldAnimate,
-  type CloseSideOption,
-} from '@solid-dumb-kit/shared'
+import { For, Show, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
+import { createFlip, effect, injectStyle, onMounted, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 import { ToastBody, ToastIcon } from './toastLook'
 
@@ -174,30 +168,6 @@ export function DumbToaster(props: DumbToasterProps) {
     })
   })
 
-  /**
-   * В top layer поднимаемся ТОЛЬКО когда есть что показать — и заново на каждое
-   * новое сообщение.
-   *
-   * Причина не в чистоте DOM (хотя пустой слой на весь экран в отладчике
-   * мозолит глаза), а в порядке: top layer — это стек, и кто вошёл позже, тот
-   * выше. Висящий с самой загрузки тостер оказывается НИЖЕ модалки, открытой
-   * потом, — то есть ровно там, где он не нужен: ошибки чаще всего и прилетают
-   * из модалок. Перевсплытие ставит его обратно наверх.
-   */
-  let was = 0
-  createEffect(() => {
-    // летящие считаем наравне с живыми: иначе слой погаснет ровно в тот кадр,
-    // когда должен показать полёт последней плашки
-    const n = shown().length + flying().length
-    if (!n) {
-      if (box?.matches(':popover-open')) box.hidePopover()
-    } else if (n !== was) {
-      if (box?.matches(':popover-open')) box.hidePopover()
-      box?.showPopover?.()
-    }
-    was = n
-  })
-
   const shown = () => {
     tick()                                   // подписка на «будильник»
     const all = bus().list()
@@ -229,6 +199,37 @@ export function DumbToaster(props: DumbToasterProps) {
   const isLeaving = (t: Toast) => flying().some((x) => x.id === t.id)
 
   /** плашки у курсора идут ОТДЕЛЬНО от стопки: у каждой своё место */
+  /*
+    Эффект стоит ЗДЕСЬ, ниже `shown`, а не выше по файлу. В Solid 1 порядок
+    был не важен: `createEffect` откладывал первый прогон до конца рендера, и
+    к моменту запуска объявления уже существовали. В Solid 2 первая фаза
+    эффекта выполняется НЕМЕДЛЕННО, и тот же код падал с
+    `Cannot access 'shown' before initialization`.
+  */
+  /**
+   * В top layer поднимаемся ТОЛЬКО когда есть что показать — и заново на каждое
+   * новое сообщение.
+   *
+   * Причина не в чистоте DOM (хотя пустой слой на весь экран в отладчике
+   * мозолит глаза), а в порядке: top layer — это стек, и кто вошёл позже, тот
+   * выше. Висящий с самой загрузки тостер оказывается НИЖЕ модалки, открытой
+   * потом, — то есть ровно там, где он не нужен: ошибки чаще всего и прилетают
+   * из модалок. Перевсплытие ставит его обратно наверх.
+   */
+  let was = 0
+  effect(() => {
+    // летящие считаем наравне с живыми: иначе слой погаснет ровно в тот кадр,
+    // когда должен показать полёт последней плашки
+    const n = shown().length + flying().length
+    if (!n) {
+      if (box?.matches(':popover-open')) box.hidePopover()
+    } else if (n !== was) {
+      if (box?.matches(':popover-open')) box.hidePopover()
+      box?.showPopover?.()
+    }
+    was = n
+  })
+
   const stacked = () => shown().filter((t) => !t.at)
   const anchored = () => shown().filter((t) => t.at)
 
@@ -278,7 +279,7 @@ export function DumbToaster(props: DumbToasterProps) {
    * лежат с того края, к которому прижата стопка.
    */
   let prevRows: Array<Toast> = []
-  createEffect(() => {
+  effect(() => {
     const now = rows()
     const alive = new Set(now.map((t) => t.id))
     // сколько места освободилось ВЫШЕ по стопке — накапливаем, идя по прошлому

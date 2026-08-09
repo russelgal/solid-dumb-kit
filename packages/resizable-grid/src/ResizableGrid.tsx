@@ -1,7 +1,7 @@
-import { createSignal, type JSX, For, Show } from 'solid-js'
-import { makePersisted } from '@solid-primitives/storage'
+import { createSignal, For, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import * as v from 'valibot'
-import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
+import { createPersisted, injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 
 /* ────────── Типы ────────── */
 
@@ -79,13 +79,9 @@ export function ResizableGrid(props: ResizableGridProps) {
     rowSplit: props.rows ? [props.rowInitial ?? 1, props.row2Initial ?? 1] : undefined,
   }
 
-  const [sizes, setSizes] = makePersisted(
-    createSignal<PersistedSizes>(defaults),
-    {
-      name: props.storageKey,
-      deserialize: (raw) => validateSizes(JSON.parse(raw), defaults),
-    },
-  )
+  const [sizes, setSizes] = createPersisted<PersistedSizes>(props.storageKey, defaults, {
+    parse: (raw) => validateSizes(JSON.parse(raw), defaults),
+  })
 
   const colSizes = () => {
     const s = sizes()

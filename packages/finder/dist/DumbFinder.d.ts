@@ -1,4 +1,4 @@
-import { type JSX } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 import { type FileKind } from './finderPath';
 import type { FinderEntry, FinderSource } from './finderTypes';
 export type FinderView = 'grid' | 'list';

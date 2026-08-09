@@ -1,15 +1,21 @@
 // src/DumbSortableDnd.tsx
-import { For, createEffect as createEffect2, createMemo } from "solid-js";
+import { For, createMemo } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -264,7 +270,7 @@ function createAutoScroller() {
 }
 
 // src/solid.ts
-import { createSignal, onCleanup } from "solid-js";
+import { createSignal as createSignal2, onCleanup } from "solid-js";
 
 // src/sortDndCore.ts
 function createSortDndEngine(opts) {
@@ -513,7 +519,7 @@ function createSortDndEngine(opts) {
 
 // src/solid.ts
 function createDumbSortableDnd(opts) {
-  const [active, setActive] = createSignal(null);
+  const [active, setActive] = createSignal2(null);
   const engine = createSortDndEngine({
     ...opts,
     onActive: (id) => {
@@ -547,7 +553,7 @@ function DumbSortableDnd(props) {
   const stable = createStableOrder(props.id);
   const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
-  createEffect2(() => {
+  effect(() => {
     for (const [id, i] of places()) {
       const el = els.get(id);
       if (!el) continue;

@@ -33,11 +33,9 @@
     "build": "tsup --config ../../configs/tsup.ts && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
-  "dependencies": {
-    "@solid-primitives/upload": "^0.1.5"
-  },
   "peerDependencies": {
-    "solid-js": "^1.8.0"
+    "@solidjs/web": ">=2.0.0-beta.30",
+    "solid-js": ">=2.0.0-beta.30"
   },
   "publishConfig": {
     "access": "public"
@@ -46,6 +44,7 @@
     "@solid-dumb-kit/resizable-grid": "workspace:*",
     "@solid-dumb-kit/selection": "workspace:*",
     "@solid-dumb-kit/shared": "workspace:*",
-    "@solid-dumb-kit/utils": "workspace:*"
+    "@solid-dumb-kit/utils": "workspace:*",
+    "@solidjs/web": "2.0.0-beta.32"
   }
 }

@@ -6,7 +6,7 @@ import { onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -14,6 +14,7 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var SOLID_2 = !("batch" in solid);
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;

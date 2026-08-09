@@ -45,12 +45,12 @@ const twist = (id: string) => rowFor(id)?.querySelector<HTMLButtonElement>('.dum
 const tick = () => new Promise((r) => setTimeout(r, 0))
 
 describe('раскрытие', () => {
-  it('свёрнутое дерево показывает только корни', () => {
+  it('свёрнутое дерево показывает только корни', async () => {
     mount()
     expect(labels()).toEqual(['Документы', 'readme.txt'])
   })
 
-  it('клик по стрелке раскрывает ветку и сворачивает обратно', () => {
+  it('клик по стрелке раскрывает ветку и сворачивает обратно', async () => {
     mount()
 
     twist('docs')!.click()
@@ -62,13 +62,13 @@ describe('раскрытие', () => {
     expect(rowFor('docs')!.dataset.open).toBeUndefined()
   })
 
-  it('у листа стрелки нет — только распорка на её месте', () => {
+  it('у листа стрелки нет — только распорка на её месте', async () => {
     mount()
     expect(rowFor('readme')!.querySelector('button.dumb-tree-twist')).toBeNull()
     expect(rowFor('readme')!.querySelector('.dumb-tree-twist')).not.toBeNull()
   })
 
-  it('раскрытое запоминается по storageKey', () => {
+  it('раскрытое запоминается по storageKey', async () => {
     mount({ storageKey: 'tree-test' })
     twist('docs')!.click()
     dispose!()
@@ -113,11 +113,12 @@ describe('ленивая ветка', () => {
 })
 
 describe('фильтр', () => {
-  it('оставляет совпавшее и дорогу к нему, раскрывая ветки', () => {
+  it('оставляет совпавшее и дорогу к нему, раскрывая ветки', async () => {
     const [q, setQ] = createSignal('')
     mount({ query: q })
 
     setQ('акт')
+    await settle()
     // ветка показана, потому что совпал ребёнок, и раскрыта — иначе совпадение
     // осталось бы спрятанным
     expect(labels()).toContain('Документы')
@@ -126,17 +127,18 @@ describe('фильтр', () => {
     expect(labels()).not.toContain('Счёт')
   })
 
-  it('свой матчер перебивает подстроку', () => {
+  it('свой матчер перебивает подстроку', async () => {
     const [q, setQ] = createSignal('')
     mount({ query: q, match: (n, query) => n.id.startsWith(query) })
 
     setQ('readme')
+    await settle()
     expect(labels()).toEqual(['readme.txt'])
   })
 })
 
 describe('выбор', () => {
-  it('зовёт onSelect и помечает выбранную строку', () => {
+  it('зовёт onSelect и помечает выбранную строку', async () => {
     const onSelect = vi.fn()
     const [sel, setSel] = createSignal<string | null>(null)
     mount({ onSelect, selected: sel })
@@ -145,6 +147,7 @@ describe('выбор', () => {
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'readme' }))
 
     setSel('readme')
+    await settle()
     expect(rowFor('readme')!.getAttribute('aria-current')).toBe('true')
   })
 })

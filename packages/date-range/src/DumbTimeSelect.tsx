@@ -13,7 +13,8 @@
 // Это хуже слотов (свободное окно глазами не окинуть), поэтому если места
 // хватает — берите слоты.
 
-import { For, Show, createMemo, type JSX } from 'solid-js'
+import { For, Show, createMemo } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { Day } from './dateMath'
 import { slotBusy, toMin, toTime, type BusyMoment, type Time } from './timeMath'
 

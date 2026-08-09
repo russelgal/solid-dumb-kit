@@ -1,17 +1,25 @@
 import "./app.css";
-import { render } from "solid-js/web";
+import { effect } from '@solid-dumb-kit/shared'
+// Во второй линии рендерер выехал из `solid-js/web` в отдельный пакет:
+// подпути `./web` у solid-js больше нет вовсе, сборка на нём падает.
+import { render } from "@solidjs/web";
 import {
   createEffect,
   createMemo,
   createSignal,
   For,
   lazy,
+  Loading,
   Show,
-  Suspense,
   onCleanup,
   type JSX,
 } from "solid-js";
-import { A, Navigate, Route, Router, useLocation, useNavigate } from "@solidjs/router";
+// Роутер второй линии — без декларативных `<Router>`/`<Route>`: дерево
+// маршрутов описывается данными и отдаётся в `createRouter`, а полученный
+// инстанс сам и есть провайдер. Компонента `A` не стало вовсе: роутер
+// перехватывает клики по обычным `<a>` (пока не выставлен `explicitLinks`),
+// и предзагрузку по наведению делает сам — отсюда `preloadLinks`.
+import { createRouter, useLocation, useNavigate } from "@solidjs/router";
 
 import { compOf } from "./examples";
 // Версии пакетов и даты их последней правки — посчитаны на сборке из
@@ -193,7 +201,7 @@ const GROUPS: Array<Group> = [
         id: "table",
         label: "DumbTable",
         pkg: "table",
-        hint: "TanStack + драг строк",
+        hint: "сортировка + драг строк",
         file: "examples/data/DumbTable.example.tsx",
       },
       {
@@ -282,6 +290,13 @@ const GROUPS: Array<Group> = [
         pkg: "shared",
         hint: "сколько стоит померить",
         file: "examples/lab/FlipBench.example.tsx",
+      },
+      {
+        id: "events-bench",
+        label: "События",
+        pkg: "shared",
+        hint: "делегирование против слушателей",
+        file: "examples/lab/EventsBench.example.tsx",
       },
       {
         id: "orderkanban",
@@ -461,7 +476,7 @@ function App(props: { children?: JSX.Element }) {
   const [cursor, setCursor] = createSignal(0);
   const cursorId = () => visible()[cursor()]?.id;
 
-  createEffect(() => {
+  effect(() => {
     document.documentElement.dataset.theme = theme();
     localStorage.setItem("sd-theme", theme());
   });
@@ -469,7 +484,7 @@ function App(props: { children?: JSX.Element }) {
   // Заголовок вкладки браузера — по текущему примеру: с настоящими путями
   // страницу кладут в закладки и ищут в истории, а «solid-dumb-kit» на всех
   // тридцати пунктах там неразличим.
-  createEffect(() => {
+  effect(() => {
     const t = TABS.find((x) => x.id === tab());
     document.title = t ? `${t.label} · solid-dumb-kit` : "solid-dumb-kit";
   });
@@ -524,9 +539,9 @@ function App(props: { children?: JSX.Element }) {
           переносился в две. */}
       <header class="navbar sticky top-0 z-30 min-h-14 flex-nowrap gap-3 border-b border-base-300 bg-base-100 px-3">
         <div class="navbar-start w-auto min-w-0 flex-1 gap-2">
-          <A class="text-base font-semibold no-underline" href={hrefOf(TABS[0].id)}>
+          <a class="text-base font-semibold no-underline" href={hrefOf(TABS[0].id)}>
             solid-dumb-kit
-          </A>
+          </a>
 
           {/* Где мы сейчас. Хлебные крошки daisyUI: группа → пример, и в них же
               видно, что подпись в меню урезана (там без `Dumb`), а тут полная. */}
@@ -711,9 +726,10 @@ function App(props: { children?: JSX.Element }) {
                         <For each={group.items}>
                           {(t) => (
                             <li>
-                              {/* `A`, а не голый `<a>`: обычная ссылка перезагрузила
-                                бы страницу целиком вместо перехода по роутеру. */}
-                              <A
+                              {/* Голая ссылка: во второй линии роутер сам ловит
+                                клики по ссылкам внутри своего дерева, и
+                                отдельная компонента-обёртка ему не нужна. */}
+                              <a
                                 class="py-1.5"
                                 classList={{
                                   "menu-active": tab() === t.id,
@@ -748,7 +764,7 @@ function App(props: { children?: JSX.Element }) {
                                     </span>
                                   </Show>
                                 </span>
-                              </A>
+                              </a>
                             </li>
                           )}
                         </For>
@@ -765,7 +781,9 @@ function App(props: { children?: JSX.Element }) {
             держит навигацию в `startTransition`, поэтому предыдущий пример
             остаётся на экране, — реально она показывается на первом заходе. */}
         <main class="min-w-0 flex-1">
-          <Suspense
+          {/* Во второй линии граница ожидания называется `Loading` —
+              `Suspense` из ядра пропал вместе со старой моделью async. */}
+          <Loading
             fallback={
               <div class="flex min-h-[60vh] items-center justify-center gap-3 text-base">
                 <span class="loading loading-spinner loading-md" />
@@ -774,7 +792,7 @@ function App(props: { children?: JSX.Element }) {
             }
           >
             {props.children}
-          </Suspense>
+          </Loading>
         </main>
       </div>
     </div>
@@ -788,20 +806,35 @@ if (legacy && TABS.some((t) => t.id === legacy)) {
   history.replaceState(null, "", `${BASE}${hrefOf(legacy)}`);
 }
 
+/**
+ * Уводит на первый пример: корень и любой мусорный путь. Отдельная компонента,
+ * потому что `Navigate` во второй линии не завезли, а адрес в строке должен
+ * совпадать с показанным — иначе кнопка «назад» ведёт себя непредсказуемо.
+ * Отсюда `replace`: промежуточный адрес в истории не нужен.
+ */
+function ToFirst() {
+  const navigate = useNavigate();
+  navigate(hrefOf(TABS[0].id), { replace: true });
+  return null;
+}
+
+// Дерево маршрутов — обычные данные, а не JSX: роутер второй линии принимает
+// его в `createRouter` и по нему же выводит типы путей.
+const Router = createRouter({
+  base: BASE,
+  routes: [
+    { path: "/", component: ToFirst },
+    // Обычный `map`, а не `For`: описание маршрутов читается один раз при
+    // старте, реактивный список тут не нужен и только мешает.
+    ...TABS.map((t) => ({ path: hrefOf(t.id), component: compOf(t.file) })),
+    { path: "*", component: ToFirst },
+  ],
+});
+
+// Инстанс роутера сам и есть провайдер, а совпавший маршрут приезжает в
+// render-prop — каркас витрины оборачивает его снаружи, как раньше делал
+// `root` у старого `<Router>`.
 render(
-  () => (
-    <Router base={BASE} root={App}>
-      {/* Корень и любой мусорный путь — на первый пример. `Navigate`, а не
-          рендер компонента: адрес в строке должен совпадать с тем, что показано,
-          иначе кнопка «назад» ведёт себя непредсказуемо. */}
-      <Route path="/" component={() => <Navigate href={hrefOf(TABS[0].id)} />} />
-      {/* Обычный `map`, а не `For`: роутер читает описание роутов один раз при
-          старте, реактивный список ему тут не нужен и только мешает. */}
-      {TABS.map((t) => (
-        <Route path={hrefOf(t.id)} component={compOf(t.file)} />
-      ))}
-      <Route path="*" component={() => <Navigate href={hrefOf(TABS[0].id)} />} />
-    </Router>
-  ),
+  () => <Router>{(props) => <App>{props.children}</App>}</Router>,
   document.getElementById("root")!,
 );

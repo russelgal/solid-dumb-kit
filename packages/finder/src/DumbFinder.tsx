@@ -28,16 +28,12 @@
 
 // batch и watch — из shared/solidCompat: в Solid 2 `batch` и `on` не экспортируются,
 // а JSX кита компилируется у потребителя
-import {
-  For, Show, createEffect, createMemo, createSignal, onCleanup, untrack,
-  type JSX,
-} from 'solid-js'
-import { createFileUploader, type UploadFile } from '@solid-primitives/upload'
+import { For, Show, createMemo, createSignal, onCleanup, untrack } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { SelectionArea } from '@solid-dumb-kit/selection'
 import { ResizableGrid } from '@solid-dumb-kit/resizable-grid'
 import {
-  batch, createUploadQueue, createUndoStack, injectStyle, isMoveKey, moveIndex,
-  moveSelection, readDropEntries, watch,
+  batch, createFilePicker, createUndoStack, createUploadQueue, effect, injectStyle, isMoveKey, moveIndex, moveSelection, readDropEntries, watch,
 } from '@solid-dumb-kit/shared'
 import { fmtSize, fmtDateTimeShort } from '@solid-dumb-kit/utils'
 import {
@@ -453,7 +449,7 @@ export function DumbFinder(props: DumbFinderProps) {
     }
   }
 
-  createEffect(() => {
+  effect(() => {
     if (props.sidebar === false) return
     // умеет отдать всё разом — берём всё разом и по веткам не ходим вовсе
     if (props.source.tree) {
@@ -522,7 +518,7 @@ export function DumbFinder(props: DumbFinderProps) {
   // ушли в другую папку — раскрытое здесь больше не про что
   watch(path, () => batch(() => { setOpenRows(new Set<string>()); setSub({}) }), { defer: true })
   // содержимое перечитали — раскрытые ветки тоже
-  createEffect(() => {
+  effect(() => {
     const cache = sub()
     for (const k of openRows()) if (!(k in cache)) void ensureSub(k)
   })
@@ -603,9 +599,11 @@ export function DumbFinder(props: DumbFinderProps) {
     })
   }
 
-  const picker = createFileUploader({ accept: props.accept ?? '*', multiple: true })
+  // свой выбор файлов: см. shared/filePicker — примитив из solid-primitives
+  // ломался и сабпутём solid-js/web, и сменой API
+  const openPicker = createFilePicker({ accept: props.accept ?? '*', multiple: true })
   const pickFiles = () =>
-    picker.selectFiles((files: Array<UploadFile>) =>
+    openPicker((files) =>
       enqueue(files.map((f) => ({ name: f.name, file: f.file })), untrack(path)),
     )
 
@@ -1113,7 +1111,7 @@ export function DumbFinder(props: DumbFinderProps) {
                     data-dir={entry.dir ? '1' : undefined}
                   data-open={openRows().has(entry.key) ? '1' : undefined}
                     data-drop={entry.dir && dropAt() === entry.key ? '1' : undefined}
-                    draggable={canWrite() && !!props.source.move}
+                    draggable={canWrite() && !!props.source.move ? 'true' : 'false'}
                     title={entry.name}
                     onDblClick={() => open(entry)}
                     onDragStart={(ev) => startDrag(ev, entry)}
@@ -1147,7 +1145,7 @@ export function DumbFinder(props: DumbFinderProps) {
                               class="dumb-finder-twist"
                               data-no-select
                               data-no-drag
-                              draggable={false}
+                              draggable={false ? 'true' : 'false'}
                               title={openRows().has(entry.key) ? 'свернуть' : 'развернуть'}
                               onClick={(ev) => {
                                 ev.stopPropagation()
@@ -1170,7 +1168,7 @@ export function DumbFinder(props: DumbFinderProps) {
                           >
                             {/* грузим лениво: в папке на триста картинок иначе
                                 триста запросов разом */}
-                            <img src={entry.url} alt="" loading="lazy" draggable={false} />
+                            <img src={entry.url} alt="" loading="lazy" draggable={false ? 'true' : 'false'} />
                           </Show>
                         </div>
                         <div class="dumb-finder-name">{entry.name}</div>
@@ -1291,7 +1289,7 @@ export function DumbFinder(props: DumbFinderProps) {
                 <button
                   type="button"
                   class="dumb-finder-crumb"
-                  aria-current={c.prefix === path()}
+                  aria-current={c.prefix === path() ? 'true' : undefined}
                   data-drop={dropAt() === c.prefix && c.prefix !== path() ? '1' : undefined}
                   onClick={() => goto(c.prefix)}
                   onDragOver={(ev) => c.prefix !== path() && over(c.prefix, ev)}

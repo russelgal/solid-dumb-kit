@@ -79,7 +79,7 @@ const INITIAL: Record<ColumnId, Card[]> = {
     card('d2', 'Канбан-пример', 'docs', 90),
   ],
   review: [
-    card('r1', 'DumbTable на TanStack', 'core', 265),
+    card('r1', 'DumbTable: своя сортировка', 'core', 265),
   ],
   done: [
     card('n1', 'Раскладка по папкам', 'chore', 220),

@@ -1,6 +1,6 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect, setStyleProperty, className, memo, style, template } from 'solid-js/web';
-import { createSignal, onCleanup, createMemo, Show, createEffect, For } from 'solid-js';
-import { createFileUploader, createDropzone } from '@solid-primitives/upload';
+import { delegateEvents, insert, createComponent, effect as effect$1, setStyleProperty, className, setAttribute, memo, style, use, template } from 'solid-js/web';
+import * as solid from 'solid-js';
+import { createSignal, onCleanup, createMemo, Show, For, createEffect } from 'solid-js';
 
 // src/DumbGallery.tsx
 function prefersReducedMotion() {
@@ -9,6 +9,12 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -538,7 +544,7 @@ function DumbSortableDnd(props) {
   const stable = createStableOrder(props.id);
   const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
-  createEffect(() => {
+  effect(() => {
     for (const [id, i] of places()) {
       const el = els.get(id);
       if (!el) continue;
@@ -565,7 +571,7 @@ function DumbSortableDnd(props) {
         return el;
       }
     }));
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = props.class, _v$2 = props.style;
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
       _p$.t = style(_el$, _v$2, _p$.t);
@@ -576,6 +582,31 @@ function DumbSortableDnd(props) {
     });
     return _el$;
   })();
+}
+var toPicked = (file) => ({
+  file,
+  name: file.name,
+  size: file.size,
+  source: URL.createObjectURL(file)
+});
+function createFilePicker(opts = {}) {
+  let input = null;
+  return (onPick) => {
+    if (typeof document === "undefined") return;
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "file";
+      input.style.display = "none";
+    }
+    input.accept = opts.accept ?? "";
+    input.multiple = opts.multiple !== false;
+    input.value = "";
+    input.onchange = () => {
+      const files = Array.from(input?.files ?? []).map(toPicked);
+      if (files.length) onPick(files);
+    };
+    input.click();
+  };
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -738,9 +769,9 @@ async function walk(entry, prefix) {
 var _tmpl$2 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral mt-3">\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0444\u0430\u0439\u043B\u044B`);
 var _tmpl$22 = /* @__PURE__ */ template(`<span class="ml-3 text-sm"data-gallery-stats>`);
 var _tmpl$3 = /* @__PURE__ */ template(`<div>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"data-no-drag title=\u0443\u0431\u0440\u0430\u0442\u044C>\u2715`);
+var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"data-no-drag draggable=false title=\u0443\u0431\u0440\u0430\u0442\u044C>\u2715`);
 var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-gallery-bar bg-base-300"><i>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<figure><img>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<figure><img draggable=false>`);
 var STYLES = `
           /* grid, \u0430 \u043D\u0435 flex: \u043D\u0430 \u043D\u0451\u043C \u0438 \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F CSS order, \u043A\u043E\u0442\u043E\u0440\u044B\u043C \u0434\u0432\u0438\u0433\u0430\u044E\u0442\u0441\u044F \u043F\u043B\u0438\u0442\u043A\u0438 */
           .dumb-gallery { display: grid; gap: var(--dumb-gallery-gap, 10px);
@@ -831,17 +862,9 @@ function DumbGallery(props) {
     props.setItems([...props.items, ...added]);
     if (props.upload) added.forEach((it, i) => queue.add(it.id, take[i].file));
   }
-  const picker = createFileUploader({
+  const pickFiles = createFilePicker({
     accept: accept(),
     multiple: props.multiple !== false
-  });
-  const dropzone = createDropzone({
-    // подсветкой рулим сами (см. `withFiles`): дропзона не отличает файлы от
-    // перетаскиваемой плитки
-    onDrop: (files) => {
-      setDragOver(false);
-      accepted(files);
-    }
   });
   async function acceptDrop(ev) {
     setDragOver(false);
@@ -896,8 +919,6 @@ function DumbGallery(props) {
     _el$.addEventListener("dragover", (ev) => {
       if (withFiles(ev)) setDragOver(true);
     });
-    var _ref$ = dropzone.setRef;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : dropzone.setRef = _el$;
     insert(_el$, createComponent(DumbSortableDnd, {
       "class": "dumb-gallery",
       get style() {
@@ -921,7 +942,6 @@ function DumbGallery(props) {
       children: (item, i) => props.children?.(item, i, () => progressOf(item.id)) ?? (() => {
         var _el$4 = _tmpl$6(), _el$5 = _el$4.firstChild;
         _el$4.$$click = () => props.onOpen?.(item, i());
-        setAttribute(_el$5, "draggable", false);
         insert(_el$4, createComponent(Show, {
           get when() {
             return editable();
@@ -932,7 +952,6 @@ function DumbGallery(props) {
               ev.stopPropagation();
               remove(item);
             };
-            setAttribute(_el$6, "draggable", false);
             return _el$6;
           }
         }), null);
@@ -942,11 +961,11 @@ function DumbGallery(props) {
           },
           get children() {
             var _el$7 = _tmpl$5(), _el$8 = _el$7.firstChild;
-            effect((_$p) => setStyleProperty(_el$8, "width", `${Math.round(progressOf(item.id) * 100)}%`));
+            effect$1((_$p) => setStyleProperty(_el$8, "width", `${Math.round(progressOf(item.id) * 100)}%`));
             return _el$7;
           }
         }), null);
-        effect((_p$) => {
+        effect$1((_p$) => {
           var _v$4 = `dumb-gallery-tile rounded-box bg-base-200 ${item.status === "error" ? "outline-error outline-2" : ""}`, _v$5 = item.status ?? "local", _v$6 = item.error ?? item.name, _v$7 = item.preview ?? item.url, _v$8 = item.name ?? "";
           _v$4 !== _p$.e && className(_el$4, _p$.e = _v$4);
           _v$5 !== _p$.t && setAttribute(_el$4, "data-status", _p$.t = _v$5);
@@ -970,7 +989,7 @@ function DumbGallery(props) {
       },
       get children() {
         var _el$2 = _tmpl$2();
-        _el$2.$$click = () => picker.selectFiles(accepted);
+        _el$2.$$click = () => pickFiles(accepted);
         return _el$2;
       }
     }), null);
@@ -991,7 +1010,7 @@ function DumbGallery(props) {
         return _el$3;
       }
     }), null);
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = `dumb-gallery-drop ${props.class ?? ""}`, _v$2 = dragOver() && editable() ? "1" : void 0, _v$3 = props.style;
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
       _v$2 !== _p$.t && setAttribute(_el$, "data-over", _p$.t = _v$2);

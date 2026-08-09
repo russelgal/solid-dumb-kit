@@ -1,5 +1,5 @@
 import * as solid from 'solid-js';
-import { createEffect, untrack } from 'solid-js';
+import { createEffect, untrack, createSignal } from 'solid-js';
 
 // src/motion.ts
 function prefersReducedMotion() {
@@ -32,22 +32,94 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 var batch2 = solid.batch ?? ((fn) => fn());
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  createEffect(() => {
-    const value = dep();
+  const step = (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
     if (!skip) untrack(() => fn(value, before));
-  });
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
 }
+function flushNow() {
+  solid.flush?.();
+}
+function createPersisted(key, initial, opts = {}) {
+  const store = opts.storage ?? safeStorage();
+  const stringify = opts.stringify ?? ((v) => JSON.stringify(v));
+  const parse = opts.parse ?? ((raw2) => JSON.parse(raw2));
+  let start = initial;
+  const raw = store?.getItem(key);
+  if (raw != null) {
+    try {
+      const parsed = parse(raw);
+      if (parsed !== void 0) start = parsed;
+    } catch {
+    }
+  }
+  const [value, setValue] = createSignal(start);
+  watch(value, (v) => {
+    try {
+      store?.setItem(key, stringify(v));
+    } catch {
+    }
+  }, { defer: true });
+  return [value, setValue];
+}
+function safeStorage() {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+// src/filePicker.ts
+var toPicked = (file) => ({
+  file,
+  name: file.name,
+  size: file.size,
+  source: URL.createObjectURL(file)
+});
+function createFilePicker(opts = {}) {
+  let input = null;
+  return (onPick) => {
+    if (typeof document === "undefined") return;
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "file";
+      input.style.display = "none";
+    }
+    input.accept = opts.accept ?? "";
+    input.multiple = opts.multiple !== false;
+    input.value = "";
+    input.onchange = () => {
+      const files = Array.from(input?.files ?? []).map(toPicked);
+      if (files.length) onPick(files);
+    };
+    input.click();
+  };
+}
+var pickedFrom = (files) => Array.from(files).map(toPicked);
 
 // src/injectStyle.ts
 var done = /* @__PURE__ */ new Set();
@@ -1357,4 +1429,4 @@ function putPart(url, chunk, signal, onBytes) {
 }
 var shouldSplit = (file, partSize = 8 * 1024 * 1024) => file.size > partSize;
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, configureCloseSide, createAutoScroller, createFlip, createInlineEdit, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };
+export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, configureCloseSide, createAutoScroller, createFilePicker, createFlip, createInlineEdit, createPersisted, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, effect, flushNow, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, onMounted, pickedFrom, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };

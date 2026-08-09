@@ -1,9 +1,16 @@
 import { use, insert, effect, className, style, template } from 'solid-js/web';
+import * as solid from 'solid-js';
 import { onCleanup, createEffect, untrack } from 'solid-js';
 
 // src/SelectionArea.tsx
+var SOLID_2 = !("batch" in solid);
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var EDGE = 48;
 var MAX_SPEED = 18;

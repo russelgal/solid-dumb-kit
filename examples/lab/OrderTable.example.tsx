@@ -17,8 +17,8 @@
 // считаются арифметикой по трём числам, FLIP доигрывает переезд. Приятный
 // побочный эффект: анимируется не только драг, но и СОРТИРОВКА по колонке —
 // строки разъезжаются по новым местам, и видно, куда именно уехала каждая.
-import { createSignal, onCleanup, onMount, For } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
+import { createSignal, onCleanup, For } from 'solid-js'
+import { createAutoScroller, createFlip, onMounted, type Flip } from '@solid-dumb-kit/shared'
 
 type Row = { id: string; name: string; status: string; sum: number; date: string }
 
@@ -89,7 +89,7 @@ export default function OrderTableExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMount(() => {
+  onMounted(() => {
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true

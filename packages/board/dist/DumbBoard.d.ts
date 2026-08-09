@@ -1,4 +1,4 @@
-import { type JSX } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 import { type SpanValue } from '@solid-dumb-kit/grid';
 /**
  * Пределы размера блока в ячейках. Ширины принимают долю (`'half'`, `'2/5'`) —

@@ -15,3 +15,64 @@ if (typeof (globalThis as any).localStorage?.getItem !== 'function') {
     },
   })
 }
+
+/*
+  Solid 2 копит обновления и флашит их МИКРОТАСКОМ — детерминированный
+  батчинг, ради которого вторая линия и затевалась. Для приложения это
+  незаметно (всё успевает до кадра), а вот тест, который читает DOM сразу
+  после клика, видит пустоту.
+
+  Чтобы не расставлять `await` по трём сотням мест, флашим сами: после каждого
+  события и каждого клика зовём `flush()`. Так тесты остаются синхронными и
+  одинаково работают на обеих линиях — на Solid 1 функции просто нет.
+*/
+const solidRuntime = await import('solid-js')
+const flush = (solidRuntime as { flush?: () => void }).flush
+
+if (flush) {
+  /*
+    Патчим не только `EventTarget.prototype`, но и `document` с `window`
+    поимённо: у happy-dom на них СВОЙ `dispatchEvent`, который прототип
+    перекрывает. Без этого события жестов (`document.dispatchEvent`
+    с `mousemove`) флаш не вызывали, и тест видел старую раскладку.
+  */
+  const patchDispatch = (target: EventTarget) => {
+    const own = target.dispatchEvent.bind(target)
+    Object.defineProperty(target, 'dispatchEvent', {
+      configurable: true,
+      value(ev: Event) {
+        const out = own(ev)
+        flush()
+        return out
+      },
+    })
+  }
+
+  const dispatch = EventTarget.prototype.dispatchEvent
+  EventTarget.prototype.dispatchEvent = function (ev: Event) {
+    const out = dispatch.call(this, ev)
+    flush()
+    return out
+  }
+  patchDispatch(document)
+  patchDispatch(window)
+
+  const click = HTMLElement.prototype.click
+  HTMLElement.prototype.click = function () {
+    click.call(this)
+    flush()
+  }
+}
+
+/** явное ожидание для мест, где обновление приходит не из события */
+Object.defineProperty(globalThis, 'settle', {
+  configurable: true,
+  value: async () => {
+    // Две микрозадачи, а не одна: снимок IntersectionObserver в тестах тоже
+    // приходит микротаском, и его обработка занимает следующую очередь.
+    flush?.()
+    await Promise.resolve()
+    flush?.()
+    await Promise.resolve()
+  },
+})

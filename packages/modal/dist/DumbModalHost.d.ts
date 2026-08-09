@@ -4,4 +4,4 @@ export type DumbModalHostProps = {
     bus?: ModalBus;
     class?: string;
 };
-export declare function DumbModalHost(props: DumbModalHostProps): import("solid-js").JSX.Element;
+export declare function DumbModalHost(props: DumbModalHostProps): import("@solidjs/web").JSX.Element;

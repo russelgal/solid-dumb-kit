@@ -1,4 +1,4 @@
-import { JSX } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 export type DumbSortableProps<T> = {
     items: Array<T>;
     /** позвать с новым порядком (на дропе) */

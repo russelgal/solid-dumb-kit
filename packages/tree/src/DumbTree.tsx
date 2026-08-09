@@ -13,9 +13,10 @@
 // выбранная красится акцентом темы. Свой CSS остался только на полосы и ритм
 // строк в 1lh — классом такого не выразить.
 
-// watch вместо createEffect(on(...)): в Solid 2 `on` не экспортируется (shared/solidCompat)
-import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
-import { injectStyle, watch } from '@solid-dumb-kit/shared'
+// watch вместо effect(on(...)): в Solid 2 `on` не экспортируется (shared/solidCompat)
+import { createMemo, createSignal, For, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
+import { effect, injectStyle, onMounted, watch } from '@solid-dumb-kit/shared'
 
 export type TreeNode = {
   id: string
@@ -191,7 +192,10 @@ function Branch(p: {
   // Тянем при создании ветки. Для корней это старт, для вложенных — момент
   // первого раскрытия: ветка рендерится только раскрытой, значит и запрос
   // уходит ровно тогда, когда в неё полезли.
-  if (!p.nodes) load()
+  //
+  // Через onMounted, а не прямым вызовом: `load` пишет в сигнал, а Solid 2
+  // запрещает запись прямо в теле компонента (REACTIVE_WRITE_IN_OWNED_SCOPE).
+  if (!p.nodes) onMounted(load)
   // сменился ключ обновления — перечитываем то, что уже тянули
   watch(
     () => p.tree.refreshKey?.(),
@@ -290,10 +294,15 @@ function Row(p: {
         chosen() ? 'bg-primary/15 text-primary font-medium' : ''
       } ${p.node.class ?? ''}`
     },
-    get 'aria-current'() { return chosen() },
+    // Строкой, а не булевым: у ARIA `aria-current` — перечисление
+    // ('page' | 'step' | 'true' | 'false'), и компилятор второй линии рендерит
+    // булево `true` как пустое значение, то есть подсказка для скринридера
+    // молча пропадает.
+    get 'aria-current'() { return chosen() ? 'true' : undefined },
     get 'data-open'() { return open() ? '1' : undefined },
     'data-id': p.node.id,
-    get draggable() { return !!drag() },
+    // строкой: в HTML это перечисление, и вторая линия типизирует его так же
+    get draggable() { return drag() ? 'true' : 'false' },
     onDragStart: (ev: DragEvent) => {
       const d = drag()
       if (!d || !ev.dataTransfer) return

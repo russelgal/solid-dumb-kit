@@ -8,7 +8,7 @@
 - **[ResizableGrid](docs/ru/ResizableGrid.md)** — панельная раскладка с тянущимися колонками/рядами, размеры сохраняются в `localStorage`.
 - **[DumbSortable](docs/ru/DumbSortable.md)** — FLIP-перетаскивание для смены порядка (список **или** сетка) без зависимостей и без reflow во время драга. Есть декларативный компонент и низкоуровневый примитив `createDumbSortable`.
 - **[DumbTree](docs/ru/DumbTree.md)** — сайдбар-дерево *или* плоский список с нечётким поиском, сортировкой, сохранением раскрытых папок и опциональным drag-reorder. Оформлен под Tailwind + daisyUI.
-- **[DumbTable](docs/ru/DumbTable.md)** — таблица «принеси свои колонки»: сортировка (клиентская или серверная) на TanStack Table, перетаскивание строк, пагинация.
+- **[DumbTable](docs/ru/DumbTable.md)** — таблица «принеси свои колонки»: сортировка (клиентская или серверная), перетаскивание строк, пагинация.
 - **[DumbGallery](docs/ru/DumbGallery.md)** — галерея картинок: выбрать или бросить в окно, посмотреть, переставить, залить. Заливка идёт очередью и отменяется; ключей от хранилища галерея не видит — только подписанную ссылку от твоего сервера.
 - **[DumbBoard](docs/ru/DumbBoard.md)** — доска секций: блоки переносятся между секциями, сами секции переставляются и меняют размер. Внутри секции DOM не трогается — двигается только CSS `order`, а переезды доигрывает FLIP.
 - **[DumbGrid](docs/ru/DumbGrid.md)** — дашборд-сетка: блоки размером в целое число колонок и строк, перетаскивание и ресайз кратно сетке, три режима раскладки (`flow` / `dense` / свободный `{x,y}`), видимая разметка сетки, персист раскладки. Ни одного замера элементов за жест.
@@ -25,7 +25,7 @@
 
 **🔗 Живое демо:** https://solid-dumb-kit.vercel.app/ (зеркало на GitHub Pages: https://russelgal.github.io/solid-dumb-kit/) · запускаемые исходники в [`examples/`](examples/).
 
-Ветка `0.x` рассчитана на **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
+Ветка `0.x` рассчитана на **SolidJS 2** (`peerDependencies: solid-js >=2.0.0-beta.30`, `@solidjs/web`). Движки от фреймворка не зависят вовсе, а всё специфичное для Solid проходит через один слой совместимости (`@solid-dumb-kit/shared`), поэтому вернуть линию под Solid 1 недорого — но публикуемые пакеты собраны под вторую.
 
 **📓 История изменений:** [CHANGELOG.md](CHANGELOG.md)
 
@@ -35,7 +35,7 @@
 
 ## Установка
 
-Кит разбит на пакеты — по одному на компонент, у каждого своя версия и свой тег. Ставь только те, что нужны: `@solid-dumb-kit/table` не потянет за собой `@tanstack/solid-table` в проект, которому нужна одна сортировка списка, а DnD-пакеты не тянут вообще ничего — они на голых событиях браузера.
+Кит разбит на пакеты — по одному на компонент, у каждого своя версия и свой тег. Ставь только те, что нужны: `@solid-dumb-kit/finder` не потянет за собой `valibot` в проект, которому нужна одна сортировка списка, а таблица и DnD-пакеты не тянут вообще ничего — они на голых событиях браузера.
 
 **В npm пока не публикуем** — пакеты ставятся прямо с GitHub, подкаталогом репозитория:
 
@@ -69,8 +69,8 @@ pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 | --- | --- | --- |
 | `@solid-dumb-kit/sortable` | `DumbSortable`, `createSortableGroup` — список, сетка, перенос между колонками | — |
 | `@solid-dumb-kit/selection` | `SelectionArea` — выделение рамкой | — |
-| `@solid-dumb-kit/grid` | `DumbGrid` — дашборд-сетка, вложенность, перенос между сетками | `@solid-primitives/storage`, `valibot` |
-| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — панели с ресайзом | `@solid-primitives/storage`, `valibot` |
+| `@solid-dumb-kit/grid` | `DumbGrid` — дашборд-сетка, вложенность, перенос между сетками | `valibot` |
+| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — панели с ресайзом | `valibot` |
 
 **Нативный DnD** — зону решает браузер, тач не поддерживается:
 
@@ -78,22 +78,22 @@ pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 | --- | --- | --- |
 | `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — список и сетка плиток | — |
 | `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — сетка, две доски, перенос между ними | — |
-| `@solid-dumb-kit/gallery` | `DumbGallery` — картинки: выбор, порядок, заливка очередью | `@solid-primitives/upload` |
+| `@solid-dumb-kit/gallery` | `DumbGallery` — картинки: выбор, порядок, заливка очередью | — |
 | `@solid-dumb-kit/board` | `DumbBoard` — секции с блоками, перенос между секциями, ресайз секций | — |
 
 **Данные и утилиты** — жест тут не главное:
 
 | пакет | что внутри | тянет за собой |
 | --- | --- | --- |
-| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
-| `@solid-dumb-kit/tree` | `DumbTree` — дерево и плоский список | `@solid-primitives/storage` |
-| `@solid-dumb-kit/timeline` | `DumbTimeline` — шахматка: сутки, часы, дневная аренда | — |
+| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | — |
+| `@solid-dumb-kit/tree` | `DumbTree` — дерево и плоский список | — |
+| `@solid-dumb-kit/timeline` | `DumbTimeline` — шахматка: сутки, часы, дневная аренда | `temporal-polyfill` |
 | `@solid-dumb-kit/date-range` | `DumbDateRange`, `DumbDateTimeRange`, `DumbTimeSelect` — день, период, период с временем | — |
 | `@solid-dumb-kit/modal` | `DumbModal` — нативный `<dialog>` в top layer | — |
 | `@solid-dumb-kit/lightbox` | `DumbLightbox` — просмотрщик картинок | — |
 | `@solid-dumb-kit/context-menu` | `DumbContextMenu`, `DumbPopover` — правый клик и карточки у точки | — |
 | `@solid-dumb-kit/toast` | `DumbToaster`, `toast` — сообщения и вопросы | — |
-| `@solid-dumb-kit/finder` | `DumbFinder` — файлы в хранилище: папки, выделение, заливка, перенос | `@solid-primitives/upload` |
+| `@solid-dumb-kit/finder` | `DumbFinder` — файлы в хранилище: папки, выделение, заливка, перенос | — |
 | `@solid-dumb-kit/user-manager` | `DumbUserManager` — доступ сотрудников: роли, блокировки, пароли, сессии | — |
 | `@solid-dumb-kit/props-table` | `DumbPropsTable` — таблица пропсов прямо из типа | — |
 | `@solid-dumb-kit/odata-1c` | клиент OData 1С — без Solid | — |
@@ -150,7 +150,7 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 
 ## Зависимости
 
-Единственная peer-зависимость — `solid-js ^1.8.0`. Рантайм-зависимости маленькие и точечные: `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree, DumbGrid), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`) и `fflate` — причём последний за динамическим `import()`, поэтому грузится только при реальной распаковке ZIP. `Odata1C` не добавляет ничего — это голый `fetch`.
+Peer-зависимости — `solid-js` и `@solidjs/web` (вторая линия Solid). Рантайм-зависимости маленькие и точечные: `valibot` (ResizableGrid, DumbGrid — проверка сохранённой раскладки), `temporal-polyfill` (DumbTimeline), `slug` (`genSlug`) и `fflate` — причём последний за динамическим `import()`, поэтому грузится только при реальной распаковке ZIP. `Odata1C` не добавляет ничего — это голый `fetch`.
 
 ## Лицензия
 

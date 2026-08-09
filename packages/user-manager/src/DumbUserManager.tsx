@@ -27,7 +27,8 @@
 // обязан выглядеть его частью, а не гостем в чужой теме. Тему, скругления и
 // цвета задаёт потребитель через свой daisyUI, менять здесь нечего.
 
-import { For, Show, createSignal, type JSX } from 'solid-js'
+import { For, Show, createSignal } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { suggestPassword } from './password'
 
 export type UserRow = {

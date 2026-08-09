@@ -13,8 +13,8 @@
 //
 // Разница видна прямо в цифрах на панели: сколько замеров и сколько миллисекунд
 // стоила ОДНА перекладка. Умножь на частоту `dragover` — это и есть цена.
-import { createSignal, createEffect, onCleanup, onMount, For } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
+import { createSignal, onCleanup, For } from 'solid-js'
+import { createAutoScroller, createFlip, effect, onMounted, type Flip } from '@solid-dumb-kit/shared'
 
 const N = 200
 const CARDS = Array.from({ length: N }, (_, i) => i)
@@ -33,7 +33,7 @@ export default function FlipBenchExample() {
   let box!: HTMLDivElement
   let slots: Array<Slot> = []
   let flip: Flip = createFlip(true)
-  createEffect(() => { flip = createFlip(true) })
+  effect(() => { flip = createFlip(true) })
 
   const scroller = createAutoScroller()
   onCleanup(() => scroller.stop())
@@ -60,7 +60,7 @@ export default function FlipBenchExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMount(() => {
+  onMounted(() => {
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true

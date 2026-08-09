@@ -1,9 +1,9 @@
 // src/DumbBoard.tsx
-import { For as For2, Show as Show2, createEffect as createEffect2, createMemo as createMemo2, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
+import { For as For2, Show as Show2, createMemo as createMemo2, createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -11,8 +11,19 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -282,8 +293,9 @@ function createAutoScroller() {
 }
 
 // ../grid/dist/index.js
-import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, memo, setAttribute, className, style, template } from "solid-js/web";
-import { createSignal, onCleanup, createMemo, Show, For } from "solid-js";
+import { delegateEvents, use, insert, createComponent, effect as effect2, setStyleProperty, memo, setAttribute, className, style, template } from "solid-js/web";
+import * as solid2 from "solid-js";
+import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2, untrack as untrack2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -553,6 +565,7 @@ function string(message$1) {
 }
 
 // ../grid/dist/index.js
+var SOLID_22 = !("batch" in solid2);
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -855,9 +868,9 @@ function DumbBoard(props) {
     return out;
   });
   const placeOf = (item) => places().get(props.id(item)) ?? 0;
-  const [held, setHeld] = createSignal2(null);
-  const [heldSection, setHeldSection] = createSignal2(null);
-  const [sizing, setSizing] = createSignal2(null);
+  const [held, setHeld] = createSignal3(null);
+  const [heldSection, setHeldSection] = createSignal3(null);
+  const [sizing, setSizing] = createSignal3(null);
   const blockEls = /* @__PURE__ */ new Map();
   const zoneEls = /* @__PURE__ */ new Map();
   const panelEls = /* @__PURE__ */ new Map();
@@ -869,7 +882,7 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  createEffect2(() => {
+  effect(() => {
     flip = createFlip(shouldAnimate(props.animate));
   });
   const scroller = createAutoScroller();
@@ -1125,7 +1138,7 @@ function DumbBoard(props) {
     measureWhenStill();
   };
   let blockSizingFrom = null;
-  const [blockFrame, setBlockFrame] = createSignal2(null);
+  const [blockFrame, setBlockFrame] = createSignal3(null);
   const onBlockGripDown = (ev) => {
     if (ev.button !== 0) return;
     const grip = ev.target?.closest?.("[data-board-block-resize]");
@@ -1348,11 +1361,10 @@ function DumbBoard(props) {
           {(sid) => {
     const s = () => sectionById(sid);
     return <section
-      class="dumb-board-panel"
-      classList={{ held: heldSection() === sid, sizing: sizing() === sid }}
+      class={`dumb-board-panel ${heldSection() === sid ? "held" : ""} ${sizing() === sid ? "sizing" : ""}`}
       data-board-section={sid}
-      draggable={editable()}
-      ref={(el) => panelEls.set(sid, el)}
+      draggable={editable() ? "true" : "false"}
+      ref={(el) => void panelEls.set(sid, el)}
       style={{ "grid-column": `span ${spanOf(s())}`, order: String(showOrder(sid)) }}
     >
               <Show2 when={s().title}>
@@ -1415,11 +1427,10 @@ function DumbBoard(props) {
                   {(item) => {
       const at = () => cellOf(sid, props.id(item));
       return <div
-        class="dumb-board-block"
-        classList={{ held: held() === props.id(item) }}
+        class={`dumb-board-block ${held() === props.id(item) ? "held" : ""}`}
         data-board-block={props.id(item)}
-        draggable={editable()}
-        ref={(el) => blockEls.set(props.id(item), el)}
+        draggable={editable() ? "true" : "false"}
+        ref={(el) => void blockEls.set(props.id(item), el)}
         style={{
           // место ЯВНОЕ: браузер ничего не домысливает, поэтому
           // нарисованное совпадает с посчитанным для FLIP
@@ -1433,7 +1444,7 @@ function DumbBoard(props) {
                           <span
         class="dumb-board-block-grip"
         data-board-block-resize={props.id(item)}
-        draggable={false}
+        draggable={false ? "true" : "false"}
         title={props.labels?.resizeBlock ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440"}
       />
                         </Show2>

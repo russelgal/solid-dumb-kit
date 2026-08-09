@@ -1,11 +1,25 @@
 // src/DumbTimeline.tsx
-import { For, Show, createEffect as createEffect2, createMemo, createSignal, onCleanup } from "solid-js";
+import { For, Show, createMemo, createSignal as createSignal2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
+}
+function flushNow() {
+  solid.flush?.();
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -420,7 +434,7 @@ function DumbTimeline(props) {
   });
   const cols = createMemo(() => columns(scale()));
   const groups = createMemo(() => headGroups(scale()));
-  const [folded, setFolded] = createSignal(/* @__PURE__ */ new Set());
+  const [folded, setFolded] = createSignal2(/* @__PURE__ */ new Set());
   const toggleGroup = (g) => setFolded((was) => {
     const next = new Set(was);
     next.has(g) ? next.delete(g) : next.add(g);
@@ -535,10 +549,10 @@ function DumbTimeline(props) {
     window.addEventListener("click", kill, { capture: true, once: true });
     setTimeout(() => window.removeEventListener("click", kill, true), 0);
   }
-  const [pick, setPick] = createSignal(null);
+  const [pick, setPick] = createSignal2(null);
   let scrollRaf = 0;
   onCleanup(() => scrollRaf && cancelAnimationFrame(scrollRaf));
-  const [hovered, setHovered] = createSignal(null);
+  const [hovered, setHovered] = createSignal2(null);
   const roomOf = (span) => {
     if (props.readonly || !props.showRoom) return null;
     const sc = scale();
@@ -549,10 +563,10 @@ function DumbTimeline(props) {
     const minutes = limit - end;
     return { x: toX(end, sc), w: toX(limit, sc) - toX(end, sc), minutes };
   };
-  const [draft, setDraft] = createSignal(null);
+  const [draft, setDraft] = createSignal2(null);
   let canvas;
   let viewport;
-  const [vpW, setVpW] = createSignal(0);
+  const [vpW, setVpW] = createSignal2(0);
   const visibleRange = () => {
     const sc = scale();
     const left = viewport?.scrollLeft ?? 0;
@@ -582,7 +596,7 @@ function DumbTimeline(props) {
     ro.observe(viewport);
     onCleanup(() => ro.disconnect());
   });
-  createEffect2(() => {
+  effect(() => {
     scale();
     if (vpW() > 0) props.onVisibleRange?.(visibleRange());
   });
@@ -941,6 +955,7 @@ function DumbTimeline(props) {
         begin();
         if (upX !== null) {
           update(upX);
+          flushNow();
           finish(upX);
         } else {
           update(last.x);

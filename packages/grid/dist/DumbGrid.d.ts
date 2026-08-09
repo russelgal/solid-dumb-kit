@@ -1,4 +1,4 @@
-import { type JSX } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 import { type DumbGridGroupHandle } from './solid';
 import { cellRect, firstFreeCell, packFlow, resolveSpan, type LayoutMode, type SpanValue } from './gridMath';
 /** блок сетки */

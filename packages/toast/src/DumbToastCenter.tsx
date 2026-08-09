@@ -19,14 +19,9 @@
 // БЕЗ ЗАМЕРОВ. Панель прижата к краю окна обычным `position: fixed`, выезд —
 // `transform`. Ни одного `getBoundingClientRect`.
 
-import { For, Show, createEffect, createSignal, onCleanup, type JSX } from 'solid-js'
-import {
-  injectStyle,
-  onMounted,
-  resolveCloseSide,
-  shouldAnimate,
-  type CloseSideOption,
-} from '@solid-dumb-kit/shared'
+import { For, Show, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
+import { effect, injectStyle, onMounted, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 import { ToastBody, ToastIcon } from './toastLook'
 
@@ -169,14 +164,14 @@ export function DumbToastCenter(props: DumbToastCenterProps) {
    * шаг, при котором подпись не врёт и таймер не будит вкладку зря; закрытая
    * панель не тикает вовсе.
    */
-  createEffect(() => {
+  effect(() => {
     if (!open()) return
     setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 30_000)
     onCleanup(() => clearInterval(id))
   })
 
-  createEffect(() => {
+  effect(() => {
     const show = open()
     queueMicrotask(() => {
       if (!panel) return
@@ -219,7 +214,9 @@ export function DumbToastCenter(props: DumbToastCenterProps) {
             type="button"
             class="btn btn-circle btn-neutral shadow-lg"
             aria-label={`Уведомления${unread() ? `: непрочитанных ${unread()}` : ''}`}
-            aria-expanded={open()}
+            // строкой: во второй линии ARIA-атрибуты типизированы как
+            // перечисления, и булево туда не проходит
+            aria-expanded={open() ? 'true' : 'false'}
             onClick={() => bus().toggleHistory()}
           >
             {/* Своих иконок кит не несёт — рисуем колокол текстом. Нужна

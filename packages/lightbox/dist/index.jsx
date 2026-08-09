@@ -1,9 +1,9 @@
 // src/DumbLightbox.tsx
-import { Show, createEffect as createEffect2, createMemo, createSignal, onCleanup } from "solid-js";
+import { Show, createMemo, createSignal as createSignal2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -28,6 +28,25 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  const step = (value) => {
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -73,9 +92,9 @@ var STYLES = `
 function DumbLightbox(props) {
   injectStyle("lightbox", STYLES);
   let dialog;
-  const [zoom, setZoom] = createSignal(1);
-  const [pan, setPan] = createSignal({ x: 0, y: 0 });
-  const [dragging, setDragging] = createSignal(false);
+  const [zoom, setZoom] = createSignal2(1);
+  const [pan, setPan] = createSignal2({ x: 0, y: 0 });
+  const [dragging, setDragging] = createSignal2(false);
   const at = () => props.index();
   const item = createMemo(() => {
     const i = at();
@@ -100,12 +119,14 @@ function DumbLightbox(props) {
   const closeButton = () => <button type="button" class="btn btn-sm btn-circle btn-neutral" title="закрыть (Esc)" onClick={close}>
       ✕
     </button>;
-  createEffect2(() => {
-    const open = at() !== null;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  });
-  createEffect2(() => {
+  watch(
+    () => at() !== null,
+    (open) => {
+      if (open && !dialog.open) dialog.showModal();
+      if (!open && dialog.open) dialog.close();
+    }
+  );
+  effect(() => {
     const i = at();
     if (i === null) return;
     for (const d of [1, -1]) {
@@ -121,7 +142,7 @@ function DumbLightbox(props) {
     if (ev.key === "+" || ev.key === "=") return setZoom((z) => Math.min(8, z * 1.25));
     if (ev.key === "-") return setZoom((z) => Math.max(1, z / 1.25));
   }
-  createEffect2(() => {
+  effect(() => {
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
   });
@@ -175,7 +196,7 @@ function DumbLightbox(props) {
     class="dumb-lightbox-img"
     src={cur().url}
     alt={cur().title ?? ""}
-    draggable={false}
+    draggable={false ? "true" : "false"}
     style={{
       transform: `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`
     }}

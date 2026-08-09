@@ -1,5 +1,6 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect, style, memo, setStyleProperty, className, template } from 'solid-js/web';
-import { createMemo, createSignal, createEffect, onCleanup, For, Show, untrack } from 'solid-js';
+import { delegateEvents, use, insert, createComponent, setAttribute, effect as effect$1, style, memo, className, setStyleProperty, template } from 'solid-js/web';
+import * as solid from 'solid-js';
+import { createMemo, createSignal, onCleanup, For, Show, createEffect, untrack } from 'solid-js';
 
 // src/DumbBoard.tsx
 function prefersReducedMotion() {
@@ -9,8 +10,19 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -278,8 +290,6 @@ function createAutoScroller() {
     }
   };
 }
-
-// ../grid/dist/index.js
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -469,9 +479,9 @@ var _tmpl$6 = /* @__PURE__ */ template(`<div class=dumb-board-lines aria-hidden=
 var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-board-grip-x data-axis=x>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-board-grip-y data-axis=y>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<div class=dumb-board-grip-xy data-axis=xy>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<section class=dumb-board-panel><div class=dumb-board-zone>`);
-var _tmpl$1 = /* @__PURE__ */ template(`<span class=dumb-board-block-grip>`);
-var _tmpl$10 = /* @__PURE__ */ template(`<div class=dumb-board-block>`);
+var _tmpl$0 = /* @__PURE__ */ template(`<section><div class=dumb-board-zone>`);
+var _tmpl$1 = /* @__PURE__ */ template(`<span class=dumb-board-block-grip draggable=false>`);
+var _tmpl$10 = /* @__PURE__ */ template(`<div>`);
 var _tmpl$11 = /* @__PURE__ */ template(`<div class="dumb-board-frame border-primary bg-primary/10 rounded-box border-2 border-dashed"aria-hidden=true>`);
 var STYLES = `
           .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
@@ -607,7 +617,7 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  createEffect(() => {
+  effect(() => {
     flip = createFlip(shouldAnimate(props.animate));
   });
   const scroller = createAutoScroller();
@@ -1146,7 +1156,7 @@ function DumbBoard(props) {
         const s = () => sectionById(sid);
         return (() => {
           var _el$3 = _tmpl$0(), _el$0 = _el$3.firstChild;
-          use((el) => panelEls.set(sid, el), _el$3);
+          use((el) => void panelEls.set(sid, el), _el$3);
           setAttribute(_el$3, "data-board-section", sid);
           insert(_el$3, createComponent(Show, {
             get when() {
@@ -1199,7 +1209,7 @@ function DumbBoard(props) {
             },
             get children() {
               var _el$1 = _tmpl$6();
-              effect((_$p) => style(_el$1, {
+              effect$1((_$p) => style(_el$1, {
                 ...linesOf(s()),
                 opacity: gridVisible() ? "1" : "0"
               }, _$p));
@@ -1214,7 +1224,7 @@ function DumbBoard(props) {
               const at = () => cellOf(sid, props.id(item));
               return (() => {
                 var _el$13 = _tmpl$10();
-                use((el) => blockEls.set(props.id(item), el), _el$13);
+                use((el) => void blockEls.set(props.id(item), el), _el$13);
                 insert(_el$13, () => props.children(item, s()), null);
                 insert(_el$13, createComponent(Show, {
                   get when() {
@@ -1222,11 +1232,10 @@ function DumbBoard(props) {
                   },
                   get children() {
                     var _el$14 = _tmpl$1();
-                    setAttribute(_el$14, "draggable", false);
-                    effect((_p$) => {
-                      var _v$12 = props.id(item), _v$13 = props.labels?.resizeBlock ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440";
-                      _v$12 !== _p$.e && setAttribute(_el$14, "data-board-block-resize", _p$.e = _v$12);
-                      _v$13 !== _p$.t && setAttribute(_el$14, "title", _p$.t = _v$13);
+                    effect$1((_p$) => {
+                      var _v$11 = props.id(item), _v$12 = props.labels?.resizeBlock ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440";
+                      _v$11 !== _p$.e && setAttribute(_el$14, "data-board-block-resize", _p$.e = _v$11);
+                      _v$12 !== _p$.t && setAttribute(_el$14, "title", _p$.t = _v$12);
                       return _p$;
                     }, {
                       e: void 0,
@@ -1235,13 +1244,13 @@ function DumbBoard(props) {
                     return _el$14;
                   }
                 }), null);
-                effect((_p$) => {
-                  var _v$14 = !!(held() === props.id(item)), _v$15 = props.id(item), _v$16 = editable(), _v$17 = `${(at()?.col ?? 0) + 1} / span ${at()?.w ?? 1}`, _v$18 = `${(at()?.row ?? 0) + 1} / span ${at()?.h ?? 1}`;
-                  _v$14 !== _p$.e && _el$13.classList.toggle("held", _p$.e = _v$14);
-                  _v$15 !== _p$.t && setAttribute(_el$13, "data-board-block", _p$.t = _v$15);
-                  _v$16 !== _p$.a && setAttribute(_el$13, "draggable", _p$.a = _v$16);
-                  _v$17 !== _p$.o && setStyleProperty(_el$13, "grid-column", _p$.o = _v$17);
-                  _v$18 !== _p$.i && setStyleProperty(_el$13, "grid-row", _p$.i = _v$18);
+                effect$1((_p$) => {
+                  var _v$13 = `dumb-board-block ${held() === props.id(item) ? "held" : ""}`, _v$14 = props.id(item), _v$15 = editable() ? "true" : "false", _v$16 = `${(at()?.col ?? 0) + 1} / span ${at()?.w ?? 1}`, _v$17 = `${(at()?.row ?? 0) + 1} / span ${at()?.h ?? 1}`;
+                  _v$13 !== _p$.e && className(_el$13, _p$.e = _v$13);
+                  _v$14 !== _p$.t && setAttribute(_el$13, "data-board-block", _p$.t = _v$14);
+                  _v$15 !== _p$.a && setAttribute(_el$13, "draggable", _p$.a = _v$15);
+                  _v$16 !== _p$.o && setStyleProperty(_el$13, "grid-column", _p$.o = _v$16);
+                  _v$17 !== _p$.i && setStyleProperty(_el$13, "grid-row", _p$.i = _v$17);
                   return _p$;
                 }, {
                   e: void 0,
@@ -1262,10 +1271,10 @@ function DumbBoard(props) {
               const at = () => cellOf(sid, f().id);
               return (() => {
                 var _el$15 = _tmpl$11();
-                effect((_p$) => {
-                  var _v$19 = `${(at()?.col ?? 0) + 1} / span ${f().w}`, _v$20 = `${(at()?.row ?? 0) + 1} / span ${f().h}`;
-                  _v$19 !== _p$.e && setStyleProperty(_el$15, "grid-column", _p$.e = _v$19);
-                  _v$20 !== _p$.t && setStyleProperty(_el$15, "grid-row", _p$.t = _v$20);
+                effect$1((_p$) => {
+                  var _v$18 = `${(at()?.col ?? 0) + 1} / span ${f().w}`, _v$19 = `${(at()?.row ?? 0) + 1} / span ${f().h}`;
+                  _v$18 !== _p$.e && setStyleProperty(_el$15, "grid-column", _p$.e = _v$18);
+                  _v$19 !== _p$.t && setStyleProperty(_el$15, "grid-row", _p$.t = _v$19);
                   return _p$;
                 }, {
                   e: void 0,
@@ -1295,17 +1304,16 @@ function DumbBoard(props) {
               })()];
             }
           }), null);
-          effect((_p$) => {
-            var _v$5 = !!(heldSection() === sid), _v$6 = !!(sizing() === sid), _v$7 = editable(), _v$8 = `span ${spanOf(s())}`, _v$9 = String(showOrder(sid)), _v$0 = String(colsIn(s())), _v$1 = `${rowH()}px`, _v$10 = `${zoneGap()}px`, _v$11 = `${spanSize(s().rows || rowsUsed(sid) + 1, rowH(), zoneGap())}px`;
-            _v$5 !== _p$.e && _el$3.classList.toggle("held", _p$.e = _v$5);
-            _v$6 !== _p$.t && _el$3.classList.toggle("sizing", _p$.t = _v$6);
-            _v$7 !== _p$.a && setAttribute(_el$3, "draggable", _p$.a = _v$7);
-            _v$8 !== _p$.o && setStyleProperty(_el$3, "grid-column", _p$.o = _v$8);
-            _v$9 !== _p$.i && setStyleProperty(_el$3, "order", _p$.i = _v$9);
-            _v$0 !== _p$.n && setStyleProperty(_el$0, "--dumb-board-inner", _p$.n = _v$0);
-            _v$1 !== _p$.s && setStyleProperty(_el$0, "--dumb-board-row", _p$.s = _v$1);
-            _v$10 !== _p$.h && setStyleProperty(_el$0, "--dumb-board-zone-gap", _p$.h = _v$10);
-            _v$11 !== _p$.r && setStyleProperty(_el$0, "height", _p$.r = _v$11);
+          effect$1((_p$) => {
+            var _v$5 = `dumb-board-panel ${heldSection() === sid ? "held" : ""} ${sizing() === sid ? "sizing" : ""}`, _v$6 = editable() ? "true" : "false", _v$7 = `span ${spanOf(s())}`, _v$8 = String(showOrder(sid)), _v$9 = String(colsIn(s())), _v$0 = `${rowH()}px`, _v$1 = `${zoneGap()}px`, _v$10 = `${spanSize(s().rows || rowsUsed(sid) + 1, rowH(), zoneGap())}px`;
+            _v$5 !== _p$.e && className(_el$3, _p$.e = _v$5);
+            _v$6 !== _p$.t && setAttribute(_el$3, "draggable", _p$.t = _v$6);
+            _v$7 !== _p$.a && setStyleProperty(_el$3, "grid-column", _p$.a = _v$7);
+            _v$8 !== _p$.o && setStyleProperty(_el$3, "order", _p$.o = _v$8);
+            _v$9 !== _p$.i && setStyleProperty(_el$0, "--dumb-board-inner", _p$.i = _v$9);
+            _v$0 !== _p$.n && setStyleProperty(_el$0, "--dumb-board-row", _p$.n = _v$0);
+            _v$1 !== _p$.s && setStyleProperty(_el$0, "--dumb-board-zone-gap", _p$.s = _v$1);
+            _v$10 !== _p$.h && setStyleProperty(_el$0, "height", _p$.h = _v$10);
             return _p$;
           }, {
             e: void 0,
@@ -1315,14 +1323,13 @@ function DumbBoard(props) {
             i: void 0,
             n: void 0,
             s: void 0,
-            h: void 0,
-            r: void 0
+            h: void 0
           });
           return _el$3;
         })();
       }
     }));
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = props.class, _v$2 = props.style, _v$3 = String(cols()), _v$4 = `${gap()}px`;
       _v$ !== _p$.e && className(_el$, _p$.e = _v$);
       _p$.t = style(_el$, _v$2, _p$.t);

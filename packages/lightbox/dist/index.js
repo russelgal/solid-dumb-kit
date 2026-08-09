@@ -1,5 +1,6 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect, setStyleProperty, className, template } from 'solid-js/web';
-import { createSignal, createMemo, createEffect, onCleanup, Show } from 'solid-js';
+import { delegateEvents, use, insert, createComponent, effect as effect$1, setAttribute, setStyleProperty, className, template } from 'solid-js/web';
+import * as solid from 'solid-js';
+import { createSignal, createMemo, Show, createEffect, untrack, onCleanup } from 'solid-js';
 
 // src/DumbLightbox.tsx
 function prefersReducedMotion() {
@@ -27,6 +28,25 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  const step = (value) => {
+    const skip = first && (false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -46,7 +66,7 @@ function injectStyle(id, css) {
 // src/DumbLightbox.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-circle btn-neutral"title="\u0437\u0430\u043A\u0440\u044B\u0442\u044C (Esc)">\u2715`);
 var _tmpl$2 = /* @__PURE__ */ template(`<dialog>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<div class=dumb-lightbox-stage><img class=dumb-lightbox-img>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<div class=dumb-lightbox-stage><img class=dumb-lightbox-img draggable=false>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<span class="dumb-lightbox-count tabular-nums"> / `);
 var _tmpl$5 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral">1:1`);
 var _tmpl$6 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"data-at=top><span class="dumb-lightbox-title min-w-0 flex-1 truncate">`);
@@ -115,12 +135,11 @@ function DumbLightbox(props) {
     _el$.$$click = close;
     return _el$;
   })();
-  createEffect(() => {
-    const open = at() !== null;
+  watch(() => at() !== null, (open) => {
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   });
-  createEffect(() => {
+  effect(() => {
     const i = at();
     if (i === null) return;
     for (const d of [1, -1]) {
@@ -136,7 +155,7 @@ function DumbLightbox(props) {
     if (ev.key === "+" || ev.key === "=") return setZoom((z) => Math.min(8, z * 1.25));
     if (ev.key === "-") return setZoom((z) => Math.max(1, z / 1.25));
   }
-  createEffect(() => {
+  effect(() => {
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
   });
@@ -199,8 +218,7 @@ function DumbLightbox(props) {
         _el$3.$$pointerdown = onDown;
         _el$3.addEventListener("wheel", onWheel);
         _el$4.$$dblclick = () => zoom() === 1 ? setZoom(2.5) : reset();
-        setAttribute(_el$4, "draggable", false);
-        effect((_p$) => {
+        effect$1((_p$) => {
           var _v$3 = dragging() ? "1" : void 0, _v$4 = cur().url, _v$5 = cur().title ?? "", _v$6 = `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`;
           _v$3 !== _p$.e && setAttribute(_el$3, "data-drag", _p$.e = _v$3);
           _v$4 !== _p$.t && setAttribute(_el$4, "src", _p$.t = _v$4);
@@ -281,7 +299,7 @@ function DumbLightbox(props) {
         }
       })]
     }));
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = `dumb-lightbox ${props.class ?? ""}`, _v$2 = shouldAnimate(props.animate) ? "1" : void 0;
       _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
       _v$2 !== _p$.t && setAttribute(_el$2, "data-animate", _p$.t = _v$2);

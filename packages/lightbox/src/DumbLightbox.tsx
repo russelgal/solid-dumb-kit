@@ -12,13 +12,9 @@
 // каждое нажатие стрелки показывает пустоту на время загрузки, и просмотр
 // превращается в ожидание.
 
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
-import {
-  injectStyle,
-  resolveCloseSide,
-  shouldAnimate,
-  type CloseSideOption,
-} from '@solid-dumb-kit/shared'
+import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
+import { effect, injectStyle, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type LightboxItem = {
   /** что показывать */
@@ -110,17 +106,22 @@ export function DumbLightbox(props: DumbLightboxProps) {
   )
 
   // диалог открывается и закрывается императивно — сигнал только источник правды
-  createEffect(() => {
-    const open = at() !== null
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  })
+  // watch, а не effect: в Solid 2 первая фаза эффекта выполняется НЕМЕДЛЕННО,
+  // когда ref ещё не проставлен, и `dialog` тут был бы undefined. У watch
+  // работа уходит во вторую фазу — после монтирования.
+  watch(
+    () => at() !== null,
+    (open) => {
+      if (open && !dialog.open) dialog.showModal()
+      if (!open && dialog.open) dialog.close()
+    },
+  )
 
   /**
    * Соседние тянем заранее. `new Image()` — самый дешёвый способ: браузер
    * положит их в тот же кеш, откуда потом возьмёт `<img>`.
    */
-  createEffect(() => {
+  effect(() => {
     const i = at()
     if (i === null) return
     for (const d of [1, -1]) {
@@ -139,7 +140,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
     // Esc закрывает сам `<dialog>`, но нам надо ещё и сбросить состояние
   }
 
-  createEffect(() => {
+  effect(() => {
     window.addEventListener('keydown', onKey)
     onCleanup(() => window.removeEventListener('keydown', onKey))
   })
@@ -201,7 +202,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
                 class="dumb-lightbox-img"
                 src={cur().url}
                 alt={cur().title ?? ''}
-                draggable={false}
+                draggable={false ? 'true' : 'false'}
                 style={{
                   transform: `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`,
                 }}

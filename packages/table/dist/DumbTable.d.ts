@@ -1,4 +1,4 @@
-import { type JSX } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 export type DumbColumn<T> = {
     /** ключ колонки: id для сортировки и путь к значению по умолчанию */
     key: string;
@@ -47,9 +47,9 @@ export type DumbTableProps<T> = {
     /** анимировать перетаскивание строк; по умолчанию да, но не при prefers-reduced-motion */
     animate?: boolean;
     /**
-     * Направление ПЕРВОГО клика по заголовку. По умолчанию — как у TanStack:
-     * текстовые колонки начинают с asc, числовые с desc. `false` заставляет
-     * все колонки начинать с asc, `true` — с desc.
+     * Направление ПЕРВОГО клика по заголовку. По умолчанию текстовые колонки
+     * начинают с asc, числовые — с desc. `false` заставляет все колонки
+     * начинать с asc, `true` — с desc.
      */
     sortDescFirst?: boolean;
     /** включает перетаскивание строк за ручку; индексы — в текущем показанном порядке */
@@ -84,4 +84,4 @@ export type DumbTableProps<T> = {
     spacerTop?: number;
     spacerBottom?: number;
 };
-export declare function DumbTable<T>(props: DumbTableProps<T>): JSX.Element;
+export declare function DumbTable<T extends Record<string, unknown>>(props: DumbTableProps<T>): JSX.Element;

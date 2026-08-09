@@ -25,11 +25,11 @@
 //
 // Ключей от хранилища галерея не видит и видеть не должна — см. `presigned.ts`.
 
-import { Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
-import { createDropzone, createFileUploader, type UploadFile } from '@solid-primitives/upload'
+import { Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
 import {
-  createUploadQueue, injectStyle, readDropEntries, type Uploader,
+  createFilePicker, createUploadQueue, injectStyle, readDropEntries, type PickedFile, type Uploader,
 } from '@solid-dumb-kit/shared'
 
 export type GalleryStatus =
@@ -196,7 +196,7 @@ export function DumbGallery(props: DumbGalleryProps) {
   /** сколько ещё можно принять */
   const room = () => (props.max === undefined ? Infinity : props.max - props.items.length)
 
-  function accepted(files: Array<UploadFile>) {
+  function accepted(files: Array<PickedFile>) {
     if (!editable()) return
     const take = files.slice(0, Math.max(0, room()))
     if (!take.length) return
@@ -214,11 +214,12 @@ export function DumbGallery(props: DumbGalleryProps) {
     if (props.upload) added.forEach((it, i) => queue.add(it.id, take[i].file))
   }
 
-  const picker = createFileUploader({ accept: accept(), multiple: props.multiple !== false })
-  const dropzone = createDropzone({
-    // подсветкой рулим сами (см. `withFiles`): дропзона не отличает файлы от
-    // перетаскиваемой плитки
-    onDrop: (files) => { setDragOver(false); accepted(files) },
+  // Свой выбор файлов вместо @solid-primitives/upload: тот ломался дважды —
+  // сабпутём solid-js/web и переписанным API. Бросок и так разбираем сами
+  // (`acceptDrop` ниже), дропзона примитива нам не нужна.
+  const pickFiles = createFilePicker({
+    accept: accept(),
+    multiple: props.multiple !== false,
   })
 
   /**
@@ -245,7 +246,7 @@ export function DumbGallery(props: DumbGalleryProps) {
         name: file.name,
         size: file.size,
         file,
-      })) as Array<UploadFile>,
+      })) as Array<PickedFile>,
     )
   }
 
@@ -288,7 +289,6 @@ export function DumbGallery(props: DumbGalleryProps) {
     <div
       class={`dumb-gallery-drop ${props.class ?? ''}`}
       data-over={dragOver() && editable() ? '1' : undefined}
-      ref={dropzone.setRef}
       style={props.style}
       onDragOver={(ev) => { if (withFiles(ev)) setDragOver(true) }}
       onDragLeave={(ev) => { if (!ev.relatedTarget) setDragOver(false) }}
@@ -324,14 +324,14 @@ export function DumbGallery(props: DumbGalleryProps) {
               title={item.error ?? item.name}
               onClick={() => props.onOpen?.(item, i())}
             >
-              <img src={item.preview ?? item.url} alt={item.name ?? ''} draggable={false} />
+              <img src={item.preview ?? item.url} alt={item.name ?? ''} draggable={false ? 'true' : 'false'} />
               <Show when={editable()}>
                 {/* жест с кнопки не начнётся: `data-no-drag` знают все движки кита */}
                 <button
                   type="button"
                   class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"
                   data-no-drag
-                  draggable={false}
+                  draggable={false ? 'true' : 'false'}
                   title="убрать"
                   onClick={(ev) => { ev.stopPropagation(); remove(item) }}
                 >
@@ -352,7 +352,7 @@ export function DumbGallery(props: DumbGalleryProps) {
         <button
           type="button"
           class="btn btn-sm btn-neutral mt-3"
-          onClick={() => picker.selectFiles(accepted)}
+          onClick={() => pickFiles(accepted)}
         >
           Выбрать файлы
         </button>

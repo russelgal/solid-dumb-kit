@@ -1,12 +1,16 @@
-import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, use, addEventListener, isServer, template } from 'solid-js/web';
-import * as solid from 'solid-js';
-import { createSignal, onCleanup, createMemo, createEffect, untrack, For, Show, createUniqueId } from 'solid-js';
-import { createFileUploader } from '@solid-primitives/upload';
-import { reconcile } from 'solid-js/store';
+import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, use, addEventListener, template } from 'solid-js/web';
+import * as solid3 from 'solid-js';
+import { createSignal, onCleanup, createMemo, untrack, For, Show, createEffect } from 'solid-js';
 
 // src/DumbFinder.tsx
+var SOLID_2 = !("batch" in solid3);
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var EDGE = 48;
 var MAX_SPEED = 18;
@@ -407,65 +411,6 @@ function SelectionArea(props) {
     return _el$;
   })();
 }
-function makePersisted(signal, options = {}) {
-  const storage = options.storage || globalThis.localStorage;
-  const name = options.name || `storage-${createUniqueId()}`;
-  if (!storage) {
-    return [signal[0], signal[1], null];
-  }
-  const storageOptions = options.storageOptions;
-  const serialize = options.serialize || JSON.stringify.bind(JSON);
-  const deserialize = options.deserialize || JSON.parse.bind(JSON);
-  const init = storage.getItem(name, storageOptions);
-  const set = typeof signal[0] === "function" ? (data) => {
-    try {
-      const value = deserialize(data);
-      signal[1](() => value);
-    } catch (e) {
-    }
-  } : (data) => {
-    try {
-      const value = deserialize(data);
-      signal[1](reconcile(value));
-    } catch (e) {
-    }
-  };
-  let unchanged = true;
-  if (init instanceof Promise)
-    init.then((data) => unchanged && data && set(data));
-  else if (init)
-    set(init);
-  if (typeof options.sync?.[0] === "function") {
-    const get = typeof signal[0] === "function" ? signal[0] : () => signal[0];
-    options.sync[0]((data) => {
-      if (data.key !== name || !isServer && (data.url || globalThis.location.href) !== globalThis.location.href || data.newValue === serialize(untrack(get))) {
-        return;
-      }
-      set(data.newValue);
-    });
-  }
-  return [
-    signal[0],
-    typeof signal[0] === "function" ? (value) => {
-      const output = signal[1](value);
-      const serialized = value != null ? serialize(output) : value;
-      options.sync?.[1](name, serialized);
-      if (serialized != null)
-        storage.setItem(name, serialized, storageOptions);
-      else
-        storage.removeItem(name, storageOptions);
-      unchanged = false;
-      return output;
-    } : (...args) => {
-      signal[1](...args);
-      const value = serialize(untrack(() => signal[0]));
-      options.sync?.[1](name, value);
-      storage.setItem(name, value, storageOptions);
-      unchanged = false;
-    },
-    init
-  ];
-}
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -726,6 +671,49 @@ function safeParse(schema, input, config$1) {
 }
 
 // ../resizable-grid/dist/index.js
+var SOLID_22 = !("batch" in solid3);
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  const step = (value) => {
+    const skip = first && opts?.defer;
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  };
+  if (SOLID_22) createEffect(dep, step);
+  else createEffect(() => step(dep()));
+}
+function createPersisted(key, initial, opts = {}) {
+  const store = opts.storage ?? safeStorage();
+  const stringify = opts.stringify ?? ((v2) => JSON.stringify(v2));
+  const parse = opts.parse ?? ((raw2) => JSON.parse(raw2));
+  let start = initial;
+  const raw = store?.getItem(key);
+  if (raw != null) {
+    try {
+      const parsed = parse(raw);
+      if (parsed !== void 0) start = parsed;
+    } catch {
+    }
+  }
+  const [value, setValue] = createSignal(start);
+  watch(value, (v2) => {
+    try {
+      store?.setItem(key, stringify(v2));
+    } catch {
+    }
+  }, { defer: true });
+  return [value, setValue];
+}
+function safeStorage() {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch {
+    return null;
+  }
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -788,9 +776,8 @@ function ResizableGrid(props) {
     rows: meta.rowInitials.length ? [...meta.rowInitials] : void 0,
     rowSplit: props.rows ? [props.rowInitial ?? 1, props.row2Initial ?? 1] : void 0
   };
-  const [sizes, setSizes] = makePersisted(createSignal(defaults), {
-    name: props.storageKey,
-    deserialize: (raw) => validateSizes(JSON.parse(raw), defaults)
+  const [sizes, setSizes] = createPersisted(props.storageKey, defaults, {
+    parse: (raw) => validateSizes(JSON.parse(raw), defaults)
   });
   const colSizes = () => {
     const s = sizes();
@@ -1039,18 +1026,50 @@ var STYLES = `
   background: oklch(from currentColor l c h / 0.2);
 }`;
 delegateEvents(["mousedown"]);
-var batch2 = solid.batch ?? ((fn) => fn());
-function watch(dep, fn, opts) {
+var SOLID_23 = !("batch" in solid3);
+function effect3(fn) {
+  if (SOLID_23) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
+var batch2 = solid3.batch ?? ((fn) => fn());
+function watch2(dep, fn, opts) {
   let first = true;
   let prev;
-  createEffect(() => {
-    const value = dep();
+  const step = (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
     if (!skip) untrack(() => fn(value, before));
-  });
+  };
+  if (SOLID_23) createEffect(dep, step);
+  else createEffect(() => step(dep()));
+}
+var toPicked = (file) => ({
+  file,
+  name: file.name,
+  size: file.size,
+  source: URL.createObjectURL(file)
+});
+function createFilePicker(opts = {}) {
+  let input = null;
+  return (onPick) => {
+    if (typeof document === "undefined") return;
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "file";
+      input.style.display = "none";
+    }
+    input.accept = opts.accept ?? "";
+    input.multiple = opts.multiple !== false;
+    input.value = "";
+    input.onchange = () => {
+      const files = Array.from(input?.files ?? []).map(toPicked);
+      if (files.length) onPick(files);
+    };
+    input.click();
+  };
 }
 var done2 = /* @__PURE__ */ new Set();
 function injectStyle2(id, css) {
@@ -2056,8 +2075,8 @@ var _tmpl$9 = /* @__PURE__ */ template(`<div class="dumb-finder-empty p-6 text-c
 var _tmpl$0 = /* @__PURE__ */ template(`<div class=dumb-finder-view tabindex=0><div class=dumb-finder-items>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<div class=dumb-finder-item>`);
 var _tmpl$10 = /* @__PURE__ */ template(`<span class=dumb-finder-indent>`);
-var _tmpl$11 = /* @__PURE__ */ template(`<button type=button class=dumb-finder-twist data-no-select data-no-drag>`);
-var _tmpl$12 = /* @__PURE__ */ template(`<img alt loading=lazy>`, true, false, false);
+var _tmpl$11 = /* @__PURE__ */ template(`<button type=button class=dumb-finder-twist data-no-select data-no-drag draggable=false>`);
+var _tmpl$12 = /* @__PURE__ */ template(`<img alt loading=lazy draggable=false>`, true, false, false);
 var _tmpl$13 = /* @__PURE__ */ template(`<div class=dumb-finder-thumb>`);
 var _tmpl$14 = /* @__PURE__ */ template(`<div class=dumb-finder-name>`);
 var _tmpl$15 = /* @__PURE__ */ template(`<div class=dumb-finder-meta>`);
@@ -2315,7 +2334,7 @@ function DumbFinder(props) {
       }
     }
   }
-  watch(path, (p) => void reload(p));
+  watch2(path, (p) => void reload(p));
   onCleanup(() => listing?.abort());
   function fail(err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2323,7 +2342,7 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
-  watch(view, () => queueMicrotask(measureCols), {
+  watch2(view, () => queueMicrotask(measureCols), {
     defer: true
   });
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
@@ -2370,7 +2389,7 @@ function DumbFinder(props) {
       wholeFlight = false;
     }
   }
-  createEffect(() => {
+  effect3(() => {
     if (props.sidebar === false) return;
     if (props.source.tree) {
       if (whole() === null) void loadWhole();
@@ -2423,13 +2442,13 @@ function DumbFinder(props) {
     });
     void ensureSub(key);
   });
-  watch(path, () => batch2(() => {
+  watch2(path, () => batch2(() => {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
   }), {
     defer: true
   });
-  createEffect(() => {
+  effect3(() => {
     const cache = sub();
     for (const k of openRows()) if (!(k in cache)) void ensureSub(k);
   });
@@ -2501,11 +2520,11 @@ function DumbFinder(props) {
       queue.add(p.id, files[i].file);
     });
   }
-  const picker = createFileUploader({
+  const openPicker = createFilePicker({
     accept: props.accept ?? "*",
     multiple: true
   });
-  const pickFiles = () => picker.selectFiles((files) => enqueue(files.map((f) => ({
+  const pickFiles = () => openPicker((files) => enqueue(files.map((f) => ({
     name: f.name,
     file: f.file
   })), untrack(path)));
@@ -2991,7 +3010,6 @@ function DumbFinder(props) {
                       ev.stopPropagation();
                       toggleRow(entry.key);
                     };
-                    setAttribute(_el$25, "draggable", false);
                     insert(_el$25, createComponent(Show, {
                       get when() {
                         return props.icons?.twist;
@@ -3026,7 +3044,6 @@ function DumbFinder(props) {
                 },
                 get children() {
                   var _el$28 = _tmpl$12();
-                  setAttribute(_el$28, "draggable", false);
                   effect(() => setAttribute(_el$28, "src", entry.url));
                   return _el$28;
                 }
@@ -3088,7 +3105,7 @@ function DumbFinder(props) {
               }
             })]);
             effect((_p$) => {
-              var _v$7 = entry.key, _v$8 = selected().has(entry.key) ? "1" : void 0, _v$9 = entry.dir ? "1" : void 0, _v$0 = openRows().has(entry.key) ? "1" : void 0, _v$1 = entry.dir && dropAt() === entry.key ? "1" : void 0, _v$10 = canWrite() && !!props.source.move, _v$11 = entry.name;
+              var _v$7 = entry.key, _v$8 = selected().has(entry.key) ? "1" : void 0, _v$9 = entry.dir ? "1" : void 0, _v$0 = openRows().has(entry.key) ? "1" : void 0, _v$1 = entry.dir && dropAt() === entry.key ? "1" : void 0, _v$10 = canWrite() && !!props.source.move ? "true" : "false", _v$11 = entry.name;
               _v$7 !== _p$.e && setAttribute(_el$23, "data-key", _p$.e = _v$7);
               _v$8 !== _p$.t && setAttribute(_el$23, "data-selected", _p$.t = _v$8);
               _v$9 !== _p$.a && setAttribute(_el$23, "data-dir", _p$.a = _v$9);
@@ -3207,7 +3224,7 @@ function DumbFinder(props) {
         _el$59.$$click = () => goto(c.prefix);
         insert(_el$59, () => c.name);
         effect((_p$) => {
-          var _v$15 = c.prefix === path(), _v$16 = dropAt() === c.prefix && c.prefix !== path() ? "1" : void 0;
+          var _v$15 = c.prefix === path() ? "true" : void 0, _v$16 = dropAt() === c.prefix && c.prefix !== path() ? "1" : void 0;
           _v$15 !== _p$.e && setAttribute(_el$59, "aria-current", _p$.e = _v$15);
           _v$16 !== _p$.t && setAttribute(_el$59, "data-drop", _p$.t = _v$16);
           return _p$;

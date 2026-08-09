@@ -1,9 +1,9 @@
 // src/DumbToaster.tsx
-import { For, Show as Show2, createEffect as createEffect2, createSignal, onCleanup } from "solid-js";
+import { For, Show as Show2, createSignal as createSignal2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -29,8 +29,19 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -441,7 +452,7 @@ var actionClass = (kind) => kind === "primary" ? "btn btn-sm" : kind === "danger
 function DumbToaster(props) {
   injectStyle("toast", STYLES);
   const bus = () => props.bus ?? toast;
-  const [tick, bump] = createSignal(0, { equals: false });
+  const [tick, bump] = createSignal2(0, { equals: false });
   let box;
   onMounted(() => {
     const off = bus().subscribe(() => bump(0));
@@ -449,17 +460,6 @@ function DumbToaster(props) {
       off();
       if (box?.matches(":popover-open")) box.hidePopover();
     });
-  });
-  let was = 0;
-  createEffect2(() => {
-    const n = shown().length + flying().length;
-    if (!n) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-    } else if (n !== was) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-      box?.showPopover?.();
-    }
-    was = n;
   });
   const shown = () => {
     tick();
@@ -473,6 +473,17 @@ function DumbToaster(props) {
   };
   const rows = () => [...stacked(), ...flying()].sort((a, b) => a.id - b.id);
   const isLeaving = (t) => flying().some((x) => x.id === t.id);
+  let was = 0;
+  effect(() => {
+    const n = shown().length + flying().length;
+    if (!n) {
+      if (box?.matches(":popover-open")) box.hidePopover();
+    } else if (n !== was) {
+      if (box?.matches(":popover-open")) box.hidePopover();
+      box?.showPopover?.();
+    }
+    was = n;
+  });
   const stacked = () => shown().filter((t) => !t.at);
   const anchored = () => shown().filter((t) => t.at);
   const fly = () => (props.position ?? "bottom-right").endsWith("left") ? "left" : "right";
@@ -496,7 +507,7 @@ function DumbToaster(props) {
     });
   };
   let prevRows = [];
-  createEffect2(() => {
+  effect(() => {
     const now = rows();
     const alive = new Set(now.map((t) => t.id));
     let freed = 0;
@@ -520,7 +531,7 @@ function DumbToaster(props) {
   const SWIPE_START = 6;
   const SWIPE_DROP = 72;
   const SWIPE_FADE = 240;
-  const [swipe, setSwipe] = createSignal(null);
+  const [swipe, setSwipe] = createSignal2(null);
   const shift = (t) => {
     const s = swipe();
     if (!s || s.id !== t.id || Math.abs(s.dx) < SWIPE_START) return 0;
@@ -562,7 +573,7 @@ function DumbToaster(props) {
   >
       ✕
     </button>;
-  const [pointer, setPointer] = createSignal({ x: 0, y: 0 });
+  const [pointer, setPointer] = createSignal2({ x: 0, y: 0 });
   onMounted(() => {
     const track = (ev) => setPointer({ x: ev.clientX, y: ev.clientY });
     window.addEventListener("pointermove", track, { passive: true });
@@ -677,7 +688,7 @@ function DumbToaster(props) {
 }
 
 // src/DumbToastCenter.tsx
-import { For as For2, Show as Show3, createEffect as createEffect3, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
+import { For as For2, Show as Show3, createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
 var STYLES2 = `
   /* \u041F\u0430\u043D\u0435\u043B\u044C. \u0417\u0434\u0435\u0441\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430 \u0438 \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430: \u0432\u0438\u0434 \u2014 daisyUI \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435.
      popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0446\u0435\u043D\u0442\u0440\u0438\u0440\u0443\u0435\u0442\u0441\u044F \u0438 \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u043F\u043E \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u043C\u0443 \u2014 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C
@@ -746,8 +757,8 @@ function ago(time, now) {
 function DumbToastCenter(props) {
   injectStyle("toast-center", STYLES2);
   const bus = () => props.bus ?? toast;
-  const [tick, bump] = createSignal2(0, { equals: false });
-  const [now, setNow] = createSignal2(Date.now());
+  const [tick, bump] = createSignal3(0, { equals: false });
+  const [now, setNow] = createSignal3(Date.now());
   let panel;
   let bell;
   const side = () => props.side ?? "right";
@@ -778,13 +789,13 @@ function DumbToastCenter(props) {
       if (panel?.matches(":popover-open")) panel.hidePopover();
     });
   });
-  createEffect3(() => {
+  effect(() => {
     if (!open()) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
     onCleanup2(() => clearInterval(id));
   });
-  createEffect3(() => {
+  effect(() => {
     const show = open();
     queueMicrotask(() => {
       if (!panel) return;
@@ -820,7 +831,7 @@ function DumbToastCenter(props) {
     type="button"
     class="btn btn-circle btn-neutral shadow-lg"
     aria-label={`\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F${unread() ? `: \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0445 ${unread()}` : ""}`}
-    aria-expanded={open()}
+    aria-expanded={open() ? "true" : "false"}
     onClick={() => bus().toggleHistory()}
   >
             {

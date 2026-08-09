@@ -20,10 +20,10 @@
 // покадровой точности не даёт. Секции лежат в сетке из 12 колонок, ширина
 // меряется в колонках, и размер меняется только на смене снапа — то есть
 // перекладка случается раз в колонку, а не каждый кадр.
-import { createSignal, createEffect, onCleanup, onMount, For, Show } from 'solid-js'
+import { createSignal, onCleanup, For, Show } from 'solid-js'
 import { Bar, Switch, Check, Pick, Btn, Note } from '../_controls'
 import type { JSX } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, effect, onMounted, type Flip } from '@solid-dumb-kit/shared'
 
 type Block = { id: string; title: string; kind: string }
 
@@ -134,7 +134,7 @@ export default function OrderBoardExample() {
   let wrapAt = { left: 0, top: 0 }
   let geom: Record<string, Geom> = {}
   let flip: Flip = createFlip(true)
-  createEffect(() => { flip = createFlip(animate()) })
+  effect(() => { flip = createFlip(animate()) })
   const scroller = createAutoScroller()
   onCleanup(() => scroller.stop())
 
@@ -223,7 +223,7 @@ export default function OrderBoardExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMount(() => {
+  onMounted(() => {
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true

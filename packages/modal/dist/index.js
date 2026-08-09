@@ -1,5 +1,6 @@
-import { delegateEvents, use, insert, createComponent, effect, className, setAttribute, style, memo, template } from 'solid-js/web';
-import { createEffect, onCleanup, Show, createSignal, For, untrack } from 'solid-js';
+import { delegateEvents, use, insert, createComponent, effect as effect$1, className, setAttribute, style, memo, template } from 'solid-js/web';
+import * as solid from 'solid-js';
+import { onCleanup, Show, createSignal, For, createEffect, untrack } from 'solid-js';
 
 // src/DumbModal.tsx
 function prefersReducedMotion() {
@@ -27,8 +28,19 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -88,7 +100,7 @@ function DumbModal(props) {
     }
     props.onClose();
   }
-  createEffect(() => {
+  effect(() => {
     const want = props.open();
     if (want && !dialog.open) {
       returnTo = document.activeElement ?? null;
@@ -152,7 +164,7 @@ function DumbModal(props) {
         return _el$7;
       }
     }), null);
-    effect((_p$) => {
+    effect$1((_p$) => {
       var _v$ = `dumb-modal modal ${props.class ?? ""}`, _v$2 = shouldAnimate(props.animate) ? "1" : "0", _v$3 = {
         ...props.width ? {
           "--dumb-modal-w": props.width
@@ -291,7 +303,7 @@ function DumbModalHost(props) {
             var _el$3 = _tmpl$32();
             _el$3.$$click = () => answer(a.value);
             insert(_el$3, () => a.label);
-            effect((_p$) => {
+            effect$1((_p$) => {
               var _v$ = actionClass(a.kind), _v$2 = a.kind;
               _v$ !== _p$.e && className(_el$3, _p$.e = _v$);
               _v$2 !== _p$.t && setAttribute(_el$3, "data-kind", _p$.t = _v$2);

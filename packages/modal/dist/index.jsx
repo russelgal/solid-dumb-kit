@@ -1,9 +1,9 @@
 // src/DumbModal.tsx
-import { Show, createEffect as createEffect2, onCleanup } from "solid-js";
+import { Show, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -29,8 +29,19 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
+var SOLID_2 = !("batch" in solid);
+function effect(fn) {
+  if (SOLID_2) createEffect(fn, () => {
+  });
+  else createEffect(fn);
+}
 function onMounted(fn) {
-  createEffect(() => untrack(fn));
+  if (SOLID_2) {
+    createEffect(() => {
+    }, fn);
+  } else {
+    createEffect(() => untrack(fn));
+  }
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -89,7 +100,7 @@ function DumbModal(props) {
     }
     props.onClose();
   }
-  createEffect2(() => {
+  effect(() => {
     const want = props.open();
     if (want && !dialog.open) {
       returnTo = document.activeElement ?? null;
@@ -145,7 +156,7 @@ function DumbModal(props) {
 }
 
 // src/DumbModalHost.tsx
-import { For, createSignal, onCleanup as onCleanup2 } from "solid-js";
+import { For, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
 
 // src/modalBus.ts
 function createModalBus() {
@@ -217,7 +228,7 @@ var modal = createModalBus();
 var actionClass = (kind) => kind === "primary" ? "btn btn-sm btn-neutral" : kind === "danger" ? "btn btn-sm btn-error" : "btn btn-sm";
 function DumbModalHost(props) {
   const bus = () => props.bus ?? modal;
-  const [tick, bump] = createSignal(0, { equals: false });
+  const [tick, bump] = createSignal2(0, { equals: false });
   onMounted(() => {
     const off = bus().subscribe(() => bump(0));
     onCleanup2(off);

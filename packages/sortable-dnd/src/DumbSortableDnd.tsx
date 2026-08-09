@@ -1,5 +1,6 @@
-import { For, createEffect, createMemo, type JSX } from 'solid-js'
-import { createStableOrder } from '@solid-dumb-kit/shared'
+import { For, createMemo } from 'solid-js'
+import type { JSX } from '@solidjs/web'
+import { createStableOrder, effect } from '@solid-dumb-kit/shared'
 import { createDumbSortableDnd } from './solid'
 
 // Сортировка списка на нативном drag-and-drop.
@@ -86,7 +87,7 @@ export function DumbSortableDnd<T>(props: DumbSortableDndProps<T>) {
   // Пишем ТОЛЬКО тем, у кого место изменилось. Перестановка задевает соседей
   // между старым местом и новым, остальных — нет, и трогать их `style` значило
   // бы будить браузер на триста строк вместо трёх.
-  createEffect(() => {
+  effect(() => {
     for (const [id, i] of places()) {
       const el = els.get(id)
       if (!el) continue

@@ -88,7 +88,7 @@ describe('DumbTable — клиентская сортировка', () => {
     expect(bodyTexts(host)).toEqual(['Гамма', 'Бета', 'Альфа'])
   })
 
-  it('числовая колонка по умолчанию начинает с desc (поведение TanStack)', () => {
+  it('числовая колонка по умолчанию начинает с desc', () => {
     const host = mount(() => <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} />)
     ;(host.querySelectorAll('th')[1] as HTMLElement).click()
     expect(bodyTexts(host)).toEqual(['Бета', 'Гамма', 'Альфа'])   // 30, 20, 10

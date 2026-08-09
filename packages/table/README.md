@@ -1,6 +1,6 @@
 # @solid-dumb-kit/table
 
-Таблица на TanStack: сортировка, драг строк, пагинатор
+Таблица «принеси свои колонки»: сортировка, драг строк, пагинатор
 
 Часть [solid-dumb-kit](https://github.com/russelgal/solid-dumb-kit) — набора
 компонентов для SolidJS, у которых за жест не бывает ни одного forced layout.
@@ -9,7 +9,8 @@
 pnpm add @solid-dumb-kit/table
 ```
 
-Peer-зависимость: `solid-js@^1.8.0`. Тянет за собой: `@tanstack/solid-table`.
+Peer-зависимости: `solid-js` и `@solidjs/web` (вторая линия Solid).
+Рантайм-зависимостей нет.
 
 ## Документация
 

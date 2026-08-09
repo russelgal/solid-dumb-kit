@@ -1,4 +1,5 @@
-import { For, JSX } from 'solid-js'
+import { For } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { createDumbSortable } from './solid'
 
 export type DumbSortableProps<T> = {
