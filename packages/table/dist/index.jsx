@@ -1,11 +1,11 @@
 // src/DumbTable.tsx
-import { For as For2, Show, createSignal, createMemo } from "solid-js";
+import { For as For2, Show, createSignal as createSignal2, createMemo } from "solid-js";
+import { createTable, flexRender } from "@tanstack/solid-table";
 import {
-  createSolidTable,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel
-} from "@tanstack/solid-table";
+  createCoreRowModel,
+  createSortedRowModel,
+  rowSortingFeature
+} from "@tanstack/table-core";
 
 // ../sortable/dist/index.js
 import { createComponent } from "solid-js/web";
@@ -558,7 +558,7 @@ function createDumbSortable(opts) {
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion2() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -579,8 +579,9 @@ function SortMark(props) {
       {props.dir === "asc" ? "\u25B2" : props.dir === "desc" ? "\u25BC" : "\u21C5"}
     </span>;
 }
+var FEATURES = { rowSortingFeature };
 function DumbTable(props) {
-  const [localSort, setLocalSort] = createSignal([]);
+  const [localSort, setLocalSort] = createSignal2([]);
   const serverMode = () => !!props.onSort;
   const sorting = () => serverMode() ? props.sort ? [{ id: props.sort, desc: props.order === "desc" }] : [] : localSort();
   const defs = () => props.columns.map((c) => ({
@@ -595,7 +596,8 @@ function DumbTable(props) {
     cell: (ctx) => c.render ? c.render(ctx.row.original, ctx.row.index) : String(ctx.getValue() ?? ""),
     meta: { col: c }
   }));
-  const table = createSolidTable({
+  const table = createTable({
+    features: FEATURES,
     get data() {
       return props.rows;
     },
@@ -624,8 +626,10 @@ function DumbTable(props) {
       }
     },
     getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel()
+    _rowModels: {
+      coreRowModel: createCoreRowModel(),
+      sortedRowModel: createSortedRowModel()
+    }
   });
   const visibleRows = createMemo(() => table.getRowModel().rows.map((r) => r.original));
   const rowOf = (original) => table.getRowModel().rows.find((r) => r.original === original);
@@ -666,8 +670,7 @@ function DumbTable(props) {
     const c = () => colOf(header.column.columnDef);
     const canSort = () => header.column.getCanSort();
     return <th
-      class={`${c().class ?? ""} ${c().headClass ?? ""}`.trim() || void 0}
-      classList={{ "cursor-pointer select-none": canSort() }}
+      class={`${c().class ?? ""} ${c().headClass ?? ""} ${canSort() ? "cursor-pointer select-none" : ""}`.trim() || void 0}
       style={{ ...cellStyle(c()), "white-space": "nowrap" }}
       onClick={header.column.getToggleSortingHandler()}
     >
@@ -703,11 +706,7 @@ function DumbTable(props) {
                     <td class="w-px" onClick={(e) => e.stopPropagation()}>
                       <span
       data-drag-handle
-      class="inline-block touch-none"
-      classList={{
-        "cursor-not-allowed text-base-content": dragDisabled(),
-        "cursor-grab": !dragDisabled()
-      }}
+      class={`inline-block touch-none ${dragDisabled() ? "cursor-not-allowed" : "cursor-grab"}`}
       title={dragDisabled() ? "reset sorting to reorder" : "drag"}
     >
                         {props.handle ?? "\u283F"}

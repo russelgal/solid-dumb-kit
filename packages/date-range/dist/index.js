@@ -564,7 +564,7 @@ function DumbTimeSelect(props) {
 // src/DumbDateTimeRange.tsx
 var _tmpl$10 = /* @__PURE__ */ template(`<span class="badge badge-sm badge-ghost">`);
 var _tmpl$23 = /* @__PURE__ */ template(`<div><div class="mb-1 flex items-center gap-2 text-sm font-semibold"></div><div class=dumb-dt-slots>`);
-var _tmpl$33 = /* @__PURE__ */ template(`<button type=button class="dumb-dt-slot btn btn-xs">`);
+var _tmpl$33 = /* @__PURE__ */ template(`<button type=button>`);
 var _tmpl$42 = /* @__PURE__ */ template(`<div><div class=dumb-dt-wrap>`);
 var _tmpl$52 = /* @__PURE__ */ template(`<span class=dumb-dt-edge>`);
 var _tmpl$62 = /* @__PURE__ */ template(`<span class="badge badge-sm badge-neutral ml-auto">`);
@@ -829,27 +829,23 @@ function DumbDateTimeRange(props) {
         const chosen = () => p.drag ? inDrag(time) || inPicked(p.day, time) : (p.which === "from" ? startTime() : endTime()) === time;
         return (() => {
           var _el$5 = _tmpl$33();
-          _el$5.$$click = () => !p.drag && pickTime(p.which, time);
+          _el$5.$$click = () => {
+            if (!p.drag) pickTime(p.which, time);
+          };
           setAttribute(_el$5, "data-slot", time);
           insert(_el$5, time);
           effect((_p$) => {
-            var _v$ = !!chosen(), _v$2 = !chosen(), _v$3 = !!(state().disabled || early()), _v$4 = !!state().busy, _v$5 = state().busy ? "1" : void 0, _v$6 = state().disabled || early(), _v$7 = state().busy?.title ?? (early() ? "\u0440\u0430\u043D\u044C\u0448\u0435 \u0437\u0430\u0435\u0437\u0434\u0430" : void 0);
-            _v$ !== _p$.e && _el$5.classList.toggle("btn-neutral", _p$.e = _v$);
-            _v$2 !== _p$.t && _el$5.classList.toggle("btn-ghost", _p$.t = _v$2);
-            _v$3 !== _p$.a && _el$5.classList.toggle("btn-disabled", _p$.a = _v$3);
-            _v$4 !== _p$.o && _el$5.classList.toggle("text-error", _p$.o = _v$4);
-            _v$5 !== _p$.i && setAttribute(_el$5, "data-busy", _p$.i = _v$5);
-            _v$6 !== _p$.n && (_el$5.disabled = _p$.n = _v$6);
-            _v$7 !== _p$.s && setAttribute(_el$5, "title", _p$.s = _v$7);
+            var _v$ = `dumb-dt-slot btn btn-xs ${chosen() ? "btn-neutral" : "btn-ghost"} ${state().disabled || early() ? "btn-disabled" : ""} ${state().busy ? "text-error" : ""}`, _v$2 = state().busy ? "1" : void 0, _v$3 = state().disabled || early(), _v$4 = state().busy?.title ?? (early() ? "\u0440\u0430\u043D\u044C\u0448\u0435 \u0437\u0430\u0435\u0437\u0434\u0430" : void 0);
+            _v$ !== _p$.e && className(_el$5, _p$.e = _v$);
+            _v$2 !== _p$.t && setAttribute(_el$5, "data-busy", _p$.t = _v$2);
+            _v$3 !== _p$.a && (_el$5.disabled = _p$.a = _v$3);
+            _v$4 !== _p$.o && setAttribute(_el$5, "title", _p$.o = _v$4);
             return _p$;
           }, {
             e: void 0,
             t: void 0,
             a: void 0,
-            o: void 0,
-            i: void 0,
-            n: void 0,
-            s: void 0
+            o: void 0
           });
           return _el$5;
         })();
@@ -1093,10 +1089,10 @@ function DumbDateTimeRange(props) {
       })()
     }), null);
     effect((_p$) => {
-      var _v$8 = `dumb-dt flex flex-col gap-4 ${props.class ?? ""}`, _v$9 = props.style, _v$0 = days() ? "1" : void 0;
-      _v$8 !== _p$.e && className(_el$6, _p$.e = _v$8);
-      _p$.t = style(_el$6, _v$9, _p$.t);
-      _v$0 !== _p$.a && setAttribute(_el$7, "data-overlay", _p$.a = _v$0);
+      var _v$5 = `dumb-dt flex flex-col gap-4 ${props.class ?? ""}`, _v$6 = props.style, _v$7 = days() ? "1" : void 0;
+      _v$5 !== _p$.e && className(_el$6, _p$.e = _v$5);
+      _p$.t = style(_el$6, _v$6, _p$.t);
+      _v$7 !== _p$.a && setAttribute(_el$7, "data-overlay", _p$.a = _v$7);
       return _p$;
     }, {
       e: void 0,

@@ -709,18 +709,14 @@ function DumbDateTimeRange(props) {
     const chosen = () => p.drag ? inDrag(time) || inPicked(p.day, time) : (p.which === "from" ? startTime() : endTime()) === time;
     return <button
       type="button"
-      class="dumb-dt-slot btn btn-xs"
+      class={`dumb-dt-slot btn btn-xs ${chosen() ? "btn-neutral" : "btn-ghost"} ${state().disabled || early() ? "btn-disabled" : ""} ${state().busy ? "text-error" : ""}`}
       data-slot={time}
-      classList={{
-        "btn-neutral": chosen(),
-        "btn-ghost": !chosen(),
-        "btn-disabled": state().disabled || early(),
-        "text-error": !!state().busy
-      }}
       data-busy={state().busy ? "1" : void 0}
       disabled={state().disabled || early()}
       title={state().busy?.title ?? (early() ? "\u0440\u0430\u043D\u044C\u0448\u0435 \u0437\u0430\u0435\u0437\u0434\u0430" : void 0)}
-      onClick={() => !p.drag && pickTime(p.which, time)}
+      onClick={() => {
+        if (!p.drag) pickTime(p.which, time);
+      }}
     >
                 {time}
               </button>;

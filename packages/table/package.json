@@ -34,7 +34,8 @@
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "dependencies": {
-    "@tanstack/solid-table": "^8.21.3"
+    "@tanstack/solid-table": "^9.1.2",
+    "@tanstack/table-core": "9.1.2"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-beta.30",

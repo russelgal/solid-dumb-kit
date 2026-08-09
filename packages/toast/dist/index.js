@@ -971,7 +971,7 @@ function DumbToastCenter(props) {
         }
       }), null);
       effect$1((_p$) => {
-        var _v$ = side(), _v$2 = `\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F${unread() ? `: \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0445 ${unread()}` : ""}`, _v$3 = open();
+        var _v$ = side(), _v$2 = `\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F${unread() ? `: \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0445 ${unread()}` : ""}`, _v$3 = open() ? "true" : "false";
         _v$ !== _p$.e && setAttribute(_el$3, "data-side", _p$.e = _v$);
         _v$2 !== _p$.t && setAttribute(_el$4, "aria-label", _p$.t = _v$2);
         _v$3 !== _p$.a && setAttribute(_el$4, "aria-expanded", _p$.a = _v$3);

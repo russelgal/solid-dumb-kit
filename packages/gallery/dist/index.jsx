@@ -1,6 +1,5 @@
 // src/DumbGallery.tsx
-import { Show, createMemo as createMemo2, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
-import { createDropzone, createFileUploader } from "@solid-primitives/upload";
+import { Show, createMemo as createMemo2, createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
 
 // ../sortable-dnd/dist/index.js
 import { use, insert, createComponent, effect as effect$1, className, style, template } from "solid-js/web";
@@ -589,8 +588,33 @@ function DumbSortableDnd(props) {
 
 // ../shared/dist/index.js
 import * as solid2 from "solid-js";
-import { createEffect as createEffect2, untrack } from "solid-js";
+import { createEffect as createEffect2, untrack, createSignal as createSignal2 } from "solid-js";
 var SOLID_22 = !("batch" in solid2);
+var toPicked = (file) => ({
+  file,
+  name: file.name,
+  size: file.size,
+  source: URL.createObjectURL(file)
+});
+function createFilePicker(opts = {}) {
+  let input = null;
+  return (onPick) => {
+    if (typeof document === "undefined") return;
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "file";
+      input.style.display = "none";
+    }
+    input.accept = opts.accept ?? "";
+    input.multiple = opts.multiple !== false;
+    input.value = "";
+    input.onchange = () => {
+      const files = Array.from(input?.files ?? []).map(toPicked);
+      if (files.length) onPick(files);
+    };
+    input.click();
+  };
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -787,8 +811,8 @@ function DumbGallery(props) {
   injectStyle("gallery", STYLES);
   const editable = () => props.editable !== false;
   const accept = () => props.accept ?? "image/*";
-  const [dragOver, setDragOver] = createSignal2(false);
-  const [progress2, setProgress] = createSignal2({});
+  const [dragOver, setDragOver] = createSignal3(false);
+  const [progress2, setProgress] = createSignal3({});
   const progressOf = (id) => progress2()[id] ?? 0;
   const patch = (id, next) => props.setItems(props.items.map((it) => it.id === id ? { ...it, ...next } : it));
   const queue = createUploadQueue(
@@ -827,14 +851,9 @@ function DumbGallery(props) {
     props.setItems([...props.items, ...added]);
     if (props.upload) added.forEach((it, i) => queue.add(it.id, take[i].file));
   }
-  const picker = createFileUploader({ accept: accept(), multiple: props.multiple !== false });
-  const dropzone = createDropzone({
-    // подсветкой рулим сами (см. `withFiles`): дропзона не отличает файлы от
-    // перетаскиваемой плитки
-    onDrop: (files) => {
-      setDragOver(false);
-      accepted(files);
-    }
+  const pickFiles = createFilePicker({
+    accept: accept(),
+    multiple: props.multiple !== false
   });
   async function acceptDrop(ev) {
     setDragOver(false);
@@ -877,7 +896,6 @@ function DumbGallery(props) {
   return <div
     class={`dumb-gallery-drop ${props.class ?? ""}`}
     data-over={dragOver() && editable() ? "1" : void 0}
-    ref={dropzone.setRef}
     style={props.style}
     onDragOver={(ev) => {
       if (withFiles(ev)) setDragOver(true);
@@ -914,7 +932,7 @@ function DumbGallery(props) {
     title={item.error ?? item.name}
     onClick={() => props.onOpen?.(item, i())}
   >
-              <img src={item.preview ?? item.url} alt={item.name ?? ""} draggable={false} />
+              <img src={item.preview ?? item.url} alt={item.name ?? ""} draggable={false ? "true" : "false"} />
               <Show when={editable()}>
                 {
     /* жест с кнопки не начнётся: `data-no-drag` знают все движки кита */
@@ -923,7 +941,7 @@ function DumbGallery(props) {
     type="button"
     class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"
     data-no-drag
-    draggable={false}
+    draggable={false ? "true" : "false"}
     title="убрать"
     onClick={(ev) => {
       ev.stopPropagation();
@@ -945,7 +963,7 @@ function DumbGallery(props) {
         <button
     type="button"
     class="btn btn-sm btn-neutral mt-3"
-    onClick={() => picker.selectFiles(accepted)}
+    onClick={() => pickFiles(accepted)}
   >
           Выбрать файлы
         </button>

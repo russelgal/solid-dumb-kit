@@ -196,7 +196,7 @@ function DumbLightbox(props) {
     class="dumb-lightbox-img"
     src={cur().url}
     alt={cur().title ?? ""}
-    draggable={false}
+    draggable={false ? "true" : "false"}
     style={{
       transform: `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`
     }}

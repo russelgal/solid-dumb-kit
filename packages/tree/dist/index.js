@@ -252,15 +252,20 @@ function Row(p) {
     get class() {
       return `dumb-tree-row flex cursor-pointer items-center gap-1.5 rounded-sm px-1 no-underline hover:bg-base-200 ${chosen() ? "bg-primary/15 text-primary font-medium" : ""} ${p.node.class ?? ""}`;
     },
+    // Строкой, а не булевым: у ARIA `aria-current` — перечисление
+    // ('page' | 'step' | 'true' | 'false'), и компилятор второй линии рендерит
+    // булево `true` как пустое значение, то есть подсказка для скринридера
+    // молча пропадает.
     get "aria-current"() {
-      return chosen();
+      return chosen() ? "true" : void 0;
     },
     get "data-open"() {
       return open() ? "1" : void 0;
     },
     "data-id": p.node.id,
+    // строкой: в HTML это перечисление, и вторая линия типизирует его так же
     get draggable() {
-      return !!drag();
+      return drag() ? "true" : "false";
     },
     onDragStart: (ev) => {
       const d = drag();

@@ -93,6 +93,34 @@ function safeStorage() {
   }
 }
 
+// src/filePicker.ts
+var toPicked = (file) => ({
+  file,
+  name: file.name,
+  size: file.size,
+  source: URL.createObjectURL(file)
+});
+function createFilePicker(opts = {}) {
+  let input = null;
+  return (onPick) => {
+    if (typeof document === "undefined") return;
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "file";
+      input.style.display = "none";
+    }
+    input.accept = opts.accept ?? "";
+    input.multiple = opts.multiple !== false;
+    input.value = "";
+    input.onchange = () => {
+      const files = Array.from(input?.files ?? []).map(toPicked);
+      if (files.length) onPick(files);
+    };
+    input.click();
+  };
+}
+var pickedFrom = (files) => Array.from(files).map(toPicked);
+
 // src/injectStyle.ts
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -1401,4 +1429,4 @@ function putPart(url, chunk, signal, onBytes) {
 }
 var shouldSplit = (file, partSize = 8 * 1024 * 1024) => file.size > partSize;
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, configureCloseSide, createAutoScroller, createFlip, createInlineEdit, createPersisted, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, effect, flushNow, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, onMounted, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };
+export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, batch2 as batch, configureCloseSide, createAutoScroller, createFilePicker, createFlip, createInlineEdit, createPersisted, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, effect, flushNow, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, onMounted, pickedFrom, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };

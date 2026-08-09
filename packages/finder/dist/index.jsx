@@ -1,6 +1,5 @@
 // src/DumbFinder.tsx
-import { For as For2, Show as Show2, createMemo, createSignal as createSignal2, onCleanup as onCleanup2, untrack as untrack4 } from "solid-js";
-import { createFileUploader } from "@solid-primitives/upload";
+import { For as For2, Show as Show2, createMemo, createSignal as createSignal3, onCleanup as onCleanup2, untrack as untrack4 } from "solid-js";
 
 // ../selection/dist/index.js
 import { use, insert, effect, className, style, template } from "solid-js/web";
@@ -417,75 +416,8 @@ function SelectionArea(props) {
 
 // ../resizable-grid/dist/index.js
 import { delegateEvents, use as use2, insert as insert2, createComponent, effect as effect2, setStyleProperty, className as className2, template as template2 } from "solid-js/web";
-import { createSignal, For, Show } from "solid-js";
-
-// ../../node_modules/.pnpm/@solid-primitives+storage@4.3.4_solid-js@1.9.14/node_modules/@solid-primitives/storage/dist/persisted.js
-import { createUniqueId, untrack as untrack2 } from "solid-js";
-import { isServer, isDev } from "solid-js/web";
-import { reconcile } from "solid-js/store";
-function makePersisted(signal, options = {}) {
-  const storage = options.storage || globalThis.localStorage;
-  const name = options.name || `storage-${createUniqueId()}`;
-  if (!storage) {
-    return [signal[0], signal[1], null];
-  }
-  const storageOptions = options.storageOptions;
-  const serialize = options.serialize || JSON.stringify.bind(JSON);
-  const deserialize = options.deserialize || JSON.parse.bind(JSON);
-  const init = storage.getItem(name, storageOptions);
-  const set = typeof signal[0] === "function" ? (data) => {
-    try {
-      const value = deserialize(data);
-      signal[1](() => value);
-    } catch (e) {
-      if (isDev)
-        ;
-    }
-  } : (data) => {
-    try {
-      const value = deserialize(data);
-      signal[1](reconcile(value));
-    } catch (e) {
-      if (isDev)
-        ;
-    }
-  };
-  let unchanged = true;
-  if (init instanceof Promise)
-    init.then((data) => unchanged && data && set(data));
-  else if (init)
-    set(init);
-  if (typeof options.sync?.[0] === "function") {
-    const get = typeof signal[0] === "function" ? signal[0] : () => signal[0];
-    options.sync[0]((data) => {
-      if (data.key !== name || !isServer && (data.url || globalThis.location.href) !== globalThis.location.href || data.newValue === serialize(untrack2(get))) {
-        return;
-      }
-      set(data.newValue);
-    });
-  }
-  return [
-    signal[0],
-    typeof signal[0] === "function" ? (value) => {
-      const output = signal[1](value);
-      const serialized = value != null ? serialize(output) : value;
-      options.sync?.[1](name, serialized);
-      if (serialized != null)
-        storage.setItem(name, serialized, storageOptions);
-      else
-        storage.removeItem(name, storageOptions);
-      unchanged = false;
-      return output;
-    } : (...args) => {
-      signal[1](...args);
-      const value = serialize(untrack2(() => signal[0]));
-      options.sync?.[1](name, value);
-      storage.setItem(name, value, storageOptions);
-      unchanged = false;
-    },
-    init
-  ];
-}
+import * as solid2 from "solid-js";
+import { For, Show, createSignal, createEffect as createEffect2, untrack as untrack2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -746,6 +678,49 @@ function safeParse(schema, input, config$1) {
 }
 
 // ../resizable-grid/dist/index.js
+var SOLID_22 = !("batch" in solid2);
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  const step = (value) => {
+    const skip = first && opts?.defer;
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack2(() => fn(value, before));
+  };
+  if (SOLID_22) createEffect2(dep, step);
+  else createEffect2(() => step(dep()));
+}
+function createPersisted(key, initial, opts = {}) {
+  const store = opts.storage ?? safeStorage();
+  const stringify = opts.stringify ?? ((v2) => JSON.stringify(v2));
+  const parse = opts.parse ?? ((raw2) => JSON.parse(raw2));
+  let start = initial;
+  const raw = store?.getItem(key);
+  if (raw != null) {
+    try {
+      const parsed = parse(raw);
+      if (parsed !== void 0) start = parsed;
+    } catch {
+    }
+  }
+  const [value, setValue] = createSignal(start);
+  watch(value, (v2) => {
+    try {
+      store?.setItem(key, stringify(v2));
+    } catch {
+    }
+  }, { defer: true });
+  return [value, setValue];
+}
+function safeStorage() {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch {
+    return null;
+  }
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -808,9 +783,8 @@ function ResizableGrid(props) {
     rows: meta.rowInitials.length ? [...meta.rowInitials] : void 0,
     rowSplit: props.rows ? [props.rowInitial ?? 1, props.row2Initial ?? 1] : void 0
   };
-  const [sizes, setSizes] = makePersisted(createSignal(defaults), {
-    name: props.storageKey,
-    deserialize: (raw) => validateSizes(JSON.parse(raw), defaults)
+  const [sizes, setSizes] = createPersisted(props.storageKey, defaults, {
+    parse: (raw) => validateSizes(JSON.parse(raw), defaults)
   });
   const colSizes = () => {
     const s = sizes();
@@ -1061,16 +1035,16 @@ var STYLES = `
 delegateEvents(["mousedown"]);
 
 // ../shared/dist/index.js
-import * as solid2 from "solid-js";
-import { createEffect as createEffect2, untrack as untrack3 } from "solid-js";
-var SOLID_22 = !("batch" in solid2);
+import * as solid3 from "solid-js";
+import { createEffect as createEffect3, untrack as untrack3, createSignal as createSignal2 } from "solid-js";
+var SOLID_23 = !("batch" in solid3);
 function effect3(fn) {
-  if (SOLID_22) createEffect2(fn, () => {
+  if (SOLID_23) createEffect3(fn, () => {
   });
-  else createEffect2(fn);
+  else createEffect3(fn);
 }
-var batch2 = solid2.batch ?? ((fn) => fn());
-function watch(dep, fn, opts) {
+var batch2 = solid3.batch ?? ((fn) => fn());
+function watch2(dep, fn, opts) {
   let first = true;
   let prev;
   const step = (value) => {
@@ -1080,8 +1054,33 @@ function watch(dep, fn, opts) {
     prev = value;
     if (!skip) untrack3(() => fn(value, before));
   };
-  if (SOLID_22) createEffect2(dep, step);
-  else createEffect2(() => step(dep()));
+  if (SOLID_23) createEffect3(dep, step);
+  else createEffect3(() => step(dep()));
+}
+var toPicked = (file) => ({
+  file,
+  name: file.name,
+  size: file.size,
+  source: URL.createObjectURL(file)
+});
+function createFilePicker(opts = {}) {
+  let input = null;
+  return (onPick) => {
+    if (typeof document === "undefined") return;
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "file";
+      input.style.display = "none";
+    }
+    input.accept = opts.accept ?? "";
+    input.multiple = opts.multiple !== false;
+    input.value = "";
+    input.onchange = () => {
+      const files = Array.from(input?.files ?? []).map(toPicked);
+      if (files.length) onPick(files);
+    };
+    input.click();
+  };
 }
 var done2 = /* @__PURE__ */ new Set();
 function injectStyle2(id, css) {
@@ -2460,7 +2459,7 @@ var STYLES2 = `
 function DumbFinder(props) {
   injectStyle2("finder", STYLES2);
   const editable = () => props.editable !== false;
-  const [ownPath, setOwnPath] = createSignal2("");
+  const [ownPath, setOwnPath] = createSignal3("");
   const path = () => props.path ?? ownPath();
   const goto = (next) => {
     batch2(() => {
@@ -2472,23 +2471,23 @@ function DumbFinder(props) {
       props.onSelectionChange?.(/* @__PURE__ */ new Set());
     });
   };
-  const [ownSel, setOwnSel] = createSignal2(/* @__PURE__ */ new Set());
+  const [ownSel, setOwnSel] = createSignal3(/* @__PURE__ */ new Set());
   const selected = () => props.selected ?? ownSel();
   const setSelection = (next) => {
     setOwnSel(next);
     props.onSelectionChange?.(next);
   };
-  const [ownView, setOwnView] = createSignal2("grid");
+  const [ownView, setOwnView] = createSignal3("grid");
   const view = () => props.view ?? ownView();
   const setView = (next) => {
     setOwnView(next);
     props.onViewChange?.(next);
   };
-  const [sort, setSort] = createSignal2({ key: "name", desc: false });
+  const [sort, setSort] = createSignal3({ key: "name", desc: false });
   const flipSort = (key) => setSort((was) => ({ key, desc: was.key === key ? !was.desc : false }));
-  const [entries, setEntries] = createSignal2([]);
-  const [loading, setLoading] = createSignal2(false);
-  const [error, setError] = createSignal2(null);
+  const [entries, setEntries] = createSignal3([]);
+  const [loading, setLoading] = createSignal3(false);
+  const [error, setError] = createSignal3(null);
   let listing = null;
   async function reload(prefix = untrack4(path)) {
     listing?.abort();
@@ -2513,7 +2512,7 @@ function DumbFinder(props) {
       }
     }
   }
-  watch(path, (p) => void reload(p));
+  watch2(path, (p) => void reload(p));
   onCleanup2(() => listing?.abort());
   function fail(err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2521,10 +2520,10 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
-  watch(view, () => queueMicrotask(measureCols), { defer: true });
+  watch2(view, () => queueMicrotask(measureCols), { defer: true });
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)));
-  const [tree, setTree] = createSignal2({});
+  const [tree, setTree] = createSignal3({});
   const inflight = /* @__PURE__ */ new Set();
   const bumpTree = () => {
     setTree({});
@@ -2542,7 +2541,7 @@ function DumbFinder(props) {
       inflight.delete(prefix);
     }
   }
-  const [whole, setWhole] = createSignal2(null);
+  const [whole, setWhole] = createSignal3(null);
   let wholeFlight = false;
   async function loadWhole() {
     if (wholeFlight || !props.source.tree) return;
@@ -2574,8 +2573,8 @@ function DumbFinder(props) {
     return m;
   });
   const weightOf = (e) => e.dir ? weights().get(e.key) : void 0;
-  const [openRows, setOpenRows] = createSignal2(/* @__PURE__ */ new Set());
-  const [sub, setSub] = createSignal2({});
+  const [openRows, setOpenRows] = createSignal3(/* @__PURE__ */ new Set());
+  const [sub, setSub] = createSignal3({});
   const subFlight = /* @__PURE__ */ new Set();
   async function ensureSub(prefix) {
     if (subFlight.has(prefix) || prefix in untrack4(sub)) return;
@@ -2598,7 +2597,7 @@ function DumbFinder(props) {
     });
     void ensureSub(key);
   });
-  watch(path, () => batch2(() => {
+  watch2(path, () => batch2(() => {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
   }), { defer: true });
@@ -2618,7 +2617,7 @@ function DumbFinder(props) {
     walk2(entries(), 0);
     return out;
   });
-  const [pending, setPending] = createSignal2([]);
+  const [pending, setPending] = createSignal3([]);
   const patchPending = (id, next) => setPending((was) => was.map((p) => p.id === id ? { ...p, ...next } : p));
   const dest = /* @__PURE__ */ new WeakMap();
   const queue = createUploadQueue(
@@ -2661,14 +2660,14 @@ function DumbFinder(props) {
       queue.add(p.id, files[i].file);
     });
   }
-  const picker = createFileUploader({ accept: props.accept ?? "*", multiple: true });
-  const pickFiles = () => picker.selectFiles(
+  const openPicker = createFilePicker({ accept: props.accept ?? "*", multiple: true });
+  const pickFiles = () => openPicker(
     (files) => enqueue(files.map((f) => ({ name: f.name, file: f.file })), untrack4(path))
   );
   const ghosts = createMemo(() => pending().filter((p) => p.prefix === path()));
-  const [dragging, setDragging] = createSignal2([]);
-  const [dropAt, setDropAt] = createSignal2(null);
-  const [overFiles, setOverFiles] = createSignal2(false);
+  const [dragging, setDragging] = createSignal3([]);
+  const [dropAt, setDropAt] = createSignal3(null);
+  const [overFiles, setOverFiles] = createSignal3(false);
   const canMoveTo = (to) => !!props.source.move && editable() && dragging().length > 0 && dragging().every((k) => canMove(k, to));
   function startDrag(ev, entry) {
     if (!props.source.move || !editable()) return;
@@ -2727,7 +2726,7 @@ function DumbFinder(props) {
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = files ? "copy" : "move";
     setDropAt(to);
   }
-  const [undoTick, bumpUndo] = createSignal2(0, { equals: false });
+  const [undoTick, bumpUndo] = createSignal3(0, { equals: false });
   const undoStack = createUndoStack({
     onChange: () => bumpUndo(0),
     onError: (err) => fail(err)
@@ -2740,9 +2739,9 @@ function DumbFinder(props) {
     undoTick();
     return undoStack.peekUndo()?.label ?? "";
   };
-  const [busy, setBusy] = createSignal2(false);
-  const [confirming, setConfirming] = createSignal2(false);
-  const [asking, setAsking] = createSignal2(null);
+  const [busy, setBusy] = createSignal3(false);
+  const [confirming, setConfirming] = createSignal3(false);
+  const [asking, setAsking] = createSignal3(null);
   const closeAsk = () => {
     setConfirming(false);
     setAsking(null);
@@ -2792,9 +2791,9 @@ function DumbFinder(props) {
     const a = asking();
     if (a) doMkdir(a.value);
   };
-  const [cursor, setCursor] = createSignal2(-1);
-  const [anchor, setAnchor] = createSignal2(-1);
-  const [cols, setCols] = createSignal2(1);
+  const [cursor, setCursor] = createSignal3(-1);
+  const [anchor, setAnchor] = createSignal3(-1);
+  const [cols, setCols] = createSignal3(1);
   let itemsBox;
   const measureCols = () => {
     if (!itemsBox) return;
@@ -2863,7 +2862,7 @@ function DumbFinder(props) {
   });
   const canWrite = () => editable() && !busy();
   const memKey = () => `${props.treeKey ?? "dumb-finder"}:opened`;
-  const [opened, setOpened] = createSignal2(
+  const [opened, setOpened] = createSignal3(
     (() => {
       try {
         return new Set(JSON.parse(localStorage.getItem(memKey()) ?? "[]"));
@@ -2881,7 +2880,7 @@ function DumbFinder(props) {
     }
     return next;
   });
-  const [find, setFind] = createSignal2("");
+  const [find, setFind] = createSignal3("");
   const matched = createMemo(() => {
     const q = find().trim().toLowerCase();
     if (!q) return null;
@@ -3068,7 +3067,7 @@ function DumbFinder(props) {
       data-dir={entry.dir ? "1" : void 0}
       data-open={openRows().has(entry.key) ? "1" : void 0}
       data-drop={entry.dir && dropAt() === entry.key ? "1" : void 0}
-      draggable={canWrite() && !!props.source.move}
+      draggable={canWrite() && !!props.source.move ? "true" : "false"}
       title={entry.name}
       onDblClick={() => open(entry)}
       onDragStart={(ev) => startDrag(ev, entry)}
@@ -3103,7 +3102,7 @@ function DumbFinder(props) {
       class="dumb-finder-twist"
       data-no-select
       data-no-drag
-      draggable={false}
+      draggable={false ? "true" : "false"}
       title={openRows().has(entry.key) ? "\u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C" : "\u0440\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C"}
       onClick={(ev) => {
         ev.stopPropagation();
@@ -3128,7 +3127,7 @@ function DumbFinder(props) {
       /* грузим лениво: в папке на триста картинок иначе
          триста запросов разом */
     }
-                            <img src={entry.url} alt="" loading="lazy" draggable={false} />
+                            <img src={entry.url} alt="" loading="lazy" draggable={false ? "true" : "false"} />
                           </Show2>
                         </div>
                         <div class="dumb-finder-name">{entry.name}</div>
@@ -3222,7 +3221,7 @@ function DumbFinder(props) {
                 <button
     type="button"
     class="dumb-finder-crumb"
-    aria-current={c.prefix === path()}
+    aria-current={c.prefix === path() ? "true" : void 0}
     data-drop={dropAt() === c.prefix && c.prefix !== path() ? "1" : void 0}
     onClick={() => goto(c.prefix)}
     onDragOver={(ev) => c.prefix !== path() && over(c.prefix, ev)}

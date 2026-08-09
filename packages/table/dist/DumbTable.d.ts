@@ -1,4 +1,4 @@
-import { type JSX } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 export type DumbColumn<T> = {
     /** ключ колонки: id для сортировки и путь к значению по умолчанию */
     key: string;
@@ -84,4 +84,4 @@ export type DumbTableProps<T> = {
     spacerTop?: number;
     spacerBottom?: number;
 };
-export declare function DumbTable<T>(props: DumbTableProps<T>): JSX.Element;
+export declare function DumbTable<T extends Record<string, unknown>>(props: DumbTableProps<T>): JSX.Element;

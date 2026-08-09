@@ -18,6 +18,9 @@ function onMounted(fn) {
     createEffect(() => untrack(fn));
   }
 }
+function flushNow() {
+  solid.flush?.();
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -1056,6 +1059,7 @@ function DumbTimeline(props) {
         begin();
         if (upX !== null) {
           update(upX);
+          flushNow();
           finish(upX);
         } else {
           update(last.x);

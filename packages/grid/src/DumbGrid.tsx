@@ -1,4 +1,5 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createPersisted } from '@solid-dumb-kit/shared'
 import type { JSX } from '@solidjs/web'
 import * as v from 'valibot'
 import { createDumbGrid, type DumbGridGroupHandle } from './solid'

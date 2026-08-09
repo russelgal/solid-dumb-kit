@@ -214,7 +214,9 @@ export function DumbToastCenter(props: DumbToastCenterProps) {
             type="button"
             class="btn btn-circle btn-neutral shadow-lg"
             aria-label={`Уведомления${unread() ? `: непрочитанных ${unread()}` : ''}`}
-            aria-expanded={open()}
+            // строкой: во второй линии ARIA-атрибуты типизированы как
+            // перечисления, и булево туда не проходит
+            aria-expanded={open() ? 'true' : 'false'}
             onClick={() => bus().toggleHistory()}
           >
             {/* Своих иконок кит не несёт — рисуем колокол текстом. Нужна

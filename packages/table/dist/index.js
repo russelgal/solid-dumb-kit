@@ -1,6 +1,7 @@
-import { delegateEvents, insert, createComponent, memo, addEventListener, effect, className, classList, style, setStyleProperty, use, setAttribute, template } from 'solid-js/web';
+import { delegateEvents, insert, createComponent, memo, addEventListener, effect, className, style, setStyleProperty, use, setAttribute, template } from 'solid-js/web';
 import { createSignal, createMemo, Show, For, onCleanup } from 'solid-js';
-import { createSolidTable, getSortedRowModel, getCoreRowModel, flexRender } from '@tanstack/solid-table';
+import { createTable, flexRender } from '@tanstack/solid-table';
+import { rowSortingFeature, createSortedRowModel, createCoreRowModel } from '@tanstack/table-core';
 
 // src/DumbTable.tsx
 function prefersReducedMotion() {
@@ -565,7 +566,7 @@ var _tmpl$6 = /* @__PURE__ */ template(`<div>`);
 var _tmpl$7 = /* @__PURE__ */ template(`<th class=w-px>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<tr>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<th style=white-space:nowrap>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<td class=w-px><span data-drag-handle class="inline-block touch-none">`);
+var _tmpl$0 = /* @__PURE__ */ template(`<td class=w-px><span data-drag-handle>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<td>`);
 var withViewTransition = (on, fn) => {
   const doc = document;
@@ -582,6 +583,9 @@ function SortMark(props) {
     return _el$;
   })();
 }
+var FEATURES = {
+  rowSortingFeature
+};
 function DumbTable(props) {
   const [localSort, setLocalSort] = createSignal([]);
   const serverMode = () => !!props.onSort;
@@ -605,7 +609,8 @@ function DumbTable(props) {
       col: c
     }
   }));
-  const table = createSolidTable({
+  const table = createTable({
+    features: FEATURES,
     get data() {
       return props.rows;
     },
@@ -634,8 +639,10 @@ function DumbTable(props) {
       }
     },
     getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel()
+    _rowModels: {
+      coreRowModel: createCoreRowModel(),
+      sortedRowModel: createSortedRowModel()
+    }
   });
   const visibleRows = createMemo(() => table.getRowModel().rows.map((r) => r.original));
   const rowOf = (original) => table.getRowModel().rows.find((r) => r.original === original);
@@ -714,19 +721,15 @@ function DumbTable(props) {
                     }
                   }), null);
                   effect((_p$) => {
-                    var _v$3 = `${c().class ?? ""} ${c().headClass ?? ""}`.trim() || void 0, _v$4 = {
-                      "cursor-pointer select-none": canSort()
-                    }, _v$5 = {
+                    var _v$3 = `${c().class ?? ""} ${c().headClass ?? ""} ${canSort() ? "cursor-pointer select-none" : ""}`.trim() || void 0, _v$4 = {
                       ...cellStyle(c())
                     };
                     _v$3 !== _p$.e && className(_el$10, _p$.e = _v$3);
-                    _p$.t = classList(_el$10, _v$4, _p$.t);
-                    _p$.a = style(_el$10, _v$5, _p$.a);
+                    _p$.t = style(_el$10, _v$4, _p$.t);
                     return _p$;
                   }, {
                     e: void 0,
-                    t: void 0,
-                    a: void 0
+                    t: void 0
                   });
                   return _el$10;
                 })();
@@ -765,12 +768,9 @@ function DumbTable(props) {
                   _el$12.$$click = (e) => e.stopPropagation();
                   insert(_el$13, () => props.handle ?? "\u283F");
                   effect((_p$) => {
-                    var _v$6 = {
-                      "cursor-not-allowed text-base-content": dragDisabled(),
-                      "cursor-grab": !dragDisabled()
-                    }, _v$7 = dragDisabled() ? "reset sorting to reorder" : "drag";
-                    _p$.e = classList(_el$13, _v$6, _p$.e);
-                    _v$7 !== _p$.t && setAttribute(_el$13, "title", _p$.t = _v$7);
+                    var _v$5 = `inline-block touch-none ${dragDisabled() ? "cursor-not-allowed" : "cursor-grab"}`, _v$6 = dragDisabled() ? "reset sorting to reorder" : "drag";
+                    _v$5 !== _p$.e && className(_el$13, _p$.e = _v$5);
+                    _v$6 !== _p$.t && setAttribute(_el$13, "title", _p$.t = _v$6);
                     return _p$;
                   }, {
                     e: void 0,
@@ -790,9 +790,9 @@ function DumbTable(props) {
                     addEventListener(_el$14, "click", c().stopClick ? (e) => e.stopPropagation() : void 0, true);
                     insert(_el$14, () => flexRender(cell.column.columnDef.cell, cell.getContext()));
                     effect((_p$) => {
-                      var _v$1 = c().class, _v$10 = cellStyle(c());
-                      _v$1 !== _p$.e && className(_el$14, _p$.e = _v$1);
-                      _p$.t = style(_el$14, _v$10, _p$.t);
+                      var _v$0 = c().class, _v$1 = cellStyle(c());
+                      _v$0 !== _p$.e && className(_el$14, _p$.e = _v$0);
+                      _p$.t = style(_el$14, _v$1, _p$.t);
                       return _p$;
                     }, {
                       e: void 0,
@@ -803,13 +803,13 @@ function DumbTable(props) {
                 }
               }), null);
               effect((_p$) => {
-                var _v$8 = row().id, _v$9 = props.rowClass?.(original, row().index), _v$0 = {
+                var _v$7 = row().id, _v$8 = props.rowClass?.(original, row().index), _v$9 = {
                   cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
                   ...props.rowStyle?.(original, row().index)
                 };
-                _v$8 !== _p$.e && setAttribute(_el$11, "data-key", _p$.e = _v$8);
-                _v$9 !== _p$.t && className(_el$11, _p$.t = _v$9);
-                _p$.a = style(_el$11, _v$0, _p$.a);
+                _v$7 !== _p$.e && setAttribute(_el$11, "data-key", _p$.e = _v$7);
+                _v$8 !== _p$.t && className(_el$11, _p$.t = _v$8);
+                _p$.a = style(_el$11, _v$9, _p$.a);
                 return _p$;
               }, {
                 e: void 0,

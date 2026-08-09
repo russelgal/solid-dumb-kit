@@ -1,13 +1,20 @@
 import { For, Show, createSignal, createMemo } from 'solid-js'
 import type { JSX } from '@solidjs/web'
+// TanStack v9: таблица собирается из ФИЧЕЙ, а модели строк подключаются
+// отдельно (`createCoreRowModel`, `createSortedRowModel`) вместо прежних
+// `getCoreRowModel()` / `getSortedRowModel()`. Восьмая версия сюда не годится
+// вовсе: она тянет `solid-js/store`, которого во второй линии Solid нет.
+import { createTable, flexRender } from '@tanstack/solid-table'
+/* Набор фич: в v9 он участвует в дженериках всех типов таблицы. Нам нужна одна
+   — сортировка; остальное (фильтры, группировка, пагинация) кит не использует,
+   и не тянуть их значит не платить за них ни байтом. */
 import {
-  createSolidTable,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
+  createCoreRowModel,
+  createSortedRowModel,
+  rowSortingFeature,
   type ColumnDef,
   type SortingState,
-} from '@tanstack/solid-table'
+} from '@tanstack/table-core'
 import { createDumbSortable } from '@solid-dumb-kit/sortable'
 import { shouldAnimate } from '@solid-dumb-kit/shared'
 
@@ -132,7 +139,10 @@ function SortMark(props: { dir: false | 'asc' | 'desc' }) {
   )
 }
 
-export function DumbTable<T>(props: DumbTableProps<T>) {
+const FEATURES = { rowSortingFeature }
+type Features = typeof FEATURES
+
+export function DumbTable<T extends Record<string, unknown>>(props: DumbTableProps<T>) {
   // внутреннее состояние сортировки — только для клиентского режима
   const [localSort, setLocalSort] = createSignal<SortingState>([])
   const serverMode = () => !!props.onSort
@@ -142,7 +152,7 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
       ? (props.sort ? [{ id: props.sort, desc: props.order === 'desc' }] : [])
       : localSort()
 
-  const defs = (): ColumnDef<T>[] =>
+  const defs = (): Array<ColumnDef<Features, T>> =>
     props.columns.map(c => ({
       id: c.key,
       // accessorFn обязателен: без него TanStack считает колонку display-колонкой,
@@ -152,11 +162,12 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
       header: () => c.label ?? c.key,
       enableSorting: !!c.sortable,
       ...(props.sortDescFirst === undefined ? {} : { sortDescFirst: props.sortDescFirst }),
-      cell: (ctx) => (c.render ? c.render(ctx.row.original, ctx.row.index) : String(ctx.getValue() ?? '')),
+      cell: (ctx: { row: { original: T; index: number }; getValue: () => unknown }) => (c.render ? c.render(ctx.row.original, ctx.row.index) : String(ctx.getValue() ?? '')),
       meta: { col: c },
     }))
 
-  const table = createSolidTable({
+  const table = createTable({
+    features: FEATURES,
     get data() { return props.rows },
     get columns() { return defs() },
     state: {
@@ -175,8 +186,10 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
       }
     },
     getRowId: (row, index) => props.rowId?.(row, index) ?? String(index),
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    _rowModels: {
+      coreRowModel: createCoreRowModel(),
+      sortedRowModel: createSortedRowModel(),
+    },
   })
 
   /**
@@ -229,8 +242,9 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                       const canSort = () => header.column.getCanSort()
                       return (
                         <th
-                          class={`${c().class ?? ''} ${c().headClass ?? ''}`.trim() || undefined}
-                          classList={{ 'cursor-pointer select-none': canSort() }}
+                            class={`${c().class ?? ''} ${c().headClass ?? ''} ${
+                            canSort() ? 'cursor-pointer select-none' : ''
+                          }`.trim() || undefined}
                           style={{ ...cellStyle(c()), 'white-space': 'nowrap' }}
                           onClick={header.column.getToggleSortingHandler()}
                         >
@@ -271,11 +285,9 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                     <td class="w-px" onClick={(e) => e.stopPropagation()}>
                       <span
                         data-drag-handle
-                        class="inline-block touch-none"
-                        classList={{
-                          'cursor-not-allowed text-base-content': dragDisabled(),
-                          'cursor-grab': !dragDisabled(),
-                        }}
+                        class={`inline-block touch-none ${
+                          dragDisabled() ? 'cursor-not-allowed' : 'cursor-grab'
+                        }`}
                         title={dragDisabled() ? 'reset sorting to reorder' : 'drag'}
                       >
                         {props.handle ?? '⠿'}

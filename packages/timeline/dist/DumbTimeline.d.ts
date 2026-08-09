@@ -1,4 +1,4 @@
-import { type JSX } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 import type { Span } from './timelineMath';
 import { lengthOf, toMinutes, toMoment, type Moment, type RowRules, type Scale } from './scale';
 /** управление сеткой снаружи */

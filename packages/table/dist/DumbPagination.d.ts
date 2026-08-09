@@ -17,4 +17,4 @@ export type DumbPaginationProps = {
     activeClass?: string;
 };
 export declare function buildPageNumbers(current: number, total: number): Array<number | '…'>;
-export declare function DumbPagination(props: DumbPaginationProps): import("solid-js").JSX.Element;
+export declare function DumbPagination(props: DumbPaginationProps): import("@solidjs/web").JSX.Element;

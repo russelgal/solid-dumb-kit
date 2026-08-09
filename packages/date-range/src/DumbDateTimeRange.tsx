@@ -380,18 +380,19 @@ export function DumbDateTimeRange(props: DumbDateTimeRangeProps): JSX.Element {
             return (
               <button
                 type="button"
-                class="dumb-dt-slot btn btn-xs"
+                // класс строкой, а не `classList`: во второй линии его убрали
+                class={`dumb-dt-slot btn btn-xs ${chosen() ? 'btn-neutral' : 'btn-ghost'} ${
+                  state().disabled || early() ? 'btn-disabled' : ''
+                } ${state().busy ? 'text-error' : ''}`}
                 data-slot={time}
-                classList={{
-                  'btn-neutral': chosen(),
-                  'btn-ghost': !chosen(),
-                  'btn-disabled': state().disabled || early(),
-                  'text-error': !!state().busy,
-                }}
                 data-busy={state().busy ? '1' : undefined}
                 disabled={state().disabled || early()}
                 title={state().busy?.title ?? (early() ? 'раньше заезда' : undefined)}
-                onClick={() => !p.drag && pickTime(p.which, time)}
+                onClick={() => {
+                  // блок, а не выражение: `&&` возвращал бы false, а Solid 2
+                  // ждёт от обработчика void
+                  if (!p.drag) pickTime(p.which, time)
+                }}
               >
                 {time}
               </button>

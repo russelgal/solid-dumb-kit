@@ -26,6 +26,7 @@ export {
 // совместимость Solid 1 ↔ Solid 2: пропавшие в Solid 2 API берём только отсюда
 export { batch, effect, flushNow, onMounted, watch } from './solidCompat'
 export { createPersisted, type PersistedOptions } from './persisted'
+export { createFilePicker, pickedFrom, type FilePickerOptions, type PickedFile } from './filePicker'
 
 /** Разовый инжект стилей в `<head>` — переживает размонтирование компонента. */
 export { injectStyle } from './injectStyle'

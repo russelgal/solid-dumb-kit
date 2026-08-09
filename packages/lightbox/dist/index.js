@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect as effect$1, setStyleProperty, className, template } from 'solid-js/web';
+import { delegateEvents, use, insert, createComponent, effect as effect$1, setAttribute, setStyleProperty, className, template } from 'solid-js/web';
 import * as solid from 'solid-js';
 import { createSignal, createMemo, Show, createEffect, untrack, onCleanup } from 'solid-js';
 
@@ -66,7 +66,7 @@ function injectStyle(id, css) {
 // src/DumbLightbox.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-circle btn-neutral"title="\u0437\u0430\u043A\u0440\u044B\u0442\u044C (Esc)">\u2715`);
 var _tmpl$2 = /* @__PURE__ */ template(`<dialog>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<div class=dumb-lightbox-stage><img class=dumb-lightbox-img>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<div class=dumb-lightbox-stage><img class=dumb-lightbox-img draggable=false>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<span class="dumb-lightbox-count tabular-nums"> / `);
 var _tmpl$5 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral">1:1`);
 var _tmpl$6 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"data-at=top><span class="dumb-lightbox-title min-w-0 flex-1 truncate">`);
@@ -218,7 +218,6 @@ function DumbLightbox(props) {
         _el$3.$$pointerdown = onDown;
         _el$3.addEventListener("wheel", onWheel);
         _el$4.$$dblclick = () => zoom() === 1 ? setZoom(2.5) : reset();
-        setAttribute(_el$4, "draggable", false);
         effect$1((_p$) => {
           var _v$3 = dragging() ? "1" : void 0, _v$4 = cur().url, _v$5 = cur().title ?? "", _v$6 = `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`;
           _v$3 !== _p$.e && setAttribute(_el$3, "data-drag", _p$.e = _v$3);

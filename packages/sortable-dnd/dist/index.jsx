@@ -3,7 +3,7 @@ import { For, createMemo } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -270,7 +270,7 @@ function createAutoScroller() {
 }
 
 // src/solid.ts
-import { createSignal, onCleanup } from "solid-js";
+import { createSignal as createSignal2, onCleanup } from "solid-js";
 
 // src/sortDndCore.ts
 function createSortDndEngine(opts) {
@@ -519,7 +519,7 @@ function createSortDndEngine(opts) {
 
 // src/solid.ts
 function createDumbSortableDnd(opts) {
-  const [active, setActive] = createSignal(null);
+  const [active, setActive] = createSignal2(null);
   const engine = createSortDndEngine({
     ...opts,
     onActive: (id) => {

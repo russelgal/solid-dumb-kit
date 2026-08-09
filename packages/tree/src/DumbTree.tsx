@@ -301,7 +301,8 @@ function Row(p: {
     get 'aria-current'() { return chosen() ? 'true' : undefined },
     get 'data-open'() { return open() ? '1' : undefined },
     'data-id': p.node.id,
-    get draggable() { return !!drag() },
+    // строкой: в HTML это перечисление, и вторая линия типизирует его так же
+    get draggable() { return drag() ? 'true' : 'false' },
     onDragStart: (ev: DragEvent) => {
       const d = drag()
       if (!d || !ev.dataTransfer) return

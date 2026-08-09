@@ -1,6 +1,6 @@
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 var SOLID_2 = !("batch" in solid);
 function onMounted(fn) {
   if (SOLID_2) {

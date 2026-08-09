@@ -1,12 +1,53 @@
 // src/ResizableGrid.tsx
-import { createSignal, For, Show } from "solid-js";
-import { makePersisted } from "@solid-primitives/storage";
+import { For, Show } from "solid-js";
 import * as v from "valibot";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 var SOLID_2 = !("batch" in solid);
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  const step = (value) => {
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (!skip) untrack(() => fn(value, before));
+  };
+  if (SOLID_2) createEffect(dep, step);
+  else createEffect(() => step(dep()));
+}
+function createPersisted(key, initial, opts = {}) {
+  const store = opts.storage ?? safeStorage();
+  const stringify = opts.stringify ?? ((v2) => JSON.stringify(v2));
+  const parse = opts.parse ?? ((raw2) => JSON.parse(raw2));
+  let start = initial;
+  const raw = store?.getItem(key);
+  if (raw != null) {
+    try {
+      const parsed = parse(raw);
+      if (parsed !== void 0) start = parsed;
+    } catch {
+    }
+  }
+  const [value, setValue] = createSignal(start);
+  watch(value, (v2) => {
+    try {
+      store?.setItem(key, stringify(v2));
+    } catch {
+    }
+  }, { defer: true });
+  return [value, setValue];
+}
+function safeStorage() {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage : null;
+  } catch {
+    return null;
+  }
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -66,13 +107,9 @@ function ResizableGrid(props) {
     rows: meta.rowInitials.length ? [...meta.rowInitials] : void 0,
     rowSplit: props.rows ? [props.rowInitial ?? 1, props.row2Initial ?? 1] : void 0
   };
-  const [sizes, setSizes] = makePersisted(
-    createSignal(defaults),
-    {
-      name: props.storageKey,
-      deserialize: (raw) => validateSizes(JSON.parse(raw), defaults)
-    }
-  );
+  const [sizes, setSizes] = createPersisted(props.storageKey, defaults, {
+    parse: (raw) => validateSizes(JSON.parse(raw), defaults)
+  });
   const colSizes = () => {
     const s = sizes();
     if (!s || !s.cols || s.cols.length !== meta.colInitials.length) return meta.colInitials;

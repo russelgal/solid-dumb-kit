@@ -1,4 +1,4 @@
-import { type JSX } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 import type { Toast, ToastKind } from './toast';
 /** цвет значка по виду сообщения: токен темы, а не свой hex */
 export declare const kindTone: (kind: ToastKind) => "bg-error text-error-content" | "bg-info text-info-content" | "bg-success text-success-content";

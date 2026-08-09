@@ -1,7 +1,6 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect as effect$1, setStyleProperty, className, memo, style, template } from 'solid-js/web';
+import { delegateEvents, insert, createComponent, effect as effect$1, setStyleProperty, className, setAttribute, memo, style, use, template } from 'solid-js/web';
 import * as solid from 'solid-js';
 import { createSignal, onCleanup, createMemo, Show, For, createEffect } from 'solid-js';
-import { createFileUploader, createDropzone } from '@solid-primitives/upload';
 
 // src/DumbGallery.tsx
 function prefersReducedMotion() {
@@ -584,6 +583,31 @@ function DumbSortableDnd(props) {
     return _el$;
   })();
 }
+var toPicked = (file) => ({
+  file,
+  name: file.name,
+  size: file.size,
+  source: URL.createObjectURL(file)
+});
+function createFilePicker(opts = {}) {
+  let input = null;
+  return (onPick) => {
+    if (typeof document === "undefined") return;
+    if (!input) {
+      input = document.createElement("input");
+      input.type = "file";
+      input.style.display = "none";
+    }
+    input.accept = opts.accept ?? "";
+    input.multiple = opts.multiple !== false;
+    input.value = "";
+    input.onchange = () => {
+      const files = Array.from(input?.files ?? []).map(toPicked);
+      if (files.length) onPick(files);
+    };
+    input.click();
+  };
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -745,9 +769,9 @@ async function walk(entry, prefix) {
 var _tmpl$2 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral mt-3">\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0444\u0430\u0439\u043B\u044B`);
 var _tmpl$22 = /* @__PURE__ */ template(`<span class="ml-3 text-sm"data-gallery-stats>`);
 var _tmpl$3 = /* @__PURE__ */ template(`<div>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"data-no-drag title=\u0443\u0431\u0440\u0430\u0442\u044C>\u2715`);
+var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"data-no-drag draggable=false title=\u0443\u0431\u0440\u0430\u0442\u044C>\u2715`);
 var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-gallery-bar bg-base-300"><i>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<figure><img>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<figure><img draggable=false>`);
 var STYLES = `
           /* grid, \u0430 \u043D\u0435 flex: \u043D\u0430 \u043D\u0451\u043C \u0438 \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F CSS order, \u043A\u043E\u0442\u043E\u0440\u044B\u043C \u0434\u0432\u0438\u0433\u0430\u044E\u0442\u0441\u044F \u043F\u043B\u0438\u0442\u043A\u0438 */
           .dumb-gallery { display: grid; gap: var(--dumb-gallery-gap, 10px);
@@ -838,17 +862,9 @@ function DumbGallery(props) {
     props.setItems([...props.items, ...added]);
     if (props.upload) added.forEach((it, i) => queue.add(it.id, take[i].file));
   }
-  const picker = createFileUploader({
+  const pickFiles = createFilePicker({
     accept: accept(),
     multiple: props.multiple !== false
-  });
-  const dropzone = createDropzone({
-    // подсветкой рулим сами (см. `withFiles`): дропзона не отличает файлы от
-    // перетаскиваемой плитки
-    onDrop: (files) => {
-      setDragOver(false);
-      accepted(files);
-    }
   });
   async function acceptDrop(ev) {
     setDragOver(false);
@@ -903,8 +919,6 @@ function DumbGallery(props) {
     _el$.addEventListener("dragover", (ev) => {
       if (withFiles(ev)) setDragOver(true);
     });
-    var _ref$ = dropzone.setRef;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : dropzone.setRef = _el$;
     insert(_el$, createComponent(DumbSortableDnd, {
       "class": "dumb-gallery",
       get style() {
@@ -928,7 +942,6 @@ function DumbGallery(props) {
       children: (item, i) => props.children?.(item, i, () => progressOf(item.id)) ?? (() => {
         var _el$4 = _tmpl$6(), _el$5 = _el$4.firstChild;
         _el$4.$$click = () => props.onOpen?.(item, i());
-        setAttribute(_el$5, "draggable", false);
         insert(_el$4, createComponent(Show, {
           get when() {
             return editable();
@@ -939,7 +952,6 @@ function DumbGallery(props) {
               ev.stopPropagation();
               remove(item);
             };
-            setAttribute(_el$6, "draggable", false);
             return _el$6;
           }
         }), null);
@@ -977,7 +989,7 @@ function DumbGallery(props) {
       },
       get children() {
         var _el$2 = _tmpl$2();
-        _el$2.$$click = () => picker.selectFiles(accepted);
+        _el$2.$$click = () => pickFiles(accepted);
         return _el$2;
       }
     }), null);

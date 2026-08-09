@@ -800,7 +800,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
 
   const onDragStart = (ev: DragEvent) => {
     if (!editable()) { ev.preventDefault(); return }
-    // с ручки ресайза драг не начинается: `draggable={false}` на ней сам по себе
+    // с ручки ресайза драг не начинается: `draggable={false ? 'true' : 'false'}` на ней сам по себе
     // жест не отменяет — блок-предок всё равно перетаскиваемый
     if (pressed?.closest?.('[data-board-block-resize]')) { ev.preventDefault(); return }
     // то же для всего, что помечено `[data-no-drag]`: кнопки удаления, меню,
@@ -949,11 +949,12 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
             const s = () => sectionById(sid)
             return (
             <section
-              class="dumb-board-panel"
-              classList={{ held: heldSection() === sid, sizing: sizing() === sid }}
+              class={`dumb-board-panel ${heldSection() === sid ? 'held' : ''} ${
+                sizing() === sid ? 'sizing' : ''
+              }`}
               data-board-section={sid}
-              draggable={editable()}
-              ref={(el) => panelEls.set(sid, el)}
+              draggable={editable() ? 'true' : 'false'}
+              ref={(el) => void panelEls.set(sid, el)}
               style={{ 'grid-column': `span ${spanOf(s())}`, order: String(showOrder(sid)) }}
             >
               <Show when={s().title}>
@@ -1012,11 +1013,10 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
                     const at = () => cellOf(sid, props.id(item))
                     return (
                       <div
-                        class="dumb-board-block"
-                        classList={{ held: held() === props.id(item) }}
+                        class={`dumb-board-block ${held() === props.id(item) ? 'held' : ''}`}
                         data-board-block={props.id(item)}
-                        draggable={editable()}
-                        ref={(el) => blockEls.set(props.id(item), el)}
+                        draggable={editable() ? 'true' : 'false'}
+                        ref={(el) => void blockEls.set(props.id(item), el)}
                         style={{
                           // место ЯВНОЕ: браузер ничего не домысливает, поэтому
                           // нарисованное совпадает с посчитанным для FLIP
@@ -1032,7 +1032,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
                             data-board-block-resize={props.id(item)}
                             // нативный драг не должен стартовать с ручки:
                             // жест ресайза указательный и живёт сам по себе
-                            draggable={false}
+                            draggable={false ? 'true' : 'false'}
                             title={props.labels?.resizeBlock ?? 'Потяни, чтобы изменить размер'}
                           />
                         </Show>

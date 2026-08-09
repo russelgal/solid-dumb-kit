@@ -2,11 +2,11 @@
 import { createMemo as createMemo2, For as For2 } from "solid-js";
 
 // src/solid.ts
-import { createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
+import { createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -248,7 +248,8 @@ function createAutoScroller() {
 
 // ../grid/dist/index.js
 import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, memo, setAttribute, className, style, template } from "solid-js/web";
-import { createSignal, onCleanup, createMemo, Show, For } from "solid-js";
+import * as solid2 from "solid-js";
+import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2, untrack as untrack2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -518,6 +519,7 @@ function string(message$1) {
 }
 
 // ../grid/dist/index.js
+var SOLID_22 = !("batch" in solid2);
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -1027,9 +1029,9 @@ var DND_MIME = "application/x-dumb-grid";
 
 // src/solid.ts
 function createDumbGridDndGroup(opts = {}) {
-  const [active, setActive] = createSignal2(null);
-  const [over, setOver] = createSignal2(null);
-  const [rows, setRows] = createSignal2({});
+  const [active, setActive] = createSignal3(null);
+  const [over, setOver] = createSignal3(null);
+  const [rows, setRows] = createSignal3({});
   const engine = createGridDndEngine({
     ...opts,
     onActive: (state) => {
