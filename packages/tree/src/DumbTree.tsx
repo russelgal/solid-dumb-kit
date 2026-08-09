@@ -293,7 +293,11 @@ function Row(p: {
         chosen() ? 'bg-primary/15 text-primary font-medium' : ''
       } ${p.node.class ?? ''}`
     },
-    get 'aria-current'() { return chosen() },
+    // Строкой, а не булевым: у ARIA `aria-current` — перечисление
+    // ('page' | 'step' | 'true' | 'false'), и компилятор второй линии рендерит
+    // булево `true` как пустое значение, то есть подсказка для скринридера
+    // молча пропадает.
+    get 'aria-current'() { return chosen() ? 'true' : undefined },
     get 'data-open'() { return open() ? '1' : undefined },
     'data-id': p.node.id,
     get draggable() { return !!drag() },

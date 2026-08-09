@@ -1,5 +1,4 @@
 import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
-import { makePersisted } from '@solid-primitives/storage'
 import * as v from 'valibot'
 import { createDumbGrid, type DumbGridGroupHandle } from './solid'
 import {
@@ -306,19 +305,14 @@ export function DumbGrid(props: DumbGridProps) {
   const gapY = () => props.gapY ?? props.gap ?? DEFAULT_GAP
 
   // Раскладка: внешняя (props.layout), персистентная (storageKey) или в памяти.
-  // makePersisted зовём только когда ключ реально дан — иначе компонент писал бы
+  // Персист заводим только когда ключ реально дан — иначе компонент писал бы
   // в localStorage под общим именем и две сетки на странице делили бы один стор.
   const persisted = props.storageKey
-    ? makePersisted(createSignal<DumbGridLayout | null>(null), {
-        name: props.storageKey,
-        serialize: (l: DumbGridLayout | null) => JSON.stringify(l ?? []),
-        deserialize: (raw: string) => {
-          try {
-            const parsed = v.safeParse(LayoutSchema, JSON.parse(raw))
-            return parsed.success ? parsed.output : null   // битый стор → дефолт
-          } catch {
-            return null
-          }
+    ? createPersisted<DumbGridLayout | null>(props.storageKey, null, {
+        stringify: (l) => JSON.stringify(l ?? []),
+        parse: (raw) => {
+          const parsed = v.safeParse(LayoutSchema, JSON.parse(raw))
+          return parsed.success ? parsed.output : null     // битый стор → дефолт
         },
       })
     : null

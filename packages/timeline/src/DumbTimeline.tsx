@@ -15,7 +15,7 @@
 // курсором попиксельно. Так и бронируют — в сутках, а не в пикселях.
 
 import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
-import { effect, injectStyle, onMounted, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
+import { effect, flushNow, injectStyle, onMounted, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import { Temporal } from './temporal'
 import type { Span } from './timelineMath'
 import {
@@ -1172,6 +1172,11 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
               begin()
               if (upX !== null) {
                 update(upX)
+                // `finish` читает выделение, которое только что поставили.
+                // В Solid 2 запись применяется микротаском, и без флаша он
+                // увидел бы пустоту — жест, который был быстрее снимка IO,
+                // молча терялся.
+                flushNow()
                 finish(upX)
               } else {
                 update(last.x)

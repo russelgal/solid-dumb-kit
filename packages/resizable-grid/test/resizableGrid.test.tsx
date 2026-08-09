@@ -146,7 +146,7 @@ describe('тяга мышью', () => {
 })
 
 describe('персист', () => {
-  it('размеры переживают перемонтирование', () => {
+  it('размеры переживают перемонтирование', async () => {
     mount({ storageKey: 'rg-persist' })
     drag(colHandles()[0], 90)
     const after = cols()
@@ -156,6 +156,9 @@ describe('персист', () => {
     host.remove()
 
     mount({ storageKey: 'rg-persist' })
+    // сохранённое читается не в теле компонента, а следующей микрозадачей —
+    // Solid 2 флашит обновления микротаском
+    await settle()
     expect(cols()).toBe(after)
   })
 

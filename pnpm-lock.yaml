@@ -154,8 +154,8 @@ importers:
   packages/board:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/grid':
         specifier: workspace:*
@@ -167,8 +167,8 @@ importers:
   packages/context-menu:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -177,8 +177,8 @@ importers:
   packages/date-range:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -187,11 +187,11 @@ importers:
   packages/finder:
     dependencies:
       '@solid-primitives/upload':
-        specifier: ^0.1.5
-        version: 0.1.5(solid-js@1.9.14)
+        specifier: 1.0.0-next.2
+        version: 1.0.0-next.2(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/resizable-grid':
         specifier: workspace:*
@@ -209,11 +209,11 @@ importers:
   packages/gallery:
     dependencies:
       '@solid-primitives/upload':
-        specifier: ^0.1.5
-        version: 0.1.5(solid-js@1.9.14)
+        specifier: 1.0.0-next.2
+        version: 1.0.0-next.2(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -225,11 +225,11 @@ importers:
   packages/grid:
     dependencies:
       '@solid-primitives/storage':
-        specifier: 4.3.4
-        version: 4.3.4(solid-js@1.9.14)
+        specifier: 5.0.0-next.3
+        version: 5.0.0-next.3(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
       valibot:
         specifier: ^1.2.0
         version: 1.4.2(typescript@7.0.2)
@@ -241,8 +241,8 @@ importers:
   packages/grid-dnd:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/grid':
         specifier: workspace:*
@@ -254,8 +254,8 @@ importers:
   packages/lightbox:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -264,8 +264,8 @@ importers:
   packages/modal:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -276,17 +276,17 @@ importers:
   packages/props-table:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
 
   packages/resizable-grid:
     dependencies:
       '@solid-primitives/storage':
-        specifier: 4.3.4
-        version: 4.3.4(solid-js@1.9.14)
+        specifier: 5.0.0-next.3
+        version: 5.0.0-next.3(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
       valibot:
         specifier: ^1.2.0
         version: 1.4.2(typescript@7.0.2)
@@ -298,8 +298,8 @@ importers:
   packages/selection:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -308,14 +308,14 @@ importers:
   packages/shared:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
 
   packages/sortable:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -324,8 +324,8 @@ importers:
   packages/sortable-dnd:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -335,10 +335,10 @@ importers:
     dependencies:
       '@tanstack/solid-table':
         specifier: ^8.21.3
-        version: 8.21.3(solid-js@1.9.14)
+        version: 8.21.3(solid-js@2.0.0-beta.32)
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -350,8 +350,8 @@ importers:
   packages/timeline:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
       temporal-polyfill:
         specifier: ^1.0.3
         version: 1.0.3
@@ -363,8 +363,8 @@ importers:
   packages/toast:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -373,8 +373,8 @@ importers:
   packages/tree:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -386,8 +386,8 @@ importers:
   packages/user-manager:
     dependencies:
       solid-js:
-        specifier: ^1.8.0
-        version: 1.9.14
+        specifier: '>=2.0.0-beta.30'
+        version: 2.0.0-beta.32
     devDependencies:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
@@ -1259,16 +1259,20 @@ packages:
     resolution: {integrity: sha512-0JFs3V2y2M9tKW5na/qxe69Zv+uxLMO7QBbhxF/FHu/Gp2NFZAAL9tWl9PU02xxo07pb3G9FTyjNc6D5uZrJIg==}
     engines: {node: '>=18.0.0'}
 
-  '@solid-primitives/storage@4.3.4':
-    resolution: {integrity: sha512-GSxPAIuyxhJWOcv7n10iv3aid5oHN3KUgyA9IV0GYWlPpgyGs43aS9E85b0VXDLoH+D4ThNK8+2WEJ8B/S6Ccg==}
+  '@solid-primitives/event-listener@3.0.0-next.2':
+    resolution: {integrity: sha512-8qW6p0oNQmz6Mu68obiXsKkqaIFAGteWlV763UPgBurqqnWY5sFfn2vfikyX8ElaWbUvf1kNy/KYs+y3f1R9KA==}
     peerDependencies:
+      '@solidjs/web': ^2.0.0-beta.20
+      solid-js: ^2.0.0-beta.20
+
+  '@solid-primitives/storage@5.0.0-next.3':
+    resolution: {integrity: sha512-OKcDbSwkhJ8njbpZiOyvBr56hSOix5zCo8C9Ya3Ks8q3Au/g9/ubuH/CeCanczl7hXWgoPQG18SG0wcXc6jsrw==}
+    peerDependencies:
+      '@solidjs/web': ^2.0.0-beta.20
       '@tauri-apps/plugin-store': '*'
-      solid-js: ^1.6.12
-      solid-start: '*'
+      solid-js: ^2.0.0-beta.20
     peerDependenciesMeta:
       '@tauri-apps/plugin-store':
-        optional: true
-      solid-start:
         optional: true
 
   '@solid-primitives/upload@0.1.5':
@@ -1276,10 +1280,22 @@ packages:
     peerDependencies:
       solid-js: ^1.6.12
 
+  '@solid-primitives/upload@1.0.0-next.2':
+    resolution: {integrity: sha512-0c7u2jCqKVTNsstg03l/8YnibGZ1cYsOHn8MAuvILwCtVuzR6y58IG9Tm32fQ8E66m3FcsSlfXBzCZG9AXP5QA==}
+    peerDependencies:
+      '@solidjs/web': ^2.0.0-beta.20
+      solid-js: ^2.0.0-beta.20
+
   '@solid-primitives/utils@6.4.1':
     resolution: {integrity: sha512-ISSB5QX1qP2ynrheIpYwc4oKR5Ny4siNuUyf1qZniy+Il+p/PtDB0QK1Dnle8noiHpwRD3gpPdubOC3qI/Zamg==}
     peerDependencies:
       solid-js: ^1.6.12
+
+  '@solid-primitives/utils@7.0.0-next.3':
+    resolution: {integrity: sha512-6jBI0CT7QanKBqQxqlfk53Q0MyqyUf5td3guI52V2BUXAOtDByjoCsOEk28rxCC1PxtnBZUX6Lx3WWZCFVcLZg==}
+    peerDependencies:
+      '@solidjs/web': ^2.0.0-beta.20
+      solid-js: ^2.0.0-beta.20
 
   '@solidjs/router@1.0.0':
     resolution: {integrity: sha512-cCSk1hvgCowiMa9bzzYWHiLu1U4E22+DfJe6/rOwAyECKrxc3jrd5QnoW3sDDJtW+e077cz/M67bPl3DqOBw1Q==}
@@ -2474,9 +2490,6 @@ packages:
   slug@11.0.1:
     resolution: {integrity: sha512-VrM060OM/E7rdLQSnp6JHrzFfJFmqQBp0+TMhZStnEB8PfNliaZ9UWYjTHGHLUFVJorZ8TjVd/aKvIxHWU2O7g==}
     hasBin: true
-
-  solid-js@1.9.14:
-    resolution: {integrity: sha512-sAEXC0Kk0S1EDg+8ysEWJDbYhA3RRoEjwuySUGlKIemeo0I5YZfOyumNjNs9Sv3y2nmhD+0rW66ag2HsMuQiGQ==}
 
   solid-js@2.0.0-beta.32:
     resolution: {integrity: sha512-Ka7SHt7wn8JYn61sXf9neBhxIdVGes8qVIdTNgrOu7LN0SveQ6k1tGa7BCvhqvDgrciy8a9lh4oW6cZdaU3s3w==}
@@ -3777,27 +3790,36 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@solid-primitives/storage@4.3.4(solid-js@1.9.14)':
+  '@solid-primitives/event-listener@3.0.0-next.2(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.14)
-      solid-js: 1.9.14
+      '@solid-primitives/utils': 7.0.0-next.3(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)
+      '@solidjs/web': 2.0.0-beta.32(solid-js@2.0.0-beta.32)
+      solid-js: 2.0.0-beta.32
 
-  '@solid-primitives/upload@0.1.5(solid-js@1.9.14)':
+  '@solid-primitives/storage@5.0.0-next.3(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)':
     dependencies:
-      '@solid-primitives/utils': 6.4.1(solid-js@1.9.14)
-      solid-js: 1.9.14
+      '@solid-primitives/utils': 7.0.0-next.3(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)
+      '@solidjs/web': 2.0.0-beta.32(solid-js@2.0.0-beta.32)
+      solid-js: 2.0.0-beta.32
 
   '@solid-primitives/upload@0.1.5(solid-js@2.0.0-beta.32)':
     dependencies:
       '@solid-primitives/utils': 6.4.1(solid-js@2.0.0-beta.32)
       solid-js: 2.0.0-beta.32
 
-  '@solid-primitives/utils@6.4.1(solid-js@1.9.14)':
+  '@solid-primitives/upload@1.0.0-next.2(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)':
     dependencies:
-      solid-js: 1.9.14
+      '@solid-primitives/event-listener': 3.0.0-next.2(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)
+      '@solidjs/web': 2.0.0-beta.32(solid-js@2.0.0-beta.32)
+      solid-js: 2.0.0-beta.32
 
   '@solid-primitives/utils@6.4.1(solid-js@2.0.0-beta.32)':
     dependencies:
+      solid-js: 2.0.0-beta.32
+
+  '@solid-primitives/utils@7.0.0-next.3(@solidjs/web@2.0.0-beta.32(solid-js@2.0.0-beta.32))(solid-js@2.0.0-beta.32)':
+    dependencies:
+      '@solidjs/web': 2.0.0-beta.32(solid-js@2.0.0-beta.32)
       solid-js: 2.0.0-beta.32
 
   '@solidjs/router@1.0.0(solid-js@2.0.0-beta.32)':
@@ -3884,10 +3906,10 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 8.1.5(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)
 
-  '@tanstack/solid-table@8.21.3(solid-js@1.9.14)':
+  '@tanstack/solid-table@8.21.3(solid-js@2.0.0-beta.32)':
     dependencies:
       '@tanstack/table-core': 8.21.3
-      solid-js: 1.9.14
+      solid-js: 2.0.0-beta.32
 
   '@tanstack/table-core@8.21.3': {}
 
@@ -4849,12 +4871,6 @@ snapshots:
   slash@3.0.0: {}
 
   slug@11.0.1: {}
-
-  solid-js@1.9.14:
-    dependencies:
-      csstype: 3.2.3
-      seroval: 1.5.6
-      seroval-plugins: 1.5.6(seroval@1.5.6)
 
   solid-js@2.0.0-beta.32:
     dependencies:

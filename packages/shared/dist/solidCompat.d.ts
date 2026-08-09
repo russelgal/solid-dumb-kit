@@ -25,3 +25,13 @@ export declare function onMounted(fn: () => void): void;
 export declare function watch<T>(dep: () => T, fn: (value: T, prev: T | undefined) => void, opts?: {
     defer?: boolean;
 }): void;
+/**
+ * Применить накопленные обновления ПРЯМО СЕЙЧАС.
+ *
+ * Solid 2 копит записи и флашит их микротаском. Обычно это то, что нужно, но
+ * не в цепочке «записал — тут же прочитал»: движок жеста ставит выделение и
+ * сразу читает его, чтобы отдать наружу, и без флаша видит пустоту.
+ *
+ * На Solid 1 обновления и так синхронные — там это пустышка.
+ */
+export declare function flushNow(): void;

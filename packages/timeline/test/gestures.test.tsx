@@ -236,7 +236,11 @@ describe('протяжка по пустому месту', () => {
     ui.canvas().dispatchEvent(pev('pointerdown', { x: 100, y: 10 }))
     window.dispatchEvent(pev('pointermove', { x: 140, y: 10 }))
     window.dispatchEvent(pev('pointerup', { x: 140, y: 10 }))
-    await Promise.resolve()
+    // Отпустили РАНЬШЕ снимка: движок дожидается его и только потом отдаёт
+    // диапазон. Снимок приходит микротаском, а обновление после него — ещё
+    // одной очередью, поэтому ждём макрозадачу, а не только settle.
+    await new Promise((r) => setTimeout(r, 0))
+    await settle()
     expect(onRangeSelect).toHaveBeenCalledTimes(1)
     expect(onRangeSelect.mock.calls[0][0].from).toBe('2026-06-01T10:00')
   })

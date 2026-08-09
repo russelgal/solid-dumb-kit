@@ -24,7 +24,8 @@ export {
 } from './closeSide'
 
 // совместимость Solid 1 ↔ Solid 2: пропавшие в Solid 2 API берём только отсюда
-export { batch, effect, onMounted, watch } from './solidCompat'
+export { batch, effect, flushNow, onMounted, watch } from './solidCompat'
+export { createPersisted, type PersistedOptions } from './persisted'
 
 /** Разовый инжект стилей в `<head>` — переживает размонтирование компонента. */
 export { injectStyle } from './injectStyle'

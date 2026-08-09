@@ -34,7 +34,7 @@
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "dependencies": {
-    "@solid-primitives/upload": "^0.1.5"
+    "@solid-primitives/upload": "1.0.0-next.2"
   },
   "peerDependencies": {
     "solid-js": ">=2.0.0-beta.30"
