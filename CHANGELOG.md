@@ -1,9 +1,33 @@
 # Changelog
 
 Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии по [SemVer](https://semver.org/lang/ru/).
-Линия `0.x` рассчитана на **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
+Линия `0.x` рассчитана на **SolidJS 2** (`peerDependencies: solid-js >=2.0.0-beta.30`, `@solidjs/web`).
 
 ## [Unreleased]
+
+### Изменено — ломающее
+- **Кит переехал на SolidJS 2** (`solid-js >=2.0.0-beta.30` + `@solidjs/web` в
+  peer). На первой линии пакеты больше не ставятся. Что это значит на практике:
+  рендерер переехал из `solid-js/web` в отдельный пакет `@solidjs/web`
+  (сабпутя `./web` у `solid-js` нет вовсе), `<Suspense>` стал `<Loading>`,
+  а обновления флашатся микротаском — после ручного `setSignal()` в тестах
+  нужен `await`.
+  Специфичное для Solid собрано в одном слое (`@solid-dumb-kit/shared`):
+  `effect`, `watch`, `onMounted`, `batch`, `flushNow` — они работают на обеих
+  линиях, поэтому вернуть сборку под Solid 1 недорого. Движки жестов
+  (`sortableCore`, `selectionCore`, `gridCore`, `dndCore`) от фреймворка не
+  зависели и не изменились вовсе.
+- **`DumbTable` больше не на TanStack** (`@tanstack/solid-table` выкинут:
+  v8 тянет `solid-js/store`, которого во второй линии нет, в v9 API переписан
+  целиком). Сортировка своя — у пакета не осталось рантайм-зависимостей.
+  Поведение сохранено: три состояния заголовка, числовые колонки начинают с
+  `desc`, `sortDescFirst`/`noSortRemoval`/`onSort` работают как прежде.
+  Сортировка стала **стабильной**, пустые значения всегда уходят в конец, а
+  строки сравниваются с `numeric` («файл2» раньше «файл10»).
+- **Мёртвые зависимости убраны**: `@solid-primitives/storage` заменён своим
+  `createPersisted` (версия под Solid 2 молча не восстанавливала сохранённое),
+  `@solid-primitives/upload` — своим `createFilePicker`. Пакеты `finder`,
+  `gallery`, `grid`, `resizable-grid` больше их не тянут.
 
 ### Добавлено
 - **Центр уведомлений** (`@solid-dumb-kit/toast`): `DumbToastCenter` — панель

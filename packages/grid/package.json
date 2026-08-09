@@ -34,7 +34,6 @@
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "dependencies": {
-    "@solid-primitives/storage": "5.0.0-next.3",
     "valibot": "^1.2.0"
   },
   "peerDependencies": {

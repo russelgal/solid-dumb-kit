@@ -1,7 +1,7 @@
 {
   "name": "@solid-dumb-kit/table",
   "version": "0.5.0",
-  "description": "Таблица на TanStack: сортировка, драг строк, пагинатор",
+  "description": "Таблица «принеси свои колонки»: сортировка, драг строк, пагинатор",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -32,10 +32,6 @@
   "scripts": {
     "build": "tsup --config ../../configs/tsup.ts && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsup --config ../../configs/tsup.ts --watch"
-  },
-  "dependencies": {
-    "@tanstack/solid-table": "^9.1.2",
-    "@tanstack/table-core": "9.1.2"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-beta.30",

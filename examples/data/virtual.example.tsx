@@ -20,14 +20,8 @@
 // не даёт элементу расти дальше ~17–33 млн (у каждого свой предел). Дальше
 // распорка молча перестаёт расти, и полоса прокрутки начинает врать.
 // `createVirtualizer` зажимает её потолком и растягивает прокрутку сам.
-import { For, Show, createEffect, createSignal, onCleanup, untrack } from 'solid-js'
-import {
-  createRowIndex,
-  createVirtualizer,
-  onMounted,
-  type RowIndex,
-  type VirtualRange,
-} from '@solid-dumb-kit/shared'
+import { For, Show, createSignal, onCleanup, untrack } from 'solid-js'
+import { createRowIndex, createVirtualizer, effect, onMounted, type RowIndex, type VirtualRange } from '@solid-dumb-kit/shared'
 import { fmtNum } from '@solid-dumb-kit/utils'
 import { Bar, Btn, Check, Note, Pick, Seg, Code, Doc, Props } from '../_controls'
 // Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
@@ -149,7 +143,7 @@ export default function VirtualExample() {
   }
 
   /** движок порядка пересоздаётся, когда меняют поток: он у него один на жизнь */
-  createEffect(() => {
+  effect(() => {
     const useInline = inline()
     const engine = createRowIndex({
       inline: useInline,
@@ -175,7 +169,7 @@ export default function VirtualExample() {
   })
 
   /** сменилось число строк — данные едут в движок заново */
-  createEffect(() => {
+  effect(() => {
     const v = values()
     untrack(() => {
       index?.setData({ count: v.length, columns: { value: { kind: 'number', values: v } } })
@@ -184,7 +178,7 @@ export default function VirtualExample() {
   })
 
   /** сменился запрос — считаем порядок; предыдущий расчёт движок бросит сам */
-  createEffect(() => {
+  effect(() => {
     needle()
     dir()
     untrack(ask)
@@ -198,7 +192,7 @@ export default function VirtualExample() {
   onMounted(() => {
     // ось движок берёт при создании (она решает, что читать — `scrollTop` или
     // `scrollLeft`), поэтому на её смену виртуализатор пересоздаётся
-    createEffect(() => {
+    effect(() => {
       const ax = axis()
       const v = createVirtualizer({
         count: () => shown(),
@@ -217,7 +211,7 @@ export default function VirtualExample() {
       })
       // окно зависит от числа видимых строк и от режима — пересчитываем явно,
       // а не опросом по таймеру
-      createEffect(() => {
+      effect(() => {
         shown()
         mode()
         v.refresh()
@@ -236,7 +230,7 @@ export default function VirtualExample() {
    * остаток от деления на размер пула равен `s`: при сдвиге окна на строку
    * меняется ровно один слот, а не всё окно.
    */
-  createEffect(() => {
+  effect(() => {
     if (mode() !== 'pool') return
     const r = range()
     const need = Math.max(0, r.end - r.start)

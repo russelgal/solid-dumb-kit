@@ -8,7 +8,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 - **[ResizableGrid](docs/ResizableGrid.md)** — resizable columns/rows panel layout, sizes persisted to `localStorage`.
 - **[DumbSortable](docs/DumbSortable.md)** — zero-dep FLIP drag-reorder (vertical list **or** grid), no reflow during drag. Ships as a declarative component and a low-level `createDumbSortable` primitive.
 - **[DumbTree](docs/DumbTree.md)** — sidebar tree *or* flat list with fuzzy search, sorting, persisted expand state and optional drag-reorder. Styled for Tailwind + daisyUI.
-- **[DumbTable](docs/DumbTable.md)** — bring-your-own-columns table: sorting (client or server) on TanStack Table, row drag-reorder, pagination.
+- **[DumbTable](docs/DumbTable.md)** — bring-your-own-columns table: sorting (client or server), row drag-reorder, pagination.
 - **[DumbGallery](docs/DumbGallery.md)** — an image gallery: pick or drop files, look, reorder, upload. Uploads run through a queue and can be cancelled; the gallery never sees storage keys — only a signed URL from your server.
 - **[DumbBoard](docs/DumbBoard.md)** — a board of sections: blocks move between sections, the sections themselves reorder and resize. Inside a section the DOM is never touched — only CSS `order` moves, and FLIP plays out the rest.
 - **[DumbGrid](docs/DumbGrid.md)** — dashboard grid: blocks sized in whole columns/rows, drag and resize in grid steps, three layout modes (`flow` / `dense` / free `{x,y}`), optional visible grid, layout persisted. No element measurements during a gesture.
@@ -25,7 +25,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 
 **🔗 Live demo:** https://solid-dumb-kit.vercel.app/ (mirrored on GitHub Pages: https://russelgal.github.io/solid-dumb-kit/) · runnable source in [`examples/`](examples/).
 
-Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
+Version `0.x` targets **SolidJS 2** (`peerDependencies: solid-js >=2.0.0-beta.30`, `@solidjs/web`). The engines are framework-agnostic and the Solid-specific bits go through one compat layer (`@solid-dumb-kit/shared`), so a Solid 1 line stays cheap to bring back — but the published packages are built against the second line.
 
 **📓 Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
@@ -35,7 +35,7 @@ Version `0.x` targets **SolidJS 1.x** (`peerDependencies: solid-js ^1.8.0`).
 
 ## Install
 
-The kit ships as one package per component, each with its own version and its own tag. Install only what you need: `@solid-dumb-kit/table` won't drag `@tanstack/solid-table` into a project that just wants a sortable list, and the DnD packages have no runtime deps at all — they run on bare browser events.
+The kit ships as one package per component, each with its own version and its own tag. Install only what you need: `@solid-dumb-kit/finder` won't drag `valibot` into a project that just wants a sortable list, and the table and DnD packages have no runtime deps at all — they run on bare browser events.
 
 **Not on npm yet** — packages install straight from GitHub, as a subdirectory of the repo:
 
@@ -69,8 +69,8 @@ Packages split by **how the gesture is driven**. That's the one division that ma
 | --- | --- | --- |
 | `@solid-dumb-kit/sortable` | `DumbSortable`, `createSortableGroup` — list, grid, dragging between columns | — |
 | `@solid-dumb-kit/selection` | `SelectionArea` — marquee selection | — |
-| `@solid-dumb-kit/grid` | `DumbGrid` — dashboard grid, nesting, transfer between grids | `@solid-primitives/storage`, `valibot` |
-| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — resizable panels | `@solid-primitives/storage`, `valibot` |
+| `@solid-dumb-kit/grid` | `DumbGrid` — dashboard grid, nesting, transfer between grids | `valibot` |
+| `@solid-dumb-kit/resizable-grid` | `ResizableGrid` — resizable panels | `valibot` |
 
 **Native DnD** — the browser picks the zone, no touch support:
 
@@ -78,22 +78,22 @@ Packages split by **how the gesture is driven**. That's the one division that ma
 | --- | --- | --- |
 | `@solid-dumb-kit/sortable-dnd` | `DumbSortableDnd` — list and tile grid | — |
 | `@solid-dumb-kit/grid-dnd` | `DumbGridDnd` — grid, two boards, transfer between them | — |
-| `@solid-dumb-kit/gallery` | `DumbGallery` — images: picking, order, queued uploads | `@solid-primitives/upload` |
+| `@solid-dumb-kit/gallery` | `DumbGallery` — images: picking, order, queued uploads | — |
 | `@solid-dumb-kit/board` | `DumbBoard` — sections with blocks, moves between them, section resize | — |
 
 **Data and utilities** — the gesture isn't the point:
 
 | package | what's inside | pulls in |
 | --- | --- | --- |
-| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | `@tanstack/solid-table` |
-| `@solid-dumb-kit/tree` | `DumbTree` — tree and flat list | `@solid-primitives/storage` |
-| `@solid-dumb-kit/timeline` | `DumbTimeline` — booking chart: nights, hours, day rentals | — |
+| `@solid-dumb-kit/table` | `DumbTable`, `DumbPagination` | — |
+| `@solid-dumb-kit/tree` | `DumbTree` — tree and flat list | — |
+| `@solid-dumb-kit/timeline` | `DumbTimeline` — booking chart: nights, hours, day rentals | `temporal-polyfill` |
 | `@solid-dumb-kit/date-range` | `DumbDateRange`, `DumbDateTimeRange`, `DumbTimeSelect` — day, period, period with time | — |
 | `@solid-dumb-kit/modal` | `DumbModal` — native `<dialog>` in the top layer | — |
 | `@solid-dumb-kit/lightbox` | `DumbLightbox` — full-screen image viewer | — |
 | `@solid-dumb-kit/context-menu` | `DumbContextMenu`, `DumbPopover` — right click and cards at a point | — |
 | `@solid-dumb-kit/toast` | `DumbToaster`, `toast` — messages and questions | — |
-| `@solid-dumb-kit/finder` | `DumbFinder` — files in a store: folders, selection, upload, move | `@solid-primitives/upload` |
+| `@solid-dumb-kit/finder` | `DumbFinder` — files in a store: folders, selection, upload, move | — |
 | `@solid-dumb-kit/user-manager` | `DumbUserManager` — access for staff: roles, bans, passwords, sessions | — |
 | `@solid-dumb-kit/props-table` | `DumbPropsTable` — a props table straight from the type | — |
 | `@solid-dumb-kit/odata-1c` | 1C OData client — no Solid needed | — |
@@ -150,7 +150,7 @@ Runnable examples (one per component) live in [`examples/`](examples/).
 
 ## Dependencies
 
-`solid-js ^1.8.0` is the only peer. Runtime deps are small and scoped: `@solid-primitives/storage` + `valibot` (ResizableGrid, DumbTree, DumbGrid), `@tanstack/solid-table` (DumbTable), `slug` (`genSlug`), and `fflate` — the latter behind a dynamic `import()`, so it loads only when a ZIP is actually unpacked. `Odata1C` adds nothing at all — it is plain `fetch`.
+`solid-js` and `@solidjs/web` (Solid 2) are the only peers. Runtime deps are small and scoped: `valibot` (ResizableGrid, DumbGrid — layout validation), `temporal-polyfill` (DumbTimeline), `slug` (`genSlug`), and `fflate` — the latter behind a dynamic `import()`, so it loads only when a ZIP is actually unpacked. `Odata1C` adds nothing at all — it is plain `fetch`.
 
 ## License
 

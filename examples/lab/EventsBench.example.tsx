@@ -39,9 +39,10 @@
 // там экономятся уже единицы миллисекунд на монтировании и снятии.
 
 import { createSignal, For, onCleanup, Show } from 'solid-js'
-// solid-js/web тут можно: запрет на этот сабпуть касается пакетов кита, а
-// витрина и так им пользуется — на нём стоит её точка входа
-import { render } from 'solid-js/web'
+// Рендерер тут нужен свой: замер монтирует и снимает деревья руками. Во
+// второй линии он живёт в отдельном пакете — сабпутя `solid-js/web` больше
+// нет, и сборка на нём падала.
+import { render } from '@solidjs/web'
 import { Bar, Btn, Note, Pick } from '../_controls'
 
 type Row = { id: number; label: string }

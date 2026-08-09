@@ -2,7 +2,7 @@
 
 # DumbTable
 
-A **bring-your-own-columns** table: describe columns as plain objects, get sorting (client-side *or* server-side), row drag-reorder and pagination. Sorting is [`@tanstack/solid-table`](https://tanstack.com/table) under the hood; dragging is the kit's own `sortableCore`, so rows move on `transform` with no reflow.
+A **bring-your-own-columns** table: describe columns as plain objects, get sorting (client-side *or* server-side), row drag-reorder and pagination. Sorting is the kit's own — no table library underneath, no runtime deps at all; dragging is the kit's own `sortableCore`, so rows move on `transform` with no reflow.
 
 ```tsx
 import { DumbTable, DumbPagination, type DumbColumn } from 'solid-dumb-kit'
@@ -58,7 +58,7 @@ const columns: DumbColumn<Product>[] = [
 | `noSortRemoval` | `boolean` | `false` | Drop the third click: sorting stays `asc ⇄ desc`. |
 | `viewTransition` | `boolean` | `false` | Animate client-side sorting via View Transitions (needs a per-row `view-transition-name`). |
 | `animate` | `boolean` | on, minus `prefers-reduced-motion` | Animate row dragging. |
-| `sortDescFirst` | `boolean` | TanStack default | Direction of the *first* click. By default text columns start `asc` and numeric ones `desc`; see below. |
+| `sortDescFirst` | `boolean` | by value type | Direction of the *first* click. By default text columns start `asc` and numeric ones `desc`; see below. |
 | `onReorder` | `(from, to) => void` | — | Enables drag-reorder and the handle column. Indices are into the **displayed** order. |
 | `handle` | `JSX.Element \| false` | `⠿` | Drag handle content. `false` drops the handle column and drags the whole row. |
 | `dragThreshold` | `number` | `0` | Pixels to move before a drag starts — worth setting when dragging the whole row. |
@@ -81,15 +81,15 @@ Pass `onSort` and the table stops reordering anything itself: it reports the cli
   onSort={(sort, order) => navigate({ search: { sort, order } })} />
 ```
 
-Omit `onSort` and rows are sorted in the browser via TanStack's sorted row model.
+Omit `onSort` and rows are sorted in the browser. The sort is **stable** — equal values keep their original order, so rows never jump around between clicks. Empty values (`null`, `undefined`, `''`) always land last, in both directions; strings compare with `localeCompare` in `numeric` mode, so `file2` comes before `file10`.
 
 **Careful when you paginate.** The table sorts exactly the rows you hand it — so if you slice a page yourself and pass that, client-side sorting only reorders the visible page. With external pagination, sort externally too: keep `sort`/`order` in your own state, sort the full array, *then* slice. The example does it this way.
 
 **Three states.** Clicking a header cycles `asc → desc → no sorting`, so you can always get back to the data's own order. In server mode the reset arrives as `onSort(null, null)`. Pass `noSortRemoval` to keep the old two-state toggle.
 
-**First-click direction.** TanStack starts text columns ascending and numeric columns descending (usually what you want: “priciest first”). Set `sortDescFirst={false}` to make every column start ascending, or `true` for the opposite.
+**First-click direction.** Text columns start ascending and numeric ones descending (usually what you want: “priciest first”) — the type is read off the first non-empty value in the column. Set `sortDescFirst={false}` to make every column start ascending, or `true` for the opposite.
 
-**A gotcha worth knowing:** every column gets an `accessorFn` internally even in server mode. Without one TanStack treats a column as a display column, `getCanSort()` returns `false`, and sorting silently does nothing.
+**Where the value comes from.** By default it's `row[key]`. Computed columns — a nested field, a sum, a formatted date — pass `value: (row) => …`; `render` is for display only and never affects the order.
 
 ## Drag-reorder
 

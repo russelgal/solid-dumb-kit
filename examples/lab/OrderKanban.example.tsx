@@ -13,8 +13,8 @@
 // чисел: где левый край, где верх первого места и какой шаг. Место k — это
 // `top + k * step`, а состав колонок на эти три числа не влияет: убрали карточку
 // из колонки — места остались на прежних координатах, просто последнее опустело.
-import { createSignal, onCleanup, onMount, For } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
+import { createSignal, onCleanup, For } from 'solid-js'
+import { createAutoScroller, createFlip, onMounted, type Flip } from '@solid-dumb-kit/shared'
 
 type Card = { id: string; text: string; tag: string }
 
@@ -132,7 +132,7 @@ export default function OrderKanbanExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMount(() => {
+  onMounted(() => {
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true

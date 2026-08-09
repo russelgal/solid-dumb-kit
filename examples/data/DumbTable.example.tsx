@@ -1,4 +1,4 @@
-// DumbTable — bring-your-own-columns table on @tanstack/solid-table:
+// DumbTable — bring-your-own-columns table with its own sorting:
 // click a header to sort, drag rows by the ⠿ handle, paginate.
 import { createSignal, createMemo } from 'solid-js'
 import { SelectionArea } from '@solid-dumb-kit/selection'
@@ -23,7 +23,7 @@ const TABLE_PROPS = [
   {
     name: 'sortDescFirst',
     type: 'boolean',
-    def: 'как у TanStack',
+    def: 'по типу значения',
     about: 'Направление первого клика. По умолчанию текстовые колонки начинают с asc, числовые с desc.',
   },
   { name: 'onReorder', type: '(from, to) => void', about: 'Включает драг строк. Индексы — в текущем показанном порядке.' },
@@ -207,8 +207,8 @@ export default function DumbTableExample() {
   return (
     <div class="p-5 text-base-content">
       <p class="mb-3 text-[13px] text-base-content">
-        1000 строк, колонки описаны обычными объектами. Клик по заголовку сортирует (под капотом
-        TanStack), третий клик сбрасывает сортировку. Протяжка за <b>⠿</b> переставляет строку —
+        1000 строк, колонки описаны обычными объектами. Клик по заголовку сортирует, третий клик
+        сбрасывает сортировку. Протяжка за <b>⠿</b> переставляет строку —
         ручка гаснет, пока активна сортировка, потому что показанный порядок уже не совпадает
         с порядком данных. Протяжка по самим строкам рисует рамку выделения: это{' '}
         <code>SelectionArea</code> поверх таблицы, строки она опознаёт по <code>data-key</code>,
@@ -297,9 +297,9 @@ export default function DumbTableExample() {
 
       <Doc title="Колонки">
         <p>
-          Колонка — это ключ, заголовок и, если нужно, своя отрисовка ячейки. Модель строк и
-          сортировку держит TanStack Table: своего мы не пишем принципиально — это ровно та задача,
-          где чужая проверенная библиотека лучше собственной.
+          Колонка — это ключ, заголовок и, если нужно, своя отрисовка ячейки. Сортировка своя:
+          табличной библиотеки под капотом нет вовсе, и рантайм-зависимостей у пакета тоже нет.
+          Сравнение — стабильное, пустые значения всегда в конце.
         </p>
       </Doc>
       <Code title="Таблица" code={SNIP.basic} />
@@ -331,11 +331,11 @@ export default function DumbTableExample() {
       </Doc>
       <Code title="Страницы" code={SNIP.pagination} />
 
-      <Doc title="Грабли TanStack">
+      <Doc title="Откуда берётся значение">
         <p>
-          Самая частая: колонке нужен доступ к значению. Без него TanStack считает её
-          display-колонкой, <code>getCanSort()</code> всегда <code>false</code>, и сортировка молча
-          выключается — даже с <code>sortable: true</code>.
+          По умолчанию — <code>row[key]</code>. Для вычисляемых колонок (вложенное поле, сумма,
+          отформатированная дата) передавайте <code>value</code>: <code>render</code> отвечает
+          только за показ и на порядок не влияет.
         </p>
       </Doc>
       <Code title="Что ломается чаще всего" code={SNIP.gotcha} />

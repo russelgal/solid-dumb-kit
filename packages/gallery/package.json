@@ -33,9 +33,6 @@
     "build": "tsup --config ../../configs/tsup.ts && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
-  "dependencies": {
-    "@solid-primitives/upload": "1.0.0-next.2"
-  },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-beta.30",
     "solid-js": ">=2.0.0-beta.30"

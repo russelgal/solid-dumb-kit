@@ -18,8 +18,8 @@
 // Позиции мест снимаются РАЗ (IntersectionObserver, off-main-thread) и потом
 // только пересчитываются на изменение ширины. В момент перекладки не читается
 // ничего: смещение — это разница двух известных мест.
-import { createSignal, createEffect, onCleanup, onMount, For, Show } from 'solid-js'
-import { createFlip, createAutoScroller, type Flip } from '@solid-dumb-kit/shared'
+import { createSignal, onCleanup, For, Show } from 'solid-js'
+import { createAutoScroller, createFlip, effect, onMounted, type Flip } from '@solid-dumb-kit/shared'
 
 const HUE = (i: number) => `oklch(0.75 0.12 ${(i * 41) % 360})`
 
@@ -50,7 +50,7 @@ function Deck(props: DeckProps) {
   let slots: Array<Slot> = []
   let flip: Flip = createFlip(true)
 
-  createEffect(() => { flip = createFlip(animate()) })
+  effect(() => { flip = createFlip(animate()) })
 
   // Автопрокрутка — готовая из кита. Своего кода тут ноль: сказали, от какого
   // элемента искать прокручиваемых предков, и когда жест закончился. Позицию
@@ -89,7 +89,7 @@ function Deck(props: DeckProps) {
     for (const t of targets) io.observe(t)
   }
 
-  onMount(() => {
+  onMounted(() => {
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true

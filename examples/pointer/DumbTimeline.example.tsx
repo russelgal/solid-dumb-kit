@@ -14,7 +14,7 @@ import { DumbDateRange, DumbTimeSelect, today, type Day, type Time } from "@soli
 import { DumbModal } from "@solid-dumb-kit/modal";
 import { DumbToaster, toast } from "@solid-dumb-kit/toast";
 import { DumbContextMenu, DumbPopover } from "@solid-dumb-kit/context-menu";
-import { createUndoStack } from "@solid-dumb-kit/shared";
+import { createUndoStack, onMounted } from '@solid-dumb-kit/shared';
 import { Code, Doc, Note, Props } from "../_controls";
 // Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
 // сюда приезжает уже готовая разметка (playground/snippets.ts).
@@ -89,7 +89,7 @@ export default function DumbTimelineExample() {
   };
 
   // «назад» и «вперёд» должны переключать режим, а не только вкладку витрины
-  onMount(() => {
+  onMounted(() => {
     const onPop = () => setModeRaw(fromUrl());
     window.addEventListener("popstate", onPop);
     onCleanup(() => window.removeEventListener("popstate", onPop));
