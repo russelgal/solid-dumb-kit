@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/gallery",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Галерея на сортабле: локальный выбор файлов и заливка по подписанной ссылке",
   "license": "MIT",
   "type": "module",

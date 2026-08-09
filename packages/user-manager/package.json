@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/user-manager",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Управление пользователями: выдача доступа, роли, блокировка, пароли, сессии",
   "license": "MIT",
   "type": "module",

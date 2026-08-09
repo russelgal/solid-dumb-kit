@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/timeline",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Шахматка: ресурсы × дни, полосы с драгом и ресайзом по сетке",
   "license": "MIT",
   "type": "module",

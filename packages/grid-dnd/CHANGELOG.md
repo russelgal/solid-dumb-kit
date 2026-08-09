@@ -1,5 +1,27 @@
 # @solid-dumb-kit/grid-dnd
 
+## 0.7.0
+
+### Minor Changes
+
+- 49e104b: Основная линия — SolidJS 2
+
+  `peerDependencies` пакетов теперь `solid-js >=2.0.0-beta.30` и `@solidjs/web`:
+  на первой линии Solid пакеты больше не ставятся. Рендерер во второй линии живёт
+  в отдельном пакете — сабпутя `solid-js/web` нет вовсе, — а обновления флашатся
+  микротаском, поэтому чтение DOM сразу после действия видит старое состояние.
+
+  Всё специфичное для фреймворка собрано в одном слое (`@solid-dumb-kit/shared`:
+  `effect`, `watch`, `onMounted`, `batch`, `flushNow`), и слой работает на обеих
+  линиях — вернуть сборку под Solid 1 недорого. Движки жестов (`sortableCore`,
+  `selectionCore`, `gridCore`, `sortDndCore`) от фреймворка не зависели и не
+  изменились вовсе.
+
+  `@solid-primitives/storage` и `@solid-primitives/upload` выкинуты: первый под
+  Solid 2 молча не восстанавливал сохранённое, второй ломался дважды подряд.
+  Замены свои — `createPersisted` и `createFilePicker` в `shared`. Пакеты
+  `finder`, `gallery`, `grid` и `resizable-grid` больше их не тянут.
+
 ## 0.6.1
 
 ### Patch Changes

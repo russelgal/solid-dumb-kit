@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/modal",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Модальное окно на нативном dialog: top layer, Esc, возврат фокуса",
   "license": "MIT",
   "type": "module",
