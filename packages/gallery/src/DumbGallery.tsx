@@ -25,7 +25,8 @@
 //
 // Ключей от хранилища галерея не видит и видеть не должна — см. `presigned.ts`.
 
-import { Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { createDropzone, createFileUploader, type UploadFile } from '@solid-primitives/upload'
 import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
 import {

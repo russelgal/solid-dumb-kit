@@ -16,7 +16,8 @@
 // позиционируем.
 
 // watch — из shared/solidCompat: в Solid 2 `on` не экспортируется
-import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { injectStyle, restoreTextSelection, suppressTextSelection, watch } from '@solid-dumb-kit/shared'
 import { DumbDateRange } from './DumbDateRange'
 import { DumbTimeSelect } from './DumbTimeSelect'

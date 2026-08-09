@@ -1,9 +1,9 @@
 // src/DumbDateRange.tsx
-import { For, Show, createMemo, createSignal, onCleanup } from "solid-js";
+import { For, Show, createMemo, createSignal as createSignal2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 var SOLID_2 = !("batch" in solid);
 function watch(dep, fn, opts) {
   let first = true;
@@ -144,11 +144,11 @@ var STYLES = `
 `;
 function DumbDateRange(props) {
   injectStyle("date-range", STYLES);
-  const [shownMonth, setShownMonth] = createSignal(
+  const [shownMonth, setShownMonth] = createSignal2(
     startOfMonth(props.value()?.from ?? today())
   );
-  const [pending, setPending] = createSignal(null);
-  const [hover, setHover] = createSignal(null);
+  const [pending, setPending] = createSignal2(null);
+  const [hover, setHover] = createSignal2(null);
   const busy = () => props.busy?.() ?? [];
   const marks = () => props.marks?.() ?? {};
   const shownRange = createMemo(() => {
@@ -329,7 +329,7 @@ function DumbDateRange(props) {
 }
 
 // src/DumbDateTimeRange.tsx
-import { For as For3, Show as Show3, createMemo as createMemo3, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
+import { For as For3, Show as Show3, createMemo as createMemo3, createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
 
 // src/DumbTimeSelect.tsx
 import { For as For2, Show as Show2, createMemo as createMemo2 } from "solid-js";
@@ -524,11 +524,11 @@ function DumbDateTimeRange(props) {
   injectStyle("date-time-range", STYLES2);
   const step = () => props.step ?? 30;
   const busy = () => props.busy?.() ?? [];
-  const [days, setDays] = createSignal2(
+  const [days, setDays] = createSignal3(
     props.value() ? { from: props.value().from.day, to: props.value().to.day } : null
   );
-  const [startTime, setStartTime] = createSignal2(props.value()?.from.time ?? null);
-  const [endTime, setEndTime] = createSignal2(props.value()?.to.time ?? null);
+  const [startTime, setStartTime] = createSignal3(props.value()?.from.time ?? null);
+  const [endTime, setEndTime] = createSignal3(props.value()?.to.time ?? null);
   watch(
     () => {
       const v = props.value();
@@ -610,8 +610,8 @@ function DumbDateTimeRange(props) {
     if (!d || !ft) return false;
     return absMin({ day: d.to, time }, d.from) <= toMin(ft);
   };
-  const [dragFrom, setDragFrom] = createSignal2(null);
-  const [dragTo, setDragTo] = createSignal2(null);
+  const [dragFrom, setDragFrom] = createSignal3(null);
+  const [dragTo, setDragTo] = createSignal3(null);
   let hitRaf = 0;
   let hitX = 0;
   let hitY = 0;

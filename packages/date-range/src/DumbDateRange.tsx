@@ -12,7 +12,8 @@
 // Дата здесь — строка `YYYY-MM-DD`, а не `Date`: см. `dateMath.ts`, там же
 // объяснено, почему это не придирка.
 
-import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import {
   addDays, addMonths, checkRange, diffDays, inRange, monthGrid, orderRange, reachTo, sameMonth,

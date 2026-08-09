@@ -1,10 +1,9 @@
 // src/DumbGrid.tsx
-import { createMemo, createSignal as createSignal2, For, Show } from "solid-js";
-import { makePersisted } from "@solid-primitives/storage";
+import { createMemo, createSignal as createSignal3, For, Show } from "solid-js";
 import * as v from "valibot";
 
 // src/solid.ts
-import { createSignal, onCleanup } from "solid-js";
+import { createSignal as createSignal2, onCleanup } from "solid-js";
 
 // src/gridMath.ts
 function clamp(n, lo, hi) {
@@ -222,7 +221,7 @@ function fitSpan(args) {
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -1369,7 +1368,7 @@ function createGridGroupEngine(opts) {
 
 // src/solid.ts
 function createDumbGrid(opts) {
-  const [active, setActive] = createSignal(null);
+  const [active, setActive] = createSignal2(null);
   const engine = createGridEngine({
     ...opts,
     onActive: (state) => {
@@ -1386,8 +1385,8 @@ function createDumbGrid(opts) {
   };
 }
 function createDumbGridGroup(opts) {
-  const [active, setActive] = createSignal(null);
-  const [over, setOver] = createSignal(null);
+  const [active, setActive] = createSignal2(null);
+  const [over, setOver] = createSignal2(null);
   const engine = createGridGroupEngine({
     ...opts,
     onActive: (state) => {
@@ -1514,19 +1513,14 @@ function DumbGrid(props) {
   const rowH = () => props.rowHeight ?? DEFAULT_ROW_H;
   const gapX = () => props.gapX ?? props.gap ?? DEFAULT_GAP;
   const gapY = () => props.gapY ?? props.gap ?? DEFAULT_GAP;
-  const persisted = props.storageKey ? makePersisted(createSignal2(null), {
-    name: props.storageKey,
-    serialize: (l) => JSON.stringify(l ?? []),
-    deserialize: (raw) => {
-      try {
-        const parsed = v.safeParse(LayoutSchema, JSON.parse(raw));
-        return parsed.success ? parsed.output : null;
-      } catch {
-        return null;
-      }
+  const persisted = props.storageKey ? createPersisted(props.storageKey, null, {
+    stringify: (l) => JSON.stringify(l ?? []),
+    parse: (raw) => {
+      const parsed = v.safeParse(LayoutSchema, JSON.parse(raw));
+      return parsed.success ? parsed.output : null;
     }
   }) : null;
-  const [memory, setMemory] = createSignal2(null);
+  const [memory, setMemory] = createSignal3(null);
   const saved = () => props.layout ?? (persisted ? persisted[0]() : memory());
   const layout = createMemo(() => mergeLayout(saved(), props.items, cols(), mode()));
   const commit = (next) => {

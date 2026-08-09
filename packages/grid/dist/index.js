@@ -1,6 +1,5 @@
 import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, memo, setAttribute, className, style, template } from 'solid-js/web';
 import { createSignal, onCleanup, createMemo, Show, For } from 'solid-js';
-import { makePersisted } from '@solid-primitives/storage';
 import * as v from 'valibot';
 
 // src/DumbGrid.tsx
@@ -1525,16 +1524,11 @@ function DumbGrid(props) {
   const rowH = () => props.rowHeight ?? DEFAULT_ROW_H;
   const gapX = () => props.gapX ?? props.gap ?? DEFAULT_GAP;
   const gapY = () => props.gapY ?? props.gap ?? DEFAULT_GAP;
-  const persisted = props.storageKey ? makePersisted(createSignal(null), {
-    name: props.storageKey,
-    serialize: (l) => JSON.stringify(l ?? []),
-    deserialize: (raw) => {
-      try {
-        const parsed = v.safeParse(LayoutSchema, JSON.parse(raw));
-        return parsed.success ? parsed.output : null;
-      } catch {
-        return null;
-      }
+  const persisted = props.storageKey ? createPersisted(props.storageKey, null, {
+    stringify: (l) => JSON.stringify(l ?? []),
+    parse: (raw) => {
+      const parsed = v.safeParse(LayoutSchema, JSON.parse(raw));
+      return parsed.success ? parsed.output : null;
     }
   }) : null;
   const [memory, setMemory] = createSignal(null);

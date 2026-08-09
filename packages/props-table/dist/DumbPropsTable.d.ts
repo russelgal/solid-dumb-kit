@@ -22,4 +22,4 @@ export interface DumbPropsTableProps extends DumpOptions {
     /** не рисовать шапку: в узкой панели она только занимает строку */
     headless?: boolean;
 }
-export declare function DumbPropsTable(props: DumbPropsTableProps): any;
+export declare function DumbPropsTable(props: DumbPropsTableProps): import("@solidjs/web/jsx-runtime").JSX.Element;

@@ -1,9 +1,9 @@
 // src/DumbContextMenu.tsx
-import { For, Show, createSignal, onCleanup } from "solid-js";
+import { For, Show, createSignal as createSignal2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 var configured = "auto";
 var apple = null;
 function isApplePlatform() {
@@ -98,9 +98,9 @@ var STYLES = `
                    position-try-fallbacks: flip-inline, flip-block, flip-inline flip-block }
 `;
 function Panel(props) {
-  const [active, setActive] = createSignal(-1);
-  const [sub, setSub] = createSignal(null);
-  const [box, setBox] = createSignal(null);
+  const [active, setActive] = createSignal2(-1);
+  const [sub, setSub] = createSignal2(null);
+  const [box, setBox] = createSignal2(null);
   let el;
   const panelAnchor = `--dumb-menu-p${props.depth}`;
   const itemAnchor = `--dumb-menu-i${props.depth}`;
@@ -280,7 +280,7 @@ function DumbContextMenu(props) {
   injectStyle("menu", STYLES);
   const HOLD = 250;
   const TOL = 6;
-  const [at, setAt] = createSignal(null);
+  const [at, setAt] = createSignal2(null);
   let pressedAt = 0;
   let pressedPoint = { x: 0, y: 0 };
   let returnTo = null;

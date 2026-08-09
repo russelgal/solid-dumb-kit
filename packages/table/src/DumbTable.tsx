@@ -1,4 +1,5 @@
-import { For, Show, createSignal, createMemo, type JSX } from 'solid-js'
+import { For, Show, createSignal, createMemo } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import {
   createSolidTable,
   flexRender,

@@ -12,7 +12,8 @@
 // каждое нажатие стрелки показывает пустоту на время загрузки, и просмотр
 // превращается в ожидание.
 
-import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { effect, injectStyle, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type LightboxItem = {

@@ -1,4 +1,5 @@
-import { createMemo, For, Show, type JSX } from 'solid-js'
+import { createMemo, For, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { createDumbGridDndGroup, type DumbGridDndGroupHandle } from './solid'
 import { packFlow, resolveSpan, rowCount, type SpanValue } from '@solid-dumb-kit/grid'
 

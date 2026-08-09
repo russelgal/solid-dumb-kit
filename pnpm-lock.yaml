@@ -163,6 +163,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/context-menu:
     dependencies:
@@ -173,6 +176,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/date-range:
     dependencies:
@@ -183,6 +189,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/finder:
     dependencies:
@@ -205,6 +214,9 @@ importers:
       '@solid-dumb-kit/utils':
         specifier: workspace:*
         version: link:../utils
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/gallery:
     dependencies:
@@ -221,6 +233,9 @@ importers:
       '@solid-dumb-kit/sortable-dnd':
         specifier: workspace:*
         version: link:../sortable-dnd
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/grid:
     dependencies:
@@ -237,6 +252,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/grid-dnd:
     dependencies:
@@ -250,6 +268,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/lightbox:
     dependencies:
@@ -260,6 +281,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/modal:
     dependencies:
@@ -270,6 +294,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/odata-1c: {}
 
@@ -294,6 +321,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/selection:
     dependencies:
@@ -304,6 +334,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/shared:
     dependencies:
@@ -320,6 +353,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/sortable-dnd:
     dependencies:
@@ -330,6 +366,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/table:
     dependencies:
@@ -346,6 +385,9 @@ importers:
       '@solid-dumb-kit/sortable':
         specifier: workspace:*
         version: link:../sortable
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/timeline:
     dependencies:
@@ -359,6 +401,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/toast:
     dependencies:
@@ -369,6 +414,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/tree:
     dependencies:
@@ -382,6 +430,9 @@ importers:
       '@solid-dumb-kit/sortable':
         specifier: workspace:*
         version: link:../sortable
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/user-manager:
     dependencies:
@@ -392,6 +443,9 @@ importers:
       '@solid-dumb-kit/shared':
         specifier: workspace:*
         version: link:../shared
+      '@solidjs/web':
+        specifier: 2.0.0-beta.32
+        version: 2.0.0-beta.32(solid-js@2.0.0-beta.32)
 
   packages/utils:
     dependencies:

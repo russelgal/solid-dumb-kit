@@ -14,7 +14,8 @@
 // Драг и ресайз идут по СНАПУ в сутки: полоса прыгает по дням, а не ползёт за
 // курсором попиксельно. Так и бронируют — в сутках, а не в пикселях.
 
-import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { effect, flushNow, injectStyle, onMounted, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import { Temporal } from './temporal'
 import type { Span } from './timelineMath'

@@ -35,7 +35,8 @@
 // пропускаются, при открытии фокус уходит в меню и возвращается назад при
 // закрытии.
 
-import { For, Show, createSignal, onCleanup, type JSX } from 'solid-js'
+import { For, Show, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { effect, injectStyle } from '@solid-dumb-kit/shared'
 
 export type MenuItem =

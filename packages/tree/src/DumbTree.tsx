@@ -14,7 +14,8 @@
 // строк в 1lh — классом такого не выразить.
 
 // watch вместо effect(on(...)): в Solid 2 `on` не экспортируется (shared/solidCompat)
-import { createMemo, createSignal, For, Show, type JSX } from 'solid-js'
+import { createMemo, createSignal, For, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { effect, injectStyle, onMounted, watch } from '@solid-dumb-kit/shared'
 
 export type TreeNode = {

@@ -1,4 +1,5 @@
-import { createSignal, type JSX, For, Show } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import * as v from 'valibot'
 import { createPersisted, injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 

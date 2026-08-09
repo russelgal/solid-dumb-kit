@@ -30,7 +30,8 @@
 // указателе работает и пальцем.
 
 // onMounted вместо onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
-import { For, Show, createMemo, createSignal, onCleanup, type JSX } from 'solid-js'
+import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { createAutoScroller, createFlip, createStableOrder, effect, injectStyle, onMounted, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
 // математика сетки общая с DumbGrid — своей у доски только поток секций
 import {

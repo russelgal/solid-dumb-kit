@@ -1,9 +1,9 @@
 // src/DumbLightbox.tsx
-import { Show, createMemo, createSignal, onCleanup } from "solid-js";
+import { Show, createMemo, createSignal as createSignal2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, untrack, createSignal } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -92,9 +92,9 @@ var STYLES = `
 function DumbLightbox(props) {
   injectStyle("lightbox", STYLES);
   let dialog;
-  const [zoom, setZoom] = createSignal(1);
-  const [pan, setPan] = createSignal({ x: 0, y: 0 });
-  const [dragging, setDragging] = createSignal(false);
+  const [zoom, setZoom] = createSignal2(1);
+  const [pan, setPan] = createSignal2({ x: 0, y: 0 });
+  const [dragging, setDragging] = createSignal2(false);
   const at = () => props.index();
   const item = createMemo(() => {
     const i = at();

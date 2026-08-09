@@ -15,7 +15,8 @@
 // клик по `::backdrop` приходит на сам `<dialog>`), и защита от закрытия, когда
 // в форме есть несохранённое.
 
-import { Show, onCleanup, type JSX } from 'solid-js'
+import { Show, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { effect, injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbModalProps = {

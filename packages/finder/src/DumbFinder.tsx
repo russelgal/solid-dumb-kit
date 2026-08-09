@@ -28,7 +28,8 @@
 
 // batch и watch — из shared/solidCompat: в Solid 2 `batch` и `on` не экспортируются,
 // а JSX кита компилируется у потребителя
-import { For, Show, createMemo, createSignal, onCleanup, untrack, type JSX } from 'solid-js'
+import { For, Show, createMemo, createSignal, onCleanup, untrack } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { createFileUploader, type UploadFile } from '@solid-primitives/upload'
 import { SelectionArea } from '@solid-dumb-kit/selection'
 import { ResizableGrid } from '@solid-dumb-kit/resizable-grid'

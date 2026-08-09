@@ -41,7 +41,14 @@ export function createPersisted<T>(
     }
   }
 
-  const [value, setValue] = createSignal<T>(start)
+  // Каст нужен из-за перегрузок Solid 2: там `createSignal(value)` объявлен
+  // как `Exclude<T, Function>`, чтобы отличать значение от вычисляющей
+  // функции. Наш `T` — дженерик, компилятор его в это условие не укладывает,
+  // хотя хранить функцию в персисте никто и не собирался.
+  const [value, setValue] = createSignal(start as Exclude<T, Function>) as unknown as [
+    Accessor<T>,
+    Setter<T>,
+  ]
 
   watch(value, (v) => {
     try {

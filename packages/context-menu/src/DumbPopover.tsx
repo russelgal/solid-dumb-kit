@@ -12,7 +12,8 @@
 // `overflow` предков, не спорит за `z-index`) и ANCHOR POSITIONING — сторону
 // выбирает браузер, ни одного замера с нашей стороны.
 
-import { Show, onCleanup, type JSX } from 'solid-js'
+import { Show, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { effect, injectStyle, resolveCloseSide, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbPopoverProps = {

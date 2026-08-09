@@ -19,7 +19,8 @@
 // БЕЗ ЗАМЕРОВ. Панель прижата к краю окна обычным `position: fixed`, выезд —
 // `transform`. Ни одного `getBoundingClientRect`.
 
-import { For, Show, createSignal, onCleanup, type JSX } from 'solid-js'
+import { For, Show, createSignal, onCleanup } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { effect, injectStyle, onMounted, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 import { ToastBody, ToastIcon } from './toastLook'

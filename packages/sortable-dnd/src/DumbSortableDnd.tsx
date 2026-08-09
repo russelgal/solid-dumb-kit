@@ -1,4 +1,5 @@
-import { For, createMemo, type JSX } from 'solid-js'
+import { For, createMemo } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { createStableOrder, effect } from '@solid-dumb-kit/shared'
 import { createDumbSortableDnd } from './solid'
 
