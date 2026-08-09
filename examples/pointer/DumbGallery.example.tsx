@@ -160,8 +160,8 @@ export default function DumbGalleryExample() {
         DumbGallery — картинки: выбрать, переставить, залить
       </h3>
       <p class="mb-2 max-w-[92ch] text-sm text-base-content">
-        Выбор файлов и перетаскивание их в окно — примитив{" "}
-        <code>@solid-primitives/upload</code>; перестановка —{" "}
+        Выбор файлов и перетаскивание их в окно — свой{" "}
+        <code>createFilePicker</code>; перестановка —{" "}
         <b>DumbSortableDnd</b>: порядок задаётся CSS <code>order</code>, и
         разметка за жест не шевелится ни на узел. Картинка показывается{" "}
         <b>сразу</b>, из <code>objectURL</code>, ещё до всякой заливки. Жест
