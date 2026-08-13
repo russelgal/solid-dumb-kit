@@ -11,10 +11,7 @@
 // КОНТЕНТА, поэтому при прокрутке она растёт вместе с ним, и уже задетые
 // элементы не выпадают из выделения.
 
-import {
-  autoScrollSpeed, doScroll, measure, scrollOf, scrollParent, viewOrigin,
-  type ViewGeom,
-} from '@solid-dumb-kit/shared'
+import { autoScrollSpeed, doScroll, measure, scrollOf, scrollParent, viewOrigin, type ViewGeom } from '@solid-dumb-kit/shared'
 import {
   areaFrom, clampPoint, diffSelection, pickHits, resolveSelection, tapSelection,
   type Bounds, type Box, type IntersectMode,

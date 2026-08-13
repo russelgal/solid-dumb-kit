@@ -1,21 +1,7 @@
 import { delegateEvents, insert, createComponent, effect, className, setAttribute, style, memo, claimElement, spread, mergeProps, template } from '@solidjs/web';
-import { createSignal, createMemo, Show, For, untrack, createEffect } from 'solid-js';
+import { createSignal, createEffect, createMemo, Show, For } from 'solid-js';
 
 // src/DumbTree.tsx
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
-}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -136,10 +122,10 @@ function Branch(p) {
     setBusy(true);
     fn(p.parentId).then(setLoaded).catch(() => setLoaded([])).finally(() => setBusy(false));
   };
-  watch(() => !p.nodes, (needsLoad) => {
+  createEffect(() => !p.nodes, (needsLoad) => {
     if (needsLoad) load();
   });
-  watch(() => p.tree.refreshKey?.(), () => {
+  createEffect(() => p.tree.refreshKey?.(), () => {
     if (loaded()) load();
   }, {
     defer: true

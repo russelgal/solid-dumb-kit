@@ -1,9 +1,8 @@
 // src/DumbContextMenu.tsx
-import { For, Show, createSignal as createSignal2, onCleanup } from "solid-js";
+import { createSignal as createSignal2, For, onCleanup, Show } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 var configured = "auto";
 var apple = null;
 function isApplePlatform() {
@@ -21,24 +20,6 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -126,26 +107,24 @@ function Panel(props) {
     if (it && branch(it) && spread) setSub({ i, x, y });
     else setSub(null);
   };
-  onMounted(() => {
+  const hold = (node) => {
+    el = node;
     queueMicrotask(() => {
-      if (el && !el.matches(":popover-open")) el.showPopover?.();
-      if (props.depth === 0) el?.focus();
+      if (!node.matches(":popover-open")) node.showPopover?.();
+      if (props.depth === 0) node.focus();
     });
-  });
-  onCleanup(() => {
-    if (el?.matches(":popover-open")) el.hidePopover();
-  });
-  onMounted(() => {
-    if (!el) return;
     const io = new IntersectionObserver((entries) => {
       const r = entries[entries.length - 1].boundingClientRect;
       if (!r.width) return;
       setBox({ left: r.left, right: r.right });
       io.disconnect();
     });
-    io.observe(el);
-    onCleanup(() => io.disconnect());
-  });
+    io.observe(node);
+    onCleanup(() => {
+      io.disconnect();
+      if (node.matches(":popover-open")) node.hidePopover();
+    });
+  };
   const side = () => {
     const b = box();
     if (!b) return props.side ?? "right";
@@ -214,7 +193,7 @@ function Panel(props) {
   };
   return <>
       <div
-    ref={el}
+    ref={hold}
     class={`dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${props.depth > 0 ? "dumb-menu-sub" : ""} ${props.class ?? ""}`}
     popover="manual"
     style={place()}
@@ -432,7 +411,7 @@ function DumbContextMenu(props) {
 }
 
 // src/DumbPopover.tsx
-import { Show as Show2, onCleanup as onCleanup2 } from "solid-js";
+import { createEffect as createEffect3, onCleanup as onCleanup2, Show as Show2 } from "solid-js";
 var STYLES2 = `
   /* \u0422\u043E\u043B\u044C\u043A\u043E \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u043A \u0442\u043E\u0447\u043A\u0435 \u0438 top layer \u2014 \u0432\u0438\u0434 \u0434\u0430\u0451\u0442 daisyUI (card) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. */
   .dumb-pop-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
@@ -462,7 +441,7 @@ function DumbPopover(props) {
   const closeButton = () => <button type="button" class="dumb-pop-x btn btn-xs btn-circle btn-ghost" title="закрыть" onClick={close}>
       ✕
     </button>;
-  watch(
+  createEffect3(
     () => props.at() !== null,
     (open) => {
       if (!open) {
@@ -474,7 +453,7 @@ function DumbPopover(props) {
       });
     }
   );
-  watch(
+  createEffect3(
     () => props.at() !== null,
     (open) => {
       if (!open) return;

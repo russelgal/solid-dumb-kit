@@ -8,15 +8,7 @@
 // - ошибка сохранения не съедает набранное;
 // - брошенная папка приезжает деревом, а не одним «файлом» нулевого размера.
 import { For, Show, createSignal } from 'solid-js'
-import {
-  createInlineEdit,
-  createUndoStack,
-  isMoveKey,
-  moveIndex,
-  moveSelection,
-  readDropEntries,
-  type DroppedFile,
-} from '@solid-dumb-kit/shared'
+import { createInlineEdit, createUndoStack, isMoveKey, moveIndex, moveSelection, readDropEntries, type DroppedFile } from '@solid-dumb-kit/shared'
 import { fmtSize } from '@solid-dumb-kit/utils'
 import { Bar, Btn, Note } from '../_controls'
 import { Code, Doc, Props } from '../_controls'

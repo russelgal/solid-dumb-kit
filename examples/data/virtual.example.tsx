@@ -20,8 +20,8 @@
 // не даёт элементу расти дальше ~17–33 млн (у каждого свой предел). Дальше
 // распорка молча перестаёт расти, и полоса прокрутки начинает врать.
 // `createVirtualizer` зажимает её потолком и растягивает прокрутку сам.
-import { For, Show, createSignal, onCleanup, untrack } from 'solid-js'
-import { createRowIndex, createVirtualizer, onMounted, watch, type RowIndex, type VirtualRange } from '@solid-dumb-kit/shared'
+import { createEffect, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
+import { createRowIndex, createVirtualizer, type RowIndex, type VirtualRange } from '@solid-dumb-kit/shared'
 import { fmtNum } from '@solid-dumb-kit/utils'
 import { Bar, Btn, Check, Note, Pick, Seg, Code, Doc, Props } from '../_controls'
 // Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
@@ -143,7 +143,7 @@ export default function VirtualExample() {
   }
 
   /** движок порядка пересоздаётся, когда меняют поток: он у него один на жизнь */
-  watch(inline, (useInline) => {
+  createEffect(inline, (useInline) => {
     const engine = createRowIndex({
       inline: useInline,
       onProgress: (p) => setProgress(p.done),
@@ -168,23 +168,28 @@ export default function VirtualExample() {
   })
 
   /** сменилось число строк — данные едут в движок заново */
-  watch(values, (v) => {
+  createEffect(values, (v) => {
     index?.setData({ count: v.length, columns: { value: { kind: 'number', values: v } } })
     ask()
   })
 
   /** сменился запрос — считаем порядок; предыдущий расчёт движок бросит сам */
-  watch(() => [needle(), dir()] as const, () => ask())
+  createEffect(() => [needle(), dir()] as const, () => ask())
 
   /** список едет вбок: та же арифметика, но по `scrollLeft` и ширине окна */
   const sideways = () => axis() === 'x'
   /** размер элемента вдоль оси прокрутки */
   const step = () => (sideways() ? COL : ROW)
 
-  onMounted(() => {
+  /**
+   * Виртуализатор поднимается в колбэк-ref скроллера: элемент к этому моменту
+   * есть, а лишнего эффекта «просто чтобы дождаться монтирования» нет.
+   */
+  const holdScroller = (el: HTMLDivElement) => {
+    scroller = el
     // ось движок берёт при создании (она решает, что читать — `scrollTop` или
     // `scrollLeft`), поэтому на её смену виртуализатор пересоздаётся
-    watch(axis, (ax) => {
+    createEffect(axis, (ax) => {
       const v = createVirtualizer({
         count: () => shown(),
         itemSize: () => (ax === 'x' ? COL : ROW),
@@ -202,22 +207,26 @@ export default function VirtualExample() {
       })
       // окно зависит от числа видимых строк и от режима — пересчитываем явно,
       // а не опросом по таймеру
-      watch(() => [shown(), mode()] as const, () => v.refresh())
+      createEffect(() => [shown(), mode()] as const, () => v.refresh())
       onCleanup(() => v.destroy())
     })
+  }
+
+  // счётчик узлов тикает сам по себе — ни от ref, ни от сигналов не зависит
+  {
     const tick = setInterval(() => {
       setNodes(list ? list.childElementCount : 0)
       setBorn(created)
     }, 300)
     onCleanup(() => clearInterval(tick))
-  })
+  }
 
   /**
    * Раздача позиций по слотам. Слот `s` держит ту позицию окна, у которой
    * остаток от деления на размер пула равен `s`: при сдвиге окна на строку
    * меняется ровно один слот, а не всё окно.
    */
-  watch(() => [mode(), range()] as const, ([kind, r]) => {
+  createEffect(() => [mode(), range()] as const, ([kind, r]) => {
     if (kind !== 'pool') return
     const need = Math.max(0, r.end - r.start)
     let pool = untrack(slots)
@@ -426,7 +435,7 @@ export default function VirtualExample() {
       </Show>
 
       <div
-        ref={scroller}
+        ref={holdScroller}
         class={
           sideways()
             ? 'max-w-[92ch] overflow-x-auto overflow-y-hidden rounded-box border border-base-300'

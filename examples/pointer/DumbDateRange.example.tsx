@@ -145,7 +145,6 @@ export default function DumbDateRangeExample() {
         Обратный порядок кликов тоже работает — концы меняются местами сами.
       </Note>
 
-
       <hr class="my-6 border-base-300" />
 
       <h4 class="text-lg font-semibold">Как это подключить</h4>

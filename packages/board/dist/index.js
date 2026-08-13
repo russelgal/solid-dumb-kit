@@ -1,5 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, setAttribute, effect, style, memo, className, setStyleProperty, template } from '@solidjs/web';
-import { createMemo, createSignal, onCleanup, For, Show, untrack, createEffect } from 'solid-js';
+import { createMemo, createSignal, createEffect, onCleanup, For, Show } from 'solid-js';
 
 // src/DumbBoard.tsx
 function prefersReducedMotion() {
@@ -8,24 +8,6 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -622,7 +604,7 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  watch(() => shouldAnimate(props.animate), (on) => {
+  createEffect(() => shouldAnimate(props.animate), (on) => {
     flip = createFlip(on);
   });
   const scroller = createAutoScroller();
@@ -682,10 +664,11 @@ function DumbBoard(props) {
     }
   }) : null;
   onCleanup(() => sizes?.disconnect());
-  onMounted(() => {
+  const holdWrap = (el) => {
+    wrapEl = el;
     measure();
     if (!sizes) return;
-    sizes.observe(wrapEl);
+    sizes.observe(el);
     let firstCall = true;
     const ro = new ResizeObserver(() => {
       if (firstCall) {
@@ -694,9 +677,9 @@ function DumbBoard(props) {
       }
       measure();
     });
-    ro.observe(wrapEl);
+    ro.observe(el);
     onCleanup(() => ro.disconnect());
-  });
+  };
   const cellsOf = createMemo(() => {
     const out = /* @__PURE__ */ new Map();
     for (const s of props.sections) {
@@ -1149,9 +1132,7 @@ function DumbBoard(props) {
     onGripDown(ev);
     onBlockGripDown(ev);
   };
-  ref(() => (el) => {
-    wrapEl = el;
-  }, _el$2);
+  ref(() => holdWrap, _el$2);
   insert(_el$2, createComponent(For, {
     get each() {
       return renderOrder();

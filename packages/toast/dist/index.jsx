@@ -1,9 +1,8 @@
 // src/DumbToaster.tsx
-import { For, Show as Show2, createSignal as createSignal2, onCleanup } from "solid-js";
+import { createEffect as createEffect2, createSignal as createSignal2, For, onCleanup, Show as Show2 } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -28,24 +27,6 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -458,13 +439,13 @@ function DumbToaster(props) {
   const bus = () => props.bus ?? toast;
   const [tick, bump] = createSignal2(0, { equals: false });
   let box;
-  onMounted(() => {
+  {
     const off = bus().subscribe(() => bump(0));
     onCleanup(() => {
       off();
       if (box?.matches(":popover-open")) box.hidePopover();
     });
-  });
+  }
   const shown = () => {
     tick();
     const all = bus().list();
@@ -478,7 +459,7 @@ function DumbToaster(props) {
   const rows = () => [...stacked(), ...flying()].sort((a, b) => a.id - b.id);
   const isLeaving = (t) => flying().some((x) => x.id === t.id);
   let was = 0;
-  watch(
+  createEffect2(
     () => shown().length + flying().length,
     (n) => {
       if (!n) {
@@ -513,7 +494,7 @@ function DumbToaster(props) {
     });
   };
   let prevRows = [];
-  watch(rows, (now) => {
+  createEffect2(rows, (now) => {
     const alive = new Set(now.map((t) => t.id));
     let freed = 0;
     const moved = [];
@@ -579,7 +560,7 @@ function DumbToaster(props) {
       ✕
     </button>;
   const [pointer, setPointer] = createSignal2({ x: 0, y: 0 });
-  onMounted(() => {
+  {
     const track = (ev) => setPointer({ x: ev.clientX, y: ev.clientY });
     window.addEventListener("pointermove", track, { passive: true });
     window.addEventListener("pointerdown", track, { passive: true });
@@ -587,7 +568,7 @@ function DumbToaster(props) {
       window.removeEventListener("pointermove", track);
       window.removeEventListener("pointerdown", track);
     });
-  });
+  }
   const spotOf = (t) => t.at === "pointer" ? pointer() : t.at;
   return <div
     ref={box}
@@ -643,10 +624,11 @@ function DumbToaster(props) {
     </div>;
   function AtToast(p) {
     let el;
-    onMounted(() => {
-      queueMicrotask(() => el?.showPopover?.());
+    const hold2 = (node) => {
+      el = node;
+      queueMicrotask(() => node.showPopover?.());
       const away = (ev) => {
-        if (!el?.contains(ev.target)) bus().dismiss(p.t.id);
+        if (!node.contains(ev.target)) bus().dismiss(p.t.id);
       };
       const onKey = (ev) => {
         if (ev.key !== "Escape") return;
@@ -658,14 +640,14 @@ function DumbToaster(props) {
       onCleanup(() => {
         window.removeEventListener("pointerdown", away, true);
         window.removeEventListener("keydown", onKey);
-        if (el?.matches(":popover-open")) el.hidePopover();
+        if (node.matches(":popover-open")) node.hidePopover();
       });
-    });
+    };
     const spot = spotOf(p.t);
     return <>
         <div class="dumb-toast-anchor" style={{ left: `${spot.x}px`, top: `${spot.y}px` }} />
         <div
-      ref={el}
+      ref={hold2}
       popover="manual"
       class={`dumb-toast dumb-toast-at ${cardClass}`}
       data-kind={p.t.kind}
@@ -693,7 +675,7 @@ function DumbToaster(props) {
 }
 
 // src/DumbToastCenter.tsx
-import { For as For2, Show as Show3, createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
+import { createEffect as createEffect3, createSignal as createSignal3, For as For2, onCleanup as onCleanup2, Show as Show3 } from "solid-js";
 var STYLES2 = `
   /* \u041F\u0430\u043D\u0435\u043B\u044C. \u0417\u0434\u0435\u0441\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430 \u0438 \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430: \u0432\u0438\u0434 \u2014 daisyUI \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435.
      popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0446\u0435\u043D\u0442\u0440\u0438\u0440\u0443\u0435\u0442\u0441\u044F \u0438 \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u043F\u043E \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u043C\u0443 \u2014 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C
@@ -771,7 +753,7 @@ function DumbToastCenter(props) {
   const open = () => (tick(), bus().historyOpen());
   const items = () => (tick(), bus().history());
   const unread = () => (tick(), bus().unread());
-  onMounted(() => {
+  {
     const off = bus().subscribe(() => bump(0));
     const onKey = (ev) => {
       if (ev.key === "Escape" && bus().historyOpen()) {
@@ -793,14 +775,14 @@ function DumbToastCenter(props) {
       window.removeEventListener("pointerdown", away, true);
       if (panel?.matches(":popover-open")) panel.hidePopover();
     });
-  });
-  watch(open, (visible) => {
+  }
+  createEffect3(open, (visible) => {
     if (!visible) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
     onCleanup2(() => clearInterval(id));
   });
-  watch(open, (show) => {
+  createEffect3(open, (show) => {
     queueMicrotask(() => {
       if (!panel) return;
       if (show && !panel.matches(":popover-open")) panel.showPopover?.();

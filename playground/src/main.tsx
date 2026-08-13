@@ -476,7 +476,7 @@ function App(props: { children?: JSX.Element }) {
   const [cursor, setCursor] = createSignal(0);
   const cursorId = () => visible()[cursor()]?.id;
 
-  watch(theme, (name) => {
+  createEffect(theme, (name) => {
     document.documentElement.dataset.theme = name;
     localStorage.setItem("sd-theme", name);
   });
@@ -484,7 +484,7 @@ function App(props: { children?: JSX.Element }) {
   // Заголовок вкладки браузера — по текущему примеру: с настоящими путями
   // страницу кладут в закладки и ищут в истории, а «solid-dumb-kit» на всех
   // тридцати пунктах там неразличим.
-  watch(tab, () => {
+  createEffect(tab, () => {
     const t = TABS.find((x) => x.id === tab());
     document.title = t ? `${t.label} · solid-dumb-kit` : "solid-dumb-kit";
   });

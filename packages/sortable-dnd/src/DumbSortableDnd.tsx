@@ -1,6 +1,6 @@
-import { For, createMemo } from 'solid-js'
+import { createEffect, createMemo, For } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { createStableOrder, watch } from '@solid-dumb-kit/shared'
+import { createStableOrder } from '@solid-dumb-kit/shared'
 import { createDumbSortableDnd } from './solid'
 
 // Сортировка списка на нативном drag-and-drop.
@@ -89,7 +89,7 @@ export function DumbSortableDnd<T>(props: DumbSortableDndProps<T>) {
   // бы будить браузер на триста строк вместо трёх.
   // watch: места считаются в первой фазе, `style` правится во второй — раньше
   // элементов ещё нет в DOM
-  watch(places, (map) => {
+  createEffect(places, (map) => {
     for (const [id, i] of map) {
       const el = els.get(id)
       if (!el) continue

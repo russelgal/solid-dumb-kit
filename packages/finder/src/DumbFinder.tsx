@@ -26,16 +26,14 @@
 // Reflow: ни одного замера. Позиции для рамки снимает `SelectionArea`, всё
 // остальное — обычная разметка, которую мы не измеряем вовсе.
 
-// watch — из shared/effects: работа с DOM и запись в сигналы живут во ВТОРОЙ
-// фазе двухфазного эффекта Solid 2. Отдельного `batch` там нет вовсе:
-// обновления копятся сами и флашатся микротаском.
-import { For, Show, createMemo, createSignal, onCleanup, untrack } from 'solid-js'
+// createEffect(dep, fn) — двухфазный: DOM и запись в сигналы живут во ВТОРОЙ
+// функции. Отдельного `batch` в Solid 2 нет вовсе: обновления копятся сами и
+// флашатся микротаском.
+import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { SelectionArea } from '@solid-dumb-kit/selection'
 import { ResizableGrid } from '@solid-dumb-kit/resizable-grid'
-import {
-  createFilePicker, createUndoStack, createUploadQueue, injectStyle, isMoveKey, moveIndex, moveSelection, readDropEntries, watch,
-} from '@solid-dumb-kit/shared'
+import { createFilePicker, createUndoStack, createUploadQueue, injectStyle, isMoveKey, moveIndex, moveSelection, readDropEntries } from '@solid-dumb-kit/shared'
 import { fmtSize, fmtDateTimeShort } from '@solid-dumb-kit/utils'
 import {
   ICONS, canMove, crumbs, joinPrefix, kindOf, nameOf, parentOf, sortEntries,
@@ -381,7 +379,7 @@ export function DumbFinder(props: DumbFinderProps) {
       }
     }
   }
-  watch(path, (p) => void reload(p))
+  createEffect(path, (p) => void reload(p))
   onCleanup(() => listing?.abort())
 
   function fail(err: unknown) {
@@ -392,7 +390,7 @@ export function DumbFinder(props: DumbFinderProps) {
 
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc))
   // вид сменился — число колонок другое
-  watch(view, () => queueMicrotask(measureCols), { defer: true })
+  createEffect(view, () => queueMicrotask(measureCols), { defer: true })
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])))
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)))
 
@@ -448,7 +446,7 @@ export function DumbFinder(props: DumbFinderProps) {
 
   // следим первой функцией (`tree` — чтобы перечитать и после сброса кэша),
   // грузим второй: загрузка пишет в сигналы, а в фазе вычисления это запрещено
-  watch(
+  createEffect(
     () => [path(), tree(), whole()] as const,
     ([here]) => {
       if (props.sidebar === false) return
@@ -515,9 +513,9 @@ export function DumbFinder(props: DumbFinderProps) {
   }
 
   // ушли в другую папку — раскрытое здесь больше не про что
-  watch(path, () => { setOpenRows(new Set<string>()); setSub({}) }, { defer: true })
+  createEffect(path, () => { setOpenRows(new Set<string>()); setSub({}) }, { defer: true })
   // содержимое перечитали — раскрытые ветки тоже
-  watch(
+  createEffect(
     () => [sub(), openRows()] as const,
     ([cache, open]) => {
       for (const k of open) if (!(k in cache)) void ensureSub(k)

@@ -35,9 +35,9 @@
 // пропускаются, при открытии фокус уходит в меню и возвращается назад при
 // закрытии.
 
-import { For, Show, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle, onMounted } from '@solid-dumb-kit/shared'
+import { injectStyle } from '@solid-dumb-kit/shared'
 
 export type MenuItem =
   | { kind: 'separator' }
@@ -199,31 +199,28 @@ function Panel(props: {
     else setSub(null)
   }
 
-  // Показываем ПОСЛЕ вставки узла: `showPopover` на элементе вне документа
-  // бросает. Фокус забирает только корневая панель — стрелки корень и слушает.
-  // Панель живёт ровно одно открытие, поэтому onMounted, а не слежение.
-  onMounted(() => {
-    queueMicrotask(() => {
-      if (el && !el.matches(':popover-open')) el.showPopover?.()
-      if (props.depth === 0) el?.focus()
-    })
-  })
-  onCleanup(() => {
-    if (el?.matches(':popover-open')) el.hidePopover()
-  })
-
   /**
-   * КУДА ПАНЕЛЬ РАСКРЫЛАСЬ. Сторону выбрал браузер, а знать её надо нам: у
-   * правого края родитель уходит влево, и подменю обязано идти туда же —
-   * иначе оно вернётся вправо и накроет собой родителя.
+   * Всё, что панель делает со своим узлом, — в колбэк-ref: эффектов здесь нет
+   * вовсе, потому что и следить не за чем. Панель живёт ровно одно открытие.
    *
-   * Спрашиваем не `getBoundingClientRect`, а IntersectionObserver: его
-   * `boundingClientRect` браузер считает сам, вне главного потока, forced
-   * layout не возникает (тот же приём, что и в снимке сортировщика). Снимок
-   * ОДИН, на открытие панели: дальше она не двигается.
+   * Показываем ПОСЛЕ вставки узла (`showPopover` на элементе вне документа
+   * бросает), поэтому микротаск. Фокус забирает только корневая панель —
+   * стрелки слушает корень.
+   *
+   * Тут же снимается КУДА ПАНЕЛЬ РАСКРЫЛАСЬ: сторону выбрал браузер, а знать
+   * её надо нам — у правого края родитель уходит влево, и подменю обязано идти
+   * туда же, иначе вернётся вправо и накроет родителя. Спрашиваем не
+   * `getBoundingClientRect`, а IntersectionObserver: его `boundingClientRect`
+   * браузер считает сам, вне главного потока, forced layout не возникает (тот
+   * же приём, что и в снимке сортировщика). Снимок ОДИН, на открытие панели.
    */
-  onMounted(() => {
-    if (!el) return
+  const hold = (node: HTMLDivElement) => {
+    el = node
+    queueMicrotask(() => {
+      if (!node.matches(':popover-open')) node.showPopover?.()
+      if (props.depth === 0) node.focus()
+    })
+
     const io = new IntersectionObserver((entries) => {
       const r = entries[entries.length - 1].boundingClientRect
       // пока popover не показан, размеров нет — ждём следующей порции
@@ -231,9 +228,13 @@ function Panel(props: {
       setBox({ left: r.left, right: r.right })
       io.disconnect()
     })
-    io.observe(el)
-    onCleanup(() => io.disconnect())
-  })
+    io.observe(node)
+
+    onCleanup(() => {
+      io.disconnect()
+      if (node.matches(':popover-open')) node.hidePopover()
+    })
+  }
 
   /**
    * Сторона этой панели: сравниваем её левый край с тем, от чего она
@@ -331,7 +332,7 @@ function Panel(props: {
   return (
     <>
       <div
-        ref={el}
+        ref={hold}
         class={`dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${
           props.depth > 0 ? 'dumb-menu-sub' : ''
         } ${props.class ?? ''}`}

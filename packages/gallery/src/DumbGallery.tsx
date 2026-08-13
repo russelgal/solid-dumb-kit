@@ -28,9 +28,7 @@
 import { Show, createMemo, createSignal, onCleanup } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
-import {
-  createFilePicker, createUploadQueue, injectStyle, readDropEntries, type PickedFile, type Uploader,
-} from '@solid-dumb-kit/shared'
+import { createFilePicker, createUploadQueue, injectStyle, readDropEntries, type PickedFile, type Uploader } from '@solid-dumb-kit/shared'
 
 export type GalleryStatus =
   /** транспорта нет: файл живёт только в браузере */

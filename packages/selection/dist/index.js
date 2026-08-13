@@ -1,13 +1,7 @@
 import { ref, insert, effect, className, style, template } from '@solidjs/web';
-import { onCleanup, createEffect } from 'solid-js';
+import { onCleanup } from 'solid-js';
 
 // src/SelectionArea.tsx
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -381,7 +375,8 @@ function createSelectionArea(opts) {
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
 function SelectionArea(props) {
   let containerRef;
-  onMounted(() => {
+  const attach = (el) => {
+    containerRef = el;
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,
@@ -395,10 +390,9 @@ function SelectionArea(props) {
       onStop: (selected) => props.onStop?.(selected)
     });
     area.attach(containerRef);
-  });
+  };
   var _el$ = _tmpl$();
-  var _ref$ = containerRef;
-  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : containerRef = _el$;
+  ref(() => attach, _el$);
   insert(_el$, () => props.children);
   effect(() => ({
     e: props.class,

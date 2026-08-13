@@ -1,30 +1,8 @@
 // src/DumbTimeline.tsx
-import { For, Show, createMemo, createSignal as createSignal2, onCleanup } from "solid-js";
+import { createEffect as createEffect2, createMemo, createSignal as createSignal2, flush, For, onCleanup, Show } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
-}
-function flushNow() {
-  solid.flush?.();
-}
+import { createSignal, createEffect } from "solid-js";
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -593,14 +571,14 @@ function DumbTimeline(props) {
     scrollToNow: () => api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange
   };
-  onMounted(() => {
-    props.ref?.(api);
-    if (!viewport) return;
+  props.ref?.(api);
+  const holdViewport = (el) => {
+    viewport = el;
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
-    ro.observe(viewport);
+    ro.observe(el);
     onCleanup(() => ro.disconnect());
-  });
-  watch(
+  };
+  createEffect2(
     () => [scale(), vpW()],
     ([, width]) => {
       if (width > 0) props.onVisibleRange?.(visibleRange());
@@ -740,7 +718,7 @@ function DumbTimeline(props) {
     return d && d.id === s.id ? d.next : s;
   };
   return <div
-    ref={viewport}
+    ref={holdViewport}
     class={`dumb-tl ${props.class ?? ""}`}
     onScroll={() => {
       if (!props.onVisibleRange) return;
@@ -961,7 +939,7 @@ function DumbTimeline(props) {
         begin();
         if (upX !== null) {
           update(upX);
-          flushNow();
+          flush();
           finish(upX);
         } else {
           update(last.x);

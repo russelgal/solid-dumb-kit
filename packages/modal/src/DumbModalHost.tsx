@@ -7,8 +7,8 @@
 // Само окно рисует `DumbModal`, поэтому всё его поведение здесь бесплатно:
 // top layer, ловушка фокуса, возврат фокуса назад, Esc и клик по подложке.
 
-import { For, createSignal, onCleanup } from 'solid-js'
-import { onMounted } from '@solid-dumb-kit/shared'
+import { createEffect, createSignal, For, onCleanup } from 'solid-js'
+
 import { DumbModal } from './DumbModal'
 import { modal as globalBus, type ModalBus } from './modalBus'
 
@@ -27,10 +27,8 @@ export function DumbModalHost(props: DumbModalHostProps) {
   // шина живёт вне реактивности — «будильник» и есть мост до разметки
   const [tick, bump] = createSignal(0, { equals: false })
 
-  onMounted(() => {
-    const off = bus().subscribe(() => bump(0))
-    onCleanup(off)
-  })
+  // подписка ни от чего не зависит и DOM не трогает — эффект тут ни к чему
+  onCleanup(bus().subscribe(() => bump(0)))
 
   const cur = () => (tick(), bus().current())
 

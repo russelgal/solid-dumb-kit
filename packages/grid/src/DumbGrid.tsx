@@ -402,7 +402,6 @@ export function DumbGrid(props: DumbGridProps) {
     ? props.group.grid(props.name ?? 'grid', engineOptions)
     : createDumbGrid(engineOptions)
 
-
   /**
    * Запас пустых строк: без него блок некуда увести вниз — сетка кончается ровно
    * на последнем блоке.

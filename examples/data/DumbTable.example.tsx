@@ -73,7 +73,6 @@ type Product = {
   note?: string
 }
 
-
 // перемешивание Фишера–Йетса: копия, не мутируем исходный массив
 function shuffle<T>(list: Array<T>): Array<T> {
   const out = list.slice()
@@ -285,7 +284,6 @@ export default function DumbTableExample() {
           summary={({ page, pages, total }) => `${total} товаров · страница ${page} из ${pages}`}
         />
       </div>
-
 
       <hr class="my-6 border-base-300" />
 

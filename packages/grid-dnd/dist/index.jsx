@@ -5,8 +5,7 @@ import { createMemo as createMemo2, For as For2 } from "solid-js";
 import { createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -247,7 +246,7 @@ function createAutoScroller() {
 
 // ../grid/dist/index.js
 import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
-import { createSignal as createSignal2, onCleanup, createMemo, Show, For, untrack as untrack2, createEffect as createEffect2 } from "solid-js";
+import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;

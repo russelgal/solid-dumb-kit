@@ -2,28 +2,13 @@
 import { createMemo, createSignal as createSignal3, For, Show } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
@@ -39,7 +24,7 @@ function createPersisted(key, initial, opts = {}) {
     }
   }
   const [value, setValue] = createSignal(start);
-  watch(value, (v2) => {
+  createEffect(value, (v2) => {
     try {
       store?.setItem(key, stringify(v2));
     } catch {

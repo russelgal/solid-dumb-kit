@@ -12,9 +12,9 @@
 // `overflow` предков, не спорит за `z-index`) и ANCHOR POSITIONING — сторону
 // выбирает браузер, ни одного замера с нашей стороны.
 
-import { Show, onCleanup } from 'solid-js'
+import { createEffect, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle, resolveCloseSide, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { injectStyle, resolveCloseSide, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbPopoverProps = {
   /** где показать; `null` — закрыт */
@@ -76,7 +76,7 @@ export function DumbPopover(props: DumbPopoverProps) {
 
   // watch, а не effect: работа с popover — это DOM, а он существует только во
   // ВТОРОЙ фазе эффекта. В первой (вычисление) `box` ещё не присвоен.
-  watch(
+  createEffect(
     () => props.at() !== null,
     (open) => {
       if (!open) {
@@ -90,7 +90,7 @@ export function DumbPopover(props: DumbPopoverProps) {
     },
   )
 
-  watch(
+  createEffect(
     () => props.at() !== null,
     (open) => {
       if (!open) return

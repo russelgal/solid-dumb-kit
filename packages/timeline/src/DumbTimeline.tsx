@@ -14,9 +14,9 @@
 // Драг и ресайз идут по СНАПУ в сутки: полоса прыгает по дням, а не ползёт за
 // курсором попиксельно. Так и бронируют — в сутках, а не в пикселях.
 
-import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createMemo, createSignal, flush, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { flushNow, injectStyle, onMounted, restoreTextSelection, suppressTextSelection, watch } from '@solid-dumb-kit/shared'
+import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import { Temporal } from './temporal'
 import type { Span } from './timelineMath'
 import {
@@ -640,7 +640,6 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
   let canvas!: HTMLDivElement
   let viewport: HTMLDivElement | undefined
 
-
   /**
    * Ширина вьюпорта — из `ResizeObserver`, а не `clientWidth` на каждый кадр:
    * чтение `clientWidth` в скролл-обработчике — это форс лэйаута по правилу
@@ -678,18 +677,20 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
       api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange,
   }
-  // onMounted, а не onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
-  onMounted(() => {
-    props.ref?.(api)
-    if (!viewport) return
+  // API отдаём сразу — оно готово и ни от чего не зависит
+  props.ref?.(api)
+
+  /** ширину окна слушаем с колбэк-ref: элемент есть — вешаем наблюдателя */
+  const holdViewport = (el: HTMLDivElement) => {
+    viewport = el
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0))
-    ro.observe(viewport)
+    ro.observe(el)
     onCleanup(() => ro.disconnect())
-  })
+  }
   // диапазон меняется не только прокруткой: сменили `from`/`days`/шаг или
   // ширину окна — потребителю нужен свежий диапазон для догрузки. Колбэк зовём
   // во второй фазе: он у потребителя обычно пишет в свои сигналы.
-  watch(
+  createEffect(
     () => [scale(), vpW()] as const,
     ([, width]) => {
       if (width > 0) props.onVisibleRange?.(visibleRange())
@@ -909,7 +910,7 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
 
   return (
     <div
-      ref={viewport}
+      ref={holdViewport}
       class={`dumb-tl ${props.class ?? ''}`}
       onScroll={() => {
         if (!props.onVisibleRange) return
@@ -1180,7 +1181,7 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
                 // В Solid 2 запись применяется микротаском, и без флаша он
                 // увидел бы пустоту — жест, который был быстрее снимка IO,
                 // молча терялся.
-                flushNow()
+                flush()
                 finish(upX)
               } else {
                 update(last.x)

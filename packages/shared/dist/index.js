@@ -1,5 +1,4 @@
-import * as solid from 'solid-js';
-import { untrack, createSignal, createEffect } from 'solid-js';
+import { createSignal, createEffect } from 'solid-js';
 
 // src/motion.ts
 function prefersReducedMotion() {
@@ -32,27 +31,6 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
-}
-function flushNow() {
-  solid.flush?.();
-}
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
   const stringify = opts.stringify ?? ((v) => JSON.stringify(v));
@@ -67,7 +45,7 @@ function createPersisted(key, initial, opts = {}) {
     }
   }
   const [value, setValue] = createSignal(start);
-  watch(value, (v) => {
+  createEffect(value, (v) => {
     try {
       store?.setItem(key, stringify(v));
     } catch {
@@ -1419,4 +1397,4 @@ function putPart(url, chunk, signal, onBytes) {
 }
 var shouldSplit = (file, partSize = 8 * 1024 * 1024) => file.size > partSize;
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, configureCloseSide, createAutoScroller, createFilePicker, createFlip, createInlineEdit, createPersisted, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, flushNow, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, onMounted, pickedFrom, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin, watch };
+export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, configureCloseSide, createAutoScroller, createFilePicker, createFlip, createInlineEdit, createPersisted, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, pickedFrom, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin };

@@ -1,5 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, effect, setAttribute, setStyleProperty, className, template } from '@solidjs/web';
-import { createSignal, createMemo, Show, untrack, createEffect, onCleanup } from 'solid-js';
+import { createSignal, createMemo, createEffect, onCleanup, Show } from 'solid-js';
 
 // src/DumbLightbox.tsx
 function prefersReducedMotion() {
@@ -26,24 +26,6 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -133,11 +115,11 @@ function DumbLightbox(props) {
     _el$.$$click = close;
     return _el$;
   })();
-  watch(() => at() !== null, (open) => {
+  createEffect(() => at() !== null, (open) => {
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   });
-  watch(at, (i) => {
+  createEffect(at, (i) => {
     if (i === null) return;
     for (const d of [1, -1]) {
       const near = props.items[(i + d + props.items.length) % props.items.length];
@@ -152,10 +134,8 @@ function DumbLightbox(props) {
     if (ev.key === "+" || ev.key === "=") return setZoom((z) => Math.min(8, z * 1.25));
     if (ev.key === "-") return setZoom((z) => Math.max(1, z / 1.25));
   }
-  onMounted(() => {
-    window.addEventListener("keydown", onKey);
-    onCleanup(() => window.removeEventListener("keydown", onKey));
-  });
+  window.addEventListener("keydown", onKey);
+  onCleanup(() => window.removeEventListener("keydown", onKey));
   function onWheel(ev) {
     ev.preventDefault();
     const k = ev.deltaY < 0 ? 1.12 : 1 / 1.12;

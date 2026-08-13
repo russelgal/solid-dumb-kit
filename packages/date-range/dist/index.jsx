@@ -2,22 +2,7 @@
 import { For, Show, createMemo, createSignal as createSignal2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
-}
+import { createSignal, createEffect } from "solid-js";
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -329,7 +314,7 @@ function DumbDateRange(props) {
 }
 
 // src/DumbDateTimeRange.tsx
-import { For as For3, Show as Show3, createMemo as createMemo3, createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
+import { createEffect as createEffect2, createMemo as createMemo3, createSignal as createSignal3, For as For3, onCleanup as onCleanup2, Show as Show3 } from "solid-js";
 
 // src/DumbTimeSelect.tsx
 import { For as For2, Show as Show2, createMemo as createMemo2 } from "solid-js";
@@ -529,7 +514,7 @@ function DumbDateTimeRange(props) {
   );
   const [startTime, setStartTime] = createSignal3(props.value()?.from.time ?? null);
   const [endTime, setEndTime] = createSignal3(props.value()?.to.time ?? null);
-  watch(
+  createEffect2(
     () => {
       const v = props.value();
       return v ? `${v.from.day} ${v.from.time} ${v.to.day} ${v.to.time}` : "";

@@ -1,13 +1,7 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, ref, addEvent, template } from '@solidjs/web';
-import { createSignal, onCleanup, createMemo, untrack, For, Show, createEffect } from 'solid-js';
+import { createSignal, createEffect, onCleanup, createMemo, untrack, For, Show } from 'solid-js';
 
 // src/DumbFinder.tsx
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -373,7 +367,8 @@ function createSelectionArea(opts) {
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
 function SelectionArea(props) {
   let containerRef;
-  onMounted(() => {
+  const attach = (el) => {
+    containerRef = el;
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,
@@ -387,10 +382,9 @@ function SelectionArea(props) {
       onStop: (selected) => props.onStop?.(selected)
     });
     area.attach(containerRef);
-  });
+  };
   var _el$ = _tmpl$();
-  var _ref$ = containerRef;
-  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : containerRef = _el$;
+  ref(() => attach, _el$);
   insert(_el$, () => props.children);
   effect(() => ({
     e: props.class,
@@ -666,20 +660,6 @@ function safeParse(schema, input, config$1) {
 }
 
 // ../resizable-grid/dist/index.js
-var twoPhase2 = createEffect;
-var cleanupOnly2 = (out) => typeof out === "function" ? out : void 0;
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase2(dep, (value) => {
-    const skip = first && opts?.defer;
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly2(untrack(() => fn(value, before)));
-  });
-}
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
   const stringify = opts.stringify ?? ((v2) => JSON.stringify(v2));
@@ -694,7 +674,7 @@ function createPersisted(key, initial, opts = {}) {
     }
   }
   const [value, setValue] = createSignal(start);
-  watch(value, (v2) => {
+  createEffect(value, (v2) => {
     try {
       store?.setItem(key, stringify(v2));
     } catch {
@@ -1023,20 +1003,6 @@ var STYLES = `
   background: oklch(from currentColor l c h / 0.2);
 }`;
 delegateEvents(["mousedown"]);
-var twoPhase3 = createEffect;
-var cleanupOnly3 = (out) => typeof out === "function" ? out : void 0;
-function watch2(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase3(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly3(untrack(() => fn(value, before)));
-  });
-}
 var toPicked = (file) => ({
   file,
   name: file.name,
@@ -2322,7 +2288,7 @@ function DumbFinder(props) {
       }
     }
   }
-  watch2(path, (p) => void reload(p));
+  createEffect(path, (p) => void reload(p));
   onCleanup(() => listing?.abort());
   function fail(err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2330,7 +2296,7 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
-  watch2(view, () => queueMicrotask(measureCols), {
+  createEffect(view, () => queueMicrotask(measureCols), {
     defer: true
   });
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
@@ -2377,7 +2343,7 @@ function DumbFinder(props) {
       wholeFlight = false;
     }
   }
-  watch2(() => [path(), tree(), whole()], ([here]) => {
+  createEffect(() => [path(), tree(), whole()], ([here]) => {
     if (props.sidebar === false) return;
     if (props.source.tree) {
       if (untrack(whole) === null) void loadWhole();
@@ -2428,13 +2394,13 @@ function DumbFinder(props) {
     });
     void ensureSub(key);
   };
-  watch2(path, () => {
+  createEffect(path, () => {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
   }, {
     defer: true
   });
-  watch2(() => [sub(), openRows()], ([cache, open2]) => {
+  createEffect(() => [sub(), openRows()], ([cache, open2]) => {
     for (const k of open2) if (!(k in cache)) void ensureSub(k);
   });
   const rows = createMemo(() => {

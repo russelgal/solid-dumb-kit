@@ -1,21 +1,7 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, className, memo, style, template } from '@solidjs/web';
-import { createSignal, createMemo, For, Show, onCleanup, untrack, createEffect } from 'solid-js';
+import { createSignal, createMemo, For, Show, createEffect, onCleanup } from 'solid-js';
 
 // src/DumbDateRange.tsx
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
-}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -630,7 +616,7 @@ function DumbDateTimeRange(props) {
   } : null);
   const [startTime, setStartTime] = createSignal(props.value()?.from.time ?? null);
   const [endTime, setEndTime] = createSignal(props.value()?.to.time ?? null);
-  watch(() => {
+  createEffect(() => {
     const v = props.value();
     return v ? `${v.from.day} ${v.from.time} ${v.to.day} ${v.to.time}` : "";
   }, (key) => {

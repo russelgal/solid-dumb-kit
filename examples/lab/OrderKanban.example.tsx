@@ -13,8 +13,8 @@
 // чисел: где левый край, где верх первого места и какой шаг. Место k — это
 // `top + k * step`, а состав колонок на эти три числа не влияет: убрали карточку
 // из колонки — места остались на прежних координатах, просто последнее опустело.
-import { createSignal, onCleanup, For } from 'solid-js'
-import { createAutoScroller, createFlip, onMounted, type Flip } from '@solid-dumb-kit/shared'
+import { createEffect, createSignal, For, onCleanup } from 'solid-js'
+import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
 
 type Card = { id: string; text: string; tag: string }
 
@@ -132,14 +132,17 @@ export default function OrderKanbanExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMounted(() => {
-    measure()
-    if (typeof ResizeObserver !== 'function') return
-    let first = true
-    const ro = new ResizeObserver(() => { if (first) { first = false; return } measure() })
-    for (const el of zoneEls.values()) ro.observe(el)
-    onCleanup(() => ro.disconnect())
-  })
+  /**
+   * Зоны сами встают под наблюдение в своём колбэк-ref — эффекта не нужно
+   * вовсе. Первый вызов ResizeObserver приходит сразу после observe, он и
+   * делает стартовый снимок.
+   */
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => measure()) : null
+  onCleanup(() => ro?.disconnect())
+  const holdZone = (id: string, el: HTMLElement) => {
+    zoneEls.set(id, el)
+    ro?.observe(el)
+  }
 
   /**
    * Применить новую раскладку и доиграть переезды. Смещения считаются ДО того,
@@ -380,7 +383,7 @@ export default function OrderKanbanExample() {
                 {col.title} <span class="rounded-full bg-base-300 px-1.5 py-px text-[11px] text-base-content">{board()[col.id].length}</span>
               </h4>
               {/* сетка в одну колонку: сюда и смотрит order */}
-              <div class="grid min-h-30 grid-cols-1 content-start gap-2 rounded-xl bg-base-200 p-2.5 ring-1 ring-base-300" data-zone={col.id} ref={(el) => zoneEls.set(col.id, el)}>
+              <div class="grid min-h-30 grid-cols-1 content-start gap-2 rounded-xl bg-base-200 p-2.5 ring-1 ring-base-300" data-zone={col.id} ref={(el) => holdZone(col.id, el)}>
                 <For each={board()[col.id]}>
                   {(id) => (
                     <article

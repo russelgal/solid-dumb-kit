@@ -8,13 +8,13 @@
 // Занято — значит занято: полоса краснеет ещё в полёте, а на отпускании
 // прыгает в ближайшее свободное место, а не отменяется. Отказ без вариантов
 // злит сильнее всего.
-import { createSignal, For, Show, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { DumbTimeline, SCALES, type Span } from "@solid-dumb-kit/timeline";
 import { DumbDateRange, DumbTimeSelect, today, type Day, type Time } from "@solid-dumb-kit/date-range";
 import { DumbModal } from "@solid-dumb-kit/modal";
 import { DumbToaster, toast } from "@solid-dumb-kit/toast";
 import { DumbContextMenu, DumbPopover } from "@solid-dumb-kit/context-menu";
-import { createUndoStack, onMounted } from '@solid-dumb-kit/shared';
+import { createUndoStack } from '@solid-dumb-kit/shared';
 import { Code, Doc, Note, Props } from "../_controls";
 // Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
 // сюда приезжает уже готовая разметка (playground/snippets.ts).
@@ -89,11 +89,12 @@ export default function DumbTimelineExample() {
   };
 
   // «назад» и «вперёд» должны переключать режим, а не только вкладку витрины
-  onMounted(() => {
+  // слушатель ставится сразу: следить не за чем, эффект был бы лишним звеном
+  {
     const onPop = () => setModeRaw(fromUrl());
     window.addEventListener("popstate", onPop);
     onCleanup(() => window.removeEventListener("popstate", onPop));
-  });
+  }
   /**
    * Масштаб сетки — настройка ПОЛЬЗОВАТЕЛЯ, а не константа примера: на большом
    * мониторе хочется видеть месяц целиком, на ноутбуке — читаемые подписи.
@@ -534,7 +535,6 @@ export default function DumbTimelineExample() {
           setAskTime(null);
         }}
       />
-
 
       <hr class="my-6 border-base-300" />
 

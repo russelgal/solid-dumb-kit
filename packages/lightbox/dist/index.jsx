@@ -1,9 +1,8 @@
 // src/DumbLightbox.tsx
-import { Show, createMemo, createSignal as createSignal2, onCleanup } from "solid-js";
+import { createEffect as createEffect2, createMemo, createSignal as createSignal2, onCleanup, Show } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -28,24 +27,6 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -118,14 +99,14 @@ function DumbLightbox(props) {
   const closeButton = () => <button type="button" class="btn btn-sm btn-circle btn-neutral" title="закрыть (Esc)" onClick={close}>
       ✕
     </button>;
-  watch(
+  createEffect2(
     () => at() !== null,
     (open) => {
       if (open && !dialog.open) dialog.showModal();
       if (!open && dialog.open) dialog.close();
     }
   );
-  watch(at, (i) => {
+  createEffect2(at, (i) => {
     if (i === null) return;
     for (const d of [1, -1]) {
       const near = props.items[(i + d + props.items.length) % props.items.length];
@@ -140,10 +121,8 @@ function DumbLightbox(props) {
     if (ev.key === "+" || ev.key === "=") return setZoom((z) => Math.min(8, z * 1.25));
     if (ev.key === "-") return setZoom((z) => Math.max(1, z / 1.25));
   }
-  onMounted(() => {
-    window.addEventListener("keydown", onKey);
-    onCleanup(() => window.removeEventListener("keydown", onKey));
-  });
+  window.addEventListener("keydown", onKey);
+  onCleanup(() => window.removeEventListener("keydown", onKey));
   function onWheel(ev) {
     ev.preventDefault();
     const k = ev.deltaY < 0 ? 1.12 : 1 / 1.12;

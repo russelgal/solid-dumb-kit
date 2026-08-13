@@ -29,8 +29,8 @@
 // `level * indent`.
 //
 // Бросить ветку внутрь самой себя нельзя — её щели и строки исключаются из целей.
-import { createSignal, onCleanup, For, Show } from 'solid-js'
-import { createAutoScroller, createFlip, onMounted, type Flip } from '@solid-dumb-kit/shared'
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
+import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
 
 type Node = { id: string; label: string; kind: string }
 
@@ -143,14 +143,17 @@ export default function OrderTreeExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMounted(() => {
+  // Наблюдатель вешается в колбэк-ref: элемент создан — можно смотреть.
+  // Эффект тут не нужен, следить не за чем.
+  const holdRoot = (el: HTMLElement) => {
+    root = el
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true
     const ro = new ResizeObserver(() => { if (first) { first = false; return } measure() })
-    ro.observe(root)
+    ro.observe(el)
     onCleanup(() => ro.disconnect())
-  })
+  }
 
   /**
    * Применить новое дерево и доиграть переезд.
@@ -380,7 +383,7 @@ export default function OrderTreeExample() {
       </p>
       <div class="mt-2 mb-3 min-h-[18px] text-[13px] text-base-content">{log()}</div>
 
-      <div class="max-w-[560px] overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300" ref={root}>
+      <div class="max-w-[560px] overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300" ref={holdRoot}>
         <Branch pid={null} level={0} />
       </div>
 

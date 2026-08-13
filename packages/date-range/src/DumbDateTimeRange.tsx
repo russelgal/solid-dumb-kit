@@ -15,10 +15,11 @@
 // Reflow: ни одного замера. Календарь свой, слоты — обычные кнопки, ничего не
 // позиционируем.
 
-// watch — из shared/solidCompat: в Solid 2 `on` не экспортируется
-import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+// createEffect(dep, fn) — двухфазный: первая функция читает сигналы, вторая
+// работает. Одноаргументной формы в Solid 2 нет вовсе.
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle, restoreTextSelection, suppressTextSelection, watch } from '@solid-dumb-kit/shared'
+import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import { DumbDateRange } from './DumbDateRange'
 import { DumbTimeSelect } from './DumbTimeSelect'
 import { addDays, diffDays, today, type Day } from './dateMath'
@@ -150,7 +151,7 @@ export function DumbDateTimeRange(props: DumbDateTimeRangeProps): JSX.Element {
   // или подставили чужую бронь на правку, и компонент обязан это показать.
   // Сравниваем по содержимому, иначе собственный onChange возвращался бы сюда
   // же и затирал наполовину набранный выбор.
-  watch(
+  createEffect(
     () => {
       const v = props.value()
       return v ? `${v.from.day} ${v.from.time} ${v.to.day} ${v.to.time}` : ''

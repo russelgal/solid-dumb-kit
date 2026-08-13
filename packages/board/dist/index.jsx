@@ -1,33 +1,14 @@
 // src/DumbBoard.tsx
-import { For as For2, Show as Show2, createMemo as createMemo2, createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
+import { createEffect as createEffect3, createMemo as createMemo2, createSignal as createSignal3, For as For2, onCleanup as onCleanup2, Show as Show2 } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -298,7 +279,7 @@ function createAutoScroller() {
 
 // ../grid/dist/index.js
 import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
-import { createSignal as createSignal2, onCleanup, createMemo, Show, For, untrack as untrack2, createEffect as createEffect2 } from "solid-js";
+import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -884,7 +865,7 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  watch(() => shouldAnimate(props.animate), (on) => {
+  createEffect3(() => shouldAnimate(props.animate), (on) => {
     flip = createFlip(on);
   });
   const scroller = createAutoScroller();
@@ -935,10 +916,11 @@ function DumbBoard(props) {
     }
   }) : null;
   onCleanup2(() => sizes?.disconnect());
-  onMounted(() => {
+  const holdWrap = (el) => {
+    wrapEl = el;
     measure();
     if (!sizes) return;
-    sizes.observe(wrapEl);
+    sizes.observe(el);
     let firstCall = true;
     const ro = new ResizeObserver(() => {
       if (firstCall) {
@@ -947,9 +929,9 @@ function DumbBoard(props) {
       }
       measure();
     });
-    ro.observe(wrapEl);
+    ro.observe(el);
     onCleanup2(() => ro.disconnect());
-  });
+  };
   const cellsOf = createMemo2(() => {
     const out = /* @__PURE__ */ new Map();
     for (const s of props.sections) {
@@ -1354,9 +1336,7 @@ function DumbBoard(props) {
   >
       <div
     class="dumb-board"
-    ref={(el) => {
-      wrapEl = el;
-    }}
+    ref={holdWrap}
     style={{ "--dumb-board-cols": String(cols()), "--dumb-board-gap": `${gap()}px` }}
   >
         <For2 each={renderOrder()}>

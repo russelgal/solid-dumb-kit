@@ -13,11 +13,11 @@
 // выбранная красится акцентом темы. Свой CSS остался только на полосы и ритм
 // строк в 1lh — классом такого не выразить.
 
-// watch вместо effect(on(...)): в Solid 2 `on` не экспортируется, а работа
-// живёт во второй фазе двухфазного эффекта (shared/effects)
-import { createMemo, createSignal, For, Show } from 'solid-js'
+// createEffect(dep, fn) вместо createEffect(on(...)): в Solid 2 эффект
+// двухфазный, а `on` не экспортируется вовсе
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle, watch } from '@solid-dumb-kit/shared'
+import { injectStyle } from '@solid-dumb-kit/shared'
 
 export type TreeNode = {
   id: string
@@ -217,19 +217,19 @@ function Branch(p: {
   // первого раскрытия: ветка рендерится только раскрытой, значит и запрос
   // уходит ровно тогда, когда в неё полезли.
   //
-  // Через watch, а не `if (!p.nodes) onMounted(load)`: проп РЕАКТИВЕН, и его
+  // Через эффект, а не разовый вызов в теле: проп РЕАКТИВЕН, и его
   // чтение в теле компонента Solid 2 отбивает — STRICT_READ_UNTRACKED («read
-  // directly in <Branch> will not update»). У watch первая функция читает в
+  // directly in <Branch> will not update»). Первая функция эффекта читает в
   // tracking scope, вторая работает в фазе применения, где запись в сигнал
   // (её делает `load`) разрешена.
-  watch(
+  createEffect(
     () => !p.nodes,
     (needsLoad) => {
       if (needsLoad) load()
     },
   )
   // сменился ключ обновления — перечитываем то, что уже тянули
-  watch(
+  createEffect(
     () => p.tree.refreshKey?.(),
     () => {
       if (loaded()) load()

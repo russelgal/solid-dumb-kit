@@ -20,10 +20,10 @@
 // покадровой точности не даёт. Секции лежат в сетке из 12 колонок, ширина
 // меряется в колонках, и размер меняется только на смене снапа — то есть
 // перекладка случается раз в колонку, а не каждый кадр.
-import { createSignal, onCleanup, For, Show } from 'solid-js'
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import { Bar, Switch, Check, Pick, Btn, Note } from '../_controls'
 import type { JSX } from 'solid-js'
-import { createAutoScroller, createFlip, onMounted, watch, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
 
 type Block = { id: string; title: string; kind: string }
 
@@ -134,7 +134,7 @@ export default function OrderBoardExample() {
   let wrapAt = { left: 0, top: 0 }
   let geom: Record<string, Geom> = {}
   let flip: Flip = createFlip(true)
-  watch(animate, (on) => { flip = createFlip(on) })
+  createEffect(animate, (on) => { flip = createFlip(on) })
   const scroller = createAutoScroller()
   onCleanup(() => scroller.stop())
 
@@ -223,23 +223,24 @@ export default function OrderBoardExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMounted(() => {
-    measure()
-    if (typeof ResizeObserver !== 'function') return
-    let first = true
-    const ro = new ResizeObserver((entries) => {
-      // ширину колонки берём из ResizeObserver — это не forced layout
-      for (const e of entries) {
-        if (e.target !== wrapEl) continue
-        colW = (e.contentRect.width - GAP * (COLS_TOTAL - 1)) / COLS_TOTAL
-      }
-      if (first) { first = false; return }
-      measure()
-    })
-    ro.observe(wrapEl)
-    for (const el of zoneEls.values()) ro.observe(el)
-    onCleanup(() => ro.disconnect())
-  })
+  /**
+   * Доска и зоны встают под наблюдение в своих колбэк-ref: эффекта тут нет,
+   * следить не за чем. Первый вызов ResizeObserver приходит сразу после
+   * observe — он и делает стартовый снимок.
+   */
+  const ro = typeof ResizeObserver === 'function'
+    ? new ResizeObserver((entries) => {
+        // ширину колонки берём из ResizeObserver — это не forced layout
+        for (const e of entries) {
+          if (e.target !== wrapEl) continue
+          colW = (e.contentRect.width - GAP * (COLS_TOTAL - 1)) / COLS_TOTAL
+        }
+        measure()
+      })
+    : null
+  onCleanup(() => ro?.disconnect())
+  const holdWrap = (el: HTMLElement) => { wrapEl = el; ro?.observe(el) }
+  const holdZone = (id: string, el: HTMLElement) => { zoneEls.set(id, el); ro?.observe(el) }
 
   /** Применить раскладку и доиграть переезды: смещения считаются ДО смены. */
   function apply(nextBoard: Record<string, Array<string>>, nextPlace: Record<string, number>) {
@@ -579,7 +580,7 @@ export default function OrderBoardExample() {
 
       <div
         class="grid grid-cols-12 items-start gap-3.5"
-        ref={(el) => { wrapEl = el }}
+        ref={holdWrap}
         onPointerDown={onGripDown}
         onPointerMove={onGripMove}
         onPointerUp={onGripUp}
@@ -626,7 +627,7 @@ export default function OrderBoardExample() {
                   '--cols': String(colsOf(zone.id)),
                   ...(rows()[zone.id] ? { height: `${rows()[zone.id] * ROW_H + 12}px` } : {}),
                 }}
-                ref={(el) => zoneEls.set(zone.id, el)}
+                ref={(el) => holdZone(zone.id, el)}
               >
                 <For each={board()[zone.id]}>
                   {(id) => (

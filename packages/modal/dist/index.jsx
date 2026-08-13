@@ -1,9 +1,8 @@
 // src/DumbModal.tsx
-import { Show, onCleanup } from "solid-js";
+import { createEffect as createEffect2, onCleanup, Show } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -28,24 +27,6 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -104,7 +85,7 @@ function DumbModal(props) {
     }
     props.onClose();
   }
-  watch(
+  createEffect2(
     () => props.open(),
     (want) => {
       if (!dialog) return;
@@ -163,7 +144,7 @@ function DumbModal(props) {
 }
 
 // src/DumbModalHost.tsx
-import { For, createSignal as createSignal2, onCleanup as onCleanup2 } from "solid-js";
+import { createSignal as createSignal2, For, onCleanup as onCleanup2 } from "solid-js";
 
 // src/modalBus.ts
 function createModalBus() {
@@ -236,10 +217,7 @@ var actionClass = (kind) => kind === "primary" ? "btn btn-sm btn-neutral" : kind
 function DumbModalHost(props) {
   const bus = () => props.bus ?? modal;
   const [tick, bump] = createSignal2(0, { equals: false });
-  onMounted(() => {
-    const off = bus().subscribe(() => bump(0));
-    onCleanup2(off);
-  });
+  onCleanup2(bus().subscribe(() => bump(0)));
   const cur = () => (tick(), bus().current());
   const ask = () => cur();
   const answer = (value) => {

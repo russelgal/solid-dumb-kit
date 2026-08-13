@@ -1,30 +1,8 @@
 import { delegateEvents, ref, insert, createComponent, effect, className, setStyleProperty, setAttribute, memo, style, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createMemo, createSignal, onCleanup, Show, For, untrack, createEffect } from 'solid-js';
+import { createMemo, createSignal, onCleanup, createEffect, Show, For, flush } from 'solid-js';
 import { Temporal as Temporal$1 } from 'temporal-polyfill';
 
 // src/DumbTimeline.tsx
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
-}
-function flushNow() {
-  solid.flush?.();
-}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -636,14 +614,14 @@ function DumbTimeline(props) {
     scrollToNow: () => api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange
   };
-  onMounted(() => {
-    props.ref?.(api);
-    if (!viewport) return;
+  props.ref?.(api);
+  const holdViewport = (el) => {
+    viewport = el;
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
-    ro.observe(viewport);
+    ro.observe(el);
     onCleanup(() => ro.disconnect());
-  });
-  watch(() => [scale(), vpW()], ([, width]) => {
+  };
+  createEffect(() => [scale(), vpW()], ([, width]) => {
     if (width > 0) props.onVisibleRange?.(visibleRange());
   });
   let origin = null;
@@ -806,8 +784,7 @@ function DumbTimeline(props) {
       props.onVisibleRange(visibleRange());
     });
   });
-  var _ref$ = viewport;
-  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : viewport = _el$;
+  ref(() => holdViewport, _el$);
   insert(_el$3, createComponent(Show, {
     get when() {
       return props.summary;
@@ -1063,15 +1040,15 @@ function DumbTimeline(props) {
       begin();
       if (upX !== null) {
         update(upX);
-        flushNow();
+        flush();
         finish(upX);
       } else {
         update(last.x);
       }
     });
   };
-  var _ref$2 = canvas;
-  typeof _ref$2 === "function" || Array.isArray(_ref$2) ? ref(() => _ref$2, _el$0) : canvas = _el$0;
+  var _ref$ = canvas;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$0) : canvas = _el$0;
   insert(_el$0, createComponent(For, {
     get each() {
       return rowGeom().items;

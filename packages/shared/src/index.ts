@@ -23,8 +23,6 @@ export {
   type CloseSideOption,
 } from './closeSide'
 
-// работа с двухфазным эффектом Solid 2: DOM и запись в сигналы — только отсюда
-export { flushNow, onMounted, watch } from './effects'
 export { createPersisted, type PersistedOptions } from './persisted'
 export { createFilePicker, pickedFrom, type FilePickerOptions, type PickedFile } from './filePicker'
 

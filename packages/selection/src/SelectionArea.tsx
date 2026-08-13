@@ -1,7 +1,3 @@
-// onMounted вместо onMount: в Solid 2 onMount не экспортируется, а JSX кита
-// компилируется у потребителя (см. shared/solidCompat)
-
-import { onMounted } from '@solid-dumb-kit/shared'
 import type { JSX } from '@solidjs/web'
 import { createSelectionArea } from './solid'
 import type { IntersectMode } from './selectionMath'
@@ -56,7 +52,10 @@ export type SelectionAreaProps = {
 export function SelectionArea(props: SelectionAreaProps) {
   let containerRef!: HTMLDivElement
 
-  onMounted(() => {
+  // Никакого эффекта: движок цепляется в колбэк-ref, то есть ровно тогда, когда
+  // элемент создан. Эффект тут был бы лишним звеном — следить не за чем.
+  const attach = (el: HTMLDivElement) => {
+    containerRef = el
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,
@@ -70,10 +69,10 @@ export function SelectionArea(props: SelectionAreaProps) {
       onStop: (selected) => props.onStop?.(selected),
     })
     area.attach(containerRef)
-  })
+  }
 
   return (
-    <div ref={containerRef} class={props.class} style={{ position: 'relative', ...props.style }}>
+    <div ref={attach} class={props.class} style={{ position: 'relative', ...props.style }}>
       {props.children}
     </div>
   )

@@ -9,10 +9,9 @@
 // Стили структурные, инжектом; цвета — переменные с контрастными фолбэками:
 // сообщение об ошибке обязано читаться в любой теме, а не сливаться с фоном.
 
-// onMounted вместо onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
-import { For, Show, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { createFlip, injectStyle, onMounted, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { createFlip, injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 import { ToastBody, ToastIcon } from './toastLook'
 
@@ -159,14 +158,15 @@ export function DumbToaster(props: DumbToasterProps) {
 
   let box!: HTMLDivElement
 
-  onMounted(() => {
-    // шина живёт вне реактивности — подписка и есть мост
+  // шина живёт вне реактивности — подписка и есть мост. Эффект не нужен:
+  // следить не за чем, а `box` читается лениво, уже при уборке
+  {
     const off = bus().subscribe(() => bump(0))
     onCleanup(() => {
       off()
       if (box?.matches(':popover-open')) box.hidePopover()
     })
-  })
+  }
 
   const shown = () => {
     tick()                                   // подписка на «будильник»
@@ -220,7 +220,7 @@ export function DumbToaster(props: DumbToasterProps) {
   // летящие считаем наравне с живыми: иначе слой погаснет ровно в тот кадр,
   // когда должен показать полёт последней плашки. Считаем в первой фазе,
   // popover трогаем во второй — в первой `box` ещё не присвоен.
-  watch(
+  createEffect(
     () => shown().length + flying().length,
     (n) => {
       if (!n) {
@@ -282,7 +282,7 @@ export function DumbToaster(props: DumbToasterProps) {
    * лежат с того края, к которому прижата стопка.
    */
   let prevRows: Array<Toast> = []
-  watch(rows, (now) => {
+  createEffect(rows, (now) => {
     const alive = new Set(now.map((t) => t.id))
     // сколько места освободилось ВЫШЕ по стопке — накапливаем, идя по прошлому
     // порядку: каждой уцелевшей плашке достаётся сумма ушедших перед ней
@@ -388,7 +388,7 @@ export function DumbToaster(props: DumbToasterProps) {
    * раскладка элементов, читать их можно сколько угодно.
    */
   const [pointer, setPointer] = createSignal({ x: 0, y: 0 })
-  onMounted(() => {
+  {
     const track = (ev: PointerEvent) => setPointer({ x: ev.clientX, y: ev.clientY })
     window.addEventListener('pointermove', track, { passive: true })
     window.addEventListener('pointerdown', track, { passive: true })
@@ -396,7 +396,7 @@ export function DumbToaster(props: DumbToasterProps) {
       window.removeEventListener('pointermove', track)
       window.removeEventListener('pointerdown', track)
     })
-  })
+  }
   const spotOf = (t: Toast) => (t.at === 'pointer' ? pointer() : (t.at as { x: number; y: number }))
 
   return (
@@ -467,9 +467,12 @@ export function DumbToaster(props: DumbToasterProps) {
 
   function AtToast(p: { t: Toast }) {
     let el!: HTMLDivElement
-    // popover открываем ПОСЛЕ вставки: на элементе не в документе метод бросает
-    onMounted(() => {
-      queueMicrotask(() => el?.showPopover?.())
+    // Всё — в колбэк-ref, без эффекта: плашка живёт одно сообщение, следить не
+    // за чем. popover открываем ПОСЛЕ вставки: на элементе не в документе метод
+    // бросает, отсюда микротаск.
+    const hold = (node: HTMLDivElement) => {
+      el = node
+      queueMicrotask(() => node.showPopover?.())
 
       /**
        * Клик мимо и Esc закрывают — как у любого всплывающего окна. Для вопроса
@@ -480,7 +483,7 @@ export function DumbToaster(props: DumbToasterProps) {
        * только на плашку У КУРСОРА, которая и ведёт себя как окно.
        */
       const away = (ev: PointerEvent) => {
-        if (!el?.contains(ev.target as Node)) bus().dismiss(p.t.id)
+        if (!node.contains(ev.target as Node)) bus().dismiss(p.t.id)
       }
       const onKey = (ev: KeyboardEvent) => {
         if (ev.key !== 'Escape') return
@@ -493,15 +496,15 @@ export function DumbToaster(props: DumbToasterProps) {
       onCleanup(() => {
         window.removeEventListener('pointerdown', away, true)
         window.removeEventListener('keydown', onKey)
-        if (el?.matches(':popover-open')) el.hidePopover()
+        if (node.matches(':popover-open')) node.hidePopover()
       })
-    })
+    }
     const spot = spotOf(p.t)
     return (
       <>
         <div class="dumb-toast-anchor" style={{ left: `${spot.x}px`, top: `${spot.y}px` }} />
         <div
-          ref={el}
+          ref={hold}
           popover="manual"
           class={`dumb-toast dumb-toast-at ${cardClass}`}
           data-kind={p.t.kind}

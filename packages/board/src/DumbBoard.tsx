@@ -29,10 +29,9 @@
 // Тач для переноса не поддерживается (HTML5 DnD там не существует); ресайз на
 // указателе работает и пальцем.
 
-// onMounted вместо onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
-import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { createAutoScroller, createFlip, createStableOrder, injectStyle, onMounted, shouldAnimate, watch, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, createStableOrder, injectStyle, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
 // математика сетки общая с DumbGrid — своей у доски только поток секций
 import {
   cellRect, colWidth, gridLinesBackground, packFlow, resolveSpan, rowCount, snapSpan, spanSize,
@@ -332,7 +331,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
   const zonePad: Record<string, Slot> = {}
 
   let flip: Flip = createFlip(true)
-  watch(() => shouldAnimate(props.animate), (on) => { flip = createFlip(on) })
+  createEffect(() => shouldAnimate(props.animate), (on) => { flip = createFlip(on) })
   const scroller = createAutoScroller()
   onCleanup(() => scroller.stop())
 
@@ -415,10 +414,15 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     : null
   onCleanup(() => sizes?.disconnect())
 
-  onMounted(() => {
+  /**
+   * Наблюдатели вешаются в колбэк-ref доски — то есть ровно тогда, когда
+   * элемент создан. Эффекта тут нет и не нужно: следить не за чем.
+   */
+  const holdWrap = (el: HTMLElement) => {
+    wrapEl = el
     measure()
     if (!sizes) return
-    sizes.observe(wrapEl)
+    sizes.observe(el)
     // положение зон меняется от собственной ширины доски — пересняться нужно
     // после того, как браузер разложил новую ширину
     let firstCall = true
@@ -426,9 +430,9 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
       if (firstCall) { firstCall = false; return }
       measure()
     })
-    ro.observe(wrapEl)
+    ro.observe(el)
     onCleanup(() => ro.disconnect())
-  })
+  }
 
   /* ────────── перенос блоков ────────── */
 
@@ -941,7 +945,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     >
       <div
         class="dumb-board"
-        ref={(el) => { wrapEl = el }}
+        ref={holdWrap}
         style={{ '--dumb-board-cols': String(cols()), '--dumb-board-gap': `${gap()}px` }}
       >
         <For each={renderOrder()}>

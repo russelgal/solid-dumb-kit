@@ -1,5 +1,5 @@
 import { delegateEvents, createComponent, effect, setStyleProperty, ref, insert, className, style, setAttribute, template } from '@solidjs/web';
-import { createSignal, onCleanup, Show, For, untrack, createEffect } from 'solid-js';
+import { createSignal, onCleanup, Show, createEffect, For } from 'solid-js';
 
 // src/DumbContextMenu.tsx
 var configured = "auto";
@@ -19,24 +19,6 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -140,17 +122,12 @@ function Panel(props) {
     });
     else setSub(null);
   };
-  onMounted(() => {
+  const hold = (node) => {
+    el = node;
     queueMicrotask(() => {
-      if (el && !el.matches(":popover-open")) el.showPopover?.();
-      if (props.depth === 0) el?.focus();
+      if (!node.matches(":popover-open")) node.showPopover?.();
+      if (props.depth === 0) node.focus();
     });
-  });
-  onCleanup(() => {
-    if (el?.matches(":popover-open")) el.hidePopover();
-  });
-  onMounted(() => {
-    if (!el) return;
     const io = new IntersectionObserver((entries) => {
       const r = entries[entries.length - 1].boundingClientRect;
       if (!r.width) return;
@@ -160,9 +137,12 @@ function Panel(props) {
       });
       io.disconnect();
     });
-    io.observe(el);
-    onCleanup(() => io.disconnect());
-  });
+    io.observe(node);
+    onCleanup(() => {
+      io.disconnect();
+      if (node.matches(":popover-open")) node.hidePopover();
+    });
+  };
   const side = () => {
     const b = box();
     if (!b) return props.side ?? "right";
@@ -246,8 +226,7 @@ function Panel(props) {
   };
   return [(() => {
     var _el$ = _tmpl$(), _el$2 = _el$.firstChild;
-    var _ref$ = el;
-    typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : el = _el$;
+    ref(() => hold, _el$);
     insert(_el$2, createComponent(For, {
       get each() {
         return props.items;
@@ -582,7 +561,7 @@ function DumbPopover(props) {
     _el$.$$click = close;
     return _el$;
   })();
-  watch(() => props.at() !== null, (open) => {
+  createEffect(() => props.at() !== null, (open) => {
     if (!open) {
       if (box?.matches(":popover-open")) box.hidePopover();
       return;
@@ -591,7 +570,7 @@ function DumbPopover(props) {
       if (box && !box.matches(":popover-open")) box.showPopover?.();
     });
   });
-  watch(() => props.at() !== null, (open) => {
+  createEffect(() => props.at() !== null, (open) => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && close();
     const away = (e) => {

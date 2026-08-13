@@ -1,5 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, memo, effect, className, setAttribute, setStyleProperty, template } from '@solidjs/web';
-import { createSignal, onCleanup, For, Show, untrack, createEffect } from 'solid-js';
+import { createSignal, onCleanup, createEffect, For, Show } from 'solid-js';
 
 // src/DumbToaster.tsx
 function prefersReducedMotion() {
@@ -26,24 +26,6 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -484,13 +466,13 @@ function DumbToaster(props) {
     equals: false
   });
   let box;
-  onMounted(() => {
+  {
     const off = bus().subscribe(() => bump(0));
     onCleanup(() => {
       off();
       if (box?.matches(":popover-open")) box.hidePopover();
     });
-  });
+  }
   const shown = () => {
     tick();
     const all = bus().list();
@@ -504,7 +486,7 @@ function DumbToaster(props) {
   const rows = () => [...stacked(), ...flying()].sort((a, b) => a.id - b.id);
   const isLeaving = (t) => flying().some((x) => x.id === t.id);
   let was = 0;
-  watch(() => shown().length + flying().length, (n) => {
+  createEffect(() => shown().length + flying().length, (n) => {
     if (!n) {
       if (box?.matches(":popover-open")) box.hidePopover();
     } else if (n !== was) {
@@ -536,7 +518,7 @@ function DumbToaster(props) {
     });
   };
   let prevRows = [];
-  watch(rows, (now) => {
+  createEffect(rows, (now) => {
     const alive = new Set(now.map((t) => t.id));
     let freed = 0;
     const moved = [];
@@ -611,7 +593,7 @@ function DumbToaster(props) {
     x: 0,
     y: 0
   });
-  onMounted(() => {
+  {
     const track = (ev) => setPointer({
       x: ev.clientX,
       y: ev.clientY
@@ -626,7 +608,7 @@ function DumbToaster(props) {
       window.removeEventListener("pointermove", track);
       window.removeEventListener("pointerdown", track);
     });
-  });
+  }
   const spotOf = (t) => t.at === "pointer" ? pointer() : t.at;
   var _el$2 = _tmpl$22(), _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling;
   _el$2.addEventListener("mouseleave", () => bus().resume());
@@ -736,11 +718,10 @@ function DumbToaster(props) {
   });
   return _el$2;
   function AtToast(p) {
-    let el;
-    onMounted(() => {
-      queueMicrotask(() => el?.showPopover?.());
+    const hold2 = (node) => {
+      queueMicrotask(() => node.showPopover?.());
       const away = (ev) => {
-        if (!el?.contains(ev.target)) bus().dismiss(p.t.id);
+        if (!node.contains(ev.target)) bus().dismiss(p.t.id);
       };
       const onKey = (ev) => {
         if (ev.key !== "Escape") return;
@@ -752,9 +733,9 @@ function DumbToaster(props) {
       onCleanup(() => {
         window.removeEventListener("pointerdown", away, true);
         window.removeEventListener("keydown", onKey);
-        if (el?.matches(":popover-open")) el.hidePopover();
+        if (node.matches(":popover-open")) node.hidePopover();
       });
-    });
+    };
     const spot = spotOf(p.t);
     return [(() => {
       var _el$5 = _tmpl$32();
@@ -771,8 +752,7 @@ function DumbToaster(props) {
       return _el$5;
     })(), (() => {
       var _el$6 = _tmpl$42(), _el$7 = _el$6.firstChild, _el$8 = _el$7.nextSibling, _el$9 = _el$8.nextSibling, _el$0 = _el$9.nextSibling;
-      var _ref$2 = el;
-      typeof _ref$2 === "function" || Array.isArray(_ref$2) ? ref(() => _ref$2, _el$6) : el = _el$6;
+      ref(() => hold2, _el$6);
       insert(_el$6, createComponent(Show, {
         get when() {
           return p.t.closable;
@@ -917,7 +897,7 @@ function DumbToastCenter(props) {
   const open = () => (tick(), bus().historyOpen());
   const items = () => (tick(), bus().history());
   const unread = () => (tick(), bus().unread());
-  onMounted(() => {
+  {
     const off = bus().subscribe(() => bump(0));
     const onKey = (ev) => {
       if (ev.key === "Escape" && bus().historyOpen()) {
@@ -939,14 +919,14 @@ function DumbToastCenter(props) {
       window.removeEventListener("pointerdown", away, true);
       if (panel?.matches(":popover-open")) panel.hidePopover();
     });
-  });
-  watch(open, (visible) => {
+  }
+  createEffect(open, (visible) => {
     if (!visible) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
     onCleanup(() => clearInterval(id));
   });
-  watch(open, (show) => {
+  createEffect(open, (show) => {
     queueMicrotask(() => {
       if (!panel) return;
       if (show && !panel.matches(":popover-open")) panel.showPopover?.();

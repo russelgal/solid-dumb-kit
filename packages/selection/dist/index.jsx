@@ -1,12 +1,8 @@
+// src/solid.ts
+import { onCleanup } from "solid-js";
+
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
+import { createSignal, createEffect } from "solid-js";
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -89,9 +85,6 @@ function restoreTextSelection() {
   s.userSelect = "";
   s.webkitUserSelect = "";
 }
-
-// src/solid.ts
-import { onCleanup } from "solid-js";
 
 // src/selectionMath.ts
 function areaFrom(x1, y1, x2, y2) {
@@ -383,7 +376,8 @@ function createSelectionArea(opts) {
 // src/SelectionArea.tsx
 function SelectionArea(props) {
   let containerRef;
-  onMounted(() => {
+  const attach = (el) => {
+    containerRef = el;
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,
@@ -397,8 +391,8 @@ function SelectionArea(props) {
       onStop: (selected) => props.onStop?.(selected)
     });
     area.attach(containerRef);
-  });
-  return <div ref={containerRef} class={props.class} style={{ position: "relative", ...props.style }}>
+  };
+  return <div ref={attach} class={props.class} style={{ position: "relative", ...props.style }}>
       {props.children}
     </div>;
 }

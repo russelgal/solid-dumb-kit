@@ -3,22 +3,7 @@ import { For, Show } from "solid-js";
 import * as v from "valibot";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
-}
+import { createSignal, createEffect } from "solid-js";
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
   const stringify = opts.stringify ?? ((v2) => JSON.stringify(v2));
@@ -33,7 +18,7 @@ function createPersisted(key, initial, opts = {}) {
     }
   }
   const [value, setValue] = createSignal(start);
-  watch(value, (v2) => {
+  createEffect(value, (v2) => {
     try {
       store?.setItem(key, stringify(v2));
     } catch {

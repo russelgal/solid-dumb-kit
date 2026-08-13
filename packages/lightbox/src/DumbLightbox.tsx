@@ -12,9 +12,9 @@
 // каждое нажатие стрелки показывает пустоту на время загрузки, и просмотр
 // превращается в ожидание.
 
-import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle, onMounted, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type LightboxItem = {
   /** что показывать */
@@ -109,7 +109,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
   // watch, а не effect: в Solid 2 первая фаза эффекта выполняется НЕМЕДЛЕННО,
   // когда ref ещё не проставлен, и `dialog` тут был бы undefined. У watch
   // работа уходит во вторую фазу — после монтирования.
-  watch(
+  createEffect(
     () => at() !== null,
     (open) => {
       if (open && !dialog.open) dialog.showModal()
@@ -121,7 +121,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
    * Соседние тянем заранее. `new Image()` — самый дешёвый способ: браузер
    * положит их в тот же кеш, откуда потом возьмёт `<img>`.
    */
-  watch(at, (i) => {
+  createEffect(at, (i) => {
     if (i === null) return
     for (const d of [1, -1]) {
       const near = props.items[(i + d + props.items.length) % props.items.length]
@@ -140,10 +140,9 @@ export function DumbLightbox(props: DumbLightboxProps) {
   }
 
   // слушатель нужен один на всё время жизни — вешаем по монтированию
-  onMounted(() => {
-    window.addEventListener('keydown', onKey)
-    onCleanup(() => window.removeEventListener('keydown', onKey))
-  })
+  // слушатель один на всё время жизни — вешаем сразу, без эффекта
+  window.addEventListener('keydown', onKey)
+  onCleanup(() => window.removeEventListener('keydown', onKey))
 
   /** колесо — зум к курсору; страница под диалогом при этом не едет */
   function onWheel(ev: WheelEvent) {

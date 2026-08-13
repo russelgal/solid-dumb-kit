@@ -9,8 +9,7 @@
 // после загрузки. Пишется при каждом изменении, через `watch`: в Solid 2
 // запись живёт во второй фазе эффекта, где ей и место.
 
-import { createSignal, type Accessor, type Setter } from 'solid-js'
-import { watch } from './effects'
+import { createEffect, createSignal, type Accessor, type Setter } from 'solid-js'
 
 export type PersistedOptions<T> = {
   /** во что превращать значение; по умолчанию JSON */
@@ -50,7 +49,7 @@ export function createPersisted<T>(
     Setter<T>,
   ]
 
-  watch(value, (v) => {
+  createEffect(value, (v) => {
     try {
       store?.setItem(key, stringify(v))
     } catch {

@@ -1,5 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, effect, className, setAttribute, style, memo, template } from '@solidjs/web';
-import { onCleanup, Show, createSignal, For, untrack, createEffect } from 'solid-js';
+import { createEffect, onCleanup, Show, createSignal, For } from 'solid-js';
 
 // src/DumbModal.tsx
 function prefersReducedMotion() {
@@ -26,24 +26,6 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -103,7 +85,7 @@ function DumbModal(props) {
     }
     props.onClose();
   }
-  watch(() => props.open(), (want) => {
+  createEffect(() => props.open(), (want) => {
     if (!dialog) return;
     if (want && !dialog.open) {
       returnTo = document.activeElement ?? null;
@@ -264,10 +246,7 @@ function DumbModalHost(props) {
   const [tick, bump] = createSignal(0, {
     equals: false
   });
-  onMounted(() => {
-    const off = bus().subscribe(() => bump(0));
-    onCleanup(off);
-  });
+  onCleanup(bus().subscribe(() => bump(0)));
   const cur = () => (tick(), bus().current());
   const ask = () => cur();
   const answer = (value) => {

@@ -13,8 +13,8 @@
 //
 // Разница видна прямо в цифрах на панели: сколько замеров и сколько миллисекунд
 // стоила ОДНА перекладка. Умножь на частоту `dragover` — это и есть цена.
-import { createSignal, onCleanup, For } from 'solid-js'
-import { createAutoScroller, createFlip, onMounted, type Flip } from '@solid-dumb-kit/shared'
+import { createEffect, createSignal, For, onCleanup } from 'solid-js'
+import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
 
 const N = 200
 const CARDS = Array.from({ length: N }, (_, i) => i)
@@ -32,8 +32,7 @@ export default function FlipBenchExample() {
   const els: Array<HTMLElement | undefined> = []
   let box!: HTMLDivElement
   let slots: Array<Slot> = []
-  let flip: Flip = createFlip(true)
-  onMounted(() => { flip = createFlip(true) })
+  const flip: Flip = createFlip(true)
 
   const scroller = createAutoScroller()
   onCleanup(() => scroller.stop())
@@ -60,14 +59,17 @@ export default function FlipBenchExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMounted(() => {
+  // Наблюдатель вешается в колбэк-ref: элемент создан — можно смотреть.
+  // Эффект тут не нужен, следить не за чем.
+  const holdBox = (el: HTMLElement) => {
+    box = el
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true
     const ro = new ResizeObserver(() => { if (first) { first = false; return } measure() })
-    ro.observe(box)
+    ro.observe(el)
     onCleanup(() => ro.disconnect())
-  })
+  }
 
   const note = (reads: number, ms: number) => {
     setLast({ reads, ms })
@@ -232,7 +234,7 @@ export default function FlipBenchExample() {
 
       <div
         class="grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] content-start gap-2"
-        ref={box}
+        ref={holdBox}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={() => { setHeld(null); scroller.stop() }}

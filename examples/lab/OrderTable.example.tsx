@@ -17,8 +17,8 @@
 // считаются арифметикой по трём числам, FLIP доигрывает переезд. Приятный
 // побочный эффект: анимируется не только драг, но и СОРТИРОВКА по колонке —
 // строки разъезжаются по новым местам, и видно, куда именно уехала каждая.
-import { createSignal, onCleanup, For } from 'solid-js'
-import { createAutoScroller, createFlip, onMounted, type Flip } from '@solid-dumb-kit/shared'
+import { createEffect, createSignal, For, onCleanup } from 'solid-js'
+import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
 
 type Row = { id: string; name: string; status: string; sum: number; date: string }
 
@@ -89,14 +89,17 @@ export default function OrderTableExample() {
     for (const t of targets) io.observe(t)
   }
 
-  onMounted(() => {
+  // Наблюдатель вешается в колбэк-ref: элемент создан — можно смотреть.
+  // Эффект тут не нужен, следить не за чем.
+  const holdBody = (el: HTMLElement) => {
+    body = el
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true
     const ro = new ResizeObserver(() => { if (first) { first = false; return } measure() })
-    ro.observe(body)
+    ro.observe(el)
     onCleanup(() => ro.disconnect())
-  })
+  }
 
   /** применить новые места и доиграть переезд */
   function apply(next: Record<string, number>) {
@@ -270,7 +273,7 @@ export default function OrderTableExample() {
             <th onClick={() => sortBy('date')}>Дата{arrow('date')}</th>
           </tr>
         </thead>
-        <tbody ref={body}>
+        <tbody ref={holdBody}>
           <For each={ROWS}>
             {(row) => (
               <tr

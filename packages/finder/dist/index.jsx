@@ -1,15 +1,9 @@
 // src/DumbFinder.tsx
-import { For as For2, Show as Show2, createMemo, createSignal as createSignal3, onCleanup as onCleanup2, untrack as untrack3 } from "solid-js";
+import { createEffect as createEffect3, createMemo, createSignal as createSignal3, For as For2, onCleanup as onCleanup2, Show as Show2, untrack } from "solid-js";
 
 // ../selection/dist/index.js
 import { ref, insert, effect, className, style, template } from "@solidjs/web";
-import { onCleanup, createEffect } from "solid-js";
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function onMounted(fn) {
-  twoPhase(() => {
-  }, () => cleanupOnly(fn()));
-}
+import { onCleanup } from "solid-js";
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -375,7 +369,8 @@ function createSelectionArea(opts) {
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
 function SelectionArea(props) {
   let containerRef;
-  onMounted(() => {
+  const attach = (el) => {
+    containerRef = el;
     const area = createSelectionArea({
       container: () => containerRef,
       selectables: props.selectables,
@@ -389,10 +384,9 @@ function SelectionArea(props) {
       onStop: (selected) => props.onStop?.(selected)
     });
     area.attach(containerRef);
-  });
+  };
   var _el$ = _tmpl$();
-  var _ref$ = containerRef;
-  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : containerRef = _el$;
+  ref(() => attach, _el$);
   insert(_el$, () => props.children);
   effect(() => ({
     e: props.class,
@@ -411,7 +405,7 @@ function SelectionArea(props) {
 
 // ../resizable-grid/dist/index.js
 import { delegateEvents, ref as ref2, insert as insert2, createComponent, effect as effect2, setStyleProperty, className as className2, template as template2 } from "@solidjs/web";
-import { For, Show, createSignal, untrack, createEffect as createEffect2 } from "solid-js";
+import { For, Show, createSignal, createEffect } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -672,20 +666,6 @@ function safeParse(schema, input, config$1) {
 }
 
 // ../resizable-grid/dist/index.js
-var twoPhase2 = createEffect2;
-var cleanupOnly2 = (out) => typeof out === "function" ? out : void 0;
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase2(dep, (value) => {
-    const skip = first && opts?.defer;
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly2(untrack(() => fn(value, before)));
-  });
-}
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
   const stringify = opts.stringify ?? ((v2) => JSON.stringify(v2));
@@ -700,7 +680,7 @@ function createPersisted(key, initial, opts = {}) {
     }
   }
   const [value, setValue] = createSignal(start);
-  watch(value, (v2) => {
+  createEffect(value, (v2) => {
     try {
       store?.setItem(key, stringify(v2));
     } catch {
@@ -1031,22 +1011,7 @@ var STYLES = `
 delegateEvents(["mousedown"]);
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack as untrack2, createSignal as createSignal2, createEffect as createEffect3 } from "solid-js";
-var twoPhase3 = createEffect3;
-var cleanupOnly3 = (out) => typeof out === "function" ? out : void 0;
-function watch2(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase3(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly3(untrack2(() => fn(value, before)));
-  });
-}
+import { createSignal as createSignal2, createEffect as createEffect2 } from "solid-js";
 var toPicked = (file) => ({
   file,
   name: file.name,
@@ -2477,7 +2442,7 @@ function DumbFinder(props) {
   const [loading, setLoading] = createSignal3(false);
   const [error, setError] = createSignal3(null);
   let listing = null;
-  async function reload(prefix = untrack3(path)) {
+  async function reload(prefix = untrack(path)) {
     listing?.abort();
     const ctrl = new AbortController();
     listing = ctrl;
@@ -2498,7 +2463,7 @@ function DumbFinder(props) {
       }
     }
   }
-  watch2(path, (p) => void reload(p));
+  createEffect3(path, (p) => void reload(p));
   onCleanup2(() => listing?.abort());
   function fail(err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2506,7 +2471,7 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
-  watch2(view, () => queueMicrotask(measureCols), { defer: true });
+  createEffect3(view, () => queueMicrotask(measureCols), { defer: true });
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)));
   const [tree, setTree] = createSignal3({});
@@ -2516,7 +2481,7 @@ function DumbFinder(props) {
     setWhole(null);
   };
   async function ensure(prefix) {
-    if (inflight.has(prefix) || prefix in untrack3(tree)) return;
+    if (inflight.has(prefix) || prefix in untrack(tree)) return;
     inflight.add(prefix);
     try {
       const got = await props.source.list(prefix, { signal: new AbortController().signal });
@@ -2541,16 +2506,16 @@ function DumbFinder(props) {
       wholeFlight = false;
     }
   }
-  watch2(
+  createEffect3(
     () => [path(), tree(), whole()],
     ([here]) => {
       if (props.sidebar === false) return;
       if (props.source.tree) {
-        if (untrack3(whole) === null) void loadWhole();
+        if (untrack(whole) === null) void loadWhole();
         return;
       }
       for (const c of crumbs(here)) void ensure(c.prefix);
-      const kids = untrack3(tree)[here] ?? [];
+      const kids = untrack(tree)[here] ?? [];
       if (kids.length <= 24) for (const k of kids) void ensure(k.key);
     }
   );
@@ -2564,7 +2529,7 @@ function DumbFinder(props) {
   const [sub, setSub] = createSignal3({});
   const subFlight = /* @__PURE__ */ new Set();
   async function ensureSub(prefix) {
-    if (subFlight.has(prefix) || prefix in untrack3(sub)) return;
+    if (subFlight.has(prefix) || prefix in untrack(sub)) return;
     subFlight.add(prefix);
     try {
       const got = await props.source.list(prefix, { signal: new AbortController().signal });
@@ -2584,11 +2549,11 @@ function DumbFinder(props) {
     });
     void ensureSub(key);
   };
-  watch2(path, () => {
+  createEffect3(path, () => {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
   }, { defer: true });
-  watch2(
+  createEffect3(
     () => [sub(), openRows()],
     ([cache, open2]) => {
       for (const k of open2) if (!(k in cache)) void ensureSub(k);
@@ -2613,7 +2578,7 @@ function DumbFinder(props) {
     (file, ctx) => {
       const up = props.source.upload;
       if (!up) return Promise.reject(new Error("\u0437\u0430\u043B\u0438\u0432\u043A\u0430 \u043D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0430"));
-      const to = dest.get(file) ?? untrack3(path);
+      const to = dest.get(file) ?? untrack(path);
       return up(file, { prefix: to, onProgress: ctx.onProgress, signal: ctx.signal }).then(() => ({
         // очереди нужен `url`, а файндеру он не нужен: список всё равно
         // перечитывается — хранилище отдаст и размер, и дату, и адрес
@@ -2651,7 +2616,7 @@ function DumbFinder(props) {
   }
   const openPicker = createFilePicker({ accept: props.accept ?? "*", multiple: true });
   const pickFiles = () => openPicker(
-    (files) => enqueue(files.map((f) => ({ name: f.name, file: f.file })), untrack3(path))
+    (files) => enqueue(files.map((f) => ({ name: f.name, file: f.file })), untrack(path))
   );
   const ghosts = createMemo(() => pending().filter((p) => p.prefix === path()));
   const [dragging, setDragging] = createSignal3([]);

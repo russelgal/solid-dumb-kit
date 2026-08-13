@@ -18,8 +18,8 @@
 // Позиции мест снимаются РАЗ (IntersectionObserver, off-main-thread) и потом
 // только пересчитываются на изменение ширины. В момент перекладки не читается
 // ничего: смещение — это разница двух известных мест.
-import { createSignal, onCleanup, For, Show } from 'solid-js'
-import { createAutoScroller, createFlip, onMounted, watch, type Flip } from '@solid-dumb-kit/shared'
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
+import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
 
 const HUE = (i: number) => `oklch(0.75 0.12 ${(i * 41) % 360})`
 
@@ -50,7 +50,7 @@ function Deck(props: DeckProps) {
   let slots: Array<Slot> = []
   let flip: Flip = createFlip(true)
 
-  watch(animate, (on) => { flip = createFlip(on) })
+  createEffect(animate, (on) => { flip = createFlip(on) })
 
   // Автопрокрутка — готовая из кита. Своего кода тут ноль: сказали, от какого
   // элемента искать прокручиваемых предков, и когда жест закончился. Позицию
@@ -89,7 +89,10 @@ function Deck(props: DeckProps) {
     for (const t of targets) io.observe(t)
   }
 
-  onMounted(() => {
+  // Наблюдатель вешается в колбэк-ref: элемент создан — можно смотреть.
+  // Эффект тут не нужен, следить не за чем.
+  const holdBox = (el: HTMLElement) => {
+    box = el
     measure()
     if (typeof ResizeObserver !== 'function') return
     let first = true
@@ -97,9 +100,9 @@ function Deck(props: DeckProps) {
       if (first) { first = false; return }   // первый вызов — это само монтирование
       measure()
     })
-    ro.observe(box)
+    ro.observe(el)
     onCleanup(() => ro.disconnect())
-  })
+  }
 
   /** Применить новую раскладку мест и доиграть переезд. */
   function apply(next: Array<number>) {
@@ -252,7 +255,7 @@ function Deck(props: DeckProps) {
           // пересчитывается посреди жеста
           'sd-scroll max-h-90 content-start rounded-xl bg-base-200 p-2 ring-1 ring-base-300': props.scroll,
         }}
-        ref={box}
+        ref={holdBox}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={() => { gesture = null; setHeld(null); scroller.stop() }}

@@ -19,9 +19,9 @@
 // БЕЗ ЗАМЕРОВ. Панель прижата к краю окна обычным `position: fixed`, выезд —
 // `transform`. Ни одного `getBoundingClientRect`.
 
-import { For, Show, createSignal, onCleanup } from 'solid-js'
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle, onMounted, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 import { ToastBody, ToastIcon } from './toastLook'
 
@@ -133,7 +133,9 @@ export function DumbToastCenter(props: DumbToastCenterProps) {
   const items = () => (tick(), bus().history())
   const unread = () => (tick(), bus().unread())
 
-  onMounted(() => {
+  // Подписка и слушатели окна — прямо в теле: следить тут не за чем, а `panel`
+  // и `bell` читаются лениво, уже внутри колбэков, где ref давно присвоен.
+  {
     const off = bus().subscribe(() => bump(0))
     // Esc закрывает — панель popover="manual", световой отбой браузер не делает
     const onKey = (ev: KeyboardEvent) => {
@@ -157,7 +159,7 @@ export function DumbToastCenter(props: DumbToastCenterProps) {
       window.removeEventListener('pointerdown', away, true)
       if (panel?.matches(':popover-open')) panel.hidePopover()
     })
-  })
+  }
 
   /**
    * Пока панель открыта, «5 мин» должно становиться «6 мин» само. Полминуты —
@@ -166,14 +168,14 @@ export function DumbToastCenter(props: DumbToastCenterProps) {
    */
   // watch, а не effect: `setNow` — запись в сигнал, а её в фазе вычисления
   // Solid 2 запрещает (REACTIVE_WRITE_IN_OWNED_SCOPE)
-  watch(open, (visible) => {
+  createEffect(open, (visible) => {
     if (!visible) return
     setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 30_000)
     onCleanup(() => clearInterval(id))
   })
 
-  watch(open, (show) => {
+  createEffect(open, (show) => {
     queueMicrotask(() => {
       if (!panel) return
       if (show && !panel.matches(':popover-open')) panel.showPopover?.()

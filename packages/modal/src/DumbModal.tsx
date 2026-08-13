@@ -15,9 +15,9 @@
 // клик по `::backdrop` приходит на сам `<dialog>`), и защита от закрытия, когда
 // в форме есть несохранённое.
 
-import { Show, onCleanup } from 'solid-js'
+import { createEffect, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbModalProps = {
   open: () => boolean
@@ -111,7 +111,7 @@ export function DumbModal(props: DumbModalProps) {
    * «Cannot read properties of undefined (reading 'open')». У `watch` первая
    * функция только читает сигнал, вторая работает с DOM, когда он уже есть.
    */
-  watch(
+  createEffect(
     () => props.open(),
     (want) => {
       if (!dialog) return

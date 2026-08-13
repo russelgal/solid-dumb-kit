@@ -1,29 +1,14 @@
 // src/DumbSortableDnd.tsx
-import { For, createMemo } from "solid-js";
+import { createEffect as createEffect2, createMemo, For } from "solid-js";
 
 // ../shared/dist/index.js
-import * as solid from "solid-js";
-import { untrack, createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
-}
-var twoPhase = createEffect;
-var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
-function watch(dep, fn, opts) {
-  let first = true;
-  let prev;
-  twoPhase(dep, (value) => {
-    const skip = first && (opts?.defer ?? false);
-    first = false;
-    const before = prev;
-    prev = value;
-    if (skip) return void 0;
-    return cleanupOnly(untrack(() => fn(value, before)));
-  });
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -561,7 +546,7 @@ function DumbSortableDnd(props) {
   const stable = createStableOrder(props.id);
   const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
-  watch(places, (map) => {
+  createEffect2(places, (map) => {
     for (const [id, i] of map) {
       const el = els.get(id);
       if (!el) continue;
