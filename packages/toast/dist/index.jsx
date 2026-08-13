@@ -2,7 +2,7 @@
 import { createEffect as createEffect2, createSignal as createSignal2, For, onCleanup, Show as Show2 } from "solid-js";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -27,6 +27,10 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -624,7 +628,7 @@ function DumbToaster(props) {
     </div>;
   function AtToast(p) {
     let el;
-    const hold2 = (node) => {
+    const hold2 = ownedRef((node) => {
       el = node;
       queueMicrotask(() => node.showPopover?.());
       const away = (ev) => {
@@ -642,7 +646,7 @@ function DumbToaster(props) {
         window.removeEventListener("keydown", onKey);
         if (node.matches(":popover-open")) node.hidePopover();
       });
-    };
+    });
     const spot = spotOf(p.t);
     return <>
         <div class="dumb-toast-anchor" style={{ left: `${spot.x}px`, top: `${spot.y}px` }} />
@@ -780,7 +784,7 @@ function DumbToastCenter(props) {
     if (!visible) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
-    onCleanup2(() => clearInterval(id));
+    return () => clearInterval(id);
   });
   createEffect3(open, (show) => {
     queueMicrotask(() => {

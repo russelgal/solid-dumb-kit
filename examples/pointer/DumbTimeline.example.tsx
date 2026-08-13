@@ -8,7 +8,7 @@
 // Занято — значит занято: полоса краснеет ещё в полёте, а на отпускании
 // прыгает в ближайшее свободное место, а не отменяется. Отказ без вариантов
 // злит сильнее всего.
-import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { DumbTimeline, SCALES, type Span } from "@solid-dumb-kit/timeline";
 import { DumbDateRange, DumbTimeSelect, today, type Day, type Time } from "@solid-dumb-kit/date-range";
 import { DumbModal } from "@solid-dumb-kit/modal";

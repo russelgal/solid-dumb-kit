@@ -1,4 +1,4 @@
-import { createSignal, createEffect } from 'solid-js';
+import { getOwner, runWithOwner, createSignal, createEffect } from 'solid-js';
 
 // src/motion.ts
 function prefersReducedMotion() {
@@ -30,6 +30,10 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
@@ -1397,4 +1401,4 @@ function putPart(url, chunk, signal, onBytes) {
 }
 var shouldSplit = (file, partSize = 8 * 1024 * 1024) => file.size > partSize;
 
-export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, configureCloseSide, createAutoScroller, createFilePicker, createFlip, createInlineEdit, createPersisted, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, pickedFrom, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin };
+export { ACCEL, EDGE, LONGPRESS, MAX_SCROLL_HEIGHT, MAX_SPEED, MOVE_TOL, NO_DRAG, autoScrollSpeed, configureCloseSide, createAutoScroller, createFilePicker, createFlip, createInlineEdit, createPersisted, createPresignedUploader, createPressGate, createRowIndex, createStableOrder, createUndoStack, createUploadQueue, createVirtualizer, doScroll, focusInside, hasDirectories, injectStyle, isApplePlatform, isMoveKey, measure, moveIndex, moveSelection, ownedRef, pickedFrom, prefersReducedMotion, putWithProgress, readDropEntries, resolveCloseSide, restoreTextSelection, scrollOf, scrollOffsetFor, scrollParent, shouldAnimate, shouldSplit, suppressTextSelection, targetIsInteractive, uploadMultipart, viewOrigin };

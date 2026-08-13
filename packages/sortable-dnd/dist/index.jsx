@@ -1,14 +1,18 @@
 // src/DumbSortableDnd.tsx
-import { createEffect as createEffect2, createMemo, For } from "solid-js";
+import { createEffect as createEffect2, createMemo, For, untrack } from "solid-js";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -522,8 +526,8 @@ function createDumbSortableDnd(opts) {
   });
   onCleanup(engine.destroy);
   return {
-    container: (el) => onCleanup(engine.attachContainer(el)),
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
+    container: ownedRef((el) => onCleanup(engine.attachContainer(el))),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
     active
   };
 }
@@ -534,7 +538,9 @@ function DumbSortableDnd(props) {
     order: () => props.items.map(props.id),
     axis: () => props.axis ?? "y",
     disabled: () => props.disabled === true,
-    animate: props.animate,
+    get animate() {
+      return untrack(() => props.animate);
+    },
     onMove: (from, to) => {
       const next = props.items.slice();
       next.splice(to, 0, next.splice(from, 1)[0]);
@@ -557,11 +563,11 @@ function DumbSortableDnd(props) {
   return <div ref={s.container} class={props.class} style={props.style}>
       <For each={rendered()}>
         {(item) => {
-    const id = props.id(item);
+    const id = untrack(() => props.id(item));
     const el = props.children(item, () => places().get(id) ?? 0);
     if (el instanceof HTMLElement) {
       els.set(id, el);
-      el.style.order = String(places().get(id) ?? 0);
+      el.style.order = String(untrack(places).get(id) ?? 0);
       s.bind(id)(el);
     }
     return el;

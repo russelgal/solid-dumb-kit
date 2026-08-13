@@ -5,13 +5,17 @@ import { createMemo as createMemo2, For as For2 } from "solid-js";
 import { createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
@@ -246,7 +250,7 @@ function createAutoScroller() {
 
 // ../grid/dist/index.js
 import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
-import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2 } from "solid-js";
+import { createSignal as createSignal2, onCleanup, untrack, createMemo, Show, For, getOwner as getOwner2, runWithOwner as runWithOwner2, createEffect as createEffect2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -1048,8 +1052,8 @@ function createDumbGridDndGroup(opts = {}) {
     grid(name, zoneOpts) {
       const zone = engine.grid(name, zoneOpts);
       return {
-        container: (el) => onCleanup2(zone.attachContainer(el)),
-        bind: (id) => (el) => onCleanup2(zone.attach(el, id)),
+        container: ownedRef((el) => onCleanup2(zone.attachContainer(el))),
+        bind: (id) => ownedRef((el) => onCleanup2(zone.attach(el, id))),
         active: () => {
           const a = active();
           return a && a.grid === name ? a.id : null;

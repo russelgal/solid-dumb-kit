@@ -2,7 +2,7 @@
 import { createEffect as createEffect2, createMemo, createSignal as createSignal2, onCleanup, Show } from "solid-js";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }

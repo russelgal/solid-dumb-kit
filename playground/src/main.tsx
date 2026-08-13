@@ -1,5 +1,4 @@
 import "./app.css";
-import { effect } from '@solid-dumb-kit/shared'
 // Во второй линии рендерер выехал из `solid-js/web` в отдельный пакет:
 // подпути `./web` у solid-js больше нет вовсе, сборка на нём падает.
 import { render } from "@solidjs/web";
@@ -484,8 +483,9 @@ function App(props: { children?: JSX.Element }) {
   // Заголовок вкладки браузера — по текущему примеру: с настоящими путями
   // страницу кладут в закладки и ищут в истории, а «solid-dumb-kit» на всех
   // тридцати пунктах там неразличим.
-  createEffect(tab, () => {
-    const t = TABS.find((x) => x.id === tab());
+  // значение приходит из первой фазы: чтение tab() в теле — untracked, Solid 2 ругается
+  createEffect(tab, (id) => {
+    const t = TABS.find((x) => x.id === id);
     document.title = t ? `${t.label} · solid-dumb-kit` : "solid-dumb-kit";
   });
 
@@ -814,7 +814,10 @@ if (legacy && TABS.some((t) => t.id === legacy)) {
  */
 function ToFirst() {
   const navigate = useNavigate();
-  navigate(hrefOf(TABS[0].id), { replace: true });
+  // микротаском, а не прямо в теле: синхронный редирект при рендере — это
+  // чтение async-значения вне Loading (ASYNC_OUTSIDE_LOADING_BOUNDARY), и
+  // Solid 2 откладывает маунт ВСЕГО корня, пока навигация не устаканится
+  queueMicrotask(() => navigate(hrefOf(TABS[0].id), { replace: true }));
   return null;
 }
 

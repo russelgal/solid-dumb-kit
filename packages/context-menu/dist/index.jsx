@@ -2,7 +2,7 @@
 import { createSignal as createSignal2, For, onCleanup, Show } from "solid-js";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
 var configured = "auto";
 var apple = null;
 function isApplePlatform() {
@@ -20,6 +20,10 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -107,7 +111,7 @@ function Panel(props) {
     if (it && branch(it) && spread) setSub({ i, x, y });
     else setSub(null);
   };
-  const hold = (node) => {
+  const hold = ownedRef((node) => {
     el = node;
     queueMicrotask(() => {
       if (!node.matches(":popover-open")) node.showPopover?.();
@@ -124,7 +128,7 @@ function Panel(props) {
       io.disconnect();
       if (node.matches(":popover-open")) node.hidePopover();
     });
-  };
+  });
   const side = () => {
     const b = box();
     if (!b) return props.side ?? "right";
@@ -411,7 +415,7 @@ function DumbContextMenu(props) {
 }
 
 // src/DumbPopover.tsx
-import { createEffect as createEffect3, onCleanup as onCleanup2, Show as Show2 } from "solid-js";
+import { createEffect as createEffect3, Show as Show2 } from "solid-js";
 var STYLES2 = `
   /* \u0422\u043E\u043B\u044C\u043A\u043E \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u043A \u0442\u043E\u0447\u043A\u0435 \u0438 top layer \u2014 \u0432\u0438\u0434 \u0434\u0430\u0451\u0442 daisyUI (card) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. */
   .dumb-pop-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
@@ -466,11 +470,11 @@ function DumbPopover(props) {
       window.addEventListener("keydown", onKey);
       window.addEventListener("pointerdown", away, true);
       window.addEventListener("scroll", bail, true);
-      onCleanup2(() => {
+      return () => {
         window.removeEventListener("keydown", onKey);
         window.removeEventListener("pointerdown", away, true);
         window.removeEventListener("scroll", bail, true);
-      });
+      };
     }
   );
   return <Show2 when={props.at()}>

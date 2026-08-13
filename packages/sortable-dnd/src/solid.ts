@@ -1,6 +1,7 @@
 // Solid-обёртка: отписки движка на onCleanup, «кого тащат» — в сигнал.
 
 import { createSignal, onCleanup } from 'solid-js'
+import { ownedRef } from '@solid-dumb-kit/shared'
 import { createSortDndEngine, type SortDndOptions } from './sortDndCore'
 
 export type DumbSortableDndHandle = {
@@ -21,8 +22,8 @@ export function createDumbSortableDnd(opts: SortDndOptions): DumbSortableDndHand
   onCleanup(engine.destroy)
 
   return {
-    container: (el) => onCleanup(engine.attachContainer(el)),
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
+    container: ownedRef((el) => onCleanup(engine.attachContainer(el))),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
     active,
   }
 }

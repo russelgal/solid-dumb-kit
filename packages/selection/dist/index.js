@@ -1,7 +1,11 @@
 import { ref, insert, effect, className, style, template } from '@solidjs/web';
-import { onCleanup } from 'solid-js';
+import { onCleanup, getOwner, runWithOwner } from 'solid-js';
 
 // src/SelectionArea.tsx
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
+}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -364,10 +368,10 @@ function createSelectionArea(opts) {
   const engine = createSelectionEngine(opts);
   onCleanup(engine.destroy);
   return {
-    /** повесить жест на контейнер */
-    attach(el) {
+    /** повесить жест на контейнер; годится и как ref — owner захвачен здесь */
+    attach: ownedRef((el) => {
       onCleanup(engine.attach(el));
-    }
+    })
   };
 }
 
@@ -375,7 +379,7 @@ function createSelectionArea(opts) {
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
 function SelectionArea(props) {
   let containerRef;
-  const attach = (el) => {
+  const attach = ownedRef((el) => {
     containerRef = el;
     const area = createSelectionArea({
       container: () => containerRef,
@@ -390,7 +394,7 @@ function SelectionArea(props) {
       onStop: (selected) => props.onStop?.(selected)
     });
     area.attach(containerRef);
-  };
+  });
   var _el$ = _tmpl$();
   ref(() => attach, _el$);
   insert(_el$, () => props.children);

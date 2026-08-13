@@ -3,6 +3,7 @@
 // фреймворк (или Solid 2) переписывается только этот файл.
 
 import { createSignal, onCleanup } from 'solid-js'
+import { ownedRef } from '@solid-dumb-kit/shared'
 import { createGridEngine, type DumbGridOptions } from './gridCore'
 import { createGridGroupEngine, type GridGroupOptions, type GridZoneOptions } from './gridGroup'
 
@@ -40,10 +41,10 @@ export function createDumbGrid(opts: DumbGridOptions): DumbGridHandle {
   onCleanup(engine.destroy)
 
   return {
-    container: (el) => onCleanup(engine.attachContainer(el)),
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
-    resize: (id) => (el) => onCleanup(engine.attachResize(el, id)),
-    block: (id) => (el) => onCleanup(engine.attachBlock(el, id)),
+    container: ownedRef((el) => onCleanup(engine.attachContainer(el))),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
+    resize: (id) => ownedRef((el) => onCleanup(engine.attachResize(el, id))),
+    block: (id) => ownedRef((el) => onCleanup(engine.attachBlock(el, id))),
     press: (id) => (ev) => engine.press(id, ev),
     pressResize: (id) => (ev) =>
       engine.pressResize(id, ev.currentTarget as HTMLElement, ev),
@@ -78,10 +79,10 @@ export function createDumbGridGroup(opts: GridGroupOptions): DumbGridGroupHandle
     grid(name, zoneOpts) {
       const zone = engine.grid(name, zoneOpts)
       return {
-        container: (el) => onCleanup(zone.attachContainer(el)),
-        bind: (id) => (el) => onCleanup(zone.attach(el, id)),
-        resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
-        block: (id) => (el) => onCleanup(zone.attachBlock(el, id)),
+        container: ownedRef((el) => onCleanup(zone.attachContainer(el))),
+        bind: (id) => ownedRef((el) => onCleanup(zone.attach(el, id))),
+        resize: (id) => ownedRef((el) => onCleanup(zone.attachResize(el, id))),
+        block: (id) => ownedRef((el) => onCleanup(zone.attachBlock(el, id))),
         press: (id) => (ev) => zone.press(id, ev),
         pressResize: (id) => (ev) =>
           zone.pressResize(id, ev.currentTarget as HTMLElement, ev),

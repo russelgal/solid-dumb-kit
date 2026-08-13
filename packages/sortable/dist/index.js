@@ -1,5 +1,5 @@
 import { createComponent } from '@solidjs/web';
-import { onCleanup, For } from 'solid-js';
+import { onCleanup, untrack, For, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbSortable.tsx
 function prefersReducedMotion() {
@@ -8,6 +8,10 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var EDGE = 48;
 var MAX_SPEED = 18;
@@ -1041,9 +1045,9 @@ function createDumbSortable(opts) {
   const engine = createSortableEngine(opts);
   onCleanup(engine.destroy);
   return {
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
-    row: (id) => (el) => onCleanup(engine.attachRow(el, id)),
-    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id)),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
+    row: (id) => ownedRef((el) => onCleanup(engine.attachRow(el, id))),
+    handle: (id) => ownedRef((el) => onCleanup(engine.attachHandle(el, id))),
     press: (id) => (ev) => engine.press(id, ev),
     pressHandle: (id) => (ev) => engine.pressHandle(id, ev.currentTarget, ev)
   };
@@ -1055,9 +1059,9 @@ function createSortableGroup(opts) {
     list(name, listOpts) {
       const zone = engine.list(name, listOpts);
       return {
-        container: (el) => onCleanup(zone.attachContainer(el)),
-        bind: (id) => (el) => onCleanup(zone.attach(el, id)),
-        card: (id) => (el) => onCleanup(zone.attachCard(el, id)),
+        container: ownedRef((el) => onCleanup(zone.attachContainer(el))),
+        bind: (id) => ownedRef((el) => onCleanup(zone.attach(el, id))),
+        card: (id) => ownedRef((el) => onCleanup(zone.attachCard(el, id))),
         press: (id) => (ev) => zone.press(id, ev)
       };
     },
@@ -1072,10 +1076,16 @@ function DumbSortable(props) {
     order: () => props.items.map(props.id),
     axis: props.axis,
     disabled: props.disabled,
-    pressDelay: props.pressDelay,
+    get pressDelay() {
+      return untrack(() => props.pressDelay);
+    },
     mousePressDelay: props.mousePressDelay,
-    mouseThreshold: props.mouseThreshold,
-    animate: props.animate,
+    get mouseThreshold() {
+      return untrack(() => props.mouseThreshold);
+    },
+    get animate() {
+      return untrack(() => props.animate);
+    },
     onEnd: (from, to) => {
       const next = props.items.slice();
       next.splice(to, 0, next.splice(from, 1)[0]);

@@ -1,8 +1,8 @@
 // src/DumbDateRange.tsx
-import { For, Show, createMemo, createSignal as createSignal2, onCleanup } from "solid-js";
+import { For, Show, createMemo, createSignal as createSignal2, onCleanup, untrack } from "solid-js";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -130,7 +130,7 @@ var STYLES = `
 function DumbDateRange(props) {
   injectStyle("date-range", STYLES);
   const [shownMonth, setShownMonth] = createSignal2(
-    startOfMonth(props.value()?.from ?? today())
+    startOfMonth(untrack(() => props.value()?.from) ?? today())
   );
   const [pending, setPending] = createSignal2(null);
   const [hover, setHover] = createSignal2(null);
@@ -314,7 +314,7 @@ function DumbDateRange(props) {
 }
 
 // src/DumbDateTimeRange.tsx
-import { createEffect as createEffect2, createMemo as createMemo3, createSignal as createSignal3, For as For3, onCleanup as onCleanup2, Show as Show3 } from "solid-js";
+import { createEffect as createEffect2, createMemo as createMemo3, createSignal as createSignal3, For as For3, onCleanup as onCleanup2, Show as Show3, untrack as untrack2 } from "solid-js";
 
 // src/DumbTimeSelect.tsx
 import { For as For2, Show as Show2, createMemo as createMemo2 } from "solid-js";
@@ -509,11 +509,12 @@ function DumbDateTimeRange(props) {
   injectStyle("date-time-range", STYLES2);
   const step = () => props.step ?? 30;
   const busy = () => props.busy?.() ?? [];
+  const initial = untrack2(() => props.value());
   const [days, setDays] = createSignal3(
-    props.value() ? { from: props.value().from.day, to: props.value().to.day } : null
+    initial ? { from: initial.from.day, to: initial.to.day } : null
   );
-  const [startTime, setStartTime] = createSignal3(props.value()?.from.time ?? null);
-  const [endTime, setEndTime] = createSignal3(props.value()?.to.time ?? null);
+  const [startTime, setStartTime] = createSignal3(initial?.from.time ?? null);
+  const [endTime, setEndTime] = createSignal3(initial?.to.time ?? null);
   createEffect2(
     () => {
       const v = props.value();

@@ -1,5 +1,5 @@
 import { delegateEvents, insert, createComponent, effect, setStyleProperty, className, setAttribute, memo, style, ref, template } from '@solidjs/web';
-import { createSignal, onCleanup, createMemo, Show, createEffect, For } from 'solid-js';
+import { createSignal, untrack, onCleanup, createMemo, Show, createEffect, For, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbGallery.tsx
 function prefersReducedMotion() {
@@ -8,6 +8,10 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -514,8 +518,8 @@ function createDumbSortableDnd(opts) {
   });
   onCleanup(engine.destroy);
   return {
-    container: (el) => onCleanup(engine.attachContainer(el)),
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
+    container: ownedRef((el) => onCleanup(engine.attachContainer(el))),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
     active
   };
 }
@@ -525,7 +529,9 @@ function DumbSortableDnd(props) {
     order: () => props.items.map(props.id),
     axis: () => props.axis ?? "y",
     disabled: () => props.disabled === true,
-    animate: props.animate,
+    get animate() {
+      return untrack(() => props.animate);
+    },
     onMove: (from, to) => {
       const next = props.items.slice();
       next.splice(to, 0, next.splice(from, 1)[0]);
@@ -553,11 +559,11 @@ function DumbSortableDnd(props) {
       return rendered();
     },
     children: (item) => {
-      const id = props.id(item);
+      const id = untrack(() => props.id(item));
       const el = props.children(item, () => places().get(id) ?? 0);
       if (el instanceof HTMLElement) {
         els.set(id, el);
-        el.style.order = String(places().get(id) ?? 0);
+        el.style.order = String(untrack(places).get(id) ?? 0);
         s.bind(id)(el);
       }
       return el;
@@ -809,33 +815,38 @@ function DumbGallery(props) {
     ...it,
     ...next
   } : it));
-  const queue = createUploadQueue((file, ctx) => {
-    const up = props.upload;
-    if (!up) return Promise.reject(new Error("\u0442\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D"));
-    return up(file, ctx);
-  }, {
-    onStart: (id) => patch(id, {
-      status: "uploading"
-    }),
-    onProgress: (id, p) => setProgress((was) => ({
-      ...was,
-      [id]: p
-    })),
-    onDone: (id, res) => {
-      const was = props.items.find((it) => it.id === id);
-      if (was?.preview) URL.revokeObjectURL(was.preview);
-      patch(id, {
-        status: "done",
-        url: res.url,
-        key: res.key,
-        preview: void 0
-      });
+  const queue = createUploadQueue(
+    (file, ctx) => {
+      const up = props.upload;
+      if (!up) return Promise.reject(new Error("\u0442\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D"));
+      return up(file, ctx);
     },
-    onError: (id, err) => patch(id, {
-      status: "error",
-      error: err
-    })
-  }, props.concurrency ?? 3);
+    {
+      onStart: (id) => patch(id, {
+        status: "uploading"
+      }),
+      onProgress: (id, p) => setProgress((was) => ({
+        ...was,
+        [id]: p
+      })),
+      onDone: (id, res) => {
+        const was = props.items.find((it) => it.id === id);
+        if (was?.preview) URL.revokeObjectURL(was.preview);
+        patch(id, {
+          status: "done",
+          url: res.url,
+          key: res.key,
+          preview: void 0
+        });
+      },
+      onError: (id, err) => patch(id, {
+        status: "error",
+        error: err
+      })
+    },
+    // разовое untracked-чтение: очередь создаётся один раз
+    untrack(() => props.concurrency) ?? 3
+  );
   onCleanup(() => queue.destroy());
   const room = () => props.max === void 0 ? Infinity : props.max - props.items.length;
   function accepted(files) {

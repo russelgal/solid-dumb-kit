@@ -19,7 +19,7 @@
 // только пересчитываются на изменение ширины. В момент перекладки не читается
 // ничего: смещение — это разница двух известных мест.
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
-import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, type Flip, ownedRef } from '@solid-dumb-kit/shared'
 
 const HUE = (i: number) => `oklch(0.75 0.12 ${(i * 41) % 360})`
 
@@ -91,7 +91,7 @@ function Deck(props: DeckProps) {
 
   // Наблюдатель вешается в колбэк-ref: элемент создан — можно смотреть.
   // Эффект тут не нужен, следить не за чем.
-  const holdBox = (el: HTMLElement) => {
+  const holdBox = ownedRef((el: HTMLElement) => {
     box = el
     measure()
     if (typeof ResizeObserver !== 'function') return
@@ -102,7 +102,7 @@ function Deck(props: DeckProps) {
     })
     ro.observe(el)
     onCleanup(() => ro.disconnect())
-  }
+  })
 
   /** Применить новую раскладку мест и доиграть переезд. */
   function apply(next: Array<number>) {

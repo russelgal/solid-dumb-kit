@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createMemo, createSignal, For, Show, untrack } from 'solid-js'
 import { createPersisted } from '@solid-dumb-kit/shared'
 import type { JSX } from '@solidjs/web'
 import * as v from 'valibot'
@@ -309,8 +309,10 @@ export function DumbGrid(props: DumbGridProps) {
   // Раскладка: внешняя (props.layout), персистентная (storageKey) или в памяти.
   // Персист заводим только когда ключ реально дан — иначе компонент писал бы
   // в localStorage под общим именем и две сетки на странице делили бы один стор.
-  const persisted = props.storageKey
-    ? createPersisted<DumbGridLayout | null>(props.storageKey, null, {
+  // ключ хранилища — разовое untracked-чтение: персист создаётся один раз
+  const storageKey = untrack(() => props.storageKey)
+  const persisted = storageKey
+    ? createPersisted<DumbGridLayout | null>(storageKey, null, {
         stringify: (l) => JSON.stringify(l ?? []),
         parse: (raw) => {
           const parsed = v.safeParse(LayoutSchema, JSON.parse(raw))
@@ -382,9 +384,11 @@ export function DumbGrid(props: DumbGridProps) {
     gapY,
     disabled: () => props.disabled === true || !editable(),
     resizable: () => props.resizable !== false,
-    animate: props.animate,
-    pressDelay: props.pressDelay,
-    mouseThreshold: props.mouseThreshold,
+    // геттеры с untrack: движок читает вне tracking scope, но смену пропа
+    // видеть должен — а strict-режим не должен ругаться
+    get animate() { return untrack(() => props.animate) },
+    get pressDelay() { return untrack(() => props.pressDelay) },
+    get mouseThreshold() { return untrack(() => props.mouseThreshold) },
     onReorder: (from: number, to: number) => commit(materialize(reorder(layout(), from, to))),
     onMove: (id: string, x: number, y: number) =>
       commit(materialize(layout().map((s) => (s.id === id ? { ...s, x, y } : s)))),

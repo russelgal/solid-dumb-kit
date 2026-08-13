@@ -12,7 +12,7 @@
 // Дата здесь — строка `YYYY-MM-DD`, а не `Date`: см. `dateMath.ts`, там же
 // объяснено, почему это не придирка.
 
-import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import { For, Show, createMemo, createSignal, onCleanup, untrack } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import {
@@ -85,8 +85,9 @@ const STYLES = `
 export function DumbDateRange(props: DumbDateRangeProps) {
   injectStyle('date-range', STYLES)
 
+  // стартовый месяц — разовое untracked-чтение: дальше месяц живёт сам
   const [shownMonth, setShownMonth] = createSignal<Day>(
-    startOfMonth(props.value()?.from ?? today()),
+    startOfMonth(untrack(() => props.value()?.from) ?? today()),
   )
   /** первый клик сделан, ждём второй */
   const [pending, setPending] = createSignal<Day | null>(null)

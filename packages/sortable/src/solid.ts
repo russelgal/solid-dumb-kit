@@ -5,6 +5,7 @@
 // поэтому под другой фреймворк (или Solid 2) переписывается только этот файл.
 
 import { onCleanup } from 'solid-js'
+import { ownedRef } from '@solid-dumb-kit/shared'
 import { createSortableEngine, type DumbSortableOptions } from './sortableCore'
 import {
   createSortableGroupEngine,
@@ -40,9 +41,9 @@ export function createDumbSortable(opts: DumbSortableOptions): DumbSortableHandl
   onCleanup(engine.destroy)
 
   return {
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
-    row: (id) => (el) => onCleanup(engine.attachRow(el, id)),
-    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id)),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
+    row: (id) => ownedRef((el) => onCleanup(engine.attachRow(el, id))),
+    handle: (id) => ownedRef((el) => onCleanup(engine.attachHandle(el, id))),
     press: (id) => (ev) => engine.press(id, ev),
     pressHandle: (id) => (ev) =>
       engine.pressHandle(id, ev.currentTarget as HTMLElement, ev),
@@ -77,9 +78,9 @@ export function createSortableGroup(opts: SortableGroupOptions): SortableGroupHa
     list(name, listOpts) {
       const zone = engine.list(name, listOpts)
       return {
-        container: (el) => onCleanup(zone.attachContainer(el)),
-        bind: (id) => (el) => onCleanup(zone.attach(el, id)),
-        card: (id) => (el) => onCleanup(zone.attachCard(el, id)),
+        container: ownedRef((el) => onCleanup(zone.attachContainer(el))),
+        bind: (id) => ownedRef((el) => onCleanup(zone.attach(el, id))),
+        card: (id) => ownedRef((el) => onCleanup(zone.attachCard(el, id))),
         press: (id) => (ev) => zone.press(id, ev),
       }
     },

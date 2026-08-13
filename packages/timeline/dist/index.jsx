@@ -2,7 +2,11 @@
 import { createEffect as createEffect2, createMemo, createSignal as createSignal2, flush, For, onCleanup, Show } from "solid-js";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
+}
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
   if (typeof document === "undefined") return;
@@ -571,13 +575,13 @@ function DumbTimeline(props) {
     scrollToNow: () => api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange
   };
-  const holdViewport = (el) => {
+  const holdViewport = ownedRef((el) => {
     viewport = el;
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
     ro.observe(el);
     onCleanup(() => ro.disconnect());
     props.ref?.(api);
-  };
+  });
   createEffect2(
     () => [scale(), vpW()],
     ([, width]) => {

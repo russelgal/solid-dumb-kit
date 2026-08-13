@@ -1,5 +1,5 @@
 import { delegateEvents, createComponent, effect, setStyleProperty, ref, insert, className, style, setAttribute, template } from '@solidjs/web';
-import { createSignal, onCleanup, Show, createEffect, For } from 'solid-js';
+import { createSignal, onCleanup, Show, createEffect, For, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbContextMenu.tsx
 var configured = "auto";
@@ -19,6 +19,10 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -122,7 +126,7 @@ function Panel(props) {
     });
     else setSub(null);
   };
-  const hold = (node) => {
+  const hold = ownedRef((node) => {
     el = node;
     queueMicrotask(() => {
       if (!node.matches(":popover-open")) node.showPopover?.();
@@ -142,7 +146,7 @@ function Panel(props) {
       io.disconnect();
       if (node.matches(":popover-open")) node.hidePopover();
     });
-  };
+  });
   const side = () => {
     const b = box();
     if (!b) return props.side ?? "right";
@@ -581,11 +585,11 @@ function DumbPopover(props) {
     window.addEventListener("keydown", onKey);
     window.addEventListener("pointerdown", away, true);
     window.addEventListener("scroll", bail, true);
-    onCleanup(() => {
+    return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("pointerdown", away, true);
       window.removeEventListener("scroll", bail, true);
-    });
+    };
   });
   return createComponent(Show, {
     get when() {

@@ -31,7 +31,7 @@
 
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { createAutoScroller, createFlip, createStableOrder, injectStyle, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, createStableOrder, injectStyle, ownedRef, shouldAnimate, type Flip } from '@solid-dumb-kit/shared'
 // математика сетки общая с DumbGrid — своей у доски только поток секций
 import {
   cellRect, colWidth, gridLinesBackground, packFlow, resolveSpan, rowCount, snapSpan, spanSize,
@@ -418,7 +418,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
    * Наблюдатели вешаются в колбэк-ref доски — то есть ровно тогда, когда
    * элемент создан. Эффекта тут нет и не нужно: следить не за чем.
    */
-  const holdWrap = (el: HTMLElement) => {
+  const holdWrap = ownedRef((el: HTMLElement) => {
     wrapEl = el
     measure()
     if (!sizes) return
@@ -432,7 +432,7 @@ export function DumbBoard<T>(props: DumbBoardProps<T>) {
     })
     ro.observe(el)
     onCleanup(() => ro.disconnect())
-  }
+  })
 
   /* ────────── перенос блоков ────────── */
 

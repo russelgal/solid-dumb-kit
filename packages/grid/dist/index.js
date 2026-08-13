@@ -1,5 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from '@solidjs/web';
-import { createSignal, onCleanup, createMemo, Show, For, createEffect } from 'solid-js';
+import { createSignal, onCleanup, untrack, createMemo, Show, For, getOwner, runWithOwner, createEffect } from 'solid-js';
 import * as v from 'valibot';
 
 // src/DumbGrid.tsx
@@ -9,6 +9,10 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
@@ -1442,10 +1446,10 @@ function createDumbGrid(opts) {
   });
   onCleanup(engine.destroy);
   return {
-    container: (el) => onCleanup(engine.attachContainer(el)),
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
-    resize: (id) => (el) => onCleanup(engine.attachResize(el, id)),
-    block: (id) => (el) => onCleanup(engine.attachBlock(el, id)),
+    container: ownedRef((el) => onCleanup(engine.attachContainer(el))),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
+    resize: (id) => ownedRef((el) => onCleanup(engine.attachResize(el, id))),
+    block: (id) => ownedRef((el) => onCleanup(engine.attachBlock(el, id))),
     press: (id) => (ev) => engine.press(id, ev),
     pressResize: (id) => (ev) => engine.pressResize(id, ev.currentTarget, ev),
     active
@@ -1470,10 +1474,10 @@ function createDumbGridGroup(opts) {
     grid(name, zoneOpts) {
       const zone = engine.grid(name, zoneOpts);
       return {
-        container: (el) => onCleanup(zone.attachContainer(el)),
-        bind: (id) => (el) => onCleanup(zone.attach(el, id)),
-        resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
-        block: (id) => (el) => onCleanup(zone.attachBlock(el, id)),
+        container: ownedRef((el) => onCleanup(zone.attachContainer(el))),
+        bind: (id) => ownedRef((el) => onCleanup(zone.attach(el, id))),
+        resize: (id) => ownedRef((el) => onCleanup(zone.attachResize(el, id))),
+        block: (id) => ownedRef((el) => onCleanup(zone.attachBlock(el, id))),
         press: (id) => (ev) => zone.press(id, ev),
         pressResize: (id) => (ev) => zone.pressResize(id, ev.currentTarget, ev),
         // «активен ли этот блок» — общий сигнал группы, суженный до своей сетки
@@ -1601,7 +1605,8 @@ function DumbGrid(props) {
   const rowH = () => props.rowHeight ?? DEFAULT_ROW_H;
   const gapX = () => props.gapX ?? props.gap ?? DEFAULT_GAP;
   const gapY = () => props.gapY ?? props.gap ?? DEFAULT_GAP;
-  const persisted = props.storageKey ? createPersisted(props.storageKey, null, {
+  const storageKey = untrack(() => props.storageKey);
+  const persisted = storageKey ? createPersisted(storageKey, null, {
     stringify: (l) => JSON.stringify(l ?? []),
     parse: (raw) => {
       const parsed = v.safeParse(LayoutSchema, JSON.parse(raw));
@@ -1658,9 +1663,17 @@ function DumbGrid(props) {
     gapY,
     disabled: () => props.disabled === true || !editable(),
     resizable: () => props.resizable !== false,
-    animate: props.animate,
-    pressDelay: props.pressDelay,
-    mouseThreshold: props.mouseThreshold,
+    // геттеры с untrack: движок читает вне tracking scope, но смену пропа
+    // видеть должен — а strict-режим не должен ругаться
+    get animate() {
+      return untrack(() => props.animate);
+    },
+    get pressDelay() {
+      return untrack(() => props.pressDelay);
+    },
+    get mouseThreshold() {
+      return untrack(() => props.mouseThreshold);
+    },
     onReorder: (from, to) => commit(materialize(reorder(layout(), from, to))),
     onMove: (id, x, y) => commit(materialize(layout().map((s) => s.id === id ? {
       ...s,

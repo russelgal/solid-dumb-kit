@@ -3,7 +3,11 @@ import { createEffect as createEffect3, createMemo, createSignal as createSignal
 
 // ../selection/dist/index.js
 import { ref, insert, effect, className, style, template } from "@solidjs/web";
-import { onCleanup } from "solid-js";
+import { onCleanup, getOwner, runWithOwner } from "solid-js";
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
+}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -360,16 +364,16 @@ function createSelectionArea(opts) {
   const engine = createSelectionEngine(opts);
   onCleanup(engine.destroy);
   return {
-    /** повесить жест на контейнер */
-    attach(el) {
+    /** повесить жест на контейнер; годится и как ref — owner захвачен здесь */
+    attach: ownedRef((el) => {
       onCleanup(engine.attach(el));
-    }
+    })
   };
 }
 var _tmpl$ = /* @__PURE__ */ template(`<div style=position:relative>`);
 function SelectionArea(props) {
   let containerRef;
-  const attach = (el) => {
+  const attach = ownedRef((el) => {
     containerRef = el;
     const area = createSelectionArea({
       container: () => containerRef,
@@ -384,7 +388,7 @@ function SelectionArea(props) {
       onStop: (selected) => props.onStop?.(selected)
     });
     area.attach(containerRef);
-  };
+  });
   var _el$ = _tmpl$();
   ref(() => attach, _el$);
   insert(_el$, () => props.children);
@@ -1011,7 +1015,7 @@ var STYLES = `
 delegateEvents(["mousedown"]);
 
 // ../shared/dist/index.js
-import { createSignal as createSignal2, createEffect as createEffect2 } from "solid-js";
+import { getOwner as getOwner2, runWithOwner as runWithOwner2, createSignal as createSignal2, createEffect as createEffect2 } from "solid-js";
 var toPicked = (file) => ({
   file,
   name: file.name,
@@ -2413,6 +2417,7 @@ var STYLES2 = `
 `;
 function DumbFinder(props) {
   injectStyle2("finder", STYLES2);
+  const src = () => untrack(() => props.source);
   const editable = () => props.editable !== false;
   const [ownPath, setOwnPath] = createSignal3("");
   const path = () => props.path ?? ownPath();
@@ -2448,7 +2453,7 @@ function DumbFinder(props) {
     listing = ctrl;
     setLoading(true);
     try {
-      const got = await props.source.list(prefix, { signal: ctrl.signal });
+      const got = await src().list(prefix, { signal: ctrl.signal });
       if (ctrl.signal.aborted) return;
       setEntries(got);
       setError(null);
@@ -2488,7 +2493,7 @@ function DumbFinder(props) {
     if (inflight.has(prefix) || prefix in untrack(tree)) return;
     inflight.add(prefix);
     try {
-      const got = await props.source.list(prefix, { signal: new AbortController().signal });
+      const got = await src().list(prefix, { signal: new AbortController().signal });
       setTree((was) => ({ ...was, [prefix]: got.filter((e) => e.dir) }));
     } catch {
       setTree((was) => ({ ...was, [prefix]: [] }));
@@ -2499,10 +2504,11 @@ function DumbFinder(props) {
   const [whole, setWhole] = createSignal3(null);
   let wholeFlight = false;
   async function loadWhole() {
-    if (wholeFlight || !props.source.tree) return;
+    const tree2 = src().tree;
+    if (wholeFlight || !tree2) return;
     wholeFlight = true;
     try {
-      setWhole(await props.source.tree({ signal: new AbortController().signal }));
+      setWhole(await tree2({ signal: new AbortController().signal }));
     } catch (err) {
       setWhole([]);
       fail(err);
@@ -2514,7 +2520,7 @@ function DumbFinder(props) {
     () => [path(), tree(), whole()],
     ([here]) => {
       if (props.sidebar === false) return;
-      if (props.source.tree) {
+      if (src().tree) {
         if (untrack(whole) === null) void loadWhole();
         return;
       }
@@ -2536,7 +2542,7 @@ function DumbFinder(props) {
     if (subFlight.has(prefix) || prefix in untrack(sub)) return;
     subFlight.add(prefix);
     try {
-      const got = await props.source.list(prefix, { signal: new AbortController().signal });
+      const got = await src().list(prefix, { signal: new AbortController().signal });
       setSub((was) => ({ ...was, [prefix]: got }));
     } catch (err) {
       setSub((was) => ({ ...was, [prefix]: [] }));
@@ -2580,7 +2586,7 @@ function DumbFinder(props) {
   const dest = /* @__PURE__ */ new WeakMap();
   const queue = createUploadQueue(
     (file, ctx) => {
-      const up = props.source.upload;
+      const up = src().upload;
       if (!up) return Promise.reject(new Error("\u0437\u0430\u043B\u0438\u0432\u043A\u0430 \u043D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0430"));
       const to = dest.get(file) ?? untrack(path);
       return up(file, { prefix: to, onProgress: ctx.onProgress, signal: ctx.signal }).then(() => ({
@@ -2605,7 +2611,7 @@ function DumbFinder(props) {
   );
   onCleanup2(() => queue.destroy());
   function enqueue(files, prefix) {
-    if (!editable() || !props.source.upload || !files.length) return;
+    if (!editable() || !src().upload || !files.length) return;
     const added = files.map((f, i) => ({
       id: `u${Date.now().toString(36)}${i}`,
       name: f.name,
@@ -2626,9 +2632,9 @@ function DumbFinder(props) {
   const [dragging, setDragging] = createSignal3([]);
   const [dropAt, setDropAt] = createSignal3(null);
   const [overFiles, setOverFiles] = createSignal3(false);
-  const canMoveTo = (to) => !!props.source.move && editable() && dragging().length > 0 && dragging().every((k) => canMove(k, to));
+  const canMoveTo = (to) => !!src().move && editable() && dragging().length > 0 && dragging().every((k) => canMove(k, to));
   function startDrag(ev, entry) {
-    if (!props.source.move || !editable()) return;
+    if (!src().move || !editable()) return;
     const keys = selected().has(entry.key) ? picked() : [entry.key];
     setDragging(keys);
     ev.dataTransfer?.setData("text/plain", keys.join("\n"));
@@ -2650,17 +2656,18 @@ function DumbFinder(props) {
     }
     const keys = dragging().filter((k) => canMove(k, to));
     setDragging([]);
-    if (!keys.length || !props.source.move) return;
+    const move = src().move;
+    if (!keys.length || !move) return;
     const back = new Map(keys.map((k) => [k, parentOf(k)]));
     try {
-      await props.source.move(keys, to);
+      await move(keys, to);
       undoStack.push({
         label: `\u043F\u0435\u0440\u0435\u043D\u043E\u0441 ${keys.length} \u0448\u0442.`,
         // назад по одному: у каждого ключа свой прежний родитель
         undo: async () => {
           for (const [key, home] of back) {
             const moved = `${to}${nameOf(key)}${key.endsWith("/") ? "/" : ""}`;
-            await props.source.move([moved], home);
+            await src().move([moved], home);
           }
           bumpTree();
           setSub({});
@@ -2678,7 +2685,7 @@ function DumbFinder(props) {
   const hasFiles = (ev) => !!ev.dataTransfer?.types?.includes("Files");
   function over(to, ev) {
     const files = hasFiles(ev);
-    if (files ? !(editable() && props.source.upload) : !canMoveTo(to)) return;
+    if (files ? !(editable() && src().upload) : !canMoveTo(to)) return;
     ev.preventDefault();
     ev.stopPropagation();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = files ? "copy" : "move";
@@ -2720,24 +2727,24 @@ function DumbFinder(props) {
   }
   const doRemove = () => {
     const keys = picked();
-    if (!keys.length || !props.source.remove) return;
+    if (!keys.length || !src().remove) return;
     void run(async () => {
-      await props.source.remove(keys);
+      await src().remove(keys);
       undoStack.push({ label: `\u0443\u0434\u0430\u043B\u0435\u043D\u0438\u0435 ${keys.length} \u0448\u0442.`, undo: null });
       setSelection(/* @__PURE__ */ new Set());
     });
   };
   const doMkdir = (name) => {
     const clean = name.trim().replace(/^\/+|\/+$/g, "");
-    if (!clean || !props.source.mkdir) return closeAsk();
+    if (!clean || !src().mkdir) return closeAsk();
     const made = `${joinPrefix(path(), clean)}/`;
     void run(async () => {
-      await props.source.mkdir(made);
-      if (props.source.remove) {
+      await src().mkdir(made);
+      if (src().remove) {
         undoStack.push({
           label: `\u043F\u0430\u043F\u043A\u0430 \xAB${clean}\xBB`,
           undo: async () => {
-            await props.source.remove([made]);
+            await src().remove([made]);
             bumpTree();
             await reload();
           }
@@ -2793,7 +2800,7 @@ function DumbFinder(props) {
       ev.preventDefault();
       return goto(parentOf(path()));
     }
-    if (ev.key === "Delete" && picked().length && props.source.remove && canWrite()) {
+    if (ev.key === "Delete" && picked().length && src().remove && canWrite()) {
       ev.preventDefault();
       return setConfirming(true);
     }
@@ -2974,7 +2981,7 @@ function DumbFinder(props) {
     onKeyDown={onKey}
     onDragOver={(ev) => {
       if (hasFiles(ev)) {
-        if (!(editable() && props.source.upload)) return;
+        if (!(editable() && src().upload)) return;
         ev.preventDefault();
         setOverFiles(true);
       } else if (canMoveTo(path())) {
@@ -3023,7 +3030,7 @@ function DumbFinder(props) {
       data-dir={entry.dir ? "1" : void 0}
       data-open={openRows().has(entry.key) ? "1" : void 0}
       data-drop={entry.dir && dropAt() === entry.key ? "1" : void 0}
-      draggable={canWrite() && !!props.source.move ? "true" : "false"}
+      draggable={canWrite() && !!src().move ? "true" : "false"}
       title={entry.name}
       onDblClick={() => open(entry)}
       onDragStart={(ev) => startDrag(ev, entry)}
@@ -3133,7 +3140,7 @@ function DumbFinder(props) {
   
             <Show2 when={!shown().length && !ghosts().length && !loading()}>
               <div class="dumb-finder-empty p-6 text-center">
-                {editable() && props.source.upload ? "\u041F\u0443\u0441\u0442\u043E. \u0411\u0440\u043E\u0441\u044C \u0441\u044E\u0434\u0430 \u0444\u0430\u0439\u043B\u044B." : "\u041F\u0443\u0441\u0442\u043E."}
+                {editable() && src().upload ? "\u041F\u0443\u0441\u0442\u043E. \u0411\u0440\u043E\u0441\u044C \u0441\u044E\u0434\u0430 \u0444\u0430\u0439\u043B\u044B." : "\u041F\u0443\u0441\u0442\u043E."}
               </div>
             </Show2>
           </div>
@@ -3208,12 +3215,12 @@ function DumbFinder(props) {
           {view() === "grid" ? "\u0421\u043F\u0438\u0441\u043A\u043E\u043C" : "\u041F\u043B\u0438\u0442\u043A\u0430\u043C\u0438"}
         </BarButton>
 
-        <Show2 when={canWrite() && props.source.mkdir}>
+        <Show2 when={canWrite() && src().mkdir}>
           <BarButton icon={props.icons?.mkdir} onClick={() => setAsking({ kind: "mkdir", value: "" })}>
             Новая папка
           </BarButton>
         </Show2>
-        <Show2 when={canWrite() && props.source.upload}>
+        <Show2 when={canWrite() && src().upload}>
           <BarButton icon={props.icons?.upload} onClick={pickFiles}>
             Залить
           </BarButton>
@@ -3223,7 +3230,7 @@ function DumbFinder(props) {
             Отменить: {undoLabel()}
           </BarButton>
         </Show2>
-        <Show2 when={canWrite() && props.source.remove && picked().length > 0}>
+        <Show2 when={canWrite() && src().remove && picked().length > 0}>
           <BarButton icon={props.icons?.remove} onClick={() => setConfirming(true)}>
             Удалить {picked().length}
           </BarButton>

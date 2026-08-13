@@ -11,7 +11,7 @@
 
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { createFlip, injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { createFlip, injectStyle, ownedRef, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 import { ToastBody, ToastIcon } from './toastLook'
 
@@ -470,7 +470,7 @@ export function DumbToaster(props: DumbToasterProps) {
     // Всё — в колбэк-ref, без эффекта: плашка живёт одно сообщение, следить не
     // за чем. popover открываем ПОСЛЕ вставки: на элементе не в документе метод
     // бросает, отсюда микротаск.
-    const hold = (node: HTMLDivElement) => {
+    const hold = ownedRef((node: HTMLDivElement) => {
       el = node
       queueMicrotask(() => node.showPopover?.())
 
@@ -498,7 +498,7 @@ export function DumbToaster(props: DumbToasterProps) {
         window.removeEventListener('keydown', onKey)
         if (node.matches(':popover-open')) node.hidePopover()
       })
-    }
+    })
     const spot = spotOf(p.t)
     return (
       <>

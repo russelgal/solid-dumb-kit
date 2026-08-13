@@ -1,4 +1,4 @@
-import { For, Show, createSignal, createMemo } from 'solid-js'
+import { For, Show, createSignal, createMemo, untrack } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 // TanStack отсюда убран. Восьмая версия тянет `solid-js/store`, которого во
 // второй линии Solid нет вовсе, а в девятой API переписан целиком (фичи,
@@ -222,8 +222,8 @@ export function DumbTable<T extends Record<string, unknown>>(props: DumbTablePro
   const sortable = createDumbSortable({
     order: () => visibleRows().map((r, i) => idOf(r, i)),
     disabled: dragDisabled,
-    mouseThreshold: props.dragThreshold,
-    get animate() { return props.animate },
+    get mouseThreshold() { return untrack(() => props.dragThreshold) },
+    get animate() { return untrack(() => props.animate) },
     onEnd: (from, to) => props.onReorder?.(from, to),
   })
 
@@ -272,13 +272,20 @@ export function DumbTable<T extends Record<string, unknown>>(props: DumbTablePro
               <tr aria-hidden="true" style={{ height: `${props.spacerTop}px` }} />
             </Show>
             <For each={visibleRows()}>
-              {(row, index) => (
+              {(row, index) => {
+                // id для движка — разово и untracked: тело колбэка For вне
+                // tracking scope, чтение index() там Solid 2 отбивает
+                const rowId = untrack(() => idOf(row, index()))
+                return (
                 <tr
                   // Строка только регистрируется в движке; старт драга приходит
                   // из JSX ниже — `pointerdown` у Solid делегирован, поэтому на
                   // тысяче строк висит один слушатель на документ, а не тысяча.
-                  ref={props.onReorder ? sortable.row(idOf(row, index())) : undefined}
-                  onPointerDown={props.onReorder ? sortable.press(idOf(row, index())) : undefined}
+                  // БЕЗ условия по props.onReorder: чтение пропа при создании
+                  // строки untracked (STRICT_READ_UNTRACKED), а движок и так
+                  // молчит, когда перетаскивание выключено (opts.disabled).
+                  ref={sortable.row(rowId)}
+                  onPointerDown={sortable.press(rowId)}
                   data-key={idOf(row, index())}
                   class={props.rowClass?.(row, index())}
                   style={{
@@ -314,7 +321,8 @@ export function DumbTable<T extends Record<string, unknown>>(props: DumbTablePro
                     )}
                   </For>
                 </tr>
-              )}
+                )
+              }}
             </For>
             <Show when={props.spacerBottom}>
               <tr aria-hidden="true" style={{ height: `${props.spacerBottom}px` }} />

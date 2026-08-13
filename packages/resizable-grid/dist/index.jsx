@@ -3,7 +3,7 @@ import { For, Show } from "solid-js";
 import * as v from "valibot";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
   const stringify = opts.stringify ?? ((v2) => JSON.stringify(v2));

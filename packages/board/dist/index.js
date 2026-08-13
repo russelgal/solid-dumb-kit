@@ -1,5 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, setAttribute, effect, style, memo, className, setStyleProperty, template } from '@solidjs/web';
-import { createMemo, createSignal, createEffect, onCleanup, For, Show } from 'solid-js';
+import { createMemo, createSignal, createEffect, onCleanup, For, Show, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbBoard.tsx
 function prefersReducedMotion() {
@@ -8,6 +8,10 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -664,7 +668,7 @@ function DumbBoard(props) {
     }
   }) : null;
   onCleanup(() => sizes?.disconnect());
-  const holdWrap = (el) => {
+  const holdWrap = ownedRef((el) => {
     wrapEl = el;
     measure();
     if (!sizes) return;
@@ -679,7 +683,7 @@ function DumbBoard(props) {
     });
     ro.observe(el);
     onCleanup(() => ro.disconnect());
-  };
+  });
   const cellsOf = createMemo(() => {
     const out = /* @__PURE__ */ new Map();
     for (const s of props.sections) {

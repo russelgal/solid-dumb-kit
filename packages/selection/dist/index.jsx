@@ -1,8 +1,9 @@
-// src/solid.ts
-import { onCleanup } from "solid-js";
-
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
+}
 var EDGE = 48;
 var MAX_SPEED = 18;
 var ACCEL = 3.5;
@@ -85,6 +86,9 @@ function restoreTextSelection() {
   s.userSelect = "";
   s.webkitUserSelect = "";
 }
+
+// src/solid.ts
+import { onCleanup } from "solid-js";
 
 // src/selectionMath.ts
 function areaFrom(x1, y1, x2, y2) {
@@ -366,17 +370,17 @@ function createSelectionArea(opts) {
   const engine = createSelectionEngine(opts);
   onCleanup(engine.destroy);
   return {
-    /** повесить жест на контейнер */
-    attach(el) {
+    /** повесить жест на контейнер; годится и как ref — owner захвачен здесь */
+    attach: ownedRef((el) => {
       onCleanup(engine.attach(el));
-    }
+    })
   };
 }
 
 // src/SelectionArea.tsx
 function SelectionArea(props) {
   let containerRef;
-  const attach = (el) => {
+  const attach = ownedRef((el) => {
     containerRef = el;
     const area = createSelectionArea({
       container: () => containerRef,
@@ -391,7 +395,7 @@ function SelectionArea(props) {
       onStop: (selected) => props.onStop?.(selected)
     });
     area.attach(containerRef);
-  };
+  });
   return <div ref={attach} class={props.class} style={{ position: "relative", ...props.style }}>
       {props.children}
     </div>;

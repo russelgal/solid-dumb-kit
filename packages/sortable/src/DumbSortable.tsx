@@ -1,4 +1,4 @@
-import { For } from 'solid-js'
+import { For, untrack } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { createDumbSortable } from './solid'
 
@@ -39,10 +39,10 @@ export function DumbSortable<T>(props: DumbSortableProps<T>) {
     order: () => props.items.map(props.id),
     axis: props.axis,
     disabled: props.disabled,
-    pressDelay: props.pressDelay,
+    get pressDelay() { return untrack(() => props.pressDelay) },
     mousePressDelay: props.mousePressDelay,
-    mouseThreshold: props.mouseThreshold,
-    animate: props.animate,
+    get mouseThreshold() { return untrack(() => props.mouseThreshold) },
+    get animate() { return untrack(() => props.animate) },
     onEnd: (from, to) => {
       const next = props.items.slice()
       next.splice(to, 0, next.splice(from, 1)[0])

@@ -37,7 +37,7 @@
 
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle } from '@solid-dumb-kit/shared'
+import { injectStyle, ownedRef } from '@solid-dumb-kit/shared'
 
 export type MenuItem =
   | { kind: 'separator' }
@@ -214,7 +214,7 @@ function Panel(props: {
    * браузер считает сам, вне главного потока, forced layout не возникает (тот
    * же приём, что и в снимке сортировщика). Снимок ОДИН, на открытие панели.
    */
-  const hold = (node: HTMLDivElement) => {
+  const hold = ownedRef((node: HTMLDivElement) => {
     el = node
     queueMicrotask(() => {
       if (!node.matches(':popover-open')) node.showPopover?.()
@@ -234,7 +234,7 @@ function Panel(props: {
       io.disconnect()
       if (node.matches(':popover-open')) node.hidePopover()
     })
-  }
+  })
 
   /**
    * Сторона этой панели: сравниваем её левый край с тем, от чего она

@@ -1,5 +1,5 @@
 import { ref, insert, createComponent, effect, className, style, template } from '@solidjs/web';
-import { createSignal, onCleanup, createMemo, createEffect, For } from 'solid-js';
+import { createSignal, onCleanup, untrack, createMemo, createEffect, For, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbSortableDnd.tsx
 function prefersReducedMotion() {
@@ -8,6 +8,10 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -518,8 +522,8 @@ function createDumbSortableDnd(opts) {
   });
   onCleanup(engine.destroy);
   return {
-    container: (el) => onCleanup(engine.attachContainer(el)),
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
+    container: ownedRef((el) => onCleanup(engine.attachContainer(el))),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
     active
   };
 }
@@ -531,7 +535,9 @@ function DumbSortableDnd(props) {
     order: () => props.items.map(props.id),
     axis: () => props.axis ?? "y",
     disabled: () => props.disabled === true,
-    animate: props.animate,
+    get animate() {
+      return untrack(() => props.animate);
+    },
     onMove: (from, to) => {
       const next = props.items.slice();
       next.splice(to, 0, next.splice(from, 1)[0]);
@@ -559,11 +565,11 @@ function DumbSortableDnd(props) {
       return rendered();
     },
     children: (item) => {
-      const id = props.id(item);
+      const id = untrack(() => props.id(item));
       const el = props.children(item, () => places().get(id) ?? 0);
       if (el instanceof HTMLElement) {
         els.set(id, el);
-        el.style.order = String(places().get(id) ?? 0);
+        el.style.order = String(untrack(places).get(id) ?? 0);
         s.bind(id)(el);
       }
       return el;

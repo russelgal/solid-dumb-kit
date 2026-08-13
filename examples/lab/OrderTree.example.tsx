@@ -30,7 +30,7 @@
 //
 // Бросить ветку внутрь самой себя нельзя — её щели и строки исключаются из целей.
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
-import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, type Flip, ownedRef } from '@solid-dumb-kit/shared'
 
 type Node = { id: string; label: string; kind: string }
 
@@ -145,7 +145,7 @@ export default function OrderTreeExample() {
 
   // Наблюдатель вешается в колбэк-ref: элемент создан — можно смотреть.
   // Эффект тут не нужен, следить не за чем.
-  const holdRoot = (el: HTMLElement) => {
+  const holdRoot = ownedRef((el: HTMLElement) => {
     root = el
     measure()
     if (typeof ResizeObserver !== 'function') return
@@ -153,7 +153,7 @@ export default function OrderTreeExample() {
     const ro = new ResizeObserver(() => { if (first) { first = false; return } measure() })
     ro.observe(el)
     onCleanup(() => ro.disconnect())
-  }
+  })
 
   /**
    * Применить новое дерево и доиграть переезд.

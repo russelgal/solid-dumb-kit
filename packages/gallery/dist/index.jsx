@@ -1,15 +1,19 @@
 // src/DumbGallery.tsx
-import { Show, createMemo as createMemo2, createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js";
+import { Show, createMemo as createMemo2, createSignal as createSignal3, onCleanup as onCleanup2, untrack as untrack2 } from "solid-js";
 
 // ../sortable-dnd/dist/index.js
 import { ref, insert, createComponent, effect, className, style, template } from "@solidjs/web";
-import { createSignal, onCleanup, createMemo, createEffect, For } from "solid-js";
+import { createSignal, onCleanup, untrack, createMemo, createEffect, For, getOwner, runWithOwner } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -516,8 +520,8 @@ function createDumbSortableDnd(opts) {
   });
   onCleanup(engine.destroy);
   return {
-    container: (el) => onCleanup(engine.attachContainer(el)),
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
+    container: ownedRef((el) => onCleanup(engine.attachContainer(el))),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
     active
   };
 }
@@ -527,7 +531,9 @@ function DumbSortableDnd(props) {
     order: () => props.items.map(props.id),
     axis: () => props.axis ?? "y",
     disabled: () => props.disabled === true,
-    animate: props.animate,
+    get animate() {
+      return untrack(() => props.animate);
+    },
     onMove: (from, to) => {
       const next = props.items.slice();
       next.splice(to, 0, next.splice(from, 1)[0]);
@@ -555,11 +561,11 @@ function DumbSortableDnd(props) {
       return rendered();
     },
     children: (item) => {
-      const id = props.id(item);
+      const id = untrack(() => props.id(item));
       const el = props.children(item, () => places().get(id) ?? 0);
       if (el instanceof HTMLElement) {
         els.set(id, el);
-        el.style.order = String(places().get(id) ?? 0);
+        el.style.order = String(untrack(places).get(id) ?? 0);
         s.bind(id)(el);
       }
       return el;
@@ -579,7 +585,7 @@ function DumbSortableDnd(props) {
 }
 
 // ../shared/dist/index.js
-import { createSignal as createSignal2, createEffect as createEffect2 } from "solid-js";
+import { getOwner as getOwner2, runWithOwner as runWithOwner2, createSignal as createSignal2, createEffect as createEffect2 } from "solid-js";
 var toPicked = (file) => ({
   file,
   name: file.name,
@@ -821,7 +827,8 @@ function DumbGallery(props) {
       },
       onError: (id, err) => patch(id, { status: "error", error: err })
     },
-    props.concurrency ?? 3
+    // разовое untracked-чтение: очередь создаётся один раз
+    untrack2(() => props.concurrency) ?? 3
   );
   onCleanup2(() => queue.destroy());
   const room = () => props.max === void 0 ? Infinity : props.max - props.items.length;

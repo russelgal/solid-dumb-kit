@@ -18,7 +18,7 @@
 // побочный эффект: анимируется не только драг, но и СОРТИРОВКА по колонке —
 // строки разъезжаются по новым местам, и видно, куда именно уехала каждая.
 import { createEffect, createSignal, For, onCleanup } from 'solid-js'
-import { createAutoScroller, createFlip, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, type Flip, ownedRef } from '@solid-dumb-kit/shared'
 
 type Row = { id: string; name: string; status: string; sum: number; date: string }
 
@@ -91,7 +91,7 @@ export default function OrderTableExample() {
 
   // Наблюдатель вешается в колбэк-ref: элемент создан — можно смотреть.
   // Эффект тут не нужен, следить не за чем.
-  const holdBody = (el: HTMLElement) => {
+  const holdBody = ownedRef((el: HTMLElement) => {
     body = el
     measure()
     if (typeof ResizeObserver !== 'function') return
@@ -99,7 +99,7 @@ export default function OrderTableExample() {
     const ro = new ResizeObserver(() => { if (first) { first = false; return } measure() })
     ro.observe(el)
     onCleanup(() => ro.disconnect())
-  }
+  })
 
   /** применить новые места и доиграть переезд */
   function apply(next: Record<string, number>) {

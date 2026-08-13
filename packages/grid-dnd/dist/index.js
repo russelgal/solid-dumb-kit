@@ -1,5 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, effect, className, style, template } from '@solidjs/web';
-import { createSignal, onCleanup, createMemo, For } from 'solid-js';
+import { createSignal, onCleanup, createMemo, For, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbGridDnd.tsx
 function prefersReducedMotion() {
@@ -8,6 +8,10 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
@@ -766,8 +770,8 @@ function createDumbGridDndGroup(opts = {}) {
     grid(name, zoneOpts) {
       const zone = engine.grid(name, zoneOpts);
       return {
-        container: (el) => onCleanup(zone.attachContainer(el)),
-        bind: (id) => (el) => onCleanup(zone.attach(el, id)),
+        container: ownedRef((el) => onCleanup(zone.attachContainer(el))),
+        bind: (id) => ownedRef((el) => onCleanup(zone.attach(el, id))),
         active: () => {
           const a = active();
           return a && a.grid === name ? a.id : null;

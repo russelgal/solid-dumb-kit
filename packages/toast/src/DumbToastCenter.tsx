@@ -166,13 +166,14 @@ export function DumbToastCenter(props: DumbToastCenterProps) {
    * шаг, при котором подпись не врёт и таймер не будит вкладку зря; закрытая
    * панель не тикает вовсе.
    */
-  // watch, а не effect: `setNow` — запись в сигнал, а её в фазе вычисления
-  // Solid 2 запрещает (REACTIVE_WRITE_IN_OWNED_SCOPE)
+  // Таймер снимается ВОЗВРАТОМ, не onCleanup: тело эффекта в Solid 2 — не
+  // owned-scope, onCleanup там молча не срабатывает, и на каждое открытие
+  // панели копился бы ещё один вечный interval.
   createEffect(open, (visible) => {
     if (!visible) return
     setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 30_000)
-    onCleanup(() => clearInterval(id))
+    return () => clearInterval(id)
   })
 
   createEffect(open, (show) => {

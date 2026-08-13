@@ -1,4 +1,5 @@
 import type { JSX } from '@solidjs/web'
+import { ownedRef } from '@solid-dumb-kit/shared'
 import { createSelectionArea } from './solid'
 import type { IntersectMode } from './selectionMath'
 
@@ -52,9 +53,10 @@ export type SelectionAreaProps = {
 export function SelectionArea(props: SelectionAreaProps) {
   let containerRef!: HTMLDivElement
 
-  // Никакого эффекта: движок цепляется в колбэк-ref, то есть ровно тогда, когда
-  // элемент создан. Эффект тут был бы лишним звеном — следить не за чем.
-  const attach = (el: HTMLDivElement) => {
+  // Движок цепляется в колбэк-ref — ровно тогда, когда элемент создан. Ref в
+  // Solid 2 вызывается без owner'а, поэтому ownedRef: без него onCleanup внутри
+  // фабрики не сработал бы никогда и движок пережил бы компонент.
+  const attach = ownedRef((el: HTMLDivElement) => {
     containerRef = el
     const area = createSelectionArea({
       container: () => containerRef,
@@ -69,7 +71,7 @@ export function SelectionArea(props: SelectionAreaProps) {
       onStop: (selected) => props.onStop?.(selected),
     })
     area.attach(containerRef)
-  }
+  })
 
   return (
     <div ref={attach} class={props.class} style={{ position: 'relative', ...props.style }}>

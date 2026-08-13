@@ -23,6 +23,7 @@ export {
   type CloseSideOption,
 } from './closeSide'
 
+export { ownedRef } from './ownedRef'
 export { createPersisted, type PersistedOptions } from './persisted'
 export { createFilePicker, pickedFrom, type FilePickerOptions, type PickedFile } from './filePicker'
 

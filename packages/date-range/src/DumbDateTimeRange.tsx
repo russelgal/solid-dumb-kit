@@ -17,7 +17,7 @@
 
 // createEffect(dep, fn) — двухфазный: первая функция читает сигналы, вторая
 // работает. Одноаргументной формы в Solid 2 нет вовсе.
-import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import { DumbDateRange } from './DumbDateRange'
@@ -141,11 +141,14 @@ export function DumbDateTimeRange(props: DumbDateTimeRangeProps): JSX.Element {
    * сигнала её затенял. Вызов `toTime(минуты)` при этом не падал — он молча
    * возвращал значение сигнала, то есть `null`, и период не собирался вовсе.
    */
+  // стартовые значения — разовое untracked-чтение; дальше синхронизацию со
+  // значением снаружи ведёт эффект ниже
+  const initial = untrack(() => props.value())
   const [days, setDays] = createSignal<{ from: Day; to: Day } | null>(
-    props.value() ? { from: props.value()!.from.day, to: props.value()!.to.day } : null,
+    initial ? { from: initial.from.day, to: initial.to.day } : null,
   )
-  const [startTime, setStartTime] = createSignal<Time | null>(props.value()?.from.time ?? null)
-  const [endTime, setEndTime] = createSignal<Time | null>(props.value()?.to.time ?? null)
+  const [startTime, setStartTime] = createSignal<Time | null>(initial?.from.time ?? null)
+  const [endTime, setEndTime] = createSignal<Time | null>(initial?.to.time ?? null)
 
   // Значение снаружи — источник истины: сбросили период кнопкой «Очистить»
   // или подставили чужую бронь на правку, и компонент обязан это показать.

@@ -2,13 +2,17 @@
 import { createEffect as createEffect3, createMemo as createMemo2, createSignal as createSignal3, For as For2, onCleanup as onCleanup2, Show as Show2 } from "solid-js";
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -279,7 +283,7 @@ function createAutoScroller() {
 
 // ../grid/dist/index.js
 import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
-import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2 } from "solid-js";
+import { createSignal as createSignal2, onCleanup, untrack, createMemo, Show, For, getOwner as getOwner2, runWithOwner as runWithOwner2, createEffect as createEffect2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -916,7 +920,7 @@ function DumbBoard(props) {
     }
   }) : null;
   onCleanup2(() => sizes?.disconnect());
-  const holdWrap = (el) => {
+  const holdWrap = ownedRef((el) => {
     wrapEl = el;
     measure();
     if (!sizes) return;
@@ -931,7 +935,7 @@ function DumbBoard(props) {
     });
     ro.observe(el);
     onCleanup2(() => ro.disconnect());
-  };
+  });
   const cellsOf = createMemo2(() => {
     const out = /* @__PURE__ */ new Map();
     for (const s of props.sections) {

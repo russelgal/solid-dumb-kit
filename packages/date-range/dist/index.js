@@ -1,5 +1,5 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, className, memo, style, template } from '@solidjs/web';
-import { createSignal, createMemo, For, Show, createEffect, onCleanup } from 'solid-js';
+import { createSignal, untrack, createMemo, For, Show, createEffect, onCleanup } from 'solid-js';
 
 // src/DumbDateRange.tsx
 var done = /* @__PURE__ */ new Set();
@@ -123,7 +123,7 @@ var STYLES = `
 `;
 function DumbDateRange(props) {
   injectStyle("date-range", STYLES);
-  const [shownMonth, setShownMonth] = createSignal(startOfMonth(props.value()?.from ?? today()));
+  const [shownMonth, setShownMonth] = createSignal(startOfMonth(untrack(() => props.value()?.from) ?? today()));
   const [pending, setPending] = createSignal(null);
   const [hover, setHover] = createSignal(null);
   const busy = () => props.busy?.() ?? [];
@@ -610,12 +610,13 @@ function DumbDateTimeRange(props) {
   injectStyle("date-time-range", STYLES2);
   const step = () => props.step ?? 30;
   const busy = () => props.busy?.() ?? [];
-  const [days, setDays] = createSignal(props.value() ? {
-    from: props.value().from.day,
-    to: props.value().to.day
+  const initial = untrack(() => props.value());
+  const [days, setDays] = createSignal(initial ? {
+    from: initial.from.day,
+    to: initial.to.day
   } : null);
-  const [startTime, setStartTime] = createSignal(props.value()?.from.time ?? null);
-  const [endTime, setEndTime] = createSignal(props.value()?.to.time ?? null);
+  const [startTime, setStartTime] = createSignal(initial?.from.time ?? null);
+  const [endTime, setEndTime] = createSignal(initial?.to.time ?? null);
   createEffect(() => {
     const v = props.value();
     return v ? `${v.from.day} ${v.from.time} ${v.to.day} ${v.to.time}` : "";

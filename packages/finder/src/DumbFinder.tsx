@@ -313,6 +313,9 @@ const STYLES = `
 export function DumbFinder(props: DumbFinderProps) {
   injectStyle('finder', STYLES)
 
+  // прокси-геттер пропа вне tracking scope — untracked-чтение, Solid 2 ругается
+  // на каждый вызов из async-загрузчиков; untrack говорит «это осознанно»
+  const src = () => untrack(() => props.source)
   const editable = () => props.editable !== false
 
   /* ─── где мы и что выделено ─────────────────────────────────────────────── */
@@ -364,7 +367,7 @@ export function DumbFinder(props: DumbFinderProps) {
     listing = ctrl
     setLoading(true)
     try {
-      const got = await props.source.list(prefix, { signal: ctrl.signal })
+      const got = await src().list(prefix, { signal: ctrl.signal })
       if (ctrl.signal.aborted) return
       setEntries(got)
       setError(null)
@@ -417,7 +420,7 @@ export function DumbFinder(props: DumbFinderProps) {
     if (inflight.has(prefix) || prefix in untrack(tree)) return
     inflight.add(prefix)
     try {
-      const got = await props.source.list(prefix, { signal: new AbortController().signal })
+      const got = await src().list(prefix, { signal: new AbortController().signal })
       setTree((was) => ({ ...was, [prefix]: got.filter((e) => e.dir) }))
     } catch {
       // молча: дерево — навигация, а не результат. Ошибку покажет список, когда
@@ -432,10 +435,11 @@ export function DumbFinder(props: DumbFinderProps) {
   const [whole, setWhole] = createSignal<Array<FinderEntry> | null>(null)
   let wholeFlight = false
   async function loadWhole() {
-    if (wholeFlight || !props.source.tree) return
+    const tree = src().tree
+    if (wholeFlight || !tree) return
     wholeFlight = true
     try {
-      setWhole(await props.source.tree({ signal: new AbortController().signal }))
+      setWhole(await tree({ signal: new AbortController().signal }))
     } catch (err) {
       setWhole([])
       fail(err)
@@ -451,7 +455,7 @@ export function DumbFinder(props: DumbFinderProps) {
     ([here]) => {
       if (props.sidebar === false) return
       // умеет отдать всё разом — берём всё разом и по веткам не ходим вовсе
-      if (props.source.tree) {
+      if (src().tree) {
         if (untrack(whole) === null) void loadWhole()
         return
       }
@@ -493,7 +497,7 @@ export function DumbFinder(props: DumbFinderProps) {
     if (subFlight.has(prefix) || prefix in untrack(sub)) return
     subFlight.add(prefix)
     try {
-      const got = await props.source.list(prefix, { signal: new AbortController().signal })
+      const got = await src().list(prefix, { signal: new AbortController().signal })
       setSub((was) => ({ ...was, [prefix]: got }))
     } catch (err) {
       setSub((was) => ({ ...was, [prefix]: [] }))
@@ -556,7 +560,7 @@ export function DumbFinder(props: DumbFinderProps) {
 
   const queue = createUploadQueue(
     (file, ctx) => {
-      const up = props.source.upload
+      const up = src().upload
       if (!up) return Promise.reject(new Error('заливка не настроена'))
       const to = dest.get(file) ?? untrack(path)
       return up(file, { prefix: to, onProgress: ctx.onProgress, signal: ctx.signal }).then(() => ({
@@ -584,7 +588,7 @@ export function DumbFinder(props: DumbFinderProps) {
   onCleanup(() => queue.destroy())
 
   function enqueue(files: Array<{ name: string; file: File }>, prefix: string) {
-    if (!editable() || !props.source.upload || !files.length) return
+    if (!editable() || !src().upload || !files.length) return
     const added: Array<Pending> = files.map((f, i) => ({
       id: `u${Date.now().toString(36)}${i}`,
       name: f.name,
@@ -621,11 +625,11 @@ export function DumbFinder(props: DumbFinderProps) {
   const [overFiles, setOverFiles] = createSignal(false)
 
   const canMoveTo = (to: string) =>
-    !!props.source.move && editable() && dragging().length > 0 &&
+    !!src().move && editable() && dragging().length > 0 &&
     dragging().every((k) => canMove(k, to))
 
   function startDrag(ev: DragEvent, entry: FinderEntry) {
-    if (!props.source.move || !editable()) return
+    if (!src().move || !editable()) return
     // тащим выделенное, если схватили одно из выделенного; иначе — только его
     const keys = selected().has(entry.key) ? picked() : [entry.key]
     setDragging(keys)
@@ -656,17 +660,18 @@ export function DumbFinder(props: DumbFinderProps) {
 
     const keys = dragging().filter((k) => canMove(k, to))
     setDragging([])
-    if (!keys.length || !props.source.move) return
+    const move = src().move
+    if (!keys.length || !move) return
     const back = new Map(keys.map((k) => [k, parentOf(k)]))
     try {
-      await props.source.move(keys, to)
+      await move(keys, to)
       undoStack.push({
         label: `перенос ${keys.length} шт.`,
         // назад по одному: у каждого ключа свой прежний родитель
         undo: async () => {
           for (const [key, home] of back) {
             const moved = `${to}${nameOf(key)}${key.endsWith('/') ? '/' : ''}`
-            await props.source.move!([moved], home)
+            await src().move!([moved], home)
           }
           bumpTree()
           setSub({})
@@ -687,7 +692,7 @@ export function DumbFinder(props: DumbFinderProps) {
 
   function over(to: string, ev: DragEvent) {
     const files = hasFiles(ev)
-    if (files ? !(editable() && props.source.upload) : !canMoveTo(to)) return
+    if (files ? !(editable() && src().upload) : !canMoveTo(to)) return
     ev.preventDefault()
     ev.stopPropagation()
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = files ? 'copy' : 'move'
@@ -749,9 +754,9 @@ export function DumbFinder(props: DumbFinderProps) {
 
   const doRemove = () => {
     const keys = picked()
-    if (!keys.length || !props.source.remove) return
+    if (!keys.length || !src().remove) return
     void run(async () => {
-      await props.source.remove!(keys)
+      await src().remove!(keys)
       // без отмены: корзины у хранилища нет, и врать кнопкой не будем
       undoStack.push({ label: `удаление ${keys.length} шт.`, undo: null })
       setSelection(new Set())
@@ -762,15 +767,15 @@ export function DumbFinder(props: DumbFinderProps) {
     // слэши по краям режем: `/фото/` и `фото` — одна и та же папка, а вот
     // слэш ВНУТРИ имени осмысленный, им создают сразу вложенную
     const clean = name.trim().replace(/^\/+|\/+$/g, '')
-    if (!clean || !props.source.mkdir) return closeAsk()
+    if (!clean || !src().mkdir) return closeAsk()
     const made = `${joinPrefix(path(), clean)}/`
     void run(async () => {
-      await props.source.mkdir!(made)
-      if (props.source.remove) {
+      await src().mkdir!(made)
+      if (src().remove) {
         undoStack.push({
           label: `папка «${clean}»`,
           undo: async () => {
-            await props.source.remove!([made])
+            await src().remove!([made])
             bumpTree()
             await reload()
           },
@@ -844,7 +849,7 @@ export function DumbFinder(props: DumbFinderProps) {
       ev.preventDefault()
       return goto(parentOf(path()))
     }
-    if (ev.key === 'Delete' && picked().length && props.source.remove && canWrite()) {
+    if (ev.key === 'Delete' && picked().length && src().remove && canWrite()) {
       ev.preventDefault()
       return setConfirming(true)
     }
@@ -1058,7 +1063,7 @@ export function DumbFinder(props: DumbFinderProps) {
             onKeyDown={onKey}
             onDragOver={(ev) => {
               if (hasFiles(ev)) {
-                if (!(editable() && props.source.upload)) return
+                if (!(editable() && src().upload)) return
                 ev.preventDefault()
                 setOverFiles(true)
               } else if (canMoveTo(path())) {
@@ -1108,7 +1113,7 @@ export function DumbFinder(props: DumbFinderProps) {
                     data-dir={entry.dir ? '1' : undefined}
                   data-open={openRows().has(entry.key) ? '1' : undefined}
                     data-drop={entry.dir && dropAt() === entry.key ? '1' : undefined}
-                    draggable={canWrite() && !!props.source.move ? 'true' : 'false'}
+                    draggable={canWrite() && !!src().move ? 'true' : 'false'}
                     title={entry.name}
                     onDblClick={() => open(entry)}
                     onDragStart={(ev) => startDrag(ev, entry)}
@@ -1223,7 +1228,7 @@ export function DumbFinder(props: DumbFinderProps) {
   
             <Show when={!shown().length && !ghosts().length && !loading()}>
               <div class="dumb-finder-empty p-6 text-center">
-                {editable() && props.source.upload ? 'Пусто. Брось сюда файлы.' : 'Пусто.'}
+                {editable() && src().upload ? 'Пусто. Брось сюда файлы.' : 'Пусто.'}
               </div>
             </Show>
           </div>
@@ -1313,12 +1318,12 @@ export function DumbFinder(props: DumbFinderProps) {
           {view() === 'grid' ? 'Списком' : 'Плитками'}
         </BarButton>
 
-        <Show when={canWrite() && props.source.mkdir}>
+        <Show when={canWrite() && src().mkdir}>
           <BarButton icon={props.icons?.mkdir} onClick={() => setAsking({ kind: 'mkdir', value: '' })}>
             Новая папка
           </BarButton>
         </Show>
-        <Show when={canWrite() && props.source.upload}>
+        <Show when={canWrite() && src().upload}>
           <BarButton icon={props.icons?.upload} onClick={pickFiles}>
             Залить
           </BarButton>
@@ -1328,7 +1333,7 @@ export function DumbFinder(props: DumbFinderProps) {
             Отменить: {undoLabel()}
           </BarButton>
         </Show>
-        <Show when={canWrite() && props.source.remove && picked().length > 0}>
+        <Show when={canWrite() && src().remove && picked().length > 0}>
           <BarButton icon={props.icons?.remove} onClick={() => setConfirming(true)}>
             Удалить {picked().length}
           </BarButton>

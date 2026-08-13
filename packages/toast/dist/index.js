@@ -1,5 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, memo, effect, className, setAttribute, setStyleProperty, template } from '@solidjs/web';
-import { createSignal, onCleanup, createEffect, For, Show } from 'solid-js';
+import { createSignal, onCleanup, createEffect, For, Show, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbToaster.tsx
 function prefersReducedMotion() {
@@ -26,6 +26,10 @@ function resolveCloseSide(explicit) {
   const nav = typeof navigator === "undefined" ? null : navigator;
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -718,7 +722,7 @@ function DumbToaster(props) {
   });
   return _el$2;
   function AtToast(p) {
-    const hold2 = (node) => {
+    const hold2 = ownedRef((node) => {
       queueMicrotask(() => node.showPopover?.());
       const away = (ev) => {
         if (!node.contains(ev.target)) bus().dismiss(p.t.id);
@@ -735,7 +739,7 @@ function DumbToaster(props) {
         window.removeEventListener("keydown", onKey);
         if (node.matches(":popover-open")) node.hidePopover();
       });
-    };
+    });
     const spot = spotOf(p.t);
     return [(() => {
       var _el$5 = _tmpl$32();
@@ -924,7 +928,7 @@ function DumbToastCenter(props) {
     if (!visible) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
-    onCleanup(() => clearInterval(id));
+    return () => clearInterval(id);
   });
   createEffect(open, (show) => {
     queueMicrotask(() => {

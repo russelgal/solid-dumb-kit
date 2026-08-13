@@ -21,7 +21,7 @@
 // распорка молча перестаёт расти, и полоса прокрутки начинает врать.
 // `createVirtualizer` зажимает её потолком и растягивает прокрутку сам.
 import { createEffect, createSignal, For, onCleanup, Show, untrack } from 'solid-js'
-import { createRowIndex, createVirtualizer, type RowIndex, type VirtualRange } from '@solid-dumb-kit/shared'
+import { createRowIndex, createVirtualizer, type RowIndex, type VirtualRange, ownedRef } from '@solid-dumb-kit/shared'
 import { fmtNum } from '@solid-dumb-kit/utils'
 import { Bar, Btn, Check, Note, Pick, Seg, Code, Doc, Props } from '../_controls'
 // Сниппеты доки живут отдельным файлом: их подсвечивает Shiki на сборке, и
@@ -161,10 +161,11 @@ export default function VirtualExample() {
       columns: { value: { kind: 'number', values: untrack(values) } },
     })
     untrack(ask)
-    onCleanup(() => {
+    // возвратом, не onCleanup: тело эффекта в Solid 2 — не owned-scope
+    return () => {
       engine.destroy()
       if (index === engine) index = null
-    })
+    }
   })
 
   /** сменилось число строк — данные едут в движок заново */
@@ -185,13 +186,18 @@ export default function VirtualExample() {
    * Виртуализатор поднимается в колбэк-ref скроллера: элемент к этому моменту
    * есть, а лишнего эффекта «просто чтобы дождаться монтирования» нет.
    */
-  const holdScroller = (el: HTMLDivElement) => {
+  const holdScroller = ownedRef((el: HTMLDivElement) => {
     scroller = el
+    // живой виртуализатор — в сигнале: эффект пересчёта ниже зависит и от него,
+    // а НЕ живёт внутри axis-эффекта — тело эффекта в Solid 2 не owned-scope,
+    // вложенный createEffect там не привязывается (NO_OWNER_EFFECT)
+    const [virt, setVirt] = createSignal<ReturnType<typeof createVirtualizer> | null>(null)
     // ось движок берёт при создании (она решает, что читать — `scrollTop` или
     // `scrollLeft`), поэтому на её смену виртуализатор пересоздаётся
     createEffect(axis, (ax) => {
       const v = createVirtualizer({
-        count: () => shown(),
+        // движок читает вне tracking scope — untrack, чтобы strict-режим молчал
+        count: () => untrack(shown),
         itemSize: () => (ax === 'x' ? COL : ROW),
         axis: ax,
         scroller: () => scroller,
@@ -205,12 +211,13 @@ export default function VirtualExample() {
         overscan: ax === 'x' ? SPARE_X : SPARE_Y,
         onChange: setRange,
       })
-      // окно зависит от числа видимых строк и от режима — пересчитываем явно,
-      // а не опросом по таймеру
-      createEffect(() => [shown(), mode()] as const, () => v.refresh())
-      onCleanup(() => v.destroy())
+      setVirt(v)
+      return () => v.destroy()
     })
-  }
+    // окно зависит от числа видимых строк и от режима — пересчитываем явно,
+    // а не опросом по таймеру
+    createEffect(() => [virt(), shown(), mode()] as const, ([v]) => { v?.refresh() })
+  })
 
   // счётчик узлов тикает сам по себе — ни от ref, ни от сигналов не зависит
   {

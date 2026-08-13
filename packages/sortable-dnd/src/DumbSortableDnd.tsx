@@ -1,4 +1,4 @@
-import { createEffect, createMemo, For } from 'solid-js'
+import { createEffect, createMemo, For, untrack } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { createStableOrder } from '@solid-dumb-kit/shared'
 import { createDumbSortableDnd } from './solid'
@@ -58,7 +58,7 @@ export function DumbSortableDnd<T>(props: DumbSortableDndProps<T>) {
     order: () => props.items.map(props.id),
     axis: () => props.axis ?? 'y',
     disabled: () => props.disabled === true,
-    animate: props.animate,
+    get animate() { return untrack(() => props.animate) },
     onMove: (from, to) => {
       const next = props.items.slice()
       next.splice(to, 0, next.splice(from, 1)[0])
@@ -102,11 +102,13 @@ export function DumbSortableDnd<T>(props: DumbSortableDndProps<T>) {
     <div ref={s.container} class={props.class} style={props.style}>
       <For each={rendered()}>
         {(item) => {
-          const id = props.id(item)
+          // тело колбэка For — untracked-код: разовые чтения здесь осознанные,
+          // поэтому untrack — иначе Solid 2 честно ругается на каждую карточку
+          const id = untrack(() => props.id(item))
           const el = props.children(item, () => places().get(id) ?? 0) as unknown as Node
           if (el instanceof HTMLElement) {
             els.set(id, el)
-            el.style.order = String(places().get(id) ?? 0)
+            el.style.order = String(untrack(places).get(id) ?? 0)
             s.bind(id)(el)
           }
           return el as unknown as JSX.Element

@@ -25,7 +25,7 @@
 //
 // Ключей от хранилища галерея не видит и видеть не должна — см. `presigned.ts`.
 
-import { Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import { Show, createMemo, createSignal, onCleanup, untrack } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { DumbSortableDnd } from '@solid-dumb-kit/sortable-dnd'
 import { createFilePicker, createUploadQueue, injectStyle, readDropEntries, type PickedFile, type Uploader } from '@solid-dumb-kit/shared'
@@ -187,7 +187,8 @@ export function DumbGallery(props: DumbGalleryProps) {
       },
       onError: (id, err) => patch(id, { status: 'error', error: err }),
     },
-    props.concurrency ?? 3,
+    // разовое untracked-чтение: очередь создаётся один раз
+    untrack(() => props.concurrency) ?? 3,
   )
   onCleanup(() => queue.destroy())
 

@@ -1,5 +1,5 @@
 import { delegateEvents, insert, createComponent, memo, effect, className, style, setStyleProperty, addEvent, ref, setAttribute, template } from '@solidjs/web';
-import { createSignal, createMemo, Show, For, onCleanup } from 'solid-js';
+import { createSignal, createMemo, Show, For, untrack, onCleanup, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbTable.tsx
 function prefersReducedMotion() {
@@ -8,6 +8,10 @@ function prefersReducedMotion() {
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var EDGE = 48;
 var MAX_SPEED = 18;
@@ -553,9 +557,9 @@ function createDumbSortable(opts) {
   const engine = createSortableEngine(opts);
   onCleanup(engine.destroy);
   return {
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
-    row: (id) => (el) => onCleanup(engine.attachRow(el, id)),
-    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id)),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
+    row: (id) => ownedRef((el) => onCleanup(engine.attachRow(el, id))),
+    handle: (id) => ownedRef((el) => onCleanup(engine.attachHandle(el, id))),
     press: (id) => (ev) => engine.press(id, ev),
     pressHandle: (id) => (ev) => engine.pressHandle(id, ev.currentTarget, ev)
   };
@@ -663,9 +667,11 @@ function DumbTable(props) {
   const sortable = createDumbSortable({
     order: () => visibleRows().map((r, i) => idOf(r, i)),
     disabled: dragDisabled,
-    mouseThreshold: props.dragThreshold,
+    get mouseThreshold() {
+      return untrack(() => props.dragThreshold);
+    },
     get animate() {
-      return props.animate;
+      return untrack(() => props.animate);
     },
     onEnd: (from, to) => props.onReorder?.(from, to)
   });
@@ -752,11 +758,12 @@ function DumbTable(props) {
         get each() {
           return visibleRows();
         },
-        children: (row, index) => (() => {
+        children: (row, index) => {
+          const rowId = untrack(() => idOf(row, index()));
           var _el$20 = _tmpl$0(), _el$23 = _el$20.firstChild, _el$24 = _el$23.nextSibling;
           _el$20.$$click = () => props.onRowClick?.(row, index());
-          addEvent(_el$20, "pointerdown", props.onReorder ? sortable.press(idOf(row, index())) : void 0, true);
-          var _ref$ = props.onReorder ? sortable.row(idOf(row, index())) : void 0;
+          addEvent(_el$20, "pointerdown", sortable.press(rowId), true);
+          var _ref$ = sortable.row(rowId);
           (typeof _ref$ === "function" || Array.isArray(_ref$)) && ref(() => _ref$, _el$20);
           insert(_el$20, createComponent(Show, {
             get when() {
@@ -820,7 +827,7 @@ function DumbTable(props) {
             style(_el$20, a, _p$?.a);
           });
           return _el$20;
-        })()
+        }
       }), _el$12);
       insert(_el$0, createComponent(Show, {
         get when() {

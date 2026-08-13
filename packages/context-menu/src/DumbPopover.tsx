@@ -105,11 +105,15 @@ export function DumbPopover(props: DumbPopoverProps) {
       window.addEventListener('keydown', onKey)
       window.addEventListener('pointerdown', away, true)
       window.addEventListener('scroll', bail, true)
-      onCleanup(() => {
+      // ВОЗВРАТОМ, не onCleanup: тело эффекта в Solid 2 — не owned-scope,
+      // onCleanup там молча не срабатывает, и слушатели копились бы на каждое
+      // открытие. Возвращённая функция зовётся перед следующим прогоном и на
+      // размонтировании — ровно то, что нужно.
+      return () => {
         window.removeEventListener('keydown', onKey)
         window.removeEventListener('pointerdown', away, true)
         window.removeEventListener('scroll', bail, true)
-      })
+      }
     },
   )
 

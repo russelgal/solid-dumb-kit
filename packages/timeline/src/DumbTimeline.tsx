@@ -16,7 +16,7 @@
 
 import { createEffect, createMemo, createSignal, flush, For, onCleanup, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { injectStyle, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
+import { injectStyle, ownedRef, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
 import { Temporal } from './temporal'
 import type { Span } from './timelineMath'
 import {
@@ -683,13 +683,13 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
    * ничего не делает, а потребитель нередко зовёт `scrollToNow()` сразу, как
    * получил ref.
    */
-  const holdViewport = (el: HTMLDivElement) => {
+  const holdViewport = ownedRef((el: HTMLDivElement) => {
     viewport = el
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0))
     ro.observe(el)
     onCleanup(() => ro.disconnect())
     props.ref?.(api)
-  }
+  })
   // диапазон меняется не только прокруткой: сменили `from`/`days`/шаг или
   // ширину окна — потребителю нужен свежий диапазон для догрузки. Колбэк зовём
   // во второй фазе: он у потребителя обычно пишет в свои сигналы.

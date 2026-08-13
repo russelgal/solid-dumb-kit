@@ -1,15 +1,19 @@
 // src/DumbTable.tsx
-import { For as For2, Show, createSignal as createSignal2, createMemo } from "solid-js";
+import { For as For2, Show, createSignal as createSignal2, createMemo, untrack as untrack2 } from "solid-js";
 
 // ../sortable/dist/index.js
 import { createComponent } from "@solidjs/web";
-import { onCleanup, For } from "solid-js";
+import { onCleanup, untrack, For, getOwner, runWithOwner } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
+}
+function ownedRef(fn) {
+  const owner = getOwner();
+  return (el) => runWithOwner(owner, () => fn(el));
 }
 var EDGE = 48;
 var MAX_SPEED = 18;
@@ -555,16 +559,16 @@ function createDumbSortable(opts) {
   const engine = createSortableEngine(opts);
   onCleanup(engine.destroy);
   return {
-    bind: (id) => (el) => onCleanup(engine.attach(el, id)),
-    row: (id) => (el) => onCleanup(engine.attachRow(el, id)),
-    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id)),
+    bind: (id) => ownedRef((el) => onCleanup(engine.attach(el, id))),
+    row: (id) => ownedRef((el) => onCleanup(engine.attachRow(el, id))),
+    handle: (id) => ownedRef((el) => onCleanup(engine.attachHandle(el, id))),
     press: (id) => (ev) => engine.press(id, ev),
     pressHandle: (id) => (ev) => engine.pressHandle(id, ev.currentTarget, ev)
   };
 }
 
 // ../shared/dist/index.js
-import { createSignal, createEffect } from "solid-js";
+import { getOwner as getOwner2, runWithOwner as runWithOwner2, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion2() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -637,9 +641,11 @@ function DumbTable(props) {
   const sortable = createDumbSortable({
     order: () => visibleRows().map((r, i) => idOf(r, i)),
     disabled: dragDisabled,
-    mouseThreshold: props.dragThreshold,
+    get mouseThreshold() {
+      return untrack2(() => props.dragThreshold);
+    },
     get animate() {
-      return props.animate;
+      return untrack2(() => props.animate);
     },
     onEnd: (from, to) => props.onReorder?.(from, to)
   });
@@ -684,38 +690,41 @@ function DumbTable(props) {
               <tr aria-hidden="true" style={{ height: `${props.spacerTop}px` }} />
             </Show>
             <For2 each={visibleRows()}>
-              {(row, index) => <tr
-    ref={props.onReorder ? sortable.row(idOf(row, index())) : void 0}
-    onPointerDown={props.onReorder ? sortable.press(idOf(row, index())) : void 0}
-    data-key={idOf(row, index())}
-    class={props.rowClass?.(row, index())}
-    style={{
-      cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
-      ...props.rowStyle?.(row, index())
-    }}
-    onClick={() => props.onRowClick?.(row, index())}
-  >
+              {(row, index) => {
+    const rowId = untrack2(() => idOf(row, index()));
+    return <tr
+      ref={sortable.row(rowId)}
+      onPointerDown={sortable.press(rowId)}
+      data-key={idOf(row, index())}
+      class={props.rowClass?.(row, index())}
+      style={{
+        cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
+        ...props.rowStyle?.(row, index())
+      }}
+      onClick={() => props.onRowClick?.(row, index())}
+    >
                   <Show when={props.onReorder && withHandle()}>
                     <td class="w-px" onClick={(e) => e.stopPropagation()}>
                       <span
-    data-drag-handle
-    class={`inline-block touch-none ${dragDisabled() ? "cursor-not-allowed" : "cursor-grab"}`}
-    title={dragDisabled() ? "reset sorting to reorder" : "drag"}
-  >
+      data-drag-handle
+      class={`inline-block touch-none ${dragDisabled() ? "cursor-not-allowed" : "cursor-grab"}`}
+      title={dragDisabled() ? "reset sorting to reorder" : "drag"}
+    >
                         {props.handle ?? "\u283F"}
                       </span>
                     </td>
                   </Show>
                   <For2 each={props.columns}>
                     {(c) => <td
-    class={c.class}
-    style={cellStyle(c)}
-    onClick={c.stopClick ? (e) => e.stopPropagation() : void 0}
-  >
+      class={c.class}
+      style={cellStyle(c)}
+      onClick={c.stopClick ? (e) => e.stopPropagation() : void 0}
+    >
                         {c.render ? c.render(row, index()) : String(valueOf(c, row) ?? "")}
                       </td>}
                   </For2>
-                </tr>}
+                </tr>;
+  }}
             </For2>
             <Show when={props.spacerBottom}>
               <tr aria-hidden="true" style={{ height: `${props.spacerBottom}px` }} />
