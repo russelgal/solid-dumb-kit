@@ -16,11 +16,18 @@
 // watch вместо effect(on(...)): в Solid 2 `on` не экспортируется (shared/solidCompat)
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { effect, injectStyle, onMounted, watch } from '@solid-dumb-kit/shared'
+import { effect, injectStyle, watch } from '@solid-dumb-kit/shared'
 
 export type TreeNode = {
   id: string
-  label: string
+  /**
+   * Подпись строки. Обычно текст, но можно отдать и разметку — например, поле
+   * ввода, когда узел переименовывают прямо в дереве. Для разметки поиск берёт
+   * `searchText`: сравнивать не с чем, JSX не строка.
+   */
+  label: string | JSX.Element
+  /** по чему искать, если `label` — разметка */
+  searchText?: string
   /** свой класс значка; не задан — берётся из `icons` по виду узла */
   icon?: string
   /** ветка ли это. Узел с `children` веткой считается и без флага */
@@ -68,6 +75,14 @@ export type DumbTreeProps = {
   /** свой матчер; по умолчанию подстрока без учёта регистра */
   match?: (node: TreeNode, query: string) => boolean
 
+  /**
+   * До какой глубины ветки раскрыты, пока их не трогали руками: 1 — корневые,
+   * 2 — и следующий уровень. Дальше решает сам человек, его выбор помнит
+   * `storageKey`. Без этого дерево при первом заходе выглядит пустым списком
+   * заголовков.
+   */
+  openDepth?: number
+
   icons?: DumbTreeIcons
   /** размер дерева одним кеглем: высота строк и отступы едут следом */
   size?: string
@@ -113,6 +128,10 @@ const STYLES = `
   @media (prefers-reduced-motion: reduce) { .dumb-tree-twist > span { transition: none } }
 `
 
+/** текст узла для поиска: сама подпись, если она строка, иначе `searchText` */
+const textOf = (n: TreeNode): string =>
+  typeof n.label === 'string' ? n.label : (n.searchText ?? '')
+
 /** раскрытые ветки: помним между заходами, если дали ключ */
 function createOpened(key?: string) {
   const read = () => {
@@ -152,7 +171,9 @@ export function DumbTree(props: DumbTreeProps) {
   const opened = createOpened(props.storageKey)
   const query = () => props.query?.().trim().toLowerCase() ?? ''
   const matches = (n: TreeNode) =>
-    props.match ? props.match(n, query()) : n.label.toLowerCase().includes(query())
+    props.match
+      ? props.match(n, query())
+      : textOf(n).toLowerCase().includes(query())
 
   return (
     <ul
@@ -160,7 +181,7 @@ export function DumbTree(props: DumbTreeProps) {
       data-stripes={props.stripes === false ? undefined : '1'}
       style={{ ...(props.size ? { '--dumb-tree-size': props.size } : {}), ...props.style }}
     >
-      <Branch parentId="" nodes={props.roots} opened={opened} tree={props} matches={matches} />
+      <Branch parentId="" nodes={props.roots} opened={opened} tree={props} matches={matches} depth={0} />
     </ul>
   )
 }
@@ -175,6 +196,8 @@ function Branch(p: {
   opened: Opened
   tree: DumbTreeProps
   matches: (n: TreeNode) => boolean
+  /** глубина ветки: 0 — корни. Нужна для `openDepth` */
+  depth: number
 }): JSX.Element {
   const [loaded, setLoaded] = createSignal<Array<TreeNode> | null>(null)
   const [busy, setBusy] = createSignal(false)
@@ -193,9 +216,17 @@ function Branch(p: {
   // первого раскрытия: ветка рендерится только раскрытой, значит и запрос
   // уходит ровно тогда, когда в неё полезли.
   //
-  // Через onMounted, а не прямым вызовом: `load` пишет в сигнал, а Solid 2
-  // запрещает запись прямо в теле компонента (REACTIVE_WRITE_IN_OWNED_SCOPE).
-  if (!p.nodes) onMounted(load)
+  // Через watch, а не `if (!p.nodes) onMounted(load)`: проп РЕАКТИВЕН, и его
+  // чтение в теле компонента Solid 2 отбивает — STRICT_READ_UNTRACKED («read
+  // directly in <Branch> will not update»). У watch первая функция читает в
+  // tracking scope, вторая работает в фазе применения, где запись в сигнал
+  // (её делает `load`) разрешена.
+  watch(
+    () => !p.nodes,
+    (needsLoad) => {
+      if (needsLoad) load()
+    },
+  )
   // сменился ключ обновления — перечитываем то, что уже тянули
   watch(
     () => p.tree.refreshKey?.(),
@@ -222,7 +253,7 @@ function Branch(p: {
       </Show>
       <For each={list()}>
         {(node) => (
-          <Row node={node} opened={p.opened} tree={p.tree} matches={p.matches} />
+          <Row node={node} opened={p.opened} tree={p.tree} matches={p.matches} depth={p.depth} />
         )}
       </For>
     </>
@@ -234,12 +265,37 @@ function Row(p: {
   opened: Opened
   tree: DumbTreeProps
   matches: (n: TreeNode) => boolean
+  depth: number
 }): JSX.Element {
   const kids = () => p.node.children
   const branch = () => !!p.node.isFolder || !!kids()?.length
-  // при поиске раскрываем всё: иначе совпадение остаётся спрятанным в ветке
-  const open = () => p.opened.has(p.node.id) || !!p.tree.query?.().trim()
   const chosen = () => p.tree.selected?.() === p.node.id
+
+  /**
+   * Выбранный узел лежит ВНУТРИ этой ветки — тогда её нельзя держать закрытой.
+   *
+   * Без этого дерево врёт при заходе по прямой ссылке: страница открыта, а в
+   * дереве ветка свёрнута и ничего не подсвечено, будто выбора нет. Смотрим
+   * только готовые `children`: подгружаемые ветки раскрывать нечем, пока их не
+   * раскрыли, — там `selected` появится после загрузки.
+   */
+  const holdsChosen = (): boolean => {
+    const id = p.tree.selected?.()
+    if (!id) return false
+    const inside = (list?: Array<TreeNode>): boolean =>
+      (list ?? []).some((n) => n.id === id || inside(n.children))
+    return inside(kids())
+  }
+
+  // При поиске раскрываем всё: иначе совпадение остаётся спрятанным в ветке.
+  // Выбранная ветка тоже раскрыта — и когда выбрана сама (человек на разделе,
+  // покажи, что внутри), и когда выбран кто-то из её детей.
+  const open = () =>
+    p.opened.has(p.node.id) ||
+    !!p.tree.query?.().trim() ||
+    (branch() && chosen()) ||
+    holdsChosen() ||
+    p.depth < (p.tree.openDepth ?? 0)
 
   const icon = () =>
     p.node.icon ??
@@ -328,6 +384,7 @@ function Row(p: {
             opened={p.opened}
             tree={p.tree}
             matches={p.matches}
+            depth={p.depth + 1}
           />
         </ul>
       </Show>
