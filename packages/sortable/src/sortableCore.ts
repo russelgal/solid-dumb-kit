@@ -487,6 +487,10 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
         attachRow(el: HTMLElement, id: string) {
             el.dataset.flipId = id;
             rowEls.set(id, el);
+            // как в attach: без touch-action long-press на ручке уезжает в скролл
+            // страницы, и пальцем строку не утащить (ловил pointercancel)
+            const h = el.querySelector('[data-drag-handle]') as HTMLElement | null;
+            if (h) h.style.touchAction = 'none';
             return () => { if (rowEls.get(id) === el) rowEls.delete(id); };
         },
         attachHandle(el: HTMLElement, id: string) {

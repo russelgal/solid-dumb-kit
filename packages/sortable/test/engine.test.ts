@@ -154,6 +154,21 @@ describe('press — старт событием снаружи', () => {
     engine.destroy()
   })
 
+  it('ручке внутри строки ставится touch-action — иначе палец уводит в скролл', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    const handle = document.createElement('span')
+    handle.setAttribute('data-drag-handle', '')
+    el.appendChild(handle)
+
+    engine.attachRow(el, 'a')
+
+    // паритет с attach: DumbTable перешла с bind на row+press, и без этого
+    // touch-драг за ручку молча ломался (pointercancel от скролла)
+    expect(handle.style.touchAction).toBe('none')
+    engine.destroy()
+  })
+
   it('начинает драг так же, как слушатель из attach', () => {
     const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
     const el = row('a')

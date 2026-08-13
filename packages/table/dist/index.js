@@ -532,6 +532,8 @@ function createSortableEngine(opts) {
     attachRow(el, id) {
       el.dataset.flipId = id;
       rowEls.set(id, el);
+      const h = el.querySelector("[data-drag-handle]");
+      if (h) h.style.touchAction = "none";
       return () => {
         if (rowEls.get(id) === el) rowEls.delete(id);
       };
