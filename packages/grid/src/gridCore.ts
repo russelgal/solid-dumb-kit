@@ -72,8 +72,22 @@ export type GridEngine = {
   attachContainer: (el: HTMLElement) => () => void
   /** ref на блок: регистрация + старт драга (ручка = дочка с [data-drag-handle]) */
   attach: (el: HTMLElement, id: string) => () => void
+  /** ref на блок БЕЗ слушателя: старт придёт снаружи, через press */
+  attachBlock: (el: HTMLElement, id: string) => () => void
   /** ref на ручку ресайза внутри блока */
   attachResize: (el: HTMLElement, id: string) => () => void
+  /**
+   * Старт переноса событием снаружи: движок сам ни на что не подписывается.
+   * В ките pointerdown приходит из JSX, а его Solid делегирует одним
+   * слушателем на документ — блоки своих слушателей не носят.
+   *
+   * Вложенность разбирается по цели события (ближайший [data-grid-block]),
+   * а не по тому, на каком элементе висел слушатель, поэтому сетка в сетке
+   * работает так же, как и раньше.
+   */
+  press: (id: string, ev: PointerEvent) => void
+  /** то же для ручки ресайза */
+  pressResize: (id: string, el: HTMLElement, ev: PointerEvent) => void
   /** ширина колонки в px по последнему ResizeObserver (0 — ещё не измерено) */
   colWidth: () => number
   /** id блока под жестом и его вид — для подсветки в UI */
@@ -500,6 +514,31 @@ export function createGridEngine(opts: DumbGridOptions): GridEngine {
     return !opts.disabled?.() && !gesture && !gate.pending()
   }
 
+  // Разбор нажатия на блоке. Тот же код обслуживает и слушатель из attach, и
+  // событие, принесённое из JSX: в ките блоки не носят своих слушателей —
+  // pointerdown делегирует Solid, один на документ.
+  function pressBlock(el: HTMLElement, id: string, ev: PointerEvent) {
+    if (ev.button !== 0 || !canStart()) return
+    if (!(ev.target instanceof Element)) return
+    if (ev.target.closest('[data-grid-resize]')) return
+    // Внутри блока может жить сортировщик (список, канбан-колонка): его
+    // элементы помечены data-flip-id. Жест по такому элементу принадлежит
+    // ему, а не сетке — иначе перетаскивание карточки утащило бы весь блок.
+    if (ev.target.closest('[data-flip-id]')) return
+    // Точно так же блок может содержать ВЛОЖЕННУЮ сетку. Её блоки ближе к
+    // указателю, значит жест их: внешняя сетка вмешивается, только если
+    // ближайший блок — она сама.
+    const nested = ev.target.closest('[data-grid-block]')
+    if (nested && nested !== el) return
+    const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
+    if (handle) {
+      if (!(ev.target instanceof Node && handle.contains(ev.target))) return
+    } else if (targetIsInteractive(ev)) {
+      return                              // это поле/кнопка — пусть работает как обычно
+    }
+    gate.arm(ev, (x, y) => begin('move', id, handle || el, ev.pointerId, x, y))
+  }
+
   return {
     attachContainer(el: HTMLElement) {
       container = el
@@ -526,27 +565,7 @@ export function createGridEngine(opts: DumbGridOptions): GridEngine {
     attach(el: HTMLElement, id: string) {
       blockEls.set(id, el)
       el.dataset.gridBlock = id
-      const down = (ev: PointerEvent) => {
-        if (ev.button !== 0 || !canStart()) return
-        if (!(ev.target instanceof Element)) return
-        if (ev.target.closest('[data-grid-resize]')) return
-        // Внутри блока может жить сортировщик (список, канбан-колонка): его
-        // элементы помечены data-flip-id. Жест по такому элементу принадлежит
-        // ему, а не сетке — иначе перетаскивание карточки утащило бы весь блок.
-        if (ev.target.closest('[data-flip-id]')) return
-        // Точно так же блок может содержать ВЛОЖЕННУЮ сетку. Её блоки ближе к
-        // указателю, значит жест их: внешняя сетка вмешивается, только если
-        // ближайший блок — она сама.
-        const nested = ev.target.closest('[data-grid-block]')
-        if (nested && nested !== el) return
-        const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
-        if (handle) {
-          if (!(ev.target instanceof Node && handle.contains(ev.target))) return
-        } else if (targetIsInteractive(ev)) {
-          return                              // это поле/кнопка — пусть работает как обычно
-        }
-        gate.arm(ev, (x, y) => begin('move', id, handle || el, ev.pointerId, x, y))
-      }
+      const down = (ev: PointerEvent) => pressBlock(el, id, ev)
       el.addEventListener('pointerdown', down)
       const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
       if (handle) handle.style.touchAction = 'none'
@@ -555,6 +574,30 @@ export function createGridEngine(opts: DumbGridOptions): GridEngine {
         delete el.dataset.gridBlock
         if (blockEls.get(id) === el) blockEls.delete(id)
       }
+    },
+
+    attachBlock(el: HTMLElement, id: string) {
+      blockEls.set(id, el)
+      el.dataset.gridBlock = id
+      const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
+      if (handle) handle.style.touchAction = 'none'
+      return () => {
+        delete el.dataset.gridBlock
+        if (blockEls.get(id) === el) blockEls.delete(id)
+      }
+    },
+
+    press(id: string, ev: PointerEvent) {
+      const el = blockEls.get(id)
+      if (el) pressBlock(el, id, ev)
+    },
+
+    pressResize(id: string, el: HTMLElement, ev: PointerEvent) {
+      if (ev.button !== 0 || !canStart() || opts.resizable?.() === false) return
+      ev.stopPropagation()
+      // ресайз стартует сразу: ручка маленькая и попасть в неё случайно нельзя
+      ev.preventDefault()
+      begin('resize', id, el, ev.pointerId, ev.clientX, ev.clientY)
     },
 
     attachResize(el: HTMLElement, id: string) {

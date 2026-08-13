@@ -274,7 +274,11 @@ export function DumbTable<T extends Record<string, unknown>>(props: DumbTablePro
             <For each={visibleRows()}>
               {(row, index) => (
                 <tr
-                  ref={props.onReorder ? sortable.bind(idOf(row, index())) : undefined}
+                  // Строка только регистрируется в движке; старт драга приходит
+                  // из JSX ниже — `pointerdown` у Solid делегирован, поэтому на
+                  // тысяче строк висит один слушатель на документ, а не тысяча.
+                  ref={props.onReorder ? sortable.row(idOf(row, index())) : undefined}
+                  onPointerDown={props.onReorder ? sortable.press(idOf(row, index())) : undefined}
                   data-key={idOf(row, index())}
                   class={props.rowClass?.(row, index())}
                   style={{

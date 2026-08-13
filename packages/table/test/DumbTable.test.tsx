@@ -221,6 +221,35 @@ describe('DumbTable — перетаскивание строк', () => {
     ;(host.querySelectorAll('th')[1] as HTMLElement).click()   // включили сортировку
     expect(handle().className).toContain('cursor-not-allowed')
   })
+
+  // Старт драга приходит из JSX (`onPointerDown`), а его Solid делегирует одним
+  // слушателем на документ. Значит на строках не должно висеть ни одного
+  // своего `pointerdown` — иначе на тысяче строк их тысяча.
+  it('строки не носят своих слушателей', () => {
+    const spy = vi.spyOn(HTMLTableRowElement.prototype, 'addEventListener')
+    mount(() => (
+      <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} onReorder={() => {}} />
+    ))
+
+    const own = spy.mock.calls.filter(([type]) => type === 'pointerdown')
+    expect(own).toHaveLength(0)
+    spy.mockRestore()
+  })
+
+  it('жест при этом начинается: нажатие на ручке поднимает слежение за указателем', () => {
+    const host = mount(() => (
+      <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} onReorder={() => {}} />
+    ))
+    const handle = host.querySelector('[data-drag-handle]') as HTMLElement
+
+    // движок на старте вешает pointermove/pointerup на window — по ним и видно,
+    // что жест пошёл (сам перенос считает IntersectionObserver, его в happy-dom нет)
+    const spy = vi.spyOn(window, 'addEventListener')
+    handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 31 }))
+
+    expect(spy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+    spy.mockRestore()
+  })
 })
 
 describe('DumbPagination', () => {

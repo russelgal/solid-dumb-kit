@@ -132,6 +132,86 @@ describe('createSortableEngine — вне Solid', () => {
   })
 })
 
+// Второй способ начать жест: событие приносят снаружи (в ките — из JSX, где
+// pointerdown делегирует Solid). Движок при этом не подписывается ни на что,
+// поэтому на строках не висит ни одного своего слушателя.
+describe('press — старт событием снаружи', () => {
+  const evt = (target: HTMLElement, pointerId: number) => {
+    const ev = new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId })
+    target.dispatchEvent(ev)          // цель проставляется диспатчем
+    return ev
+  }
+
+  it('строка регистрируется без единого слушателя на ней', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    const spy = vi.spyOn(el, 'addEventListener')
+
+    engine.attachRow(el, 'a')
+
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+    engine.destroy()
+  })
+
+  it('начинает драг так же, как слушатель из attach', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    const text = document.createElement('span')
+    el.appendChild(text)
+    engine.attachRow(el, 'a')
+
+    const spy = vi.spyOn(window, 'addEventListener')
+    engine.press('a', evt(text, 21))
+    expect(spy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    spy.mockRestore()
+    engine.destroy()
+  })
+
+  it('с поля ввода не стартует — как и через attach', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    const input = document.createElement('input')
+    el.appendChild(input)
+    engine.attachRow(el, 'a')
+
+    const spy = vi.spyOn(window, 'addEventListener')
+    engine.press('a', evt(input, 22))
+    expect(spy).not.toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    spy.mockRestore()
+    engine.destroy()
+  })
+
+  it('есть ручка — тянет только за неё', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    const handle = document.createElement('span')
+    handle.setAttribute('data-drag-handle', '')
+    const text = document.createElement('span')
+    el.append(handle, text)
+    engine.attachRow(el, 'a')
+
+    const spy = vi.spyOn(window, 'addEventListener')
+    engine.press('a', evt(text, 23))          // мимо ручки
+    expect(spy).not.toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    engine.press('a', evt(handle, 24))        // за ручку
+    expect(spy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+
+    spy.mockRestore()
+    engine.destroy()
+  })
+
+  it('незарегистрированный id молча игнорируется', () => {
+    const engine = createSortableEngine({ order: () => ['a'], onEnd: () => {} })
+    const el = row('a')
+    expect(() => engine.press('нет-такого', evt(el, 25))).not.toThrow()
+    engine.destroy()
+  })
+})
+
 describe('createSortableGroupEngine — вне Solid', () => {
   it('зоны регистрируются и отдают отписки', () => {
     const engine = createSortableGroupEngine({ onEnd: () => {} })

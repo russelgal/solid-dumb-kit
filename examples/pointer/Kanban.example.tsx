@@ -30,7 +30,9 @@ const GROUP_PROPS = [
 const LIST_API = [
   { name: 'group.list(name, opts)', type: 'SortableListHandle', about: 'Зарегистрировать зону. opts.order — визуальный порядок id, opts.accepts — кого принимать.' },
   { name: 'list.container', type: '(el) => void', about: 'ref на контейнер колонки.' },
-  { name: 'list.bind(id)', type: '(el) => void', about: 'ref на карточку. Ручка — потомок с [data-drag-handle].' },
+  { name: 'list.card(id)', type: '(el) => void', about: 'ref на карточку: только регистрация, без слушателей.' },
+  { name: 'list.press(id)', type: '(ev) => void', about: 'onPointerDown карточки. Solid делегирует его сам — на доске один слушатель, а не по одному на карточку.' },
+  { name: 'list.bind(id)', type: '(el) => void', about: 'самодостаточный ref (сам вешает pointerdown) — для кода вне Solid.' },
   { name: 'group.activeList()', type: '() => string | null', about: 'Над какой зоной указатель прямо сейчас — для подсветки.' },
   { name: 'group.draggingId()', type: '() => string | null', about: 'Что летит за курсором — чтобы приглушить оригинал.' },
 ]
@@ -176,7 +178,8 @@ export default function KanbanExample() {
                     {(c) => (
                       <article
                         class="flex items-start gap-2 rounded-box bg-base-100 p-2.5 text-[13px] ring-1 ring-base-300"
-                        ref={lists[colId].bind(c.id)}
+                        ref={lists[colId].card(c.id)}
+                        onPointerDown={lists[colId].press(c.id)}
                         // имя нужно, чтобы браузер анимировал КАЖДУЮ карточку отдельно,
                         // а не делал кроссфейд всей доски
                         style={{ 'view-transition-name': `kanban-${c.id}` }}

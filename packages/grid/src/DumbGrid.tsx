@@ -496,7 +496,10 @@ export function DumbGrid(props: DumbGridProps) {
             <Show when={span()}>
               {(s) => (
                 <div
-                  ref={g.bind(it.id)}
+                  // Блок только регистрируется; старт переноса приходит из JSX,
+                  // а его Solid делегирует — своих слушателей блоки не носят.
+                  ref={g.block(it.id)}
+                  onPointerDown={g.press(it.id)}
                   class={props.blockClass}
                   style={{
                     ...blockBox(s(), posById().get(it.id)),
@@ -542,10 +545,14 @@ export function DumbGrid(props: DumbGridProps) {
 
                   <Show when={props.resizable !== false && !it.locked && !props.disabled}>
                     <div
-                      ref={g.resize(it.id)}
+                      // Метка и touch-action — обычными атрибутами, старт — из
+                      // JSX: ref движку тут больше не нужен вовсе.
+                      data-grid-resize
+                      onPointerDown={g.pressResize(it.id)}
                       title={props.labels?.resize ?? 'Потяни, чтобы изменить размер'}
                       style={{
                         position: 'absolute',
+                        'touch-action': 'none',
                         right: '0',
                         bottom: '0',
                         width: `${HANDLE}px`,

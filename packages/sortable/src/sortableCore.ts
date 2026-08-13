@@ -44,6 +44,18 @@ export type SortableEngine = {
     attachRow: (el: HTMLElement, id: string) => () => void;
     /** только повесить старт драга на отдельную ручку */
     attachHandle: (el: HTMLElement, id: string) => () => void;
+    /**
+     * Старт драга событием, которое принесли снаружи: движок сам ни на что не
+     * подписывается. Так работают компоненты кита — `pointerdown` приходит из
+     * JSX (`onPointerDown`), а его Solid делегирует одним слушателем на
+     * документ, вместо слушателя на каждой строке.
+     *
+     * Ручка ищется так же, как в `attach`: дочка с `[data-drag-handle]`, а нет
+     * её — тянется весь элемент, но не за поля и кнопки внутри.
+     */
+    press: (id: string, ev: PointerEvent) => void;
+    /** то же для отдельной ручки, не являющейся потомком ячейки */
+    pressHandle: (id: string, el: HTMLElement, ev: PointerEvent) => void;
     /** снять слушатели и прибрать стили */
     destroy: () => void;
 };
@@ -435,6 +447,19 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
         begin(id, handle, ev.pointerId, ev.clientX, ev.clientY);
     }
 
+    // Разбор нажатия на ячейке: за ручку тянем всегда, за саму ячейку — только
+    // если под пальцем не поле и не кнопка. Один и тот же код обслуживает и
+    // слушатель из attach, и событие, принесённое из JSX.
+    function pressOn(el: HTMLElement, id: string, ev: PointerEvent) {
+        const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null;
+        if (handle) {
+            if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+        } else if (targetIsInteractive(ev)) {
+            return;                       // это поле/кнопка — пусть работает как обычно
+        }
+        onDown(id, handle || el, ev);
+    }
+
     return {
         // самодостаточно: регистрирует элемент И навешивает старт драга.
         // ручка = дочка с [data-drag-handle] (делегирование); нет её → тянем за весь элемент.
@@ -443,20 +468,20 @@ export function createSortableEngine(opts: DumbSortableOptions): SortableEngine 
             rowEls.set(id, el);
             const h = el.querySelector('[data-drag-handle]') as HTMLElement | null;
             if (h) h.style.touchAction = 'none';
-            const down = (ev: PointerEvent) => {
-                const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null;
-                if (handle) {
-                    if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-                } else if (targetIsInteractive(ev)) {
-                    return;                       // это поле/кнопка — пусть работает как обычно
-                }
-                onDown(id, handle || el, ev);
-            };
+            const down = (ev: PointerEvent) => pressOn(el, id, ev);
             el.addEventListener('pointerdown', down);
             return () => {
                 el.removeEventListener('pointerdown', down);
                 if (rowEls.get(id) === el) rowEls.delete(id);
             };
+        },
+        // событие принесли снаружи — подписки нет вовсе
+        press(id: string, ev: PointerEvent) {
+            const el = rowEls.get(id);
+            if (el) pressOn(el, id, ev);
+        },
+        pressHandle(id: string, el: HTMLElement, ev: PointerEvent) {
+            onDown(id, el, ev);
         },
         // низкоуровневое: ячейка и ручка порознь (когда ручка не потомок ячейки)
         attachRow(el: HTMLElement, id: string) {

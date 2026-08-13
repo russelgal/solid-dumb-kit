@@ -57,6 +57,10 @@ export type SortableListOptions = {
 export type SortableListEngine = {
     attachContainer: (el: HTMLElement) => () => void;
     attach: (el: HTMLElement, id: string) => () => void;
+    /** регистрация карточки без слушателя — в паре с press */
+    attachCard: (el: HTMLElement, id: string) => () => void;
+    /** старт драга событием из JSX */
+    press: (id: string, ev: PointerEvent) => void;
 };
 
 /**
@@ -579,33 +583,50 @@ export function createSortableGroupEngine(opts: SortableGroupOptions): SortableG
             const zone: Zone = zones.get(name) ?? { name, opts: listOpts, el: null, els: new Map() };
             zone.opts = listOpts;
             zones.set(name, zone);
+            // Регистрация карточки: метка та же, что у одиночного
+            // сортировщика — по ней внешние жесты (напр. драг блока DumbGrid,
+            // внутри которого лежит зона) понимают, что нажатие принадлежит
+            // карточке, а не им.
+            const register = (el: HTMLElement, id: string) => {
+                zone.els.set(id, el);
+                el.dataset.flipId = id;
+                const h = el.querySelector('[data-drag-handle]') as HTMLElement | null;
+                if (h) h.style.touchAction = 'none';
+                return () => { if (zone.els.get(id) === el) zone.els.delete(id); };
+            };
+            // Разбор нажатия — один на оба пути: слушатель из attach и событие из JSX.
+            const pressCard = (el: HTMLElement, id: string, ev: PointerEvent) => {
+                const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null;
+                if (handle) {
+                    if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+                } else if (targetIsInteractive(ev)) {
+                    return;
+                }
+                onDown(name, id, handle || el, ev);
+            };
+
             return {
                 attachContainer(el: HTMLElement) {
                     zone.el = el;
                     return () => { if (zone.el === el) zone.el = null; };
                 },
                 attach(el: HTMLElement, id: string) {
-                    zone.els.set(id, el);
-                    // та же метка, что у одиночного сортировщика: по ней внешние
-                    // жесты (напр. драг блока DumbGrid, внутри которого лежит
-                    // зона) понимают, что нажатие принадлежит карточке
-                    el.dataset.flipId = id;
-                    const h = el.querySelector('[data-drag-handle]') as HTMLElement | null;
-                    if (h) h.style.touchAction = 'none';
-                    const down = (ev: PointerEvent) => {
-                        const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null;
-                        if (handle) {
-                            if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-                        } else if (targetIsInteractive(ev)) {
-                            return;
-                        }
-                        onDown(name, id, handle || el, ev);
-                    };
+                    const off = register(el, id);
+                    const down = (ev: PointerEvent) => pressCard(el, id, ev);
                     el.addEventListener('pointerdown', down);
                     return () => {
                         el.removeEventListener('pointerdown', down);
-                        if (zone.els.get(id) === el) zone.els.delete(id);
+                        off();
                     };
+                },
+                // регистрация без слушателя: старт придёт из JSX (Solid
+                // делегирует pointerdown одним слушателем на документ)
+                attachCard(el: HTMLElement, id: string) {
+                    return register(el, id);
+                },
+                press(id: string, ev: PointerEvent) {
+                    const el = zone.els.get(id);
+                    if (el) pressCard(el, id, ev);
                 },
             };
         },

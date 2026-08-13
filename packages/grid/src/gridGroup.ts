@@ -63,6 +63,12 @@ export type GridZoneEngine = {
   attachContainer: (el: HTMLElement) => () => void
   attach: (el: HTMLElement, id: string) => () => void
   attachResize: (el: HTMLElement, id: string) => () => void
+  /** ref на блок БЕЗ слушателя: старт придёт снаружи, через press */
+  attachBlock: (el: HTMLElement, id: string) => () => void
+  /** старт переноса событием из JSX (Solid делегирует pointerdown сам) */
+  press: (id: string, ev: PointerEvent) => void
+  /** то же для ручки ресайза */
+  pressResize: (id: string, el: HTMLElement, ev: PointerEvent) => void
 }
 
 export type GridGroupEngine = {
@@ -648,6 +654,25 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
       zone.opts = zoneOpts
       zones.set(name, zone)
 
+      // Разбор нажатия на блоке зоны: тот же код и для слушателя из attach,
+      // и для события, принесённого из JSX. Вложенность разбирается по цели
+      // (ближайший [data-grid-block]), а не по элементу-слушателю.
+      function pressBlock(el: HTMLElement, id: string, ev: PointerEvent) {
+        if (ev.button !== 0 || !canStart(zone)) return
+        if (!(ev.target instanceof Element)) return
+        if (ev.target.closest('[data-grid-resize]')) return
+        if (ev.target.closest('[data-flip-id]')) return
+        const nested = ev.target.closest('[data-grid-block]')
+        if (nested && nested !== el) return
+        const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
+        if (handle) {
+          if (!(ev.target instanceof Node && handle.contains(ev.target))) return
+        } else if (targetIsInteractive(ev)) {
+          return
+        }
+        gate.arm(ev, (px, py) => begin('move', name, id, handle || el, ev.pointerId, px, py))
+      }
+
       return {
         attachContainer(el: HTMLElement) {
           zone.el = el
@@ -671,21 +696,7 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
         attach(el: HTMLElement, id: string) {
           zone.els.set(id, el)
           el.dataset.gridBlock = id
-          const down = (ev: PointerEvent) => {
-            if (ev.button !== 0 || !canStart(zone)) return
-            if (!(ev.target instanceof Element)) return
-            if (ev.target.closest('[data-grid-resize]')) return
-            if (ev.target.closest('[data-flip-id]')) return
-            const nested = ev.target.closest('[data-grid-block]')
-            if (nested && nested !== el) return
-            const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
-            if (handle) {
-              if (!(ev.target instanceof Node && handle.contains(ev.target))) return
-            } else if (targetIsInteractive(ev)) {
-              return
-            }
-            gate.arm(ev, (px, py) => begin('move', name, id, handle || el, ev.pointerId, px, py))
-          }
+          const down = (ev: PointerEvent) => pressBlock(el, id, ev)
           el.addEventListener('pointerdown', down)
           const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
           if (handle) handle.style.touchAction = 'none'
@@ -694,6 +705,29 @@ export function createGridGroupEngine(opts: GridGroupOptions): GridGroupEngine {
             delete el.dataset.gridBlock
             if (zone.els.get(id) === el) zone.els.delete(id)
           }
+        },
+
+        attachBlock(el: HTMLElement, id: string) {
+          zone.els.set(id, el)
+          el.dataset.gridBlock = id
+          const handle = el.querySelector('[data-drag-handle]') as HTMLElement | null
+          if (handle) handle.style.touchAction = 'none'
+          return () => {
+            delete el.dataset.gridBlock
+            if (zone.els.get(id) === el) zone.els.delete(id)
+          }
+        },
+
+        press(id: string, ev: PointerEvent) {
+          const el = zone.els.get(id)
+          if (el) pressBlock(el, id, ev)
+        },
+
+        pressResize(id: string, el: HTMLElement, ev: PointerEvent) {
+          if (ev.button !== 0 || !canStart(zone) || zone.opts.resizable?.() === false) return
+          ev.stopPropagation()
+          ev.preventDefault()
+          begin('resize', name, id, el, ev.pointerId, ev.clientX, ev.clientY)
         },
 
         attachResize(el: HTMLElement, id: string) {

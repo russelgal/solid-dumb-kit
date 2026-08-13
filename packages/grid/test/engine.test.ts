@@ -452,3 +452,70 @@ describe('свободный режим — двигаем куда хотим',
     engine.destroy()
   })
 })
+
+// Второй вход движка: событие приносит компонент из JSX, где pointerdown
+// делегирует Solid. Блоки при этом своих слушателей не носят — на дашборде из
+// полусотни виджетов это полсотни слушателей разницы.
+describe('press — старт событием снаружи', () => {
+  const make = () => {
+    stubObservers()          // тот же стаб, что и у остальных тестов файла
+    const engine = createGridEngine({
+      blocks: () => [{ id: 'a', w: 3, h: 1 }],
+      cols: () => 12,
+      rowHeight: () => 100,
+      gapX: () => 0,
+      gapY: () => 0,
+      onReorder: () => {},
+    })
+    // контейнер обязателен: с него берётся ширина колонки, без него жест не стартует
+    const box = document.createElement('div')
+    document.body.appendChild(box)
+    engine.attachContainer(box)
+    const block = document.createElement('div')
+    box.appendChild(block)
+    return { engine, block }
+  }
+
+  it('attachBlock регистрирует блок и не вешает на него ничего', () => {
+    const { engine, block } = make()
+    const spy = vi.spyOn(block, 'addEventListener')
+
+    engine.attachBlock(block, 'a')
+
+    expect(block.dataset.gridBlock).toBe('a')
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+    engine.destroy()
+  })
+
+  it('press начинает жест так же, как слушатель из attach', () => {
+    const { engine, block } = make()
+    engine.attachBlock(block, 'a')
+
+    const spy = vi.spyOn(window, 'addEventListener')
+    const ev = new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 51 })
+    block.dispatchEvent(ev)
+    engine.press('a', ev)
+
+    expect(spy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+    spy.mockRestore()
+    engine.destroy()
+  })
+
+  it('жест по вложенному блоку внешней сетке не достаётся', () => {
+    const { engine, block } = make()
+    engine.attachBlock(block, 'a')
+    const inner = document.createElement('div')
+    inner.dataset.gridBlock = 'вложенный'
+    block.appendChild(inner)
+
+    const spy = vi.spyOn(window, 'addEventListener')
+    const ev = new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 52 })
+    inner.dispatchEvent(ev)
+    engine.press('a', ev)
+
+    expect(spy).not.toHaveBeenCalledWith('pointermove', expect.any(Function))
+    spy.mockRestore()
+    engine.destroy()
+  })
+})

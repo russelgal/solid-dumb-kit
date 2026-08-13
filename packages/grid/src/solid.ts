@@ -13,8 +13,17 @@ export type DumbGridHandle = {
   container: (el: HTMLElement) => void
   /** ref на блок (ручка = дочка с [data-drag-handle]) */
   bind: (id: string) => (el: HTMLElement) => void
+  /** ref на блок без слушателя — в паре с press */
+  block: (id: string) => (el: HTMLElement) => void
   /** ref на ручку ресайза внутри блока */
   resize: (id: string) => (el: HTMLElement) => void
+  /**
+   * Старт переноса для JSX: `ref={g.block(id)} onPointerDown={g.press(id)}`.
+   * Так блок не носит своего слушателя — pointerdown делегирует Solid.
+   */
+  press: (id: string) => (ev: PointerEvent) => void
+  /** то же для ручки ресайза */
+  pressResize: (id: string) => (ev: PointerEvent) => void
   /** блок под жестом и вид жеста, реактивно */
   active: () => GridActive
 }
@@ -34,6 +43,10 @@ export function createDumbGrid(opts: DumbGridOptions): DumbGridHandle {
     container: (el) => onCleanup(engine.attachContainer(el)),
     bind: (id) => (el) => onCleanup(engine.attach(el, id)),
     resize: (id) => (el) => onCleanup(engine.attachResize(el, id)),
+    block: (id) => (el) => onCleanup(engine.attachBlock(el, id)),
+    press: (id) => (ev) => engine.press(id, ev),
+    pressResize: (id) => (ev) =>
+      engine.pressResize(id, ev.currentTarget as HTMLElement, ev),
     active,
   }
 }
@@ -68,6 +81,10 @@ export function createDumbGridGroup(opts: GridGroupOptions): DumbGridGroupHandle
         container: (el) => onCleanup(zone.attachContainer(el)),
         bind: (id) => (el) => onCleanup(zone.attach(el, id)),
         resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
+        block: (id) => (el) => onCleanup(zone.attachBlock(el, id)),
+        press: (id) => (ev) => zone.press(id, ev),
+        pressResize: (id) => (ev) =>
+          zone.pressResize(id, ev.currentTarget as HTMLElement, ev),
         // «активен ли этот блок» — общий сигнал группы, суженный до своей сетки
         active: () => {
           const a = active()
