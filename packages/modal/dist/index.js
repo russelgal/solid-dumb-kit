@@ -1,6 +1,5 @@
-import { delegateEvents, ref, insert, createComponent, effect as effect$1, className, setAttribute, style, memo, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { onCleanup, Show, createSignal, For, createEffect, untrack } from 'solid-js';
+import { delegateEvents, ref, insert, createComponent, effect, className, setAttribute, style, memo, template } from '@solidjs/web';
+import { onCleanup, Show, createSignal, For, untrack, createEffect } from 'solid-js';
 
 // src/DumbModal.tsx
 function prefersReducedMotion() {
@@ -28,19 +27,23 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -100,8 +103,8 @@ function DumbModal(props) {
     }
     props.onClose();
   }
-  effect(() => {
-    const want = props.open();
+  watch(() => props.open(), (want) => {
+    if (!dialog) return;
     if (want && !dialog.open) {
       returnTo = document.activeElement ?? null;
       dialog.showModal();
@@ -163,7 +166,7 @@ function DumbModal(props) {
       return _el$8;
     }
   }), _el$9);
-  effect$1(() => ({
+  effect(() => ({
     e: `dumb-modal modal ${props.class ?? ""}`,
     t: shouldAnimate(props.animate) ? "1" : "0",
     a: {
@@ -302,7 +305,7 @@ function DumbModalHost(props) {
           var _el$3 = _tmpl$32();
           _el$3.$$click = () => answer(a.value);
           insert(_el$3, () => a.label);
-          effect$1(() => ({
+          effect(() => ({
             e: actionClass(a.kind),
             t: a.kind
           }), ({

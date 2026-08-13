@@ -14,7 +14,7 @@
 
 import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { effect, injectStyle, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { injectStyle, onMounted, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type LightboxItem = {
   /** что показывать */
@@ -121,8 +121,7 @@ export function DumbLightbox(props: DumbLightboxProps) {
    * Соседние тянем заранее. `new Image()` — самый дешёвый способ: браузер
    * положит их в тот же кеш, откуда потом возьмёт `<img>`.
    */
-  effect(() => {
-    const i = at()
+  watch(at, (i) => {
     if (i === null) return
     for (const d of [1, -1]) {
       const near = props.items[(i + d + props.items.length) % props.items.length]
@@ -140,7 +139,8 @@ export function DumbLightbox(props: DumbLightboxProps) {
     // Esc закрывает сам `<dialog>`, но нам надо ещё и сбросить состояние
   }
 
-  effect(() => {
+  // слушатель нужен один на всё время жизни — вешаем по монтированию
+  onMounted(() => {
     window.addEventListener('keydown', onKey)
     onCleanup(() => window.removeEventListener('keydown', onKey))
   })

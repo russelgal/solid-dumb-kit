@@ -3,20 +3,24 @@ import { For, Show, createMemo, createSignal as createSignal2, onCleanup } from 
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
+import { untrack, createSignal, createEffect } from "solid-js";
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 function flushNow() {
   solid.flush?.();
@@ -596,10 +600,12 @@ function DumbTimeline(props) {
     ro.observe(viewport);
     onCleanup(() => ro.disconnect());
   });
-  effect(() => {
-    scale();
-    if (vpW() > 0) props.onVisibleRange?.(visibleRange());
-  });
+  watch(
+    () => [scale(), vpW()],
+    ([, width]) => {
+      if (width > 0) props.onVisibleRange?.(visibleRange());
+    }
+  );
   let origin = null;
   const toLocal = (cx, cy) => ({
     x: cx - origin.x + ((viewport?.scrollLeft ?? 0) - origin.sl),

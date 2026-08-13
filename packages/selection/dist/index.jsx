@@ -1,14 +1,11 @@
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
-var SOLID_2 = !("batch" in solid);
+import { untrack, createSignal, createEffect } from "solid-js";
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
 }
 var EDGE = 48;
 var MAX_SPEED = 18;

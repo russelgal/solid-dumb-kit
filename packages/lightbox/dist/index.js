@@ -1,6 +1,5 @@
-import { delegateEvents, ref, insert, createComponent, effect as effect$1, setAttribute, setStyleProperty, className, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createSignal, createMemo, Show, createEffect, untrack, onCleanup } from 'solid-js';
+import { delegateEvents, ref, insert, createComponent, effect, setAttribute, setStyleProperty, className, template } from '@solidjs/web';
+import { createSignal, createMemo, Show, untrack, createEffect, onCleanup } from 'solid-js';
 
 // src/DumbLightbox.tsx
 function prefersReducedMotion() {
@@ -28,24 +27,23 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
+function onMounted(fn) {
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
 }
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  const step = (value) => {
+  twoPhase(dep, (value) => {
     const skip = first && (false);
     first = false;
     const before = prev;
     prev = value;
-    if (!skip) untrack(() => fn(value, before));
-  };
-  if (SOLID_2) createEffect(dep, step);
-  else createEffect(() => step(dep()));
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -139,8 +137,7 @@ function DumbLightbox(props) {
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   });
-  effect(() => {
-    const i = at();
+  watch(at, (i) => {
     if (i === null) return;
     for (const d of [1, -1]) {
       const near = props.items[(i + d + props.items.length) % props.items.length];
@@ -155,7 +152,7 @@ function DumbLightbox(props) {
     if (ev.key === "+" || ev.key === "=") return setZoom((z) => Math.min(8, z * 1.25));
     if (ev.key === "-") return setZoom((z) => Math.max(1, z / 1.25));
   }
-  effect(() => {
+  onMounted(() => {
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
   });
@@ -217,7 +214,7 @@ function DumbLightbox(props) {
       _el$3.$$pointerdown = onDown;
       _el$3.addEventListener("wheel", onWheel);
       _el$4.$$dblclick = () => zoom() === 1 ? setZoom(2.5) : reset();
-      effect$1(() => ({
+      effect(() => ({
         e: dragging() ? "1" : void 0,
         t: cur().url,
         a: cur().title ?? "",
@@ -301,7 +298,7 @@ function DumbLightbox(props) {
       }
     })]
   }));
-  effect$1(() => ({
+  effect(() => ({
     e: `dumb-lightbox ${props.class ?? ""}`,
     t: shouldAnimate(props.animate) ? "1" : void 0
   }), ({

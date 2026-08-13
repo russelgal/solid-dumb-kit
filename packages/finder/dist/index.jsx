@@ -1,18 +1,14 @@
 // src/DumbFinder.tsx
-import { For as For2, Show as Show2, createMemo, createSignal as createSignal3, onCleanup as onCleanup2, untrack as untrack4 } from "solid-js";
+import { For as For2, Show as Show2, createMemo, createSignal as createSignal3, onCleanup as onCleanup2, untrack as untrack3 } from "solid-js";
 
 // ../selection/dist/index.js
 import { ref, insert, effect, className, style, template } from "@solidjs/web";
-import * as solid from "solid-js";
-import { onCleanup, createEffect, untrack } from "solid-js";
-var SOLID_2 = !("batch" in solid);
+import { onCleanup, createEffect } from "solid-js";
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
 }
 var EDGE = 48;
 var MAX_SPEED = 18;
@@ -415,8 +411,7 @@ function SelectionArea(props) {
 
 // ../resizable-grid/dist/index.js
 import { delegateEvents, ref as ref2, insert as insert2, createComponent, effect as effect2, setStyleProperty, className as className2, template as template2 } from "@solidjs/web";
-import * as solid2 from "solid-js";
-import { For, Show, createSignal, createEffect as createEffect2, untrack as untrack2 } from "solid-js";
+import { For, Show, createSignal, untrack, createEffect as createEffect2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -677,19 +672,19 @@ function safeParse(schema, input, config$1) {
 }
 
 // ../resizable-grid/dist/index.js
-var SOLID_22 = !("batch" in solid2);
+var twoPhase2 = createEffect2;
+var cleanupOnly2 = (out) => typeof out === "function" ? out : void 0;
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  const step = (value) => {
+  twoPhase2(dep, (value) => {
     const skip = first && opts?.defer;
     first = false;
     const before = prev;
     prev = value;
-    if (!skip) untrack2(() => fn(value, before));
-  };
-  if (SOLID_22) createEffect2(dep, step);
-  else createEffect2(() => step(dep()));
+    if (skip) return void 0;
+    return cleanupOnly2(untrack(() => fn(value, before)));
+  });
 }
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
@@ -1036,27 +1031,21 @@ var STYLES = `
 delegateEvents(["mousedown"]);
 
 // ../shared/dist/index.js
-import * as solid3 from "solid-js";
-import { createEffect as createEffect3, untrack as untrack3, createSignal as createSignal2 } from "solid-js";
-var SOLID_23 = !("batch" in solid3);
-function effect3(fn) {
-  if (SOLID_23) createEffect3(fn, () => {
-  });
-  else createEffect3(fn);
-}
-var batch2 = solid3.batch ?? ((fn) => fn());
+import * as solid from "solid-js";
+import { untrack as untrack2, createSignal as createSignal2, createEffect as createEffect3 } from "solid-js";
+var twoPhase3 = createEffect3;
+var cleanupOnly3 = (out) => typeof out === "function" ? out : void 0;
 function watch2(dep, fn, opts) {
   let first = true;
   let prev;
-  const step = (value) => {
+  twoPhase3(dep, (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
-    if (!skip) untrack3(() => fn(value, before));
-  };
-  if (SOLID_23) createEffect3(dep, step);
-  else createEffect3(() => step(dep()));
+    if (skip) return void 0;
+    return cleanupOnly3(untrack2(() => fn(value, before)));
+  });
 }
 var toPicked = (file) => ({
   file,
@@ -2463,14 +2452,12 @@ function DumbFinder(props) {
   const [ownPath, setOwnPath] = createSignal3("");
   const path = () => props.path ?? ownPath();
   const goto = (next) => {
-    batch2(() => {
-      setOwnPath(next);
-      setSelection(/* @__PURE__ */ new Set());
-      setCursor(-1);
-      setAnchor(-1);
-      props.onPathChange?.(next);
-      props.onSelectionChange?.(/* @__PURE__ */ new Set());
-    });
+    setOwnPath(next);
+    setSelection(/* @__PURE__ */ new Set());
+    setCursor(-1);
+    setAnchor(-1);
+    props.onPathChange?.(next);
+    props.onSelectionChange?.(/* @__PURE__ */ new Set());
   };
   const [ownSel, setOwnSel] = createSignal3(/* @__PURE__ */ new Set());
   const selected = () => props.selected ?? ownSel();
@@ -2490,7 +2477,7 @@ function DumbFinder(props) {
   const [loading, setLoading] = createSignal3(false);
   const [error, setError] = createSignal3(null);
   let listing = null;
-  async function reload(prefix = untrack4(path)) {
+  async function reload(prefix = untrack3(path)) {
     listing?.abort();
     const ctrl = new AbortController();
     listing = ctrl;
@@ -2498,10 +2485,8 @@ function DumbFinder(props) {
     try {
       const got = await props.source.list(prefix, { signal: ctrl.signal });
       if (ctrl.signal.aborted) return;
-      batch2(() => {
-        setEntries(got);
-        setError(null);
-      });
+      setEntries(got);
+      setError(null);
     } catch (err) {
       if (ctrl.signal.aborted) return;
       setEntries([]);
@@ -2531,7 +2516,7 @@ function DumbFinder(props) {
     setWhole(null);
   };
   async function ensure(prefix) {
-    if (inflight.has(prefix) || prefix in untrack4(tree)) return;
+    if (inflight.has(prefix) || prefix in untrack3(tree)) return;
     inflight.add(prefix);
     try {
       const got = await props.source.list(prefix, { signal: new AbortController().signal });
@@ -2556,18 +2541,19 @@ function DumbFinder(props) {
       wholeFlight = false;
     }
   }
-  effect3(() => {
-    if (props.sidebar === false) return;
-    if (props.source.tree) {
-      if (whole() === null) void loadWhole();
-      return;
+  watch2(
+    () => [path(), tree(), whole()],
+    ([here]) => {
+      if (props.sidebar === false) return;
+      if (props.source.tree) {
+        if (untrack3(whole) === null) void loadWhole();
+        return;
+      }
+      for (const c of crumbs(here)) void ensure(c.prefix);
+      const kids = untrack3(tree)[here] ?? [];
+      if (kids.length <= 24) for (const k of kids) void ensure(k.key);
     }
-    tree();
-    const here = path();
-    for (const c of crumbs(here)) void ensure(c.prefix);
-    const kids = untrack4(tree)[here] ?? [];
-    if (kids.length <= 24) for (const k of kids) void ensure(k.key);
-  });
+  );
   const weights = createMemo(() => {
     const m = /* @__PURE__ */ new Map();
     for (const e of whole() ?? []) m.set(e.key, { size: e.size, count: e.count });
@@ -2578,7 +2564,7 @@ function DumbFinder(props) {
   const [sub, setSub] = createSignal3({});
   const subFlight = /* @__PURE__ */ new Set();
   async function ensureSub(prefix) {
-    if (subFlight.has(prefix) || prefix in untrack4(sub)) return;
+    if (subFlight.has(prefix) || prefix in untrack3(sub)) return;
     subFlight.add(prefix);
     try {
       const got = await props.source.list(prefix, { signal: new AbortController().signal });
@@ -2590,22 +2576,24 @@ function DumbFinder(props) {
       subFlight.delete(prefix);
     }
   }
-  const toggleRow = (key) => batch2(() => {
+  const toggleRow = (key) => {
     setOpenRows((was) => {
       const next = new Set(was);
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
     void ensureSub(key);
-  });
-  watch2(path, () => batch2(() => {
+  };
+  watch2(path, () => {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
-  }), { defer: true });
-  effect3(() => {
-    const cache = sub();
-    for (const k of openRows()) if (!(k in cache)) void ensureSub(k);
-  });
+  }, { defer: true });
+  watch2(
+    () => [sub(), openRows()],
+    ([cache, open2]) => {
+      for (const k of open2) if (!(k in cache)) void ensureSub(k);
+    }
+  );
   const rows = createMemo(() => {
     if (view() !== "list") return shown().map((e) => ({ e, depth: 0 }));
     const out = [];
@@ -2625,7 +2613,7 @@ function DumbFinder(props) {
     (file, ctx) => {
       const up = props.source.upload;
       if (!up) return Promise.reject(new Error("\u0437\u0430\u043B\u0438\u0432\u043A\u0430 \u043D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0430"));
-      const to = dest.get(file) ?? untrack4(path);
+      const to = dest.get(file) ?? untrack3(path);
       return up(file, { prefix: to, onProgress: ctx.onProgress, signal: ctx.signal }).then(() => ({
         // очереди нужен `url`, а файндеру он не нужен: список всё равно
         // перечитывается — хранилище отдаст и размер, и дату, и адрес
@@ -2663,7 +2651,7 @@ function DumbFinder(props) {
   }
   const openPicker = createFilePicker({ accept: props.accept ?? "*", multiple: true });
   const pickFiles = () => openPicker(
-    (files) => enqueue(files.map((f) => ({ name: f.name, file: f.file })), untrack4(path))
+    (files) => enqueue(files.map((f) => ({ name: f.name, file: f.file })), untrack3(path))
   );
   const ghosts = createMemo(() => pending().filter((p) => p.prefix === path()));
   const [dragging, setDragging] = createSignal3([]);
@@ -2820,11 +2808,9 @@ function DumbFinder(props) {
         shift: ev.shiftKey,
         ctrl: ev.metaKey || ev.ctrlKey
       });
-      batch2(() => {
-        setCursor(next);
-        setAnchor(res.anchor);
-        setSelection(res.selected);
-      });
+      setCursor(next);
+      setAnchor(res.anchor);
+      setSelection(res.selected);
       const el = itemsBox?.children[next];
       el?.scrollIntoView({ block: "nearest" });
       return;

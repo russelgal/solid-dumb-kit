@@ -1,6 +1,5 @@
-import { delegateEvents, createComponent, effect as effect$1, setStyleProperty, ref, insert, className, style, setAttribute, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createSignal, Show, createEffect, onCleanup, For } from 'solid-js';
+import { delegateEvents, createComponent, effect, setStyleProperty, ref, insert, className, style, setAttribute, template } from '@solidjs/web';
+import { createSignal, onCleanup, Show, For, untrack, createEffect } from 'solid-js';
 
 // src/DumbContextMenu.tsx
 var configured = "auto";
@@ -21,11 +20,23 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
+function onMounted(fn) {
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
   });
-  else createEffect(fn);
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -129,7 +140,7 @@ function Panel(props) {
     });
     else setSub(null);
   };
-  effect(() => {
+  onMounted(() => {
     queueMicrotask(() => {
       if (el && !el.matches(":popover-open")) el.showPopover?.();
       if (props.depth === 0) el?.focus();
@@ -138,7 +149,7 @@ function Panel(props) {
   onCleanup(() => {
     if (el?.matches(":popover-open")) el.hidePopover();
   });
-  effect(() => {
+  onMounted(() => {
     if (!el) return;
     const io = new IntersectionObserver((entries) => {
       const r = entries[entries.length - 1].boundingClientRect;
@@ -158,7 +169,7 @@ function Panel(props) {
     const from = props.depth === 0 ? props.at.x : props.parentBox?.()?.left ?? props.at.x;
     return b.left < from ? "left" : "right";
   };
-  effect(() => {
+  {
     const api = {
       depth: props.depth,
       get el() {
@@ -198,7 +209,7 @@ function Panel(props) {
       }
     };
     onCleanup(props.register(api));
-  });
+  }
   const place = () => {
     const own = {
       "anchor-name": panelAnchor
@@ -262,7 +273,7 @@ function Panel(props) {
             },
             get children() {
               var _el$5 = _tmpl$2();
-              effect$1(() => `dumb-menu-icon size-[1.1em] shrink-0 ${asItem(it).icon}`, (_v$, _$p) => {
+              effect(() => `dumb-menu-icon size-[1.1em] shrink-0 ${asItem(it).icon}`, (_v$, _$p) => {
                 className(_el$5, _v$, _$p);
               });
               return _el$5;
@@ -287,7 +298,7 @@ function Panel(props) {
               return _tmpl$4();
             }
           }), _el$0);
-          effect$1(() => ({
+          effect(() => ({
             e: `dumb-menu-item flex w-full items-center gap-2 text-left ${asItem(it).danger ? "text-error" : ""}`,
             t: active() === i() ? "1" : void 0,
             a: asItem(it).danger ? "1" : void 0,
@@ -321,7 +332,7 @@ function Panel(props) {
         }
       })
     }));
-    effect$1(() => ({
+    effect(() => ({
       e: `dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${props.depth > 0 ? "dumb-menu-sub" : ""} ${props.class ?? ""}`,
       t: place(),
       a: props.depth
@@ -448,7 +459,7 @@ function DumbContextMenu(props) {
       else if (top.openSub()) queueMicrotask(() => deepest()?.move(1));
     }
   }
-  effect(() => {
+  {
     window.addEventListener("contextmenu", onContext);
     window.addEventListener("keydown", onKey);
     const away = (ev) => {
@@ -500,14 +511,14 @@ function DumbContextMenu(props) {
       window.removeEventListener("resize", bail);
       window.removeEventListener("blur", bail);
     });
-  });
+  }
   return createComponent(Show, {
     get when() {
       return at();
     },
     children: (p) => [(() => {
       var _el$10 = _tmpl$7();
-      effect$1(() => ({
+      effect(() => ({
         e: `${p().x}px`,
         t: `${p().y}px`
       }), ({
@@ -571,8 +582,7 @@ function DumbPopover(props) {
     _el$.$$click = close;
     return _el$;
   })();
-  effect(() => {
-    const open = props.at() !== null;
+  watch(() => props.at() !== null, (open) => {
     if (!open) {
       if (box?.matches(":popover-open")) box.hidePopover();
       return;
@@ -581,8 +591,8 @@ function DumbPopover(props) {
       if (box && !box.matches(":popover-open")) box.showPopover?.();
     });
   });
-  effect(() => {
-    if (props.at() === null) return;
+  watch(() => props.at() !== null, (open) => {
+    if (!open) return;
     const onKey = (e) => e.key === "Escape" && close();
     const away = (e) => {
       if (props.keepOnOutside) return;
@@ -604,7 +614,7 @@ function DumbPopover(props) {
     },
     children: (spot) => [(() => {
       var _el$2 = _tmpl$22();
-      effect$1(() => ({
+      effect(() => ({
         e: `${spot().x}px`,
         t: `${spot().y}px`
       }), ({
@@ -656,7 +666,7 @@ function DumbPopover(props) {
           return _el$8;
         }
       }), _el$9);
-      effect$1(() => ({
+      effect(() => ({
         e: `dumb-pop card rounded-box bg-base-100 border-base-300 border p-3 shadow-xl ${props.class ?? ""}`,
         t: props.width ? {
           "--dumb-pop-w": props.width

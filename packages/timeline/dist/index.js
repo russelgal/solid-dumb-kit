@@ -1,22 +1,26 @@
-import { delegateEvents, ref, insert, createComponent, effect as effect$1, className, setStyleProperty, setAttribute, memo, style, template } from '@solidjs/web';
+import { delegateEvents, ref, insert, createComponent, effect, className, setStyleProperty, setAttribute, memo, style, template } from '@solidjs/web';
 import * as solid from 'solid-js';
-import { createMemo, createSignal, onCleanup, Show, For, createEffect, untrack } from 'solid-js';
+import { createMemo, createSignal, onCleanup, Show, For, untrack, createEffect } from 'solid-js';
 import { Temporal as Temporal$1 } from 'temporal-polyfill';
 
 // src/DumbTimeline.tsx
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 function flushNow() {
   solid.flush?.();
@@ -639,9 +643,8 @@ function DumbTimeline(props) {
     ro.observe(viewport);
     onCleanup(() => ro.disconnect());
   });
-  effect(() => {
-    scale();
-    if (vpW() > 0) props.onVisibleRange?.(visibleRange());
+  watch(() => [scale(), vpW()], ([, width]) => {
+    if (width > 0) props.onVisibleRange?.(visibleRange());
   });
   let origin = null;
   const toLocal = (cx, cy) => ({
@@ -832,7 +835,7 @@ function DumbTimeline(props) {
     children: (at) => (() => {
       var _el$16 = _tmpl$6();
       insert(_el$16, () => props.dayLabel?.(at) ?? defaultDayLabel(at, scale()));
-      effect$1(() => `dumb-tl-day ${props.dayClass?.(at) ?? ""}`, (_v$, _$p) => {
+      effect(() => `dumb-tl-day ${props.dayClass?.(at) ?? ""}`, (_v$, _$p) => {
         className(_el$16, _v$, _$p);
       });
       return _el$16;
@@ -854,7 +857,7 @@ function DumbTimeline(props) {
           return _el$17;
         })()
       }));
-      effect$1(() => `repeat(${totalCols(scale())}, ${colW()}px)`, (_v$) => {
+      effect(() => `repeat(${totalCols(scale())}, ${colW()}px)`, (_v$) => {
         setStyleProperty(_el$8, "grid-template-columns", _v$);
       });
       return _el$8;
@@ -873,7 +876,7 @@ function DumbTimeline(props) {
         _el$19.$$click = () => toggleGroup(it.id);
         insert(_el$20, () => folded().has(it.id) ? "\u25B8" : "\u25BE");
         insert(_el$19, () => it.id, null);
-        effect$1(() => `${rowGeom().heights[i()]}px`, (_v$) => {
+        effect(() => `${rowGeom().heights[i()]}px`, (_v$) => {
           setStyleProperty(_el$19, "height", _v$);
         });
         return _el$19;
@@ -881,7 +884,7 @@ function DumbTimeline(props) {
       get children() {
         var _el$18 = _tmpl$6();
         insert(_el$18, () => it.row.title);
-        effect$1(() => ({
+        effect(() => ({
           e: `dumb-tl-row ${props.rowClass?.(it.row) ?? ""}`,
           t: props.rowDisabled?.(it.row) ? "1" : void 0,
           a: `${rowGeom().heights[i()]}px`
@@ -1075,7 +1078,7 @@ function DumbTimeline(props) {
     },
     children: (_, i) => (() => {
       var _el$21 = _tmpl$9();
-      effect$1(() => `${rowGeom().offsets[i() + 1]}px`, (_v$) => {
+      effect(() => `${rowGeom().offsets[i() + 1]}px`, (_v$) => {
         setStyleProperty(_el$21, "top", _v$);
       });
       return _el$21;
@@ -1114,7 +1117,7 @@ function DumbTimeline(props) {
                   },
                   get children() {
                     var _el$22 = _tmpl$0();
-                    effect$1(() => ({
+                    effect(() => ({
                       e: `translate(${toX(d * win(), sc())}px, ${top()}px)`,
                       t: `${openW()}px`,
                       a: `${height()}px`
@@ -1135,7 +1138,7 @@ function DumbTimeline(props) {
                   },
                   get children() {
                     var _el$23 = _tmpl$0();
-                    effect$1(() => ({
+                    effect(() => ({
                       e: `translate(${toX(d * win(), sc()) + closeAt()}px, ${top()}px)`,
                       t: `${toX(win(), sc()) - closeAt()}px`,
                       a: `${height()}px`
@@ -1170,7 +1173,7 @@ function DumbTimeline(props) {
       const hrs = () => Math.abs(p().b - p().a);
       var _el$24 = _tmpl$1();
       insert(_el$24, () => fmtRoom(hrs(), scale()));
-      effect$1(() => ({
+      effect(() => ({
         e: `translate(${x()}px, ${top() + 3}px)`,
         t: `${w()}px`,
         a: `${rowH() - 6}px`
@@ -1192,7 +1195,7 @@ function DumbTimeline(props) {
     },
     get children() {
       var _el$1 = _tmpl$3();
-      effect$1(() => `${momentX(props.now, scale(), "from")}px`, (_v$) => {
+      effect(() => `${momentX(props.now, scale(), "from")}px`, (_v$) => {
         setStyleProperty(_el$1, "left", _v$);
       });
       return _el$1;
@@ -1234,7 +1237,7 @@ function DumbTimeline(props) {
         },
         get children() {
           var _el$25 = _tmpl$10();
-          effect$1(() => ({
+          effect(() => ({
             e: `\u0437\u0430\u0437\u043E\u0440 ${gapOf(view().row)} \u043C\u0438\u043D`,
             t: `translate(${box().x + box().w}px, ${box().y + floor() * rowH()}px)`,
             a: `${tailW()}px`,
@@ -1259,7 +1262,7 @@ function DumbTimeline(props) {
         children: (r) => (() => {
           var _el$31 = _tmpl$14(), _el$32 = _el$31.firstChild; _el$32.firstChild;
           insert(_el$32, () => fmtRoom(r().minutes, scale()), null);
-          effect$1(() => ({
+          effect(() => ({
             e: `translate(${r().x}px, ${box().y + floor() * rowH()}px)`,
             t: `${r().w}px`,
             a: `${rowH() - 6}px`
@@ -1308,7 +1311,7 @@ function DumbTimeline(props) {
             })()];
           }
         }), _el$30);
-        effect$1(() => ({
+        effect(() => ({
           e: `dumb-tl-span ${props.spanClass?.(span()) ?? ""}`,
           t: props.spanTitle?.(span()),
           a: props.spanLocked?.(span()) ? "1" : void 0,
@@ -1340,7 +1343,7 @@ function DumbTimeline(props) {
       })()];
     }
   }), _el$14);
-  effect$1(() => ({
+  effect(() => ({
     e: `dumb-tl ${props.class ?? ""}`,
     t: {
       "--dumb-tl-head": `${headW()}px`,

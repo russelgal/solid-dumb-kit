@@ -6,7 +6,7 @@ import { createSignal as createSignal3, onCleanup as onCleanup2 } from "solid-js
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
+import { untrack, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -14,7 +14,6 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
-var SOLID_2 = !("batch" in solid);
 var DUR = 380;
 var EASE = "cubic-bezier(.2,.8,.2,1)";
 var C = { x1: 0.2, y1: 0.8, x2: 0.2, y2: 1 };
@@ -248,8 +247,7 @@ function createAutoScroller() {
 
 // ../grid/dist/index.js
 import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
-import * as solid2 from "solid-js";
-import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2, untrack as untrack2 } from "solid-js";
+import { createSignal as createSignal2, onCleanup, createMemo, Show, For, untrack as untrack2, createEffect as createEffect2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -519,7 +517,6 @@ function string(message$1) {
 }
 
 // ../grid/dist/index.js
-var SOLID_22 = !("batch" in solid2);
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }

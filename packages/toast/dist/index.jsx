@@ -3,7 +3,7 @@ import { For, Show as Show2, createSignal as createSignal2, onCleanup } from "so
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
+import { untrack, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -29,19 +29,23 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -474,16 +478,18 @@ function DumbToaster(props) {
   const rows = () => [...stacked(), ...flying()].sort((a, b) => a.id - b.id);
   const isLeaving = (t) => flying().some((x) => x.id === t.id);
   let was = 0;
-  effect(() => {
-    const n = shown().length + flying().length;
-    if (!n) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-    } else if (n !== was) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-      box?.showPopover?.();
+  watch(
+    () => shown().length + flying().length,
+    (n) => {
+      if (!n) {
+        if (box?.matches(":popover-open")) box.hidePopover();
+      } else if (n !== was) {
+        if (box?.matches(":popover-open")) box.hidePopover();
+        box?.showPopover?.();
+      }
+      was = n;
     }
-    was = n;
-  });
+  );
   const stacked = () => shown().filter((t) => !t.at);
   const anchored = () => shown().filter((t) => t.at);
   const fly = () => (props.position ?? "bottom-right").endsWith("left") ? "left" : "right";
@@ -507,8 +513,7 @@ function DumbToaster(props) {
     });
   };
   let prevRows = [];
-  effect(() => {
-    const now = rows();
+  watch(rows, (now) => {
     const alive = new Set(now.map((t) => t.id));
     let freed = 0;
     const moved = [];
@@ -789,14 +794,13 @@ function DumbToastCenter(props) {
       if (panel?.matches(":popover-open")) panel.hidePopover();
     });
   });
-  effect(() => {
-    if (!open()) return;
+  watch(open, (visible) => {
+    if (!visible) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
     onCleanup2(() => clearInterval(id));
   });
-  effect(() => {
-    const show = open();
+  watch(open, (show) => {
     queueMicrotask(() => {
       if (!panel) return;
       if (show && !panel.matches(":popover-open")) panel.showPopover?.();

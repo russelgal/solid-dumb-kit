@@ -12,7 +12,7 @@
 // onMounted вместо onMount: в Solid 2 onMount не экспортируется (shared/solidCompat)
 import { For, Show, createSignal, onCleanup } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { createFlip, effect, injectStyle, onMounted, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { createFlip, injectStyle, onMounted, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
 import { toast as globalBus, type Toast, type ToastBus } from './toast'
 import { ToastBody, ToastIcon } from './toastLook'
 
@@ -217,18 +217,21 @@ export function DumbToaster(props: DumbToasterProps) {
    * из модалок. Перевсплытие ставит его обратно наверх.
    */
   let was = 0
-  effect(() => {
-    // летящие считаем наравне с живыми: иначе слой погаснет ровно в тот кадр,
-    // когда должен показать полёт последней плашки
-    const n = shown().length + flying().length
-    if (!n) {
-      if (box?.matches(':popover-open')) box.hidePopover()
-    } else if (n !== was) {
-      if (box?.matches(':popover-open')) box.hidePopover()
-      box?.showPopover?.()
-    }
-    was = n
-  })
+  // летящие считаем наравне с живыми: иначе слой погаснет ровно в тот кадр,
+  // когда должен показать полёт последней плашки. Считаем в первой фазе,
+  // popover трогаем во второй — в первой `box` ещё не присвоен.
+  watch(
+    () => shown().length + flying().length,
+    (n) => {
+      if (!n) {
+        if (box?.matches(':popover-open')) box.hidePopover()
+      } else if (n !== was) {
+        if (box?.matches(':popover-open')) box.hidePopover()
+        box?.showPopover?.()
+      }
+      was = n
+    },
+  )
 
   const stacked = () => shown().filter((t) => !t.at)
   const anchored = () => shown().filter((t) => t.at)
@@ -279,8 +282,7 @@ export function DumbToaster(props: DumbToasterProps) {
    * лежат с того края, к которому прижата стопка.
    */
   let prevRows: Array<Toast> = []
-  effect(() => {
-    const now = rows()
+  watch(rows, (now) => {
     const alive = new Set(now.map((t) => t.id))
     // сколько места освободилось ВЫШЕ по стопке — накапливаем, идя по прошлому
     // порядку: каждой уцелевшей плашке достаётся сумма ушедших перед ней

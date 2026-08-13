@@ -16,7 +16,7 @@
 
 import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { effect, flushNow, injectStyle, onMounted, restoreTextSelection, suppressTextSelection } from '@solid-dumb-kit/shared'
+import { flushNow, injectStyle, onMounted, restoreTextSelection, suppressTextSelection, watch } from '@solid-dumb-kit/shared'
 import { Temporal } from './temporal'
 import type { Span } from './timelineMath'
 import {
@@ -687,11 +687,14 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
     onCleanup(() => ro.disconnect())
   })
   // диапазон меняется не только прокруткой: сменили `from`/`days`/шаг или
-  // ширину окна — потребителю нужен свежий диапазон для догрузки
-  effect(() => {
-    scale()
-    if (vpW() > 0) props.onVisibleRange?.(visibleRange())
-  })
+  // ширину окна — потребителю нужен свежий диапазон для догрузки. Колбэк зовём
+  // во второй фазе: он у потребителя обычно пишет в свои сигналы.
+  watch(
+    () => [scale(), vpW()] as const,
+    ([, width]) => {
+      if (width > 0) props.onVisibleRange?.(visibleRange())
+    },
+  )
 
   /**
    * Координаты сетки — снимаются ОДИН раз на старте жеста, без forced layout.

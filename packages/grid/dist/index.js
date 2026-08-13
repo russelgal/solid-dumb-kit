@@ -1,6 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createSignal, onCleanup, createMemo, Show, For, createEffect, untrack } from 'solid-js';
+import { createSignal, onCleanup, createMemo, Show, For, untrack, createEffect } from 'solid-js';
 import * as v from 'valibot';
 
 // src/DumbGrid.tsx
@@ -11,19 +10,19 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
-var SOLID_2 = !("batch" in solid);
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  const step = (value) => {
+  twoPhase(dep, (value) => {
     const skip = first && (opts?.defer);
     first = false;
     const before = prev;
     prev = value;
-    if (!skip) untrack(() => fn(value, before));
-  };
-  if (SOLID_2) createEffect(dep, step);
-  else createEffect(() => step(dep()));
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();

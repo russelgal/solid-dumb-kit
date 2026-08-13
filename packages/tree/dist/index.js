@@ -1,21 +1,20 @@
 import { delegateEvents, insert, createComponent, effect, className, setAttribute, style, memo, claimElement, spread, mergeProps, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createSignal, createMemo, Show, For, createEffect, untrack } from 'solid-js';
+import { createSignal, createMemo, Show, For, untrack, createEffect } from 'solid-js';
 
 // src/DumbTree.tsx
-var SOLID_2 = !("batch" in solid);
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  const step = (value) => {
+  twoPhase(dep, (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
-    if (!skip) untrack(() => fn(value, before));
-  };
-  if (SOLID_2) createEffect(dep, step);
-  else createEffect(() => step(dep()));
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {

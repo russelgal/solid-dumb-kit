@@ -563,7 +563,7 @@ function createDumbSortable(opts) {
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
+import { untrack, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion2() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -571,7 +571,6 @@ function shouldAnimate2(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion2();
 }
-var SOLID_2 = !("batch" in solid);
 
 // src/DumbTable.tsx
 var withViewTransition = (on, fn) => {

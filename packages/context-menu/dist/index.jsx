@@ -3,7 +3,7 @@ import { For, Show, createSignal as createSignal2, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
+import { untrack, createSignal, createEffect } from "solid-js";
 var configured = "auto";
 var apple = null;
 function isApplePlatform() {
@@ -22,11 +22,23 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
+function onMounted(fn) {
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
   });
-  else createEffect(fn);
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -114,7 +126,7 @@ function Panel(props) {
     if (it && branch(it) && spread) setSub({ i, x, y });
     else setSub(null);
   };
-  effect(() => {
+  onMounted(() => {
     queueMicrotask(() => {
       if (el && !el.matches(":popover-open")) el.showPopover?.();
       if (props.depth === 0) el?.focus();
@@ -123,7 +135,7 @@ function Panel(props) {
   onCleanup(() => {
     if (el?.matches(":popover-open")) el.hidePopover();
   });
-  effect(() => {
+  onMounted(() => {
     if (!el) return;
     const io = new IntersectionObserver((entries) => {
       const r = entries[entries.length - 1].boundingClientRect;
@@ -140,7 +152,7 @@ function Panel(props) {
     const from = props.depth === 0 ? props.at.x : props.parentBox?.()?.left ?? props.at.x;
     return b.left < from ? "left" : "right";
   };
-  effect(() => {
+  {
     const api = {
       depth: props.depth,
       get el() {
@@ -174,7 +186,7 @@ function Panel(props) {
       }
     };
     onCleanup(props.register(api));
-  });
+  }
   const place = () => {
     const own = { "anchor-name": panelAnchor };
     const anchored = window.CSS?.supports?.("anchor-name: --x");
@@ -347,7 +359,7 @@ function DumbContextMenu(props) {
       else if (top.openSub()) queueMicrotask(() => deepest()?.move(1));
     }
   }
-  effect(() => {
+  {
     window.addEventListener("contextmenu", onContext);
     window.addEventListener("keydown", onKey);
     const away = (ev) => {
@@ -399,7 +411,7 @@ function DumbContextMenu(props) {
       window.removeEventListener("resize", bail);
       window.removeEventListener("blur", bail);
     });
-  });
+  }
   return <Show when={at()}>
       {(p) => <>
           {
@@ -450,33 +462,38 @@ function DumbPopover(props) {
   const closeButton = () => <button type="button" class="dumb-pop-x btn btn-xs btn-circle btn-ghost" title="закрыть" onClick={close}>
       ✕
     </button>;
-  effect(() => {
-    const open = props.at() !== null;
-    if (!open) {
-      if (box?.matches(":popover-open")) box.hidePopover();
-      return;
+  watch(
+    () => props.at() !== null,
+    (open) => {
+      if (!open) {
+        if (box?.matches(":popover-open")) box.hidePopover();
+        return;
+      }
+      queueMicrotask(() => {
+        if (box && !box.matches(":popover-open")) box.showPopover?.();
+      });
     }
-    queueMicrotask(() => {
-      if (box && !box.matches(":popover-open")) box.showPopover?.();
-    });
-  });
-  effect(() => {
-    if (props.at() === null) return;
-    const onKey = (e) => e.key === "Escape" && close();
-    const away = (e) => {
-      if (props.keepOnOutside) return;
-      if (!box?.contains(e.target)) close();
-    };
-    const bail = () => close();
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("pointerdown", away, true);
-    window.addEventListener("scroll", bail, true);
-    onCleanup2(() => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("pointerdown", away, true);
-      window.removeEventListener("scroll", bail, true);
-    });
-  });
+  );
+  watch(
+    () => props.at() !== null,
+    (open) => {
+      if (!open) return;
+      const onKey = (e) => e.key === "Escape" && close();
+      const away = (e) => {
+        if (props.keepOnOutside) return;
+        if (!box?.contains(e.target)) close();
+      };
+      const bail = () => close();
+      window.addEventListener("keydown", onKey);
+      window.addEventListener("pointerdown", away, true);
+      window.addEventListener("scroll", bail, true);
+      onCleanup2(() => {
+        window.removeEventListener("keydown", onKey);
+        window.removeEventListener("pointerdown", away, true);
+        window.removeEventListener("scroll", bail, true);
+      });
+    }
+  );
   return <Show2 when={props.at()}>
       {(spot) => <>
           <div

@@ -23,8 +23,8 @@ export {
   type CloseSideOption,
 } from './closeSide'
 
-// совместимость Solid 1 ↔ Solid 2: пропавшие в Solid 2 API берём только отсюда
-export { batch, effect, flushNow, onMounted, watch } from './solidCompat'
+// работа с двухфазным эффектом Solid 2: DOM и запись в сигналы — только отсюда
+export { flushNow, onMounted, watch } from './effects'
 export { createPersisted, type PersistedOptions } from './persisted'
 export { createFilePicker, pickedFrom, type FilePickerOptions, type PickedFile } from './filePicker'
 

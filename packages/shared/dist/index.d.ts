@@ -5,7 +5,7 @@ export { prefersReducedMotion, shouldAnimate } from './motion';
  * на платформу сам; перебивается пропом компонента или общей настройкой.
  */
 export { configureCloseSide, isApplePlatform, resolveCloseSide, type CloseSide, type CloseSideOption, } from './closeSide';
-export { batch, effect, flushNow, onMounted, watch } from './solidCompat';
+export { flushNow, onMounted, watch } from './effects';
 export { createPersisted, type PersistedOptions } from './persisted';
 export { createFilePicker, pickedFrom, type FilePickerOptions, type PickedFile } from './filePicker';
 /** Разовый инжект стилей в `<head>` — переживает размонтирование компонента. */

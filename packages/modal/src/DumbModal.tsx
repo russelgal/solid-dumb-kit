@@ -17,7 +17,7 @@
 
 import { Show, onCleanup } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { effect, injectStyle, resolveCloseSide, shouldAnimate, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { injectStyle, resolveCloseSide, shouldAnimate, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbModalProps = {
   open: () => boolean
@@ -103,19 +103,30 @@ export function DumbModal(props: DumbModalProps) {
     props.onClose()
   }
 
-  effect(() => {
-    const want = props.open()
-    if (want && !dialog.open) {
-      // куда вернуть фокус, запоминаем ДО открытия: `showModal` его уже уводит
-      returnTo = (document.activeElement as HTMLElement) ?? null
-      dialog.showModal()
-    }
-    if (!want && dialog.open) {
-      dialog.close()
-      returnTo?.focus?.()
-      returnTo = null
-    }
-  })
+  /*
+   * Открытие/закрытие — во ВТОРОЙ фазе эффекта (`watch`), а не в `effect`.
+   *
+   * Под Solid 2 `effect` из shim кладёт тело в фазу ВЫЧИСЛЕНИЯ, а она идёт до
+   * монтирования: `dialog` там ещё не присвоен, и первый же прогон падал —
+   * «Cannot read properties of undefined (reading 'open')». У `watch` первая
+   * функция только читает сигнал, вторая работает с DOM, когда он уже есть.
+   */
+  watch(
+    () => props.open(),
+    (want) => {
+      if (!dialog) return
+      if (want && !dialog.open) {
+        // куда вернуть фокус, запоминаем ДО открытия: `showModal` его уже уводит
+        returnTo = (document.activeElement as HTMLElement) ?? null
+        dialog.showModal()
+      }
+      if (!want && dialog.open) {
+        dialog.close()
+        returnTo?.focus?.()
+        returnTo = null
+      }
+    },
+  )
 
   onCleanup(() => {
     if (dialog?.open) dialog.close()

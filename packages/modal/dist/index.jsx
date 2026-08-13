@@ -3,7 +3,7 @@ import { Show, onCleanup } from "solid-js";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
+import { untrack, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -29,19 +29,23 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -100,18 +104,21 @@ function DumbModal(props) {
     }
     props.onClose();
   }
-  effect(() => {
-    const want = props.open();
-    if (want && !dialog.open) {
-      returnTo = document.activeElement ?? null;
-      dialog.showModal();
+  watch(
+    () => props.open(),
+    (want) => {
+      if (!dialog) return;
+      if (want && !dialog.open) {
+        returnTo = document.activeElement ?? null;
+        dialog.showModal();
+      }
+      if (!want && dialog.open) {
+        dialog.close();
+        returnTo?.focus?.();
+        returnTo = null;
+      }
     }
-    if (!want && dialog.open) {
-      dialog.close();
-      returnTo?.focus?.();
-      returnTo = null;
-    }
-  });
+  );
   onCleanup(() => {
     if (dialog?.open) dialog.close();
   });

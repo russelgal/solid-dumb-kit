@@ -239,6 +239,8 @@ function createAutoScroller() {
     }
   };
 }
+
+// ../grid/dist/index.js
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }

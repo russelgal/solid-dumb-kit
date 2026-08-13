@@ -37,7 +37,7 @@
 
 import { For, Show, createSignal, onCleanup } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { effect, injectStyle } from '@solid-dumb-kit/shared'
+import { injectStyle, onMounted } from '@solid-dumb-kit/shared'
 
 export type MenuItem =
   | { kind: 'separator' }
@@ -201,7 +201,8 @@ function Panel(props: {
 
   // Показываем ПОСЛЕ вставки узла: `showPopover` на элементе вне документа
   // бросает. Фокус забирает только корневая панель — стрелки корень и слушает.
-  effect(() => {
+  // Панель живёт ровно одно открытие, поэтому onMounted, а не слежение.
+  onMounted(() => {
     queueMicrotask(() => {
       if (el && !el.matches(':popover-open')) el.showPopover?.()
       if (props.depth === 0) el?.focus()
@@ -221,7 +222,7 @@ function Panel(props: {
    * layout не возникает (тот же приём, что и в снимке сортировщика). Снимок
    * ОДИН, на открытие панели: дальше она не двигается.
    */
-  effect(() => {
+  onMounted(() => {
     if (!el) return
     const io = new IntersectionObserver((entries) => {
       const r = entries[entries.length - 1].boundingClientRect
@@ -246,7 +247,10 @@ function Panel(props: {
     return b.left < from ? 'left' : 'right'
   }
 
-  effect(() => {
+  // Регистрация панели идёт ПРЯМО В ТЕЛЕ компонента, а не эффектом: она ни от
+  // чего не зависит, а старший уровень должен знать о панели сразу — стрелка,
+  // нажатая в тот же кадр, ищет самую глубокую панель по этому списку.
+  {
     const api: PanelApi = {
       depth: props.depth,
       get el() {
@@ -282,7 +286,7 @@ function Panel(props: {
       },
     }
     onCleanup(props.register(api))
-  })
+  }
 
   /**
    * Место панели. У корня — точка клика, у подменю — родительский пункт. И то,
@@ -511,9 +515,10 @@ export function DumbContextMenu(props: DumbContextMenuProps) {
     }
   }
 
-  // Слушатели вешаются один раз на окно: меню открывается по правому клику где
-  // угодно внутри цели, а цель может появиться позже.
-  effect(() => {
+  // Слушатели вешаются один раз на окно, сразу в теле: меню открывается по
+  // правому клику где угодно внутри цели, а цель может появиться позже. Ждать
+  // монтирования незачем — окно есть всегда, DOM компонента тут ни при чём.
+  {
     window.addEventListener('contextmenu', onContext)
     window.addEventListener('keydown', onKey)
     // pointerdown, а не click: закрыть надо ДО того, как клик что-то нажмёт
@@ -599,7 +604,7 @@ export function DumbContextMenu(props: DumbContextMenuProps) {
       window.removeEventListener('resize', bail)
       window.removeEventListener('blur', bail)
     })
-  })
+  }
 
   return (
     <Show when={at()}>

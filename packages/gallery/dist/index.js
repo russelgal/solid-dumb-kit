@@ -1,6 +1,5 @@
-import { delegateEvents, insert, createComponent, effect as effect$1, setStyleProperty, className, setAttribute, memo, style, ref, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createSignal, onCleanup, createMemo, Show, For, createEffect } from 'solid-js';
+import { delegateEvents, insert, createComponent, effect, setStyleProperty, className, setAttribute, memo, style, ref, template } from '@solidjs/web';
+import { createSignal, onCleanup, createMemo, Show, For, untrack, createEffect } from 'solid-js';
 
 // src/DumbGallery.tsx
 function prefersReducedMotion() {
@@ -10,11 +9,19 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && false;
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
   });
-  else createEffect(fn);
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -544,8 +551,8 @@ function DumbSortableDnd(props) {
   const stable = createStableOrder(props.id);
   const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
-  effect(() => {
-    for (const [id, i] of places()) {
+  watch(places, (map) => {
+    for (const [id, i] of map) {
       const el = els.get(id);
       if (!el) continue;
       const next = String(i);
@@ -570,7 +577,7 @@ function DumbSortableDnd(props) {
       return el;
     }
   }));
-  effect$1(() => ({
+  effect(() => ({
     e: props.class,
     t: props.style
   }), ({
@@ -959,13 +966,13 @@ function DumbGallery(props) {
         },
         get children() {
           var _el$10 = _tmpl$5(), _el$11 = _el$10.firstChild;
-          effect$1(() => `${Math.round(progressOf(item.id) * 100)}%`, (_v$) => {
+          effect(() => `${Math.round(progressOf(item.id) * 100)}%`, (_v$) => {
             setStyleProperty(_el$11, "width", _v$);
           });
           return _el$10;
         }
       }), _el$13);
-      effect$1(() => ({
+      effect(() => ({
         e: `dumb-gallery-tile rounded-box bg-base-200 ${item.status === "error" ? "outline-error outline-2" : ""}`,
         t: item.status ?? "local",
         a: item.error ?? item.name,
@@ -1014,7 +1021,7 @@ function DumbGallery(props) {
       return _el$3;
     }
   }), _el$8);
-  effect$1(() => ({
+  effect(() => ({
     e: `dumb-gallery-drop ${props.class ?? ""}`,
     t: dragOver() && editable() ? "1" : void 0,
     a: props.style

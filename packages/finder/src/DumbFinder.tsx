@@ -26,14 +26,15 @@
 // Reflow: ни одного замера. Позиции для рамки снимает `SelectionArea`, всё
 // остальное — обычная разметка, которую мы не измеряем вовсе.
 
-// batch и watch — из shared/solidCompat: в Solid 2 `batch` и `on` не экспортируются,
-// а JSX кита компилируется у потребителя
+// watch — из shared/effects: работа с DOM и запись в сигналы живут во ВТОРОЙ
+// фазе двухфазного эффекта Solid 2. Отдельного `batch` там нет вовсе:
+// обновления копятся сами и флашатся микротаском.
 import { For, Show, createMemo, createSignal, onCleanup, untrack } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import { SelectionArea } from '@solid-dumb-kit/selection'
 import { ResizableGrid } from '@solid-dumb-kit/resizable-grid'
 import {
-  batch, createFilePicker, createUndoStack, createUploadQueue, effect, injectStyle, isMoveKey, moveIndex, moveSelection, readDropEntries, watch,
+  createFilePicker, createUndoStack, createUploadQueue, injectStyle, isMoveKey, moveIndex, moveSelection, readDropEntries, watch,
 } from '@solid-dumb-kit/shared'
 import { fmtSize, fmtDateTimeShort } from '@solid-dumb-kit/utils'
 import {
@@ -321,14 +322,12 @@ export function DumbFinder(props: DumbFinderProps) {
   const [ownPath, setOwnPath] = createSignal('')
   const path = () => props.path ?? ownPath()
   const goto = (next: string) => {
-    batch(() => {
-      setOwnPath(next)
-      setSelection(new Set())
-      setCursor(-1)
-      setAnchor(-1)
-      props.onPathChange?.(next)
-      props.onSelectionChange?.(new Set())
-    })
+    setOwnPath(next)
+    setSelection(new Set())
+    setCursor(-1)
+    setAnchor(-1)
+    props.onPathChange?.(next)
+    props.onSelectionChange?.(new Set())
   }
 
   const [ownSel, setOwnSel] = createSignal<Set<string>>(new Set())
@@ -369,10 +368,8 @@ export function DumbFinder(props: DumbFinderProps) {
     try {
       const got = await props.source.list(prefix, { signal: ctrl.signal })
       if (ctrl.signal.aborted) return
-      batch(() => {
-        setEntries(got)
-        setError(null)
-      })
+      setEntries(got)
+      setError(null)
     } catch (err) {
       if (ctrl.signal.aborted) return
       setEntries([])
@@ -449,21 +446,24 @@ export function DumbFinder(props: DumbFinderProps) {
     }
   }
 
-  effect(() => {
-    if (props.sidebar === false) return
-    // умеет отдать всё разом — берём всё разом и по веткам не ходим вовсе
-    if (props.source.tree) {
-      if (whole() === null) void loadWhole()
-      return
-    }
-    tree()                                   // перечитываем и после сброса кэша
-    const here = path()
-    for (const c of crumbs(here)) void ensure(c.prefix)
-    const kids = untrack(tree)[here] ?? []
-    // прогрев на уровень вперёд, но не любой ценой: в папке на двести подпапок
-    // это двести запросов, а стрелки там всё равно никто не считает
-    if (kids.length <= 24) for (const k of kids) void ensure(k.key)
-  })
+  // следим первой функцией (`tree` — чтобы перечитать и после сброса кэша),
+  // грузим второй: загрузка пишет в сигналы, а в фазе вычисления это запрещено
+  watch(
+    () => [path(), tree(), whole()] as const,
+    ([here]) => {
+      if (props.sidebar === false) return
+      // умеет отдать всё разом — берём всё разом и по веткам не ходим вовсе
+      if (props.source.tree) {
+        if (untrack(whole) === null) void loadWhole()
+        return
+      }
+      for (const c of crumbs(here)) void ensure(c.prefix)
+      const kids = untrack(tree)[here] ?? []
+      // прогрев на уровень вперёд, но не любой ценой: в папке на двести подпапок
+      // это двести запросов, а стрелки там всё равно никто не считает
+      if (kids.length <= 24) for (const k of kids) void ensure(k.key)
+    },
+  )
 
   /**
    * Вес папки. Плоский листинг его не даёт и дать не может: в S3 папка — это
@@ -505,23 +505,24 @@ export function DumbFinder(props: DumbFinderProps) {
     }
   }
 
-  const toggleRow = (key: string) =>
-    batch(() => {
-      setOpenRows((was) => {
-        const next = new Set(was)
-        next.has(key) ? next.delete(key) : next.add(key)
-        return next
-      })
-      void ensureSub(key)
+  const toggleRow = (key: string) => {
+    setOpenRows((was) => {
+      const next = new Set(was)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
     })
+    void ensureSub(key)
+  }
 
   // ушли в другую папку — раскрытое здесь больше не про что
-  watch(path, () => batch(() => { setOpenRows(new Set<string>()); setSub({}) }), { defer: true })
+  watch(path, () => { setOpenRows(new Set<string>()); setSub({}) }, { defer: true })
   // содержимое перечитали — раскрытые ветки тоже
-  effect(() => {
-    const cache = sub()
-    for (const k of openRows()) if (!(k in cache)) void ensureSub(k)
-  })
+  watch(
+    () => [sub(), openRows()] as const,
+    ([cache, open]) => {
+      for (const k of open) if (!(k in cache)) void ensureSub(k)
+    },
+  )
 
   /**
    * Плоский список строк с уровнем вложенности: раскрытая папка вставляет своё
@@ -826,11 +827,9 @@ export function DumbFinder(props: DumbFinderProps) {
         shift: ev.shiftKey,
         ctrl: ev.metaKey || ev.ctrlKey,
       })
-      batch(() => {
-        setCursor(next)
-        setAnchor(res.anchor)
-        setSelection(res.selected)
-      })
+      setCursor(next)
+      setAnchor(res.anchor)
+      setSelection(res.selected)
       // Строка под курсором должна остаться видимой. Ищем по ПОРЯДКУ, а не по
       // селектору с ключом: ключ — это путь, в нём бывает что угодно, и его
       // пришлось бы прогонять через `CSS.escape` на каждое нажатие стрелки.

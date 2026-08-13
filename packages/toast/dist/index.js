@@ -1,6 +1,5 @@
-import { delegateEvents, ref, insert, createComponent, memo, effect as effect$1, className, setAttribute, setStyleProperty, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createSignal, onCleanup, For, Show, createEffect, untrack } from 'solid-js';
+import { delegateEvents, ref, insert, createComponent, memo, effect, className, setAttribute, setStyleProperty, template } from '@solidjs/web';
+import { createSignal, onCleanup, For, Show, untrack, createEffect } from 'solid-js';
 
 // src/DumbToaster.tsx
 function prefersReducedMotion() {
@@ -28,19 +27,23 @@ function resolveCloseSide(explicit) {
   if (!nav) return "left";
   return isApplePlatform() ? "left" : "right";
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -349,13 +352,13 @@ function ToastIcon(props) {
     },
     get children() {
       var _el$2 = _tmpl$();
-      effect$1(() => `${props.t.icon} size-[1.2em]`, (_v$, _$p) => {
+      effect(() => `${props.t.icon} size-[1.2em]`, (_v$, _$p) => {
         className(_el$2, _v$, _$p);
       });
       return _el$2;
     }
   }));
-  effect$1(() => `dumb-toast-icon grid shrink-0 place-items-center font-bold ${box()} ${kindTone(props.t.kind)}`, (_v$, _$p) => {
+  effect(() => `dumb-toast-icon grid shrink-0 place-items-center font-bold ${box()} ${kindTone(props.t.kind)}`, (_v$, _$p) => {
     className(_el$, _v$, _$p);
   });
   return _el$;
@@ -501,8 +504,7 @@ function DumbToaster(props) {
   const rows = () => [...stacked(), ...flying()].sort((a, b) => a.id - b.id);
   const isLeaving = (t) => flying().some((x) => x.id === t.id);
   let was = 0;
-  effect(() => {
-    const n = shown().length + flying().length;
+  watch(() => shown().length + flying().length, (n) => {
     if (!n) {
       if (box?.matches(":popover-open")) box.hidePopover();
     } else if (n !== was) {
@@ -534,8 +536,7 @@ function DumbToaster(props) {
     });
   };
   let prevRows = [];
-  effect(() => {
-    const now = rows();
+  watch(rows, (now) => {
     const alive = new Set(now.map((t) => t.id));
     let freed = 0;
     const moved = [];
@@ -601,7 +602,7 @@ function DumbToaster(props) {
   const closeButton = (t) => (() => {
     var _el$ = _tmpl$5();
     _el$.$$click = () => bus().dismiss(t.id);
-    effect$1(() => side(), (_v$) => {
+    effect(() => side(), (_v$) => {
       setAttribute(_el$, "data-side", _v$);
     });
     return _el$;
@@ -668,7 +669,7 @@ function DumbToaster(props) {
             if (!a.keepOpen) bus().dismiss(t.id);
           };
           insert(_el$15, () => a.label);
-          effect$1(() => ({
+          effect(() => ({
             e: actionClass(a.kind),
             t: a.kind
           }), ({
@@ -681,7 +682,7 @@ function DumbToaster(props) {
           return _el$15;
         })()
       }), _el$14);
-      effect$1(() => ({
+      effect(() => ({
         e: `dumb-toast ${cardClass} ${isLeaving(t) ? "dumb-toast-leave" : ""}`,
         t: t.id,
         a: t.kind,
@@ -720,7 +721,7 @@ function DumbToaster(props) {
       t
     })
   }), _el$4);
-  effect$1(() => ({
+  effect(() => ({
     e: `dumb-toaster ${props.class ?? ""}`,
     t: props.position ?? "bottom-right",
     a: fly()
@@ -757,7 +758,7 @@ function DumbToaster(props) {
     const spot = spotOf(p.t);
     return [(() => {
       var _el$5 = _tmpl$32();
-      effect$1(() => ({
+      effect(() => ({
         e: `${spot.x}px`,
         t: `${spot.y}px`
       }), ({
@@ -801,7 +802,7 @@ function DumbToaster(props) {
             if (!a.keepOpen) bus().dismiss(p.t.id);
           };
           insert(_el$1, () => a.label);
-          effect$1(() => ({
+          effect(() => ({
             e: actionClass(a.kind),
             t: a.kind
           }), ({
@@ -814,7 +815,7 @@ function DumbToaster(props) {
           return _el$1;
         })()
       }), _el$0);
-      effect$1(() => ({
+      effect(() => ({
         e: p.t.kind,
         t: p.t.kind === "error" ? "alert" : "status"
       }), ({
@@ -939,14 +940,13 @@ function DumbToastCenter(props) {
       if (panel?.matches(":popover-open")) panel.hidePopover();
     });
   });
-  effect(() => {
-    if (!open()) return;
+  watch(open, (visible) => {
+    if (!visible) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 3e4);
     onCleanup(() => clearInterval(id));
   });
-  effect(() => {
-    const show = open();
+  watch(open, (show) => {
     queueMicrotask(() => {
       if (!panel) return;
       if (show && !panel.matches(":popover-open")) panel.showPopover?.();
@@ -961,7 +961,7 @@ function DumbToastCenter(props) {
   const forgetButton = (t) => (() => {
     var _el$2 = _tmpl$23();
     _el$2.$$click = () => bus().forget(t.id);
-    effect$1(() => closeAt(), (_v$) => {
+    effect(() => closeAt(), (_v$) => {
       setAttribute(_el$2, "data-side", _v$);
     });
     return _el$2;
@@ -985,7 +985,7 @@ function DumbToastCenter(props) {
           return _el$6;
         }
       }), null);
-      effect$1(() => ({
+      effect(() => ({
         e: side(),
         t: `\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F${unread() ? `: \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0445 ${unread()}` : ""}`,
         a: open() ? "true" : "false"
@@ -1057,7 +1057,7 @@ function DumbToastCenter(props) {
               t
             }), _el$14);
             insert(_el$14, () => ago(t.time, now()));
-            effect$1(() => t.kind, (_v$) => {
+            effect(() => t.kind, (_v$) => {
               setAttribute(_el$13, "data-kind", _v$);
             });
             return _el$13;
@@ -1065,7 +1065,7 @@ function DumbToastCenter(props) {
         });
       }
     }));
-    effect$1(() => ({
+    effect(() => ({
       e: `dumb-center bg-base-100 border-base-300 shadow-2xl ${side() === "right" ? "border-l" : "border-r"} ${props.class ?? ""}`,
       t: side(),
       a: shouldAnimate(props.animate) ? "1" : "0",

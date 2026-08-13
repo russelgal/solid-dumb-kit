@@ -3,7 +3,7 @@ import { For as For2, Show as Show2, createMemo as createMemo2, createSignal as 
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
+import { untrack, createSignal, createEffect } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -11,19 +11,23 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (opts?.defer ?? false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -293,9 +297,8 @@ function createAutoScroller() {
 }
 
 // ../grid/dist/index.js
-import { delegateEvents, ref, insert, createComponent, effect as effect2, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
-import * as solid2 from "solid-js";
-import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2, untrack as untrack2 } from "solid-js";
+import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
+import { createSignal as createSignal2, onCleanup, createMemo, Show, For, untrack as untrack2, createEffect as createEffect2 } from "solid-js";
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
 var store$4;
@@ -565,7 +568,6 @@ function string(message$1) {
 }
 
 // ../grid/dist/index.js
-var SOLID_22 = !("batch" in solid2);
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -882,8 +884,8 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  effect(() => {
-    flip = createFlip(shouldAnimate(props.animate));
+  watch(() => shouldAnimate(props.animate), (on) => {
+    flip = createFlip(on);
   });
   const scroller = createAutoScroller();
   onCleanup2(() => scroller.stop());

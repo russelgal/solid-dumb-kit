@@ -19,7 +19,7 @@
 // только пересчитываются на изменение ширины. В момент перекладки не читается
 // ничего: смещение — это разница двух известных мест.
 import { createSignal, onCleanup, For, Show } from 'solid-js'
-import { createAutoScroller, createFlip, effect, onMounted, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, onMounted, watch, type Flip } from '@solid-dumb-kit/shared'
 
 const HUE = (i: number) => `oklch(0.75 0.12 ${(i * 41) % 360})`
 
@@ -50,7 +50,7 @@ function Deck(props: DeckProps) {
   let slots: Array<Slot> = []
   let flip: Flip = createFlip(true)
 
-  effect(() => { flip = createFlip(animate()) })
+  watch(animate, (on) => { flip = createFlip(on) })
 
   // Автопрокрутка — готовая из кита. Своего кода тут ноль: сказали, от какого
   // элемента искать прокручиваемых предков, и когда жест закончился. Позицию

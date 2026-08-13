@@ -4,20 +4,20 @@ import * as v from "valibot";
 
 // ../shared/dist/index.js
 import * as solid from "solid-js";
-import { createEffect, untrack, createSignal } from "solid-js";
-var SOLID_2 = !("batch" in solid);
+import { untrack, createSignal, createEffect } from "solid-js";
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  const step = (value) => {
+  twoPhase(dep, (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
-    if (!skip) untrack(() => fn(value, before));
-  };
-  if (SOLID_2) createEffect(dep, step);
-  else createEffect(() => step(dep()));
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();

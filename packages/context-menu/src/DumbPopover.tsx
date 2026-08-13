@@ -14,7 +14,7 @@
 
 import { Show, onCleanup } from 'solid-js'
 import type { JSX } from '@solidjs/web'
-import { effect, injectStyle, resolveCloseSide, type CloseSideOption } from '@solid-dumb-kit/shared'
+import { injectStyle, resolveCloseSide, watch, type CloseSideOption } from '@solid-dumb-kit/shared'
 
 export type DumbPopoverProps = {
   /** где показать; `null` — закрыт */
@@ -74,37 +74,44 @@ export function DumbPopover(props: DumbPopoverProps) {
     </button>
   )
 
-  effect(() => {
-    const open = props.at() !== null
-    if (!open) {
-      if (box?.matches(':popover-open')) box.hidePopover()
-      return
-    }
-    // открываем ПОСЛЕ вставки узла: `showPopover` на элементе вне документа бросает
-    queueMicrotask(() => {
-      if (box && !box.matches(':popover-open')) box.showPopover?.()
-    })
-  })
+  // watch, а не effect: работа с popover — это DOM, а он существует только во
+  // ВТОРОЙ фазе эффекта. В первой (вычисление) `box` ещё не присвоен.
+  watch(
+    () => props.at() !== null,
+    (open) => {
+      if (!open) {
+        if (box?.matches(':popover-open')) box.hidePopover()
+        return
+      }
+      // открываем ПОСЛЕ вставки узла: `showPopover` на элементе вне документа бросает
+      queueMicrotask(() => {
+        if (box && !box.matches(':popover-open')) box.showPopover?.()
+      })
+    },
+  )
 
-  effect(() => {
-    if (props.at() === null) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
-    // pointerdown, а не click: закрыть надо ДО того, как клик что-то нажмёт
-    const away = (e: PointerEvent) => {
-      if (props.keepOnOutside) return
-      if (!box?.contains(e.target as Node)) close()
-    }
-    // прокрутка уводит якорь — карточка становится не к месту
-    const bail = () => close()
-    window.addEventListener('keydown', onKey)
-    window.addEventListener('pointerdown', away, true)
-    window.addEventListener('scroll', bail, true)
-    onCleanup(() => {
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('pointerdown', away, true)
-      window.removeEventListener('scroll', bail, true)
-    })
-  })
+  watch(
+    () => props.at() !== null,
+    (open) => {
+      if (!open) return
+      const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+      // pointerdown, а не click: закрыть надо ДО того, как клик что-то нажмёт
+      const away = (e: PointerEvent) => {
+        if (props.keepOnOutside) return
+        if (!box?.contains(e.target as Node)) close()
+      }
+      // прокрутка уводит якорь — карточка становится не к месту
+      const bail = () => close()
+      window.addEventListener('keydown', onKey)
+      window.addEventListener('pointerdown', away, true)
+      window.addEventListener('scroll', bail, true)
+      onCleanup(() => {
+        window.removeEventListener('keydown', onKey)
+        window.removeEventListener('pointerdown', away, true)
+        window.removeEventListener('scroll', bail, true)
+      })
+    },
+  )
 
   return (
     <Show when={props.at()}>

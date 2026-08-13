@@ -10,7 +10,7 @@
 // запись живёт во второй фазе эффекта, где ей и место.
 
 import { createSignal, type Accessor, type Setter } from 'solid-js'
-import { watch } from './solidCompat'
+import { watch } from './effects'
 
 export type PersistedOptions<T> = {
   /** во что превращать значение; по умолчанию JSON */

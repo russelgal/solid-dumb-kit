@@ -1,6 +1,5 @@
-import { delegateEvents, ref, insert, createComponent, setAttribute, effect as effect$1, style, memo, className, setStyleProperty, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createMemo, createSignal, onCleanup, For, Show, createEffect, untrack } from 'solid-js';
+import { delegateEvents, ref, insert, createComponent, setAttribute, effect, style, memo, className, setStyleProperty, template } from '@solidjs/web';
+import { createMemo, createSignal, onCleanup, For, Show, untrack, createEffect } from 'solid-js';
 
 // src/DumbBoard.tsx
 function prefersReducedMotion() {
@@ -10,19 +9,23 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
+}
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
+  });
 }
 var done = /* @__PURE__ */ new Set();
 function injectStyle(id, css) {
@@ -290,6 +293,8 @@ function createAutoScroller() {
     }
   };
 }
+
+// ../grid/dist/index.js
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -617,8 +622,8 @@ function DumbBoard(props) {
   const zoneW = {};
   const zonePad = {};
   let flip = createFlip(true);
-  effect(() => {
-    flip = createFlip(shouldAnimate(props.animate));
+  watch(() => shouldAnimate(props.animate), (on) => {
+    flip = createFlip(on);
   });
   const scroller = createAutoScroller();
   onCleanup(() => scroller.stop());
@@ -1207,7 +1212,7 @@ function DumbBoard(props) {
         },
         get children() {
           var _el$12 = _tmpl$6();
-          effect$1(() => ({
+          effect(() => ({
             ...linesOf(s()),
             opacity: gridVisible() ? "1" : "0"
           }), (_v$, _$p) => {
@@ -1231,7 +1236,7 @@ function DumbBoard(props) {
             },
             get children() {
               var _el$21 = _tmpl$1();
-              effect$1(() => ({
+              effect(() => ({
                 e: props.id(item),
                 t: props.labels?.resizeBlock ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440"
               }), ({
@@ -1244,7 +1249,7 @@ function DumbBoard(props) {
               return _el$21;
             }
           }), _el$23);
-          effect$1(() => ({
+          effect(() => ({
             e: `dumb-board-block ${held() === props.id(item) ? "held" : ""}`,
             t: props.id(item),
             a: editable() ? "true" : "false",
@@ -1273,7 +1278,7 @@ function DumbBoard(props) {
         children: (f) => {
           const at = () => cellOf(sid, f().id);
           var _el$24 = _tmpl$11();
-          effect$1(() => ({
+          effect(() => ({
             e: `${(at()?.col ?? 0) + 1} / span ${f().w}`,
             t: `${(at()?.row ?? 0) + 1} / span ${f().h}`
           }), ({
@@ -1306,7 +1311,7 @@ function DumbBoard(props) {
           })()];
         }
       }), _el$19);
-      effect$1(() => ({
+      effect(() => ({
         e: `dumb-board-panel ${heldSection() === sid ? "held" : ""} ${sizing() === sid ? "sizing" : ""}`,
         t: editable() ? "true" : "false",
         a: `span ${spanOf(s())}`,
@@ -1337,7 +1342,7 @@ function DumbBoard(props) {
       return _el$3;
     }
   }));
-  effect$1(() => ({
+  effect(() => ({
     e: props.class,
     t: props.style,
     a: String(cols()),

@@ -23,7 +23,7 @@
 import { createSignal, onCleanup, For, Show } from 'solid-js'
 import { Bar, Switch, Check, Pick, Btn, Note } from '../_controls'
 import type { JSX } from 'solid-js'
-import { createAutoScroller, createFlip, effect, onMounted, type Flip } from '@solid-dumb-kit/shared'
+import { createAutoScroller, createFlip, onMounted, watch, type Flip } from '@solid-dumb-kit/shared'
 
 type Block = { id: string; title: string; kind: string }
 
@@ -134,7 +134,7 @@ export default function OrderBoardExample() {
   let wrapAt = { left: 0, top: 0 }
   let geom: Record<string, Geom> = {}
   let flip: Flip = createFlip(true)
-  effect(() => { flip = createFlip(animate()) })
+  watch(animate, (on) => { flip = createFlip(on) })
   const scroller = createAutoScroller()
   onCleanup(() => scroller.stop())
 

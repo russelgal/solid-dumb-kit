@@ -1,6 +1,5 @@
-import { ref, insert, createComponent, effect as effect$1, className, style, template } from '@solidjs/web';
-import * as solid from 'solid-js';
-import { createSignal, onCleanup, createMemo, For, createEffect } from 'solid-js';
+import { ref, insert, createComponent, effect, className, style, template } from '@solidjs/web';
+import { createSignal, onCleanup, createMemo, For, untrack, createEffect } from 'solid-js';
 
 // src/DumbSortableDnd.tsx
 function prefersReducedMotion() {
@@ -10,11 +9,19 @@ function shouldAnimate(explicit) {
   if (explicit !== void 0) return explicit;
   return !prefersReducedMotion();
 }
-var SOLID_2 = !("batch" in solid);
-function effect(fn) {
-  if (SOLID_2) createEffect(fn, () => {
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
+function watch(dep, fn, opts) {
+  let first = true;
+  let prev;
+  twoPhase(dep, (value) => {
+    const skip = first && (false);
+    first = false;
+    const before = prev;
+    prev = value;
+    if (skip) return void 0;
+    return cleanupOnly(untrack(() => fn(value, before)));
   });
-  else createEffect(fn);
 }
 function createStableOrder(id) {
   const seen = /* @__PURE__ */ new Map();
@@ -550,8 +557,8 @@ function DumbSortableDnd(props) {
   const stable = createStableOrder(props.id);
   const rendered = createMemo(() => stable.sort(props.items));
   const places = createMemo(() => new Map(props.items.map((it, i) => [props.id(it), i])));
-  effect(() => {
-    for (const [id, i] of places()) {
+  watch(places, (map) => {
+    for (const [id, i] of map) {
       const el = els.get(id);
       if (!el) continue;
       const next = String(i);
@@ -576,7 +583,7 @@ function DumbSortableDnd(props) {
       return el;
     }
   }));
-  effect$1(() => ({
+  effect(() => ({
     e: props.class,
     t: props.style
   }), ({

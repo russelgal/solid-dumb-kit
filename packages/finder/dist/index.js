@@ -1,16 +1,12 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, ref, addEvent, template } from '@solidjs/web';
-import * as solid3 from 'solid-js';
 import { createSignal, onCleanup, createMemo, untrack, For, Show, createEffect } from 'solid-js';
 
 // src/DumbFinder.tsx
-var SOLID_2 = !("batch" in solid3);
+var twoPhase = createEffect;
+var cleanupOnly = (out) => typeof out === "function" ? out : void 0;
 function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
+  twoPhase(() => {
+  }, () => cleanupOnly(fn()));
 }
 var EDGE = 48;
 var MAX_SPEED = 18;
@@ -670,19 +666,19 @@ function safeParse(schema, input, config$1) {
 }
 
 // ../resizable-grid/dist/index.js
-var SOLID_22 = !("batch" in solid3);
+var twoPhase2 = createEffect;
+var cleanupOnly2 = (out) => typeof out === "function" ? out : void 0;
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
-  const step = (value) => {
+  twoPhase2(dep, (value) => {
     const skip = first && opts?.defer;
     first = false;
     const before = prev;
     prev = value;
-    if (!skip) untrack(() => fn(value, before));
-  };
-  if (SOLID_22) createEffect(dep, step);
-  else createEffect(() => step(dep()));
+    if (skip) return void 0;
+    return cleanupOnly2(untrack(() => fn(value, before)));
+  });
 }
 function createPersisted(key, initial, opts = {}) {
   const store = opts.storage ?? safeStorage();
@@ -1027,25 +1023,19 @@ var STYLES = `
   background: oklch(from currentColor l c h / 0.2);
 }`;
 delegateEvents(["mousedown"]);
-var SOLID_23 = !("batch" in solid3);
-function effect3(fn) {
-  if (SOLID_23) createEffect(fn, () => {
-  });
-  else createEffect(fn);
-}
-var batch2 = solid3.batch ?? ((fn) => fn());
+var twoPhase3 = createEffect;
+var cleanupOnly3 = (out) => typeof out === "function" ? out : void 0;
 function watch2(dep, fn, opts) {
   let first = true;
   let prev;
-  const step = (value) => {
+  twoPhase3(dep, (value) => {
     const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
-    if (!skip) untrack(() => fn(value, before));
-  };
-  if (SOLID_23) createEffect(dep, step);
-  else createEffect(() => step(dep()));
+    if (skip) return void 0;
+    return cleanupOnly3(untrack(() => fn(value, before)));
+  });
 }
 var toPicked = (file) => ({
   file,
@@ -2278,14 +2268,12 @@ function DumbFinder(props) {
   const [ownPath, setOwnPath] = createSignal("");
   const path = () => props.path ?? ownPath();
   const goto = (next) => {
-    batch2(() => {
-      setOwnPath(next);
-      setSelection(/* @__PURE__ */ new Set());
-      setCursor(-1);
-      setAnchor(-1);
-      props.onPathChange?.(next);
-      props.onSelectionChange?.(/* @__PURE__ */ new Set());
-    });
+    setOwnPath(next);
+    setSelection(/* @__PURE__ */ new Set());
+    setCursor(-1);
+    setAnchor(-1);
+    props.onPathChange?.(next);
+    props.onSelectionChange?.(/* @__PURE__ */ new Set());
   };
   const [ownSel, setOwnSel] = createSignal(/* @__PURE__ */ new Set());
   const selected = () => props.selected ?? ownSel();
@@ -2321,10 +2309,8 @@ function DumbFinder(props) {
         signal: ctrl.signal
       });
       if (ctrl.signal.aborted) return;
-      batch2(() => {
-        setEntries(got);
-        setError(null);
-      });
+      setEntries(got);
+      setError(null);
     } catch (err) {
       if (ctrl.signal.aborted) return;
       setEntries([]);
@@ -2391,14 +2377,12 @@ function DumbFinder(props) {
       wholeFlight = false;
     }
   }
-  effect3(() => {
+  watch2(() => [path(), tree(), whole()], ([here]) => {
     if (props.sidebar === false) return;
     if (props.source.tree) {
-      if (whole() === null) void loadWhole();
+      if (untrack(whole) === null) void loadWhole();
       return;
     }
-    tree();
-    const here = path();
     for (const c of crumbs(here)) void ensure(c.prefix);
     const kids = untrack(tree)[here] ?? [];
     if (kids.length <= 24) for (const k of kids) void ensure(k.key);
@@ -2436,23 +2420,22 @@ function DumbFinder(props) {
       subFlight.delete(prefix);
     }
   }
-  const toggleRow = (key) => batch2(() => {
+  const toggleRow = (key) => {
     setOpenRows((was) => {
       const next = new Set(was);
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
     void ensureSub(key);
-  });
-  watch2(path, () => batch2(() => {
+  };
+  watch2(path, () => {
     setOpenRows(/* @__PURE__ */ new Set());
     setSub({});
-  }), {
+  }, {
     defer: true
   });
-  effect3(() => {
-    const cache = sub();
-    for (const k of openRows()) if (!(k in cache)) void ensureSub(k);
+  watch2(() => [sub(), openRows()], ([cache, open2]) => {
+    for (const k of open2) if (!(k in cache)) void ensureSub(k);
   });
   const rows = createMemo(() => {
     if (view() !== "list") return shown().map((e) => ({
@@ -2693,11 +2676,9 @@ function DumbFinder(props) {
         shift: ev.shiftKey,
         ctrl: ev.metaKey || ev.ctrlKey
       });
-      batch2(() => {
-        setCursor(next);
-        setAnchor(res.anchor);
-        setSelection(res.selected);
-      });
+      setCursor(next);
+      setAnchor(res.anchor);
+      setSelection(res.selected);
       const el = itemsBox?.children[next];
       el?.scrollIntoView({
         block: "nearest"
