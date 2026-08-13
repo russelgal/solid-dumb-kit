@@ -247,7 +247,7 @@ function createAutoScroller() {
 }
 
 // ../grid/dist/index.js
-import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, memo, setAttribute, className, style, template } from "solid-js/web";
+import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
 import * as solid2 from "solid-js";
 import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2, untrack as untrack2 } from "solid-js";
 
@@ -661,7 +661,7 @@ var LayoutSchema = array(object({
   x: optional(number()),
   y: optional(number())
 }));
-delegateEvents(["click"]);
+delegateEvents(["pointerdown", "click"]);
 
 // src/dndCore.ts
 function insertIndexReading(args) {

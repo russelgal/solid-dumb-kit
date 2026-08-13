@@ -9,7 +9,7 @@
 pnpm add @solid-dumb-kit/toast
 ```
 
-Peer-зависимости: `solid-js` и `@solidjs/web` — вторая линия Solid (`>=2.0.0-beta.30`). Рантайм-зависимостей нет.
+Peer-зависимости: `solid-js` и `@solidjs/web` — вторая линия Solid (`>=2.0.0-rc.0`). Рантайм-зависимостей нет.
 
 ## Документация
 

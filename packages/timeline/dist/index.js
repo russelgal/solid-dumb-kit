@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, effect as effect$1, className, setStyleProperty, setAttribute, memo, style, template } from 'solid-js/web';
+import { delegateEvents, ref, insert, createComponent, effect as effect$1, className, setStyleProperty, setAttribute, memo, style, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createMemo, createSignal, onCleanup, Show, For, createEffect, untrack } from 'solid-js';
 import { Temporal as Temporal$1 } from 'temporal-polyfill';
@@ -285,7 +285,7 @@ var SCALES = {
 var _tmpl$ = /* @__PURE__ */ template(`<div class=dumb-tl-sum-title>`);
 var _tmpl$2 = /* @__PURE__ */ template(`<div class="dumb-tl-days dumb-tl-summary">`);
 var _tmpl$3 = /* @__PURE__ */ template(`<div class=dumb-tl-now>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<div><div class=dumb-tl-inner><div class=dumb-tl-corner></div><div class=dumb-tl-head><div class=dumb-tl-groups></div><div class=dumb-tl-days></div></div><div class=dumb-tl-rows></div><div class=dumb-tl-canvas>`);
+var _tmpl$4 = /* @__PURE__ */ template(`<div><div class=dumb-tl-inner><div class=dumb-tl-corner></div><div class=dumb-tl-head><div class=dumb-tl-groups></div><div class=dumb-tl-days></div></div><div class=dumb-tl-rows></div><div class=dumb-tl-canvas><!><!><!><!><!>`);
 var _tmpl$5 = /* @__PURE__ */ template(`<div class=dumb-tl-group>`);
 var _tmpl$6 = /* @__PURE__ */ template(`<div>`);
 var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-tl-day>`);
@@ -296,7 +296,7 @@ var _tmpl$1 = /* @__PURE__ */ template(`<div class=dumb-tl-pick>`);
 var _tmpl$10 = /* @__PURE__ */ template(`<div class=dumb-tl-gap style=top:3px;left:0>`);
 var _tmpl$11 = /* @__PURE__ */ template(`<span class=dumb-tl-grip data-edge=from>`);
 var _tmpl$12 = /* @__PURE__ */ template(`<span class=dumb-tl-grip data-edge=to>`);
-var _tmpl$13 = /* @__PURE__ */ template(`<div style=top:3px;left:0>`);
+var _tmpl$13 = /* @__PURE__ */ template(`<div style=top:3px;left:0><!><!>`);
 var _tmpl$14 = /* @__PURE__ */ template(`<div class=dumb-tl-room style=top:3px;left:0><b>+`);
 var _tmpl$15 = /* @__PURE__ */ template(`<span class=dumb-tl-hh>`);
 var _tmpl$16 = /* @__PURE__ */ template(`<span class=dumb-tl-wd>`);
@@ -794,558 +794,583 @@ function DumbTimeline(props) {
     const d = draft();
     return d && d.id === s.id ? d.next : s;
   };
-  return (() => {
-    var _el$ = _tmpl$4(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$5 = _el$3.nextSibling, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$9 = _el$5.nextSibling, _el$0 = _el$9.nextSibling;
-    _el$.addEventListener("scroll", () => {
-      if (!props.onVisibleRange) return;
-      if (scrollRaf) return;
-      scrollRaf = requestAnimationFrame(() => {
-        scrollRaf = 0;
-        props.onVisibleRange(visibleRange());
-      });
+  var _el$ = _tmpl$4(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$5 = _el$3.nextSibling, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$9 = _el$5.nextSibling, _el$0 = _el$9.nextSibling, _el$10 = _el$0.firstChild, _el$11 = _el$10.nextSibling, _el$12 = _el$11.nextSibling, _el$13 = _el$12.nextSibling, _el$14 = _el$13.nextSibling;
+  _el$.addEventListener("scroll", () => {
+    if (!props.onVisibleRange) return;
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = 0;
+      props.onVisibleRange(visibleRange());
     });
-    var _ref$ = viewport;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : viewport = _el$;
-    insert(_el$3, createComponent(Show, {
+  });
+  var _ref$ = viewport;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : viewport = _el$;
+  insert(_el$3, createComponent(Show, {
+    get when() {
+      return props.summary;
+    },
+    get children() {
+      var _el$4 = _tmpl$();
+      insert(_el$4, () => props.summaryTitle ?? "\u0421\u0432\u043E\u0431\u043E\u0434\u043D\u043E");
+      return _el$4;
+    }
+  }));
+  insert(_el$6, createComponent(For, {
+    get each() {
+      return groups();
+    },
+    children: (g) => (() => {
+      var _el$15 = _tmpl$5();
+      insert(_el$15, () => props.groupLabel?.(g.at, g.span) ?? defaultGroupLabel(g.at, scale()));
+      return _el$15;
+    })()
+  }));
+  insert(_el$7, createComponent(For, {
+    get each() {
+      return cols();
+    },
+    children: (at) => (() => {
+      var _el$16 = _tmpl$6();
+      insert(_el$16, () => props.dayLabel?.(at) ?? defaultDayLabel(at, scale()));
+      effect$1(() => `dumb-tl-day ${props.dayClass?.(at) ?? ""}`, (_v$, _$p) => {
+        className(_el$16, _v$, _$p);
+      });
+      return _el$16;
+    })()
+  }));
+  insert(_el$5, createComponent(Show, {
+    get when() {
+      return props.summary;
+    },
+    get children() {
+      var _el$8 = _tmpl$2();
+      insert(_el$8, createComponent(For, {
+        get each() {
+          return cols();
+        },
+        children: (at) => (() => {
+          var _el$17 = _tmpl$7();
+          insert(_el$17, () => props.summary(at));
+          return _el$17;
+        })()
+      }));
+      effect$1(() => `repeat(${totalCols(scale())}, ${colW()}px)`, (_v$) => {
+        setStyleProperty(_el$8, "grid-template-columns", _v$);
+      });
+      return _el$8;
+    }
+  }), null);
+  insert(_el$9, createComponent(For, {
+    get each() {
+      return rowGeom().items;
+    },
+    children: (it, i) => createComponent(Show, {
       get when() {
-        return props.summary;
+        return it.kind === "row";
+      },
+      get fallback() {
+        var _el$19 = _tmpl$8(), _el$20 = _el$19.firstChild;
+        _el$19.$$click = () => toggleGroup(it.id);
+        insert(_el$20, () => folded().has(it.id) ? "\u25B8" : "\u25BE");
+        insert(_el$19, () => it.id, null);
+        effect$1(() => `${rowGeom().heights[i()]}px`, (_v$) => {
+          setStyleProperty(_el$19, "height", _v$);
+        });
+        return _el$19;
       },
       get children() {
-        var _el$4 = _tmpl$();
-        insert(_el$4, () => props.summaryTitle ?? "\u0421\u0432\u043E\u0431\u043E\u0434\u043D\u043E");
-        return _el$4;
+        var _el$18 = _tmpl$6();
+        insert(_el$18, () => it.row.title);
+        effect$1(() => ({
+          e: `dumb-tl-row ${props.rowClass?.(it.row) ?? ""}`,
+          t: props.rowDisabled?.(it.row) ? "1" : void 0,
+          a: `${rowGeom().heights[i()]}px`
+        }), ({
+          e,
+          t,
+          a
+        }, _p$) => {
+          className(_el$18, e, _p$?.e);
+          t !== _p$?.t && setAttribute(_el$18, "data-off", t);
+          a !== _p$?.a && setStyleProperty(_el$18, "height", a);
+        });
+        return _el$18;
       }
-    }));
-    insert(_el$6, createComponent(For, {
-      get each() {
-        return groups();
-      },
-      children: (g) => (() => {
-        var _el$10 = _tmpl$5();
-        insert(_el$10, () => props.groupLabel?.(g.at, g.span) ?? defaultGroupLabel(g.at, scale()));
-        return _el$10;
-      })()
-    }));
-    insert(_el$7, createComponent(For, {
-      get each() {
-        return cols();
-      },
-      children: (at) => (() => {
-        var _el$11 = _tmpl$6();
-        insert(_el$11, () => props.dayLabel?.(at) ?? defaultDayLabel(at, scale()));
-        effect$1(() => className(_el$11, `dumb-tl-day ${props.dayClass?.(at) ?? ""}`));
-        return _el$11;
-      })()
-    }));
-    insert(_el$5, createComponent(Show, {
-      get when() {
-        return props.summary;
-      },
-      get children() {
-        var _el$8 = _tmpl$2();
-        insert(_el$8, createComponent(For, {
-          get each() {
-            return cols();
-          },
-          children: (at) => (() => {
-            var _el$12 = _tmpl$7();
-            insert(_el$12, () => props.summary(at));
-            return _el$12;
-          })()
-        }));
-        effect$1((_$p) => setStyleProperty(_el$8, "grid-template-columns", `repeat(${totalCols(scale())}, ${colW()}px)`));
-        return _el$8;
-      }
-    }), null);
-    insert(_el$9, createComponent(For, {
-      get each() {
-        return rowGeom().items;
-      },
-      children: (it, i) => createComponent(Show, {
-        get when() {
-          return it.kind === "row";
-        },
-        get fallback() {
-          return (
-            // заголовок группы: щелчок сворачивает — этажей и корпусов
-            // бывает много, и без сворачивания сетка не читается
-            (() => {
-              var _el$14 = _tmpl$8(), _el$15 = _el$14.firstChild;
-              _el$14.$$click = () => toggleGroup(it.id);
-              insert(_el$15, () => folded().has(it.id) ? "\u25B8" : "\u25BE");
-              insert(_el$14, () => it.id, null);
-              effect$1((_$p) => setStyleProperty(_el$14, "height", `${rowGeom().heights[i()]}px`));
-              return _el$14;
-            })()
-          );
-        },
-        get children() {
-          var _el$13 = _tmpl$6();
-          insert(_el$13, () => it.row.title);
-          effect$1((_p$) => {
-            var _v$7 = `dumb-tl-row ${props.rowClass?.(it.row) ?? ""}`, _v$8 = props.rowDisabled?.(it.row) ? "1" : void 0, _v$9 = `${rowGeom().heights[i()]}px`;
-            _v$7 !== _p$.e && className(_el$13, _p$.e = _v$7);
-            _v$8 !== _p$.t && setAttribute(_el$13, "data-off", _p$.t = _v$8);
-            _v$9 !== _p$.a && setStyleProperty(_el$13, "height", _p$.a = _v$9);
-            return _p$;
-          }, {
-            e: void 0,
-            t: void 0,
-            a: void 0
-          });
-          return _el$13;
-        }
-      })
-    }));
-    _el$0.$$click = (ev) => {
-      if (!props.onEmptyClick || ev.target !== ev.currentTarget) return;
-      const cx = ev.clientX;
-      const cy = ev.clientY;
-      const sc = scale();
-      snapOrigin(() => {
-        if (!origin) return;
-        const {
-          x,
-          y
-        } = toLocal(cx, cy);
-        props.onEmptyClick(toMoment(Math.max(0, fromX(x, sc)), sc), rowIds()[rowAtY(y)]);
+    })
+  }));
+  _el$0.$$click = (ev) => {
+    if (!props.onEmptyClick || ev.target !== ev.currentTarget) return;
+    const cx = ev.clientX;
+    const cy = ev.clientY;
+    const sc = scale();
+    snapOrigin(() => {
+      if (!origin) return;
+      const {
+        x,
+        y
+      } = toLocal(cx, cy);
+      props.onEmptyClick(toMoment(Math.max(0, fromX(x, sc)), sc), rowIds()[rowAtY(y)]);
+    });
+  };
+  _el$0.$$contextmenu = (ev) => {
+    if (!props.onEmptyContextMenu || ev.target !== ev.currentTarget) return;
+    ev.preventDefault();
+    const cx = ev.clientX;
+    const cy = ev.clientY;
+    const sc = scale();
+    snapOrigin(() => {
+      if (!origin) return;
+      const {
+        x,
+        y
+      } = toLocal(cx, cy);
+      const at = toMoment(Math.max(0, fromX(x, sc)), sc);
+      props.onEmptyContextMenu(at, rowIds()[rowAtY(y)], ev);
+    });
+  };
+  _el$0.$$pointerdown = (ev) => {
+    if (ev.button !== 0) return;
+    if (ev.isPrimary === false) return;
+    if (!props.onRangeSelect || ev.target !== ev.currentTarget) return;
+    const sc = scale();
+    const gridEdge = totalCols(sc) * sc.stepMin;
+    const startClient = {
+      x: ev.clientX,
+      y: ev.clientY
+    };
+    let last = {
+      ...startClient
+    };
+    let upX = null;
+    const minPick = (rowId) => Math.max(snapOf(sc), minLength(sc, rulesOf(rowId)));
+    const begin = () => {
+      if (!origin) return;
+      const {
+        x,
+        y
+      } = toLocal(startClient.x, startClient.y);
+      const row = props.rows[rowAtY(y)];
+      if (!row || props.rowDisabled?.(row)) return;
+      const a = Math.min(Math.max(0, fromX(x, sc)), gridEdge);
+      setPick({
+        row: row.id,
+        a,
+        b: Math.min(a + minPick(row.id), gridEdge)
       });
     };
-    _el$0.$$contextmenu = (ev) => {
-      if (!props.onEmptyContextMenu || ev.target !== ev.currentTarget) return;
-      ev.preventDefault();
-      const cx = ev.clientX;
-      const cy = ev.clientY;
-      const sc = scale();
-      snapOrigin(() => {
-        if (!origin) return;
-        const {
-          x,
-          y
-        } = toLocal(cx, cy);
-        const at = toMoment(Math.max(0, fromX(x, sc)), sc);
-        props.onEmptyContextMenu(at, rowIds()[rowAtY(y)], ev);
+    const update = (cx) => {
+      if (!origin) return;
+      const at = Math.min(Math.max(0, fromX(toLocal(cx, 0).x, sc)), gridEdge);
+      setPick((was) => {
+        if (!was) return was;
+        const b = at >= was.a ? Math.max(at, Math.min(was.a + minPick(was.row), gridEdge)) : at;
+        return {
+          ...was,
+          b
+        };
       });
     };
-    _el$0.$$pointerdown = (ev) => {
-      if (ev.button !== 0) return;
-      if (ev.isPrimary === false) return;
-      if (!props.onRangeSelect || ev.target !== ev.currentTarget) return;
-      const sc = scale();
-      const gridEdge = totalCols(sc) * sc.stepMin;
-      const startClient = {
-        x: ev.clientX,
-        y: ev.clientY
-      };
-      let last = {
-        ...startClient
-      };
-      let upX = null;
-      const minPick = (rowId) => Math.max(snapOf(sc), minLength(sc, rulesOf(rowId)));
-      const begin = () => {
-        if (!origin) return;
-        const {
-          x,
-          y
-        } = toLocal(startClient.x, startClient.y);
-        const row = props.rows[rowAtY(y)];
-        if (!row || props.rowDisabled?.(row)) return;
-        const a = Math.min(Math.max(0, fromX(x, sc)), gridEdge);
-        setPick({
-          row: row.id,
-          a,
-          b: Math.min(a + minPick(row.id), gridEdge)
-        });
-      };
-      const update = (cx) => {
-        if (!origin) return;
-        const at = Math.min(Math.max(0, fromX(toLocal(cx, 0).x, sc)), gridEdge);
-        setPick((was) => {
-          if (!was) return was;
-          const b = at >= was.a ? Math.max(at, Math.min(was.a + minPick(was.row), gridEdge)) : at;
-          return {
-            ...was,
-            b
-          };
-        });
-      };
-      const finish = (endX) => {
-        const p = pick();
-        setPick(null);
-        if (!p) return;
-        if (Math.abs(endX - startClient.x) < sc.colW / 2) return;
-        swallowNextClick();
-        let [a, b] = [Math.min(p.a, p.b), Math.max(p.a, p.b)];
-        b = Math.min(b, gridEdge);
-        const rules = rulesOf(p.row);
-        const rowGap = gapOf(p.row);
-        if (confined(sc, rules)) {
-          const rb = rowBounds(a, sc, rules);
-          a = Math.max(a, rb.start);
-          b = Math.min(b, rb.end);
-        }
-        for (const o of props.spans) {
-          if (o.row !== p.row) continue;
+    const finish = (endX) => {
+      const p = pick();
+      setPick(null);
+      if (!p) return;
+      if (Math.abs(endX - startClient.x) < sc.colW / 2) return;
+      swallowNextClick();
+      let [a, b] = [Math.min(p.a, p.b), Math.max(p.a, p.b)];
+      b = Math.min(b, gridEdge);
+      const rules = rulesOf(p.row);
+      const rowGap = gapOf(p.row);
+      if (confined(sc, rules)) {
+        const rb = rowBounds(a, sc, rules);
+        a = Math.max(a, rb.start);
+        b = Math.min(b, rb.end);
+      }
+      for (const o of props.spans) {
+        if (o.row !== p.row) continue;
+        const oa = toMinutes(o.from, sc, "from");
+        const ob = toMinutes(o.to, sc, "to");
+        if (oa >= b || ob <= a) continue;
+        if (oa >= a) b = Math.min(b, oa - rowGap);
+        else a = Math.max(a, ob + rowGap);
+      }
+      const need = minLength(sc, rules);
+      if (b - a < need) {
+        b = a + need;
+        if (b > gridEdge) return;
+        if (confined(sc, rules) && b > rowBounds(a, sc, rules).end) return;
+        const clash = props.spans.some((o) => {
+          if (o.row !== p.row) return false;
           const oa = toMinutes(o.from, sc, "from");
           const ob = toMinutes(o.to, sc, "to");
-          if (oa >= b || ob <= a) continue;
-          if (oa >= a) b = Math.min(b, oa - rowGap);
-          else a = Math.max(a, ob + rowGap);
-        }
-        const need = minLength(sc, rules);
-        if (b - a < need) {
-          b = a + need;
-          if (b > gridEdge) return;
-          if (confined(sc, rules) && b > rowBounds(a, sc, rules).end) return;
-          const clash = props.spans.some((o) => {
-            if (o.row !== p.row) return false;
-            const oa = toMinutes(o.from, sc, "from");
-            const ob = toMinutes(o.to, sc, "to");
-            return a < ob + rowGap && oa < b + rowGap;
-          });
-          if (clash) return;
-        }
-        if (b <= a) return;
-        const hourly = unitOf(p.row) === "hour";
-        props.onRangeSelect({
-          row: p.row,
-          // Суточной строке отдаём ДАТЫ БЕЗ ВРЕМЕНИ: час заезда и выезда
-          // подставит сама шкала (16:00 → 12:00). Написать сюда полночь
-          // значило бы соврать на полсуток с каждого края.
-          from: dayGrid() && !hourly ? toMoment(a, sc).slice(0, 10) : toMoment(a, sc),
-          to: dayGrid() && !hourly ? toMoment(b, sc).slice(0, 10) : toMoment(b, sc, true),
-          needsTime: hourly && dayGrid()
+          return a < ob + rowGap && oa < b + rowGap;
         });
-      };
-      const move = (e) => {
-        last = {
-          x: e.clientX,
-          y: e.clientY
-        };
-        update(e.clientX);
-      };
-      const cleanup = () => {
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", up);
-        window.removeEventListener("pointercancel", cancel);
-        window.removeEventListener("keydown", key);
-        aborts.delete(cancel);
-      };
-      let dead = false;
-      const cancel = () => {
-        cleanup();
-        dead = true;
-        upX = null;
-        setPick(null);
-      };
-      const key = (e) => {
-        if (e.key === "Escape") cancel();
-      };
-      const up = (e) => {
-        cleanup();
-        if (!pick()) {
-          upX = e.clientX;
-          return;
-        }
-        finish(e.clientX);
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", up);
-      window.addEventListener("pointercancel", cancel);
-      window.addEventListener("keydown", key);
-      aborts.add(cancel);
-      snapOrigin(() => {
-        if (dead) return;
-        begin();
-        if (upX !== null) {
-          update(upX);
-          flushNow();
-          finish(upX);
-        } else {
-          update(last.x);
-        }
+        if (clash) return;
+      }
+      if (b <= a) return;
+      const hourly = unitOf(p.row) === "hour";
+      props.onRangeSelect({
+        row: p.row,
+        // Суточной строке отдаём ДАТЫ БЕЗ ВРЕМЕНИ: час заезда и выезда
+        // подставит сама шкала (16:00 → 12:00). Написать сюда полночь
+        // значило бы соврать на полсуток с каждого края.
+        from: dayGrid() && !hourly ? toMoment(a, sc).slice(0, 10) : toMoment(a, sc),
+        to: dayGrid() && !hourly ? toMoment(b, sc).slice(0, 10) : toMoment(b, sc, true),
+        needsTime: hourly && dayGrid()
       });
     };
-    var _ref$2 = canvas;
-    typeof _ref$2 === "function" ? use(_ref$2, _el$0) : canvas = _el$0;
-    insert(_el$0, createComponent(For, {
-      get each() {
-        return rowGeom().items;
-      },
-      children: (_, i) => (() => {
-        var _el$16 = _tmpl$9();
-        effect$1((_$p) => setStyleProperty(_el$16, "top", `${rowGeom().offsets[i() + 1]}px`));
-        return _el$16;
-      })()
-    }), null);
-    insert(_el$0, createComponent(Show, {
-      get when() {
-        return !dayGrid();
-      },
-      get children() {
-        return createComponent(For, {
-          get each() {
-            return props.rows;
-          },
-          children: (row) => {
-            const sc = () => scale();
-            const win = () => Math.max(1, sc().dayEnd - sc().dayStart);
-            const openW = () => toX(Math.min(Math.max((row.openMin ?? sc().dayStart) - sc().dayStart, 0), win()), sc());
-            const closeAt = () => toX(Math.min(Math.max((row.closeMin ?? sc().dayEnd) - sc().dayStart, 0), win()), sc());
-            const top = () => rowGeom().tops.get(row.id);
-            const height = () => rowH() * levelsOf(row.id);
-            return createComponent(Show, {
-              get when() {
-                return memo(() => !!(row.openMin != null || row.closeMin != null))() && top() != null;
-              },
-              get children() {
-                return createComponent(For, {
-                  get each() {
-                    return Array.from({
-                      length: scale().days
-                    }, (_, d) => d);
-                  },
-                  children: (d) => [createComponent(Show, {
-                    get when() {
-                      return openW() > 0;
-                    },
-                    get children() {
-                      var _el$17 = _tmpl$0();
-                      effect$1((_p$) => {
-                        var _v$0 = `translate(${toX(d * win(), sc())}px, ${top()}px)`, _v$1 = `${openW()}px`, _v$10 = `${height()}px`;
-                        _v$0 !== _p$.e && setStyleProperty(_el$17, "transform", _p$.e = _v$0);
-                        _v$1 !== _p$.t && setStyleProperty(_el$17, "width", _p$.t = _v$1);
-                        _v$10 !== _p$.a && setStyleProperty(_el$17, "height", _p$.a = _v$10);
-                        return _p$;
-                      }, {
-                        e: void 0,
-                        t: void 0,
-                        a: void 0
-                      });
-                      return _el$17;
-                    }
-                  }), createComponent(Show, {
-                    get when() {
-                      return closeAt() < toX(win(), sc());
-                    },
-                    get children() {
-                      var _el$18 = _tmpl$0();
-                      effect$1((_p$) => {
-                        var _v$11 = `translate(${toX(d * win(), sc()) + closeAt()}px, ${top()}px)`, _v$12 = `${toX(win(), sc()) - closeAt()}px`, _v$13 = `${height()}px`;
-                        _v$11 !== _p$.e && setStyleProperty(_el$18, "transform", _p$.e = _v$11);
-                        _v$12 !== _p$.t && setStyleProperty(_el$18, "width", _p$.t = _v$12);
-                        _v$13 !== _p$.a && setStyleProperty(_el$18, "height", _p$.a = _v$13);
-                        return _p$;
-                      }, {
-                        e: void 0,
-                        t: void 0,
-                        a: void 0
-                      });
-                      return _el$18;
-                    }
-                  })]
-                });
-              }
-            });
-          }
-        });
+    const move = (e) => {
+      last = {
+        x: e.clientX,
+        y: e.clientY
+      };
+      update(e.clientX);
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("keydown", key);
+      aborts.delete(cancel);
+    };
+    let dead = false;
+    const cancel = () => {
+      cleanup();
+      dead = true;
+      upX = null;
+      setPick(null);
+    };
+    const key = (e) => {
+      if (e.key === "Escape") cancel();
+    };
+    const up = (e) => {
+      cleanup();
+      if (!pick()) {
+        upX = e.clientX;
+        return;
       }
-    }), null);
-    insert(_el$0, createComponent(Show, {
-      get when() {
-        return pick();
-      },
-      children: (p) => {
-        const sc = () => scale();
-        const x = () => toX(Math.min(p().a, p().b), sc());
-        const w = () => toX(Math.abs(p().b - p().a), sc());
-        const top = () => rowGeom().tops.get(p().row) ?? 0;
-        const hrs = () => Math.abs(p().b - p().a);
-        return (() => {
-          var _el$19 = _tmpl$1();
-          insert(_el$19, () => fmtRoom(hrs(), scale()));
-          effect$1((_p$) => {
-            var _v$14 = `translate(${x()}px, ${top() + 3}px)`, _v$15 = `${w()}px`, _v$16 = `${rowH() - 6}px`;
-            _v$14 !== _p$.e && setStyleProperty(_el$19, "transform", _p$.e = _v$14);
-            _v$15 !== _p$.t && setStyleProperty(_el$19, "width", _p$.t = _v$15);
-            _v$16 !== _p$.a && setStyleProperty(_el$19, "height", _p$.a = _v$16);
-            return _p$;
-          }, {
-            e: void 0,
-            t: void 0,
-            a: void 0
-          });
-          return _el$19;
-        })();
+      finish(e.clientX);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("keydown", key);
+    aborts.add(cancel);
+    snapOrigin(() => {
+      if (dead) return;
+      begin();
+      if (upX !== null) {
+        update(upX);
+        flushNow();
+        finish(upX);
+      } else {
+        update(last.x);
       }
-    }), null);
-    insert(_el$0, createComponent(Show, {
-      get when() {
-        return props.now;
-      },
-      get children() {
-        var _el$1 = _tmpl$3();
-        effect$1((_$p) => setStyleProperty(_el$1, "left", `${momentX(props.now, scale(), "from")}px`));
-        return _el$1;
-      }
-    }), null);
-    insert(_el$0, createComponent(For, {
-      get each() {
-        return spanIds();
-      },
-      children: (id) => {
-        const span = () => spanById().get(id);
-        const view = () => shownSpan(span());
-        const box = () => {
-          const sc = scale();
-          const x = momentX(view().from, sc, "from");
-          const w = Math.max(momentX(view().to, sc, "to") - x, sc.colW * 0.4);
-          return {
-            x,
-            w,
-            y: rowGeom().tops.get(view().row) ?? 0
-          };
-        };
-        const dragging = () => draft()?.id === id;
-        const floor = () => floors().get(id) ?? 0;
-        const room = () => hovered() === id ? roomOf(view()) : null;
-        const tailW = () => {
-          if (dayGrid()) return 0;
-          const g = gapOf(view().row);
-          if (g <= 0) return 0;
-          const sc = scale();
-          const end = toMinutes(view().to, sc, "to");
-          const rules = rulesOf(view().row);
-          const wall = Math.min(confined(sc, rules) ? rowBounds(Math.max(0, end - 1), sc, rules).end : Infinity, totalCols(sc) * sc.stepMin);
-          return Math.max(0, toX(Math.min(end + g, wall), sc) - toX(end, sc));
-        };
-        return [createComponent(Show, {
-          get when() {
-            return tailW() > 0;
-          },
-          get children() {
-            var _el$20 = _tmpl$10();
-            effect$1((_p$) => {
-              var _v$17 = `\u0437\u0430\u0437\u043E\u0440 ${gapOf(view().row)} \u043C\u0438\u043D`, _v$18 = `translate(${box().x + box().w}px, ${box().y + floor() * rowH()}px)`, _v$19 = `${tailW()}px`, _v$20 = `${rowH() - 6}px`;
-              _v$17 !== _p$.e && setAttribute(_el$20, "title", _p$.e = _v$17);
-              _v$18 !== _p$.t && setStyleProperty(_el$20, "transform", _p$.t = _v$18);
-              _v$19 !== _p$.a && setStyleProperty(_el$20, "width", _p$.a = _v$19);
-              _v$20 !== _p$.o && setStyleProperty(_el$20, "height", _p$.o = _v$20);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0,
-              a: void 0,
-              o: void 0
-            });
-            return _el$20;
-          }
-        }), createComponent(Show, {
-          get when() {
-            return room();
-          },
-          children: (r) => (() => {
-            var _el$24 = _tmpl$14(), _el$25 = _el$24.firstChild; _el$25.firstChild;
-            insert(_el$25, () => fmtRoom(r().minutes, scale()), null);
-            effect$1((_p$) => {
-              var _v$29 = `translate(${r().x}px, ${box().y + floor() * rowH()}px)`, _v$30 = `${r().w}px`, _v$31 = `${rowH() - 6}px`;
-              _v$29 !== _p$.e && setStyleProperty(_el$24, "transform", _p$.e = _v$29);
-              _v$30 !== _p$.t && setStyleProperty(_el$24, "width", _p$.t = _v$30);
-              _v$31 !== _p$.a && setStyleProperty(_el$24, "height", _p$.a = _v$31);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0,
-              a: void 0
-            });
-            return _el$24;
-          })()
-        }), (() => {
-          var _el$21 = _tmpl$13();
-          _el$21.$$click = (ev) => props.onOpen?.(span(), {
-            x: ev.clientX,
-            y: ev.clientY
-          });
-          _el$21.addEventListener("pointerleave", () => setHovered((was) => was === id ? null : was));
-          _el$21.addEventListener("pointerenter", () => setHovered(id));
-          _el$21.$$pointerdown = (ev) => startDrag(ev, span(), "move");
-          _el$21.$$contextmenu = (ev) => {
-            if (!props.onSpanContextMenu) return;
-            ev.preventDefault();
-            ev.stopPropagation();
-            props.onSpanContextMenu(span(), ev);
-          };
-          insert(_el$21, () => props.children?.(span()) ?? id, null);
-          insert(_el$21, createComponent(Show, {
+    });
+  };
+  var _ref$2 = canvas;
+  typeof _ref$2 === "function" || Array.isArray(_ref$2) ? ref(() => _ref$2, _el$0) : canvas = _el$0;
+  insert(_el$0, createComponent(For, {
+    get each() {
+      return rowGeom().items;
+    },
+    children: (_, i) => (() => {
+      var _el$21 = _tmpl$9();
+      effect$1(() => `${rowGeom().offsets[i() + 1]}px`, (_v$) => {
+        setStyleProperty(_el$21, "top", _v$);
+      });
+      return _el$21;
+    })()
+  }), _el$10);
+  insert(_el$0, createComponent(Show, {
+    get when() {
+      return !dayGrid();
+    },
+    get children() {
+      return createComponent(For, {
+        get each() {
+          return props.rows;
+        },
+        children: (row) => {
+          const sc = () => scale();
+          const win = () => Math.max(1, sc().dayEnd - sc().dayStart);
+          const openW = () => toX(Math.min(Math.max((row.openMin ?? sc().dayStart) - sc().dayStart, 0), win()), sc());
+          const closeAt = () => toX(Math.min(Math.max((row.closeMin ?? sc().dayEnd) - sc().dayStart, 0), win()), sc());
+          const top = () => rowGeom().tops.get(row.id);
+          const height = () => rowH() * levelsOf(row.id);
+          return createComponent(Show, {
             get when() {
-              return memo(() => !!(!props.readonly && !props.spanLocked?.(span())))() && canResize(view().row);
+              return memo(() => !!(row.openMin != null || row.closeMin != null))() ? top() != null : row.openMin != null || row.closeMin != null;
             },
             get children() {
-              return [(() => {
-                var _el$22 = _tmpl$11();
-                _el$22.$$click = (ev) => ev.stopPropagation();
-                _el$22.$$pointerdown = (ev) => startDrag(ev, span(), "from");
-                return _el$22;
-              })(), (() => {
-                var _el$23 = _tmpl$12();
-                _el$23.$$click = (ev) => ev.stopPropagation();
-                _el$23.$$pointerdown = (ev) => startDrag(ev, span(), "to");
-                return _el$23;
-              })()];
+              return createComponent(For, {
+                get each() {
+                  return Array.from({
+                    length: scale().days
+                  }, (_, d) => d);
+                },
+                children: (d) => [createComponent(Show, {
+                  get when() {
+                    return openW() > 0;
+                  },
+                  get children() {
+                    var _el$22 = _tmpl$0();
+                    effect$1(() => ({
+                      e: `translate(${toX(d * win(), sc())}px, ${top()}px)`,
+                      t: `${openW()}px`,
+                      a: `${height()}px`
+                    }), ({
+                      e,
+                      t,
+                      a
+                    }, _p$) => {
+                      e !== _p$?.e && setStyleProperty(_el$22, "transform", e);
+                      t !== _p$?.t && setStyleProperty(_el$22, "width", t);
+                      a !== _p$?.a && setStyleProperty(_el$22, "height", a);
+                    });
+                    return _el$22;
+                  }
+                }), createComponent(Show, {
+                  get when() {
+                    return closeAt() < toX(win(), sc());
+                  },
+                  get children() {
+                    var _el$23 = _tmpl$0();
+                    effect$1(() => ({
+                      e: `translate(${toX(d * win(), sc()) + closeAt()}px, ${top()}px)`,
+                      t: `${toX(win(), sc()) - closeAt()}px`,
+                      a: `${height()}px`
+                    }), ({
+                      e,
+                      t,
+                      a
+                    }, _p$) => {
+                      e !== _p$?.e && setStyleProperty(_el$23, "transform", e);
+                      t !== _p$?.t && setStyleProperty(_el$23, "width", t);
+                      a !== _p$?.a && setStyleProperty(_el$23, "height", a);
+                    });
+                    return _el$23;
+                  }
+                })]
+              });
             }
-          }), null);
-          effect$1((_p$) => {
-            var _v$21 = `dumb-tl-span ${props.spanClass?.(span()) ?? ""}`, _v$22 = props.spanTitle?.(span()), _v$23 = props.spanLocked?.(span()) ? "1" : void 0, _v$24 = dragging() ? "1" : void 0, _v$25 = dragging() && !draft().ok ? "1" : void 0, _v$26 = `translate(${box().x}px, ${box().y + floor() * rowH()}px)`, _v$27 = `${box().w}px`, _v$28 = `${rowH() - 6}px`;
-            _v$21 !== _p$.e && className(_el$21, _p$.e = _v$21);
-            _v$22 !== _p$.t && setAttribute(_el$21, "title", _p$.t = _v$22);
-            _v$23 !== _p$.a && setAttribute(_el$21, "data-locked", _p$.a = _v$23);
-            _v$24 !== _p$.o && setAttribute(_el$21, "data-drag", _p$.o = _v$24);
-            _v$25 !== _p$.i && setAttribute(_el$21, "data-bad", _p$.i = _v$25);
-            _v$26 !== _p$.n && setStyleProperty(_el$21, "transform", _p$.n = _v$26);
-            _v$27 !== _p$.s && setStyleProperty(_el$21, "width", _p$.s = _v$27);
-            _v$28 !== _p$.h && setStyleProperty(_el$21, "height", _p$.h = _v$28);
-            return _p$;
-          }, {
-            e: void 0,
-            t: void 0,
-            a: void 0,
-            o: void 0,
-            i: void 0,
-            n: void 0,
-            s: void 0,
-            h: void 0
           });
-          return _el$21;
-        })()];
-      }
-    }), null);
-    effect$1((_p$) => {
-      var _v$ = `dumb-tl ${props.class ?? ""}`, _v$2 = {
-        "--dumb-tl-head": `${headW()}px`,
-        "--dumb-tl-col": `${colW()}px`,
-        "--dumb-tl-row-h": `${rowH()}px`,
-        // ширина СУТОК в пикселях — для жирной линии на стыке дней
-        "--dumb-tl-day-w": `${Math.max(1, scale().dayEnd - scale().dayStart) / scale().stepMin * colW()}px`,
-        "--dumb-tl-dayline": dayGrid() ? "var(--dumb-tl-line)" : "rgb(0 0 0 / .3)",
-        ...props.style
-      }, _v$3 = groups().map((g) => `${g.span * colW()}px`).join(" "), _v$4 = `repeat(${totalCols(scale())}, ${colW()}px)`, _v$5 = `${totalCols(scale()) * colW()}px`, _v$6 = `${rowGeom().total}px`;
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      _v$3 !== _p$.a && setStyleProperty(_el$6, "grid-template-columns", _p$.a = _v$3);
-      _v$4 !== _p$.o && setStyleProperty(_el$7, "grid-template-columns", _p$.o = _v$4);
-      _v$5 !== _p$.i && setStyleProperty(_el$0, "width", _p$.i = _v$5);
-      _v$6 !== _p$.n && setStyleProperty(_el$0, "height", _p$.n = _v$6);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0,
-      o: void 0,
-      i: void 0,
-      n: void 0
-    });
-    return _el$;
-  })();
+        }
+      });
+    }
+  }), _el$11);
+  insert(_el$0, createComponent(Show, {
+    get when() {
+      return pick();
+    },
+    children: (p) => {
+      const sc = () => scale();
+      const x = () => toX(Math.min(p().a, p().b), sc());
+      const w = () => toX(Math.abs(p().b - p().a), sc());
+      const top = () => rowGeom().tops.get(p().row) ?? 0;
+      const hrs = () => Math.abs(p().b - p().a);
+      var _el$24 = _tmpl$1();
+      insert(_el$24, () => fmtRoom(hrs(), scale()));
+      effect$1(() => ({
+        e: `translate(${x()}px, ${top() + 3}px)`,
+        t: `${w()}px`,
+        a: `${rowH() - 6}px`
+      }), ({
+        e,
+        t,
+        a
+      }, _p$) => {
+        e !== _p$?.e && setStyleProperty(_el$24, "transform", e);
+        t !== _p$?.t && setStyleProperty(_el$24, "width", t);
+        a !== _p$?.a && setStyleProperty(_el$24, "height", a);
+      });
+      return _el$24;
+    }
+  }), _el$12);
+  insert(_el$0, createComponent(Show, {
+    get when() {
+      return props.now;
+    },
+    get children() {
+      var _el$1 = _tmpl$3();
+      effect$1(() => `${momentX(props.now, scale(), "from")}px`, (_v$) => {
+        setStyleProperty(_el$1, "left", _v$);
+      });
+      return _el$1;
+    }
+  }), _el$13);
+  insert(_el$0, createComponent(For, {
+    get each() {
+      return spanIds();
+    },
+    children: (id) => {
+      const span = () => spanById().get(id);
+      const view = () => shownSpan(span());
+      const box = () => {
+        const sc = scale();
+        const x = momentX(view().from, sc, "from");
+        const w = Math.max(momentX(view().to, sc, "to") - x, sc.colW * 0.4);
+        return {
+          x,
+          w,
+          y: rowGeom().tops.get(view().row) ?? 0
+        };
+      };
+      const dragging = () => draft()?.id === id;
+      const floor = () => floors().get(id) ?? 0;
+      const room = () => hovered() === id ? roomOf(view()) : null;
+      const tailW = () => {
+        if (dayGrid()) return 0;
+        const g = gapOf(view().row);
+        if (g <= 0) return 0;
+        const sc = scale();
+        const end = toMinutes(view().to, sc, "to");
+        const rules = rulesOf(view().row);
+        const wall = Math.min(confined(sc, rules) ? rowBounds(Math.max(0, end - 1), sc, rules).end : Infinity, totalCols(sc) * sc.stepMin);
+        return Math.max(0, toX(Math.min(end + g, wall), sc) - toX(end, sc));
+      };
+      return [createComponent(Show, {
+        get when() {
+          return tailW() > 0;
+        },
+        get children() {
+          var _el$25 = _tmpl$10();
+          effect$1(() => ({
+            e: `\u0437\u0430\u0437\u043E\u0440 ${gapOf(view().row)} \u043C\u0438\u043D`,
+            t: `translate(${box().x + box().w}px, ${box().y + floor() * rowH()}px)`,
+            a: `${tailW()}px`,
+            o: `${rowH() - 6}px`
+          }), ({
+            e,
+            t,
+            a,
+            o
+          }, _p$) => {
+            e !== _p$?.e && setAttribute(_el$25, "title", e);
+            t !== _p$?.t && setStyleProperty(_el$25, "transform", t);
+            a !== _p$?.a && setStyleProperty(_el$25, "width", a);
+            o !== _p$?.o && setStyleProperty(_el$25, "height", o);
+          });
+          return _el$25;
+        }
+      }), createComponent(Show, {
+        get when() {
+          return room();
+        },
+        children: (r) => (() => {
+          var _el$31 = _tmpl$14(), _el$32 = _el$31.firstChild; _el$32.firstChild;
+          insert(_el$32, () => fmtRoom(r().minutes, scale()), null);
+          effect$1(() => ({
+            e: `translate(${r().x}px, ${box().y + floor() * rowH()}px)`,
+            t: `${r().w}px`,
+            a: `${rowH() - 6}px`
+          }), ({
+            e,
+            t,
+            a
+          }, _p$) => {
+            e !== _p$?.e && setStyleProperty(_el$31, "transform", e);
+            t !== _p$?.t && setStyleProperty(_el$31, "width", t);
+            a !== _p$?.a && setStyleProperty(_el$31, "height", a);
+          });
+          return _el$31;
+        })()
+      }), (() => {
+        var _el$26 = _tmpl$13(), _el$29 = _el$26.firstChild, _el$30 = _el$29.nextSibling;
+        _el$26.$$click = (ev) => props.onOpen?.(span(), {
+          x: ev.clientX,
+          y: ev.clientY
+        });
+        _el$26.addEventListener("pointerleave", () => setHovered((was) => was === id ? null : was));
+        _el$26.addEventListener("pointerenter", () => setHovered(id));
+        _el$26.$$pointerdown = (ev) => startDrag(ev, span(), "move");
+        _el$26.$$contextmenu = (ev) => {
+          if (!props.onSpanContextMenu) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          props.onSpanContextMenu(span(), ev);
+        };
+        insert(_el$26, () => props.children?.(span()) ?? id, _el$29);
+        insert(_el$26, createComponent(Show, {
+          get when() {
+            return memo(() => !!(!props.readonly && !props.spanLocked?.(span())))() ? canResize(view().row) : !props.readonly && !props.spanLocked?.(span());
+          },
+          get children() {
+            return [(() => {
+              var _el$27 = _tmpl$11();
+              _el$27.$$click = (ev) => ev.stopPropagation();
+              _el$27.$$pointerdown = (ev) => startDrag(ev, span(), "from");
+              return _el$27;
+            })(), (() => {
+              var _el$28 = _tmpl$12();
+              _el$28.$$click = (ev) => ev.stopPropagation();
+              _el$28.$$pointerdown = (ev) => startDrag(ev, span(), "to");
+              return _el$28;
+            })()];
+          }
+        }), _el$30);
+        effect$1(() => ({
+          e: `dumb-tl-span ${props.spanClass?.(span()) ?? ""}`,
+          t: props.spanTitle?.(span()),
+          a: props.spanLocked?.(span()) ? "1" : void 0,
+          o: dragging() ? "1" : void 0,
+          i: dragging() && !draft().ok ? "1" : void 0,
+          n: `translate(${box().x}px, ${box().y + floor() * rowH()}px)`,
+          s: `${box().w}px`,
+          h: `${rowH() - 6}px`
+        }), ({
+          e,
+          t,
+          a,
+          o,
+          i,
+          n,
+          s,
+          h
+        }, _p$) => {
+          className(_el$26, e, _p$?.e);
+          t !== _p$?.t && setAttribute(_el$26, "title", t);
+          a !== _p$?.a && setAttribute(_el$26, "data-locked", a);
+          o !== _p$?.o && setAttribute(_el$26, "data-drag", o);
+          i !== _p$?.i && setAttribute(_el$26, "data-bad", i);
+          n !== _p$?.n && setStyleProperty(_el$26, "transform", n);
+          s !== _p$?.s && setStyleProperty(_el$26, "width", s);
+          h !== _p$?.h && setStyleProperty(_el$26, "height", h);
+        });
+        return _el$26;
+      })()];
+    }
+  }), _el$14);
+  effect$1(() => ({
+    e: `dumb-tl ${props.class ?? ""}`,
+    t: {
+      "--dumb-tl-head": `${headW()}px`,
+      "--dumb-tl-col": `${colW()}px`,
+      "--dumb-tl-row-h": `${rowH()}px`,
+      // ширина СУТОК в пикселях — для жирной линии на стыке дней
+      "--dumb-tl-day-w": `${Math.max(1, scale().dayEnd - scale().dayStart) / scale().stepMin * colW()}px`,
+      "--dumb-tl-dayline": dayGrid() ? "var(--dumb-tl-line)" : "rgb(0 0 0 / .3)",
+      ...props.style
+    },
+    a: groups().map((g) => `${g.span * colW()}px`).join(" "),
+    o: `repeat(${totalCols(scale())}, ${colW()}px)`,
+    i: `${totalCols(scale()) * colW()}px`,
+    n: `${rowGeom().total}px`
+  }), ({
+    e,
+    t,
+    a,
+    o,
+    i,
+    n
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    style(_el$, t, _p$?.t);
+    a !== _p$?.a && setStyleProperty(_el$6, "grid-template-columns", a);
+    o !== _p$?.o && setStyleProperty(_el$7, "grid-template-columns", o);
+    i !== _p$?.i && setStyleProperty(_el$0, "width", i);
+    n !== _p$?.n && setStyleProperty(_el$0, "height", n);
+  });
+  return _el$;
 }
 var MONTHS_RU = ["\u044F\u043D\u0432\u0430\u0440\u044C", "\u0444\u0435\u0432\u0440\u0430\u043B\u044C", "\u043C\u0430\u0440\u0442", "\u0430\u043F\u0440\u0435\u043B\u044C", "\u043C\u0430\u0439", "\u0438\u044E\u043D\u044C", "\u0438\u044E\u043B\u044C", "\u0430\u0432\u0433\u0443\u0441\u0442", "\u0441\u0435\u043D\u0442\u044F\u0431\u0440\u044C", "\u043E\u043A\u0442\u044F\u0431\u0440\u044C", "\u043D\u043E\u044F\u0431\u0440\u044C", "\u0434\u0435\u043A\u0430\u0431\u0440\u044C"];
 var WD_RU = ["\u0432\u0441", "\u043F\u043D", "\u0432\u0442", "\u0441\u0440", "\u0447\u0442", "\u043F\u0442", "\u0441\u0431"];
@@ -1359,17 +1384,15 @@ function defaultGroupLabel(at, s) {
 function defaultDayLabel(at, s) {
   if (s.stepMin < Math.max(1, s.dayEnd - s.dayStart)) {
     if (at.slice(14, 16) !== "00") return "";
-    return (() => {
-      var _el$27 = _tmpl$15();
-      insert(_el$27, () => at.slice(11, 13));
-      return _el$27;
-    })();
+    var _el$34 = _tmpl$15();
+    insert(_el$34, () => at.slice(11, 13));
+    return _el$34;
   }
   const d = /* @__PURE__ */ new Date(`${at.slice(0, 10)}T00:00:00Z`);
   return [memo(() => d.getUTCDate()), (() => {
-    var _el$28 = _tmpl$16();
-    insert(_el$28, () => WD_RU[d.getUTCDay()]);
-    return _el$28;
+    var _el$35 = _tmpl$16();
+    insert(_el$35, () => WD_RU[d.getUTCDay()]);
+    return _el$35;
   })()];
 }
 function fmtRoom(minutes, s) {

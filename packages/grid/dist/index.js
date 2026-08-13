@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, memo, setAttribute, className, style, template } from 'solid-js/web';
+import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createSignal, onCleanup, createMemo, Show, For, createEffect, untrack } from 'solid-js';
 import * as v from 'valibot';
@@ -774,6 +774,21 @@ function createGridEngine(opts) {
   function canStart() {
     return !opts.disabled?.() && !gesture && !gate.pending();
   }
+  function pressBlock(el, id, ev) {
+    if (ev.button !== 0 || !canStart()) return;
+    if (!(ev.target instanceof Element)) return;
+    if (ev.target.closest("[data-grid-resize]")) return;
+    if (ev.target.closest("[data-flip-id]")) return;
+    const nested = ev.target.closest("[data-grid-block]");
+    if (nested && nested !== el) return;
+    const handle = el.querySelector("[data-drag-handle]");
+    if (handle) {
+      if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+    } else if (targetIsInteractive(ev)) {
+      return;
+    }
+    gate.arm(ev, (x, y) => begin("move", id, handle || el, ev.pointerId, x, y));
+  }
   return {
     attachContainer(el) {
       container = el;
@@ -796,21 +811,7 @@ function createGridEngine(opts) {
     attach(el, id) {
       blockEls.set(id, el);
       el.dataset.gridBlock = id;
-      const down = (ev) => {
-        if (ev.button !== 0 || !canStart()) return;
-        if (!(ev.target instanceof Element)) return;
-        if (ev.target.closest("[data-grid-resize]")) return;
-        if (ev.target.closest("[data-flip-id]")) return;
-        const nested = ev.target.closest("[data-grid-block]");
-        if (nested && nested !== el) return;
-        const handle2 = el.querySelector("[data-drag-handle]");
-        if (handle2) {
-          if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
-        } else if (targetIsInteractive(ev)) {
-          return;
-        }
-        gate.arm(ev, (x, y) => begin("move", id, handle2 || el, ev.pointerId, x, y));
-      };
+      const down = (ev) => pressBlock(el, id, ev);
       el.addEventListener("pointerdown", down);
       const handle = el.querySelector("[data-drag-handle]");
       if (handle) handle.style.touchAction = "none";
@@ -819,6 +820,26 @@ function createGridEngine(opts) {
         delete el.dataset.gridBlock;
         if (blockEls.get(id) === el) blockEls.delete(id);
       };
+    },
+    attachBlock(el, id) {
+      blockEls.set(id, el);
+      el.dataset.gridBlock = id;
+      const handle = el.querySelector("[data-drag-handle]");
+      if (handle) handle.style.touchAction = "none";
+      return () => {
+        delete el.dataset.gridBlock;
+        if (blockEls.get(id) === el) blockEls.delete(id);
+      };
+    },
+    press(id, ev) {
+      const el = blockEls.get(id);
+      if (el) pressBlock(el, id, ev);
+    },
+    pressResize(id, el, ev) {
+      if (ev.button !== 0 || !canStart() || opts.resizable?.() === false) return;
+      ev.stopPropagation();
+      ev.preventDefault();
+      begin("resize", id, el, ev.pointerId, ev.clientX, ev.clientY);
     },
     attachResize(el, id) {
       el.dataset.gridResize = "";
@@ -1327,6 +1348,21 @@ function createGridGroupEngine(opts) {
       };
       zone.opts = zoneOpts;
       zones.set(name, zone);
+      function pressBlock(el, id, ev) {
+        if (ev.button !== 0 || !canStart(zone)) return;
+        if (!(ev.target instanceof Element)) return;
+        if (ev.target.closest("[data-grid-resize]")) return;
+        if (ev.target.closest("[data-flip-id]")) return;
+        const nested = ev.target.closest("[data-grid-block]");
+        if (nested && nested !== el) return;
+        const handle = el.querySelector("[data-drag-handle]");
+        if (handle) {
+          if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+        } else if (targetIsInteractive(ev)) {
+          return;
+        }
+        gate.arm(ev, (px, py) => begin("move", name, id, handle || el, ev.pointerId, px, py));
+      }
       return {
         attachContainer(el) {
           zone.el = el;
@@ -1349,21 +1385,7 @@ function createGridGroupEngine(opts) {
         attach(el, id) {
           zone.els.set(id, el);
           el.dataset.gridBlock = id;
-          const down = (ev) => {
-            if (ev.button !== 0 || !canStart(zone)) return;
-            if (!(ev.target instanceof Element)) return;
-            if (ev.target.closest("[data-grid-resize]")) return;
-            if (ev.target.closest("[data-flip-id]")) return;
-            const nested = ev.target.closest("[data-grid-block]");
-            if (nested && nested !== el) return;
-            const handle2 = el.querySelector("[data-drag-handle]");
-            if (handle2) {
-              if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
-            } else if (targetIsInteractive(ev)) {
-              return;
-            }
-            gate.arm(ev, (px, py) => begin("move", name, id, handle2 || el, ev.pointerId, px, py));
-          };
+          const down = (ev) => pressBlock(el, id, ev);
           el.addEventListener("pointerdown", down);
           const handle = el.querySelector("[data-drag-handle]");
           if (handle) handle.style.touchAction = "none";
@@ -1372,6 +1394,26 @@ function createGridGroupEngine(opts) {
             delete el.dataset.gridBlock;
             if (zone.els.get(id) === el) zone.els.delete(id);
           };
+        },
+        attachBlock(el, id) {
+          zone.els.set(id, el);
+          el.dataset.gridBlock = id;
+          const handle = el.querySelector("[data-drag-handle]");
+          if (handle) handle.style.touchAction = "none";
+          return () => {
+            delete el.dataset.gridBlock;
+            if (zone.els.get(id) === el) zone.els.delete(id);
+          };
+        },
+        press(id, ev) {
+          const el = zone.els.get(id);
+          if (el) pressBlock(el, id, ev);
+        },
+        pressResize(id, el, ev) {
+          if (ev.button !== 0 || !canStart(zone) || zone.opts.resizable?.() === false) return;
+          ev.stopPropagation();
+          ev.preventDefault();
+          begin("resize", name, id, el, ev.pointerId, ev.clientX, ev.clientY);
         },
         attachResize(el, id) {
           el.dataset.gridResize = "";
@@ -1418,6 +1460,9 @@ function createDumbGrid(opts) {
     container: (el) => onCleanup(engine.attachContainer(el)),
     bind: (id) => (el) => onCleanup(engine.attach(el, id)),
     resize: (id) => (el) => onCleanup(engine.attachResize(el, id)),
+    block: (id) => (el) => onCleanup(engine.attachBlock(el, id)),
+    press: (id) => (ev) => engine.press(id, ev),
+    pressResize: (id) => (ev) => engine.pressResize(id, ev.currentTarget, ev),
     active
   };
 }
@@ -1443,6 +1488,9 @@ function createDumbGridGroup(opts) {
         container: (el) => onCleanup(zone.attachContainer(el)),
         bind: (id) => (el) => onCleanup(zone.attach(el, id)),
         resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
+        block: (id) => (el) => onCleanup(zone.attachBlock(el, id)),
+        press: (id) => (ev) => zone.press(id, ev),
+        pressResize: (id) => (ev) => zone.pressResize(id, ev.currentTarget, ev),
         // «активен ли этот блок» — общий сигнал группы, суженный до своей сетки
         active: () => {
           const a = active();
@@ -1457,11 +1505,11 @@ function createDumbGridGroup(opts) {
 
 // src/DumbGrid.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<div data-grid-lines aria-hidden=true style="position:absolute;inset:0;padding:inherit;box-sizing:border-box;pointer-events:none;z-index:0;background-origin:content-box;background-clip:content-box;background-repeat:no-repeat, repeat;transition:opacity .15s ease">`);
-var _tmpl$2 = /* @__PURE__ */ template(`<div style=display:grid;position:relative;scrollbar-gutter:stable>`);
+var _tmpl$2 = /* @__PURE__ */ template(`<div style=display:grid;position:relative;scrollbar-gutter:stable><!><!>`);
 var _tmpl$3 = /* @__PURE__ */ template(`<div>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<button type=button data-grid-remove data-no-drag style=position:absolute;top:0;right:0;width:22px;height:22px;display:grid;place-items:center;padding:0;border:none;background:transparent;color:currentColor;font:inherit;line-height:1;cursor:pointer;opacity:0.45;z-index:2>\u2715`);
-var _tmpl$5 = /* @__PURE__ */ template(`<div style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55% 70%, currentColor 70% 80%, transparent 80%);border-bottom-right-radius:8px">`);
-var _tmpl$6 = /* @__PURE__ */ template(`<div style=touch-action:manipulation>`);
+var _tmpl$5 = /* @__PURE__ */ template(`<div data-grid-resize style="position:absolute;touch-action:none;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55% 70%, currentColor 70% 80%, transparent 80%);border-bottom-right-radius:8px">`);
+var _tmpl$6 = /* @__PURE__ */ template(`<div style=touch-action:manipulation><!><!><!>`);
 var DEFAULT_COLS = 12;
 var DEFAULT_ROW_H = 80;
 var DEFAULT_GAP = 12;
@@ -1660,162 +1708,167 @@ function DumbGrid(props) {
     rowH: rowH(),
     gapY: gapY()
   });
-  return (() => {
-    var _el$ = _tmpl$2();
-    var _ref$ = g.container;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : g.container = _el$;
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return memo(() => !!editable())() && showGrid() !== false;
-      },
-      get children() {
-        var _el$2 = _tmpl$();
-        effect((_p$) => {
-          var _v$ = gridBackground().image, _v$2 = gridBackground().size, _v$3 = gridVisible() ? "1" : "0";
-          _v$ !== _p$.e && setStyleProperty(_el$2, "background-image", _p$.e = _v$);
-          _v$2 !== _p$.t && setStyleProperty(_el$2, "background-size", _p$.t = _v$2);
-          _v$3 !== _p$.a && setStyleProperty(_el$2, "opacity", _p$.a = _v$3);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0,
-          a: void 0
-        });
-        return _el$2;
-      }
-    }), null);
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return editable();
-      },
-      get fallback() {
-        return createComponent(For, {
-          get each() {
-            return props.items;
-          },
-          children: (it) => {
-            const span = () => spanById().get(it.id);
-            return createComponent(Show, {
-              get when() {
-                return span();
-              },
-              children: (s) => (() => {
-                var _el$3 = _tmpl$3();
-                insert(_el$3, () => it.content());
-                effect((_p$) => {
-                  var _v$6 = props.blockClass, _v$7 = {
-                    ...blockBox(s(), posById().get(it.id)),
-                    ...props.blockStyle
-                  };
-                  _v$6 !== _p$.e && className(_el$3, _p$.e = _v$6);
-                  _p$.t = style(_el$3, _v$7, _p$.t);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0
-                });
-                return _el$3;
-              })()
-            });
-          }
-        });
-      },
-      get children() {
-        return createComponent(For, {
-          get each() {
-            return props.items;
-          },
-          children: (it) => {
-            const span = () => spanById().get(it.id);
-            const dragging = () => g.active()?.id === it.id;
-            return createComponent(Show, {
-              get when() {
-                return span();
-              },
-              children: (s) => (() => {
-                var _el$4 = _tmpl$6();
-                var _ref$2 = g.bind(it.id);
-                typeof _ref$2 === "function" && use(_ref$2, _el$4);
-                insert(_el$4, () => it.content(), null);
-                insert(_el$4, createComponent(Show, {
-                  get when() {
-                    return memo(() => !!(props.onRemove && !props.disabled))() && it.removable !== false;
-                  },
-                  get children() {
-                    var _el$5 = _tmpl$4();
-                    _el$5.$$click = () => props.onRemove?.(it.id);
-                    effect((_p$) => {
-                      var _v$8 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A", _v$9 = props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A";
-                      _v$8 !== _p$.e && setAttribute(_el$5, "title", _p$.e = _v$8);
-                      _v$9 !== _p$.t && setAttribute(_el$5, "aria-label", _p$.t = _v$9);
-                      return _p$;
-                    }, {
-                      e: void 0,
-                      t: void 0
-                    });
-                    return _el$5;
-                  }
-                }), null);
-                insert(_el$4, createComponent(Show, {
-                  get when() {
-                    return memo(() => !!(props.resizable !== false && !it.locked))() && !props.disabled;
-                  },
-                  get children() {
-                    var _el$6 = _tmpl$5();
-                    var _ref$3 = g.resize(it.id);
-                    typeof _ref$3 === "function" && use(_ref$3, _el$6);
-                    effect((_p$) => {
-                      var _v$0 = props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440", _v$1 = dragging() ? "0.9" : "0.35";
-                      _v$0 !== _p$.e && setAttribute(_el$6, "title", _p$.e = _v$0);
-                      _v$1 !== _p$.t && setStyleProperty(_el$6, "opacity", _p$.t = _v$1);
-                      return _p$;
-                    }, {
-                      e: void 0,
-                      t: void 0
-                    });
-                    return _el$6;
-                  }
-                }), null);
-                effect((_p$) => {
-                  var _v$10 = props.blockClass, _v$11 = {
-                    ...blockBox(s(), posById().get(it.id)),
-                    cursor: it.locked || props.disabled ? "default" : "grab",
-                    ...props.blockStyle
-                  };
-                  _v$10 !== _p$.e && className(_el$4, _p$.e = _v$10);
-                  _p$.t = style(_el$4, _v$11, _p$.t);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0
-                });
-                return _el$4;
-              })()
-            });
-          }
-        });
-      }
-    }), null);
-    effect((_p$) => {
-      var _v$4 = props.class, _v$5 = {
-        "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
-        "grid-auto-rows": `${rowH()}px`,
-        "column-gap": `${gapX()}px`,
-        "row-gap": `${gapY()}px`,
-        // высота под все строки плюс запас, чтобы блок было куда увести вниз
-        "min-height": `${heightOf(totalRows())}px`,
-        ...props.style
-      };
-      _v$4 !== _p$.e && className(_el$, _p$.e = _v$4);
-      _p$.t = style(_el$, _v$5, _p$.t);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0
-    });
-    return _el$;
-  })();
+  var _el$ = _tmpl$2(), _el$3 = _el$.firstChild, _el$4 = _el$3.nextSibling;
+  var _ref$ = g.container;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : g.container = _el$;
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return memo(() => !!editable())() ? showGrid() !== false : editable();
+    },
+    get children() {
+      var _el$2 = _tmpl$();
+      effect(() => ({
+        e: gridBackground().image,
+        t: gridBackground().size,
+        a: gridVisible() ? "1" : "0"
+      }), ({
+        e,
+        t,
+        a
+      }, _p$) => {
+        e !== _p$?.e && setStyleProperty(_el$2, "background-image", e);
+        t !== _p$?.t && setStyleProperty(_el$2, "background-size", t);
+        a !== _p$?.a && setStyleProperty(_el$2, "opacity", a);
+      });
+      return _el$2;
+    }
+  }), _el$3);
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return editable();
+    },
+    get fallback() {
+      return createComponent(For, {
+        get each() {
+          return props.items;
+        },
+        children: (it) => {
+          const span = () => spanById().get(it.id);
+          return createComponent(Show, {
+            get when() {
+              return span();
+            },
+            children: (s) => (() => {
+              var _el$5 = _tmpl$3();
+              insert(_el$5, () => it.content());
+              effect(() => ({
+                e: props.blockClass,
+                t: {
+                  ...blockBox(s(), posById().get(it.id)),
+                  ...props.blockStyle
+                }
+              }), ({
+                e,
+                t
+              }, _p$) => {
+                className(_el$5, e, _p$?.e);
+                style(_el$5, t, _p$?.t);
+              });
+              return _el$5;
+            })()
+          });
+        }
+      });
+    },
+    get children() {
+      return createComponent(For, {
+        get each() {
+          return props.items;
+        },
+        children: (it) => {
+          const span = () => spanById().get(it.id);
+          const dragging = () => g.active()?.id === it.id;
+          return createComponent(Show, {
+            get when() {
+              return span();
+            },
+            children: (s) => (() => {
+              var _el$6 = _tmpl$6(), _el$9 = _el$6.firstChild, _el$0 = _el$9.nextSibling, _el$1 = _el$0.nextSibling;
+              addEvent(_el$6, "pointerdown", g.press(it.id), true);
+              var _ref$2 = g.block(it.id);
+              (typeof _ref$2 === "function" || Array.isArray(_ref$2)) && ref(() => _ref$2, _el$6);
+              insert(_el$6, () => it.content(), _el$9);
+              insert(_el$6, createComponent(Show, {
+                get when() {
+                  return memo(() => !!(props.onRemove && !props.disabled))() ? it.removable !== false : props.onRemove && !props.disabled;
+                },
+                get children() {
+                  var _el$7 = _tmpl$4();
+                  _el$7.$$click = () => props.onRemove?.(it.id);
+                  effect(() => ({
+                    e: props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A",
+                    t: props.labels?.remove ?? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u043B\u043E\u043A"
+                  }), ({
+                    e,
+                    t
+                  }, _p$) => {
+                    e !== _p$?.e && setAttribute(_el$7, "title", e);
+                    t !== _p$?.t && setAttribute(_el$7, "aria-label", t);
+                  });
+                  return _el$7;
+                }
+              }), _el$0);
+              insert(_el$6, createComponent(Show, {
+                get when() {
+                  return memo(() => !!(props.resizable !== false && !it.locked))() ? !props.disabled : props.resizable !== false && !it.locked;
+                },
+                get children() {
+                  var _el$8 = _tmpl$5();
+                  addEvent(_el$8, "pointerdown", g.pressResize(it.id), true);
+                  effect(() => ({
+                    e: props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440",
+                    t: dragging() ? "0.9" : "0.35"
+                  }), ({
+                    e,
+                    t
+                  }, _p$) => {
+                    e !== _p$?.e && setAttribute(_el$8, "title", e);
+                    t !== _p$?.t && setStyleProperty(_el$8, "opacity", t);
+                  });
+                  return _el$8;
+                }
+              }), _el$1);
+              effect(() => ({
+                e: props.blockClass,
+                t: {
+                  ...blockBox(s(), posById().get(it.id)),
+                  cursor: it.locked || props.disabled ? "default" : "grab",
+                  ...props.blockStyle
+                }
+              }), ({
+                e,
+                t
+              }, _p$) => {
+                className(_el$6, e, _p$?.e);
+                style(_el$6, t, _p$?.t);
+              });
+              return _el$6;
+            })()
+          });
+        }
+      });
+    }
+  }), _el$4);
+  effect(() => ({
+    e: props.class,
+    t: {
+      "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
+      "grid-auto-rows": `${rowH()}px`,
+      "column-gap": `${gapX()}px`,
+      "row-gap": `${gapY()}px`,
+      // высота под все строки плюс запас, чтобы блок было куда увести вниз
+      "min-height": `${heightOf(totalRows())}px`,
+      ...props.style
+    }
+  }), ({
+    e,
+    t
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    style(_el$, t, _p$?.t);
+  });
+  return _el$;
 }
-delegateEvents(["click"]);
+delegateEvents(["pointerdown", "click"]);
 
 export { DumbGrid, cellRect, colWidth, createDumbGrid, createDumbGridGroup, createGridEngine, createGridGroupEngine, firstFreeCell, fitSpan, gridLinesBackground, insertIndex, mergeLayout, moveDeltas, overlaps, packFlow, placeFree, pointToCell, reorder, resolveSpan, rowCount, snapSpan, spanSize };

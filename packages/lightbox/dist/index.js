@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, effect as effect$1, setAttribute, setStyleProperty, className, template } from 'solid-js/web';
+import { delegateEvents, ref, insert, createComponent, effect as effect$1, setAttribute, setStyleProperty, className, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createSignal, createMemo, Show, createEffect, untrack, onCleanup } from 'solid-js';
 
@@ -67,9 +67,9 @@ function injectStyle(id, css) {
 var _tmpl$ = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-circle btn-neutral"title="\u0437\u0430\u043A\u0440\u044B\u0442\u044C (Esc)">\u2715`);
 var _tmpl$2 = /* @__PURE__ */ template(`<dialog>`);
 var _tmpl$3 = /* @__PURE__ */ template(`<div class=dumb-lightbox-stage><img class=dumb-lightbox-img draggable=false>`);
-var _tmpl$4 = /* @__PURE__ */ template(`<span class="dumb-lightbox-count tabular-nums"> / `);
+var _tmpl$4 = /* @__PURE__ */ template(`<span class="dumb-lightbox-count tabular-nums"> / <!>`);
 var _tmpl$5 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral">1:1`);
-var _tmpl$6 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"data-at=top><span class="dumb-lightbox-title min-w-0 flex-1 truncate">`);
+var _tmpl$6 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center gap-3 p-3 text-sm text-white"data-at=top><span class="dumb-lightbox-title min-w-0 flex-1 truncate"></span><!><!><!>`);
 var _tmpl$7 = /* @__PURE__ */ template(`<button type=button class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"data-side=prev title="\u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0430\u044F (\u2190)">\u2039`);
 var _tmpl$8 = /* @__PURE__ */ template(`<button type=button class="dumb-lightbox-nav btn btn-circle btn-neutral text-xl"data-side=next title="\u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F (\u2192)">\u203A`);
 var _tmpl$9 = /* @__PURE__ */ template(`<div class="dumb-lightbox-bar flex items-center justify-center gap-3 p-3 text-sm text-white"data-at=bottom>`);
@@ -196,120 +196,122 @@ function DumbLightbox(props) {
     from = null;
     setDragging(false);
   }
-  return (() => {
-    var _el$2 = _tmpl$2();
-    _el$2.addEventListener("cancel", (ev) => {
-      ev.preventDefault();
-      close();
-    });
-    _el$2.addEventListener("close", () => at() !== null && close());
-    var _ref$ = dialog;
-    typeof _ref$ === "function" ? use(_ref$, _el$2) : dialog = _el$2;
-    insert(_el$2, createComponent(Show, {
-      get when() {
-        return item();
-      },
-      children: (cur) => [(() => {
-        var _el$3 = _tmpl$3(), _el$4 = _el$3.firstChild;
-        _el$3.$$click = (ev) => ev.target === ev.currentTarget && close();
-        _el$3.addEventListener("pointercancel", onUp);
-        _el$3.$$pointerup = onUp;
-        _el$3.$$pointermove = onMove;
-        _el$3.$$pointerdown = onDown;
-        _el$3.addEventListener("wheel", onWheel);
-        _el$4.$$dblclick = () => zoom() === 1 ? setZoom(2.5) : reset();
-        effect$1((_p$) => {
-          var _v$3 = dragging() ? "1" : void 0, _v$4 = cur().url, _v$5 = cur().title ?? "", _v$6 = `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`;
-          _v$3 !== _p$.e && setAttribute(_el$3, "data-drag", _p$.e = _v$3);
-          _v$4 !== _p$.t && setAttribute(_el$4, "src", _p$.t = _v$4);
-          _v$5 !== _p$.a && setAttribute(_el$4, "alt", _p$.a = _v$5);
-          _v$6 !== _p$.o && setStyleProperty(_el$4, "transform", _p$.o = _v$6);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0,
-          a: void 0,
-          o: void 0
-        });
-        return _el$3;
-      })(), (() => {
-        var _el$5 = _tmpl$6(), _el$6 = _el$5.firstChild;
-        insert(_el$5, createComponent(Show, {
-          get when() {
-            return side() === "left";
-          },
-          get children() {
-            return closeButton();
-          }
-        }), _el$6);
-        insert(_el$6, () => cur().title);
-        insert(_el$5, createComponent(Show, {
-          get when() {
-            return props.items.length > 1;
-          },
-          get children() {
-            var _el$7 = _tmpl$4(), _el$8 = _el$7.firstChild;
-            insert(_el$7, () => (at() ?? 0) + 1, _el$8);
-            insert(_el$7, () => props.items.length, null);
-            return _el$7;
-          }
-        }), null);
-        insert(_el$5, createComponent(Show, {
-          get when() {
-            return zoom() !== 1;
-          },
-          get children() {
-            var _el$9 = _tmpl$5();
-            _el$9.$$click = reset;
-            return _el$9;
-          }
-        }), null);
-        insert(_el$5, createComponent(Show, {
-          get when() {
-            return side() === "right";
-          },
-          get children() {
-            return closeButton();
-          }
-        }), null);
-        return _el$5;
-      })(), createComponent(Show, {
+  var _el$2 = _tmpl$2();
+  _el$2.addEventListener("cancel", (ev) => {
+    ev.preventDefault();
+    close();
+  });
+  _el$2.addEventListener("close", () => at() !== null && close());
+  var _ref$ = dialog;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$2) : dialog = _el$2;
+  insert(_el$2, createComponent(Show, {
+    get when() {
+      return item();
+    },
+    children: (cur) => [(() => {
+      var _el$3 = _tmpl$3(), _el$4 = _el$3.firstChild;
+      _el$3.$$click = (ev) => ev.target === ev.currentTarget && close();
+      _el$3.addEventListener("pointercancel", onUp);
+      _el$3.$$pointerup = onUp;
+      _el$3.$$pointermove = onMove;
+      _el$3.$$pointerdown = onDown;
+      _el$3.addEventListener("wheel", onWheel);
+      _el$4.$$dblclick = () => zoom() === 1 ? setZoom(2.5) : reset();
+      effect$1(() => ({
+        e: dragging() ? "1" : void 0,
+        t: cur().url,
+        a: cur().title ?? "",
+        o: `translate(${pan().x}px, ${pan().y}px) scale(${zoom()})`
+      }), ({
+        e,
+        t,
+        a,
+        o
+      }, _p$) => {
+        e !== _p$?.e && setAttribute(_el$3, "data-drag", e);
+        t !== _p$?.t && setAttribute(_el$4, "src", t);
+        a !== _p$?.a && setAttribute(_el$4, "alt", a);
+        o !== _p$?.o && setStyleProperty(_el$4, "transform", o);
+      });
+      return _el$3;
+    })(), (() => {
+      var _el$5 = _tmpl$6(), _el$6 = _el$5.firstChild, _el$1 = _el$6.nextSibling, _el$10 = _el$1.nextSibling, _el$11 = _el$10.nextSibling;
+      insert(_el$5, createComponent(Show, {
+        get when() {
+          return side() === "left";
+        },
+        get children() {
+          return closeButton();
+        }
+      }), _el$6);
+      insert(_el$6, () => cur().title);
+      insert(_el$5, createComponent(Show, {
         get when() {
           return props.items.length > 1;
         },
         get children() {
-          return [(() => {
-            var _el$0 = _tmpl$7();
-            _el$0.$$click = () => go(-1);
-            return _el$0;
-          })(), (() => {
-            var _el$1 = _tmpl$8();
-            _el$1.$$click = () => go(1);
-            return _el$1;
-          })()];
+          var _el$7 = _tmpl$4(), _el$8 = _el$7.firstChild, _el$9 = _el$8.nextSibling;
+          insert(_el$7, () => (at() ?? 0) + 1, _el$8);
+          insert(_el$7, () => props.items.length, _el$9);
+          return _el$7;
         }
-      }), createComponent(Show, {
+      }), _el$1);
+      insert(_el$5, createComponent(Show, {
         get when() {
-          return props.actions;
+          return zoom() !== 1;
         },
         get children() {
-          var _el$10 = _tmpl$9();
-          insert(_el$10, () => props.actions(cur(), at() ?? 0));
-          return _el$10;
+          var _el$0 = _tmpl$5();
+          _el$0.$$click = reset;
+          return _el$0;
         }
-      })]
-    }));
-    effect$1((_p$) => {
-      var _v$ = `dumb-lightbox ${props.class ?? ""}`, _v$2 = shouldAnimate(props.animate) ? "1" : void 0;
-      _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
-      _v$2 !== _p$.t && setAttribute(_el$2, "data-animate", _p$.t = _v$2);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0
-    });
-    return _el$2;
-  })();
+      }), _el$10);
+      insert(_el$5, createComponent(Show, {
+        get when() {
+          return side() === "right";
+        },
+        get children() {
+          return closeButton();
+        }
+      }), _el$11);
+      return _el$5;
+    })(), createComponent(Show, {
+      get when() {
+        return props.items.length > 1;
+      },
+      get children() {
+        return [(() => {
+          var _el$12 = _tmpl$7();
+          _el$12.$$click = () => go(-1);
+          return _el$12;
+        })(), (() => {
+          var _el$13 = _tmpl$8();
+          _el$13.$$click = () => go(1);
+          return _el$13;
+        })()];
+      }
+    }), createComponent(Show, {
+      get when() {
+        return props.actions;
+      },
+      get children() {
+        var _el$14 = _tmpl$9();
+        insert(_el$14, () => props.actions(cur(), at() ?? 0));
+        return _el$14;
+      }
+    })]
+  }));
+  effect$1(() => ({
+    e: `dumb-lightbox ${props.class ?? ""}`,
+    t: shouldAnimate(props.animate) ? "1" : void 0
+  }), ({
+    e,
+    t
+  }, _p$) => {
+    className(_el$2, e, _p$?.e);
+    t !== _p$?.t && setAttribute(_el$2, "data-animate", t);
+  });
+  return _el$2;
 }
 delegateEvents(["click", "pointerdown", "pointermove", "pointerup", "dblclick"]);
 

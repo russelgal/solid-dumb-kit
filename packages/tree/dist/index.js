@@ -1,22 +1,14 @@
-import { delegateEvents, insert, createComponent, effect, className, setAttribute, style, memo, spread, mergeProps, template } from 'solid-js/web';
+import { delegateEvents, insert, createComponent, effect, className, setAttribute, style, memo, claimElement, spread, mergeProps, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createSignal, createMemo, Show, For, createEffect, untrack } from 'solid-js';
 
 // src/DumbTree.tsx
 var SOLID_2 = !("batch" in solid);
-function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
-}
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
   const step = (value) => {
-    const skip = first && (opts?.defer);
+    const skip = first && (opts?.defer ?? false);
     first = false;
     const before = prev;
     prev = value;
@@ -50,7 +42,7 @@ var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-tree-label min-w-0 fle
 var _tmpl$6 = /* @__PURE__ */ template(`<span class="dumb-tree-badge badge badge-sm badge-ghost tabular-nums">`);
 var _tmpl$7 = /* @__PURE__ */ template(`<span class="dumb-tree-twist shrink-0">`);
 var _tmpl$8 = /* @__PURE__ */ template(`<a>`);
-var _tmpl$9 = /* @__PURE__ */ template(`<li>`);
+var _tmpl$9 = /* @__PURE__ */ template(`<li><!><!>`);
 var _tmpl$0 = /* @__PURE__ */ template(`<div>`);
 var STYLES = `
   /* \u0412\u0438\u0434 \u2014 daisyUI (menu, bg-base-*, text-primary) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. \u0417\u0434\u0435\u0441\u044C \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F
@@ -72,6 +64,7 @@ var STYLES = `
   .dumb-tree-row[data-open="1"] .dumb-tree-twist > span { transform: rotate(90deg) }
   @media (prefers-reduced-motion: reduce) { .dumb-tree-twist > span { transition: none } }
 `;
+var textOf = (n) => typeof n.label === "string" ? n.label : n.searchText ?? "";
 function createOpened(key) {
   const read = () => {
     if (!key) return /* @__PURE__ */ new Set();
@@ -103,36 +96,37 @@ function DumbTree(props) {
   injectStyle("tree", STYLES);
   const opened = createOpened(props.storageKey);
   const query = () => props.query?.().trim().toLowerCase() ?? "";
-  const matches = (n) => props.match ? props.match(n, query()) : n.label.toLowerCase().includes(query());
-  return (() => {
-    var _el$ = _tmpl$();
-    insert(_el$, createComponent(Branch, {
-      parentId: "",
-      get nodes() {
-        return props.roots;
-      },
-      opened,
-      tree: props,
-      matches
-    }));
-    effect((_p$) => {
-      var _v$ = `dumb-tree ${props.class ?? ""}`, _v$2 = props.stripes === false ? void 0 : "1", _v$3 = {
-        ...props.size ? {
-          "--dumb-tree-size": props.size
-        } : {},
-        ...props.style
-      };
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _v$2 !== _p$.t && setAttribute(_el$, "data-stripes", _p$.t = _v$2);
-      _p$.a = style(_el$, _v$3, _p$.a);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0
-    });
-    return _el$;
-  })();
+  const matches = (n) => props.match ? props.match(n, query()) : textOf(n).toLowerCase().includes(query());
+  var _el$ = _tmpl$();
+  insert(_el$, createComponent(Branch, {
+    parentId: "",
+    get nodes() {
+      return props.roots;
+    },
+    opened,
+    tree: props,
+    matches,
+    depth: 0
+  }));
+  effect(() => ({
+    e: `dumb-tree ${props.class ?? ""}`,
+    t: props.stripes === false ? void 0 : "1",
+    a: {
+      ...props.size ? {
+        "--dumb-tree-size": props.size
+      } : {},
+      ...props.style
+    }
+  }), ({
+    e,
+    t,
+    a
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    t !== _p$?.t && setAttribute(_el$, "data-stripes", t);
+    style(_el$, a, _p$?.a);
+  });
+  return _el$;
 }
 function Branch(p) {
   const [loaded, setLoaded] = createSignal(null);
@@ -143,7 +137,9 @@ function Branch(p) {
     setBusy(true);
     fn(p.parentId).then(setLoaded).catch(() => setLoaded([])).finally(() => setBusy(false));
   };
-  if (!p.nodes) onMounted(load);
+  watch(() => !p.nodes, (needsLoad) => {
+    if (needsLoad) load();
+  });
   watch(() => p.tree.refreshKey?.(), () => {
     if (loaded()) load();
   }, {
@@ -158,7 +154,7 @@ function Branch(p) {
   });
   return [createComponent(Show, {
     get when() {
-      return memo(() => !!busy())() && !p.parentId;
+      return memo(() => !!busy())() ? !p.parentId : busy();
     },
     get children() {
       return _tmpl$2();
@@ -177,6 +173,9 @@ function Branch(p) {
       },
       get matches() {
         return p.matches;
+      },
+      get depth() {
+        return p.depth;
       }
     })
   })];
@@ -184,8 +183,14 @@ function Branch(p) {
 function Row(p) {
   const kids = () => p.node.children;
   const branch = () => !!p.node.isFolder || !!kids()?.length;
-  const open = () => p.opened.has(p.node.id) || !!p.tree.query?.().trim();
   const chosen = () => p.tree.selected?.() === p.node.id;
+  const holdsChosen = () => {
+    const id = p.tree.selected?.();
+    if (!id) return false;
+    const inside = (list) => (list ?? []).some((n) => n.id === id || inside(n.children));
+    return inside(kids());
+  };
+  const open = () => p.opened.has(p.node.id) || !!p.tree.query?.().trim() || branch() && chosen() || holdsChosen() || p.depth < (p.tree.openDepth ?? 0);
   const icon = () => p.node.icon ?? (branch() ? open() ? p.tree.icons?.folderOpen ?? p.tree.icons?.folder : p.tree.icons?.folder : p.tree.icons?.leaf);
   const drag = () => p.tree.getDragData?.(p.node) ?? null;
   const inner = [createComponent(Show, {
@@ -211,11 +216,15 @@ function Row(p) {
         },
         get children() {
           var _el$4 = _tmpl$3();
-          effect(() => className(_el$4, p.tree.icons.twist));
+          effect(() => p.tree.icons.twist, (_v$, _$p) => {
+            className(_el$4, _v$, _$p);
+          });
           return _el$4;
         }
       }));
-      effect(() => setAttribute(_el$3, "title", open() ? "\u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C" : "\u0440\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C"));
+      effect(() => open() ? "\u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C" : "\u0440\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C", (_v$) => {
+        setAttribute(_el$3, "title", _v$);
+      });
       return _el$3;
     }
   }), createComponent(Show, {
@@ -224,7 +233,9 @@ function Row(p) {
     },
     get children() {
       var _el$5 = _tmpl$3();
-      effect(() => className(_el$5, `dumb-tree-icon size-[15px] shrink-0 ${icon()}`));
+      effect(() => `dumb-tree-icon size-[15px] shrink-0 ${icon()}`, (_v$, _$p) => {
+        className(_el$5, _v$, _$p);
+      });
       return _el$5;
     }
   }), (() => {
@@ -276,59 +287,59 @@ function Row(p) {
     onClick: () => p.tree.onSelect?.(p.node),
     onContextMenu: (ev) => p.tree.onContextMenu?.(ev, p.node)
   };
-  return (() => {
-    var _el$9 = _tmpl$9();
-    insert(_el$9, createComponent(Show, {
-      get when() {
-        return p.node.href;
-      },
-      get fallback() {
-        return (() => {
-          var _el$10 = _tmpl$0();
-          spread(_el$10, rowProps, false, true);
-          insert(_el$10, inner);
-          return _el$10;
-        })();
-      },
-      get children() {
-        var _el$0 = _tmpl$8();
-        spread(_el$0, mergeProps(rowProps, {
-          get href() {
-            return p.node.href;
-          }
-        }), false, true);
-        insert(_el$0, inner);
-        return _el$0;
-      }
-    }), null);
-    insert(_el$9, createComponent(Show, {
-      get when() {
-        return memo(() => !!branch())() && open();
-      },
-      get children() {
-        var _el$1 = _tmpl$();
-        insert(_el$1, createComponent(Branch, {
-          get parentId() {
-            return p.node.id;
-          },
-          get nodes() {
-            return kids();
-          },
-          get opened() {
-            return p.opened;
-          },
-          get tree() {
-            return p.tree;
-          },
-          get matches() {
-            return p.matches;
-          }
-        }));
-        return _el$1;
-      }
-    }), null);
-    return _el$9;
-  })();
+  var _el$9 = _tmpl$9(), _el$10 = _el$9.firstChild, _el$11 = _el$10.nextSibling;
+  insert(_el$9, createComponent(Show, {
+    get when() {
+      return p.node.href;
+    },
+    get fallback() {
+      var _el$12 = _tmpl$0();
+      spread(_el$12, rowProps, true);
+      insert(_el$12, inner);
+      return _el$12;
+    },
+    get children() {
+      var _el$0 = _tmpl$8();
+      claimElement(_el$0);
+      spread(_el$0, mergeProps(rowProps, {
+        get href() {
+          return p.node.href;
+        }
+      }), true);
+      insert(_el$0, inner);
+      return _el$0;
+    }
+  }), _el$10);
+  insert(_el$9, createComponent(Show, {
+    get when() {
+      return memo(() => !!branch())() ? open() : branch();
+    },
+    get children() {
+      var _el$1 = _tmpl$();
+      insert(_el$1, createComponent(Branch, {
+        get parentId() {
+          return p.node.id;
+        },
+        get nodes() {
+          return kids();
+        },
+        get opened() {
+          return p.opened;
+        },
+        get tree() {
+          return p.tree;
+        },
+        get matches() {
+          return p.matches;
+        },
+        get depth() {
+          return p.depth + 1;
+        }
+      }));
+      return _el$1;
+    }
+  }), _el$11);
+  return _el$9;
 }
 delegateEvents(["click"]);
 

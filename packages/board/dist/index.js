@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, setAttribute, effect as effect$1, style, memo, className, setStyleProperty, template } from 'solid-js/web';
+import { delegateEvents, ref, insert, createComponent, setAttribute, effect as effect$1, style, memo, className, setStyleProperty, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createMemo, createSignal, onCleanup, For, Show, createEffect, untrack } from 'solid-js';
 
@@ -439,7 +439,7 @@ function gridLinesBackground(args) {
     size: `100% 100%, 100% ${stepY}px`
   };
 }
-delegateEvents(["click"]);
+delegateEvents(["pointerdown", "click"]);
 
 // src/boardMath.ts
 function panelFlow(order, opts) {
@@ -474,14 +474,14 @@ var _tmpl$ = /* @__PURE__ */ template(`<div><div class=dumb-board>`);
 var _tmpl$2 = /* @__PURE__ */ template(`<span class=dumb-board-grip>\u283F`);
 var _tmpl$3 = /* @__PURE__ */ template(`<span class="dumb-board-sub text-xs font-normal">`);
 var _tmpl$4 = /* @__PURE__ */ template(`<span class="dumb-board-actions ml-auto flex gap-1">`);
-var _tmpl$5 = /* @__PURE__ */ template(`<h4 class=dumb-board-head data-board-handle><span class=dumb-board-title></span><span class="dumb-board-count badge badge-sm badge-ghost">`);
+var _tmpl$5 = /* @__PURE__ */ template(`<h4 class=dumb-board-head data-board-handle><span class=dumb-board-title><!><!></span><span class="dumb-board-count badge badge-sm badge-ghost"></span><!>`);
 var _tmpl$6 = /* @__PURE__ */ template(`<div class=dumb-board-lines aria-hidden=true>`);
 var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-board-grip-x data-axis=x>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-board-grip-y data-axis=y>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<div class=dumb-board-grip-xy data-axis=xy>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<section><div class=dumb-board-zone>`);
+var _tmpl$0 = /* @__PURE__ */ template(`<section><div class=dumb-board-zone><!><!><!></div><!>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<span class=dumb-board-block-grip draggable=false>`);
-var _tmpl$10 = /* @__PURE__ */ template(`<div>`);
+var _tmpl$10 = /* @__PURE__ */ template(`<div><!><!>`);
 var _tmpl$11 = /* @__PURE__ */ template(`<div class="dumb-board-frame border-primary bg-primary/10 rounded-box border-2 border-dashed"aria-hidden=true>`);
 var STYLES = `
           .dumb-board { display: grid; align-items: start; gap: var(--dumb-board-gap);
@@ -1119,231 +1119,241 @@ function DumbBoard(props) {
     scroller.stop();
     measureWhenStill();
   };
-  return (() => {
-    var _el$ = _tmpl$(), _el$2 = _el$.firstChild;
-    _el$.addEventListener("drop", (ev) => {
-      ev.preventDefault();
-      finish();
-    });
-    _el$.addEventListener("dragend", finish);
-    _el$.addEventListener("dragover", onDragOver);
-    _el$.addEventListener("dragstart", onDragStart);
-    _el$.addEventListener("pointercancel", () => {
-      onGripUp();
-      onBlockGripUp();
-    });
-    _el$.$$pointerup = (ev) => {
-      onGripUp();
-      onBlockGripUp();
-    };
-    _el$.$$pointermove = (ev) => {
-      onGripMove(ev);
-      onBlockGripMove(ev);
-    };
-    _el$.$$pointerdown = (ev) => {
-      pressed = ev.target;
-      onGripDown(ev);
-      onBlockGripDown(ev);
-    };
-    use((el) => {
-      wrapEl = el;
-    }, _el$2);
-    insert(_el$2, createComponent(For, {
-      get each() {
-        return renderOrder();
-      },
-      children: (sid) => {
-        const s = () => sectionById(sid);
-        return (() => {
-          var _el$3 = _tmpl$0(), _el$0 = _el$3.firstChild;
-          use((el) => void panelEls.set(sid, el), _el$3);
-          setAttribute(_el$3, "data-board-section", sid);
-          insert(_el$3, createComponent(Show, {
+  var _el$ = _tmpl$(), _el$2 = _el$.firstChild;
+  _el$.addEventListener("drop", (ev) => {
+    ev.preventDefault();
+    finish();
+  });
+  _el$.addEventListener("dragend", finish);
+  _el$.addEventListener("dragover", onDragOver);
+  _el$.addEventListener("dragstart", onDragStart);
+  _el$.addEventListener("pointercancel", () => {
+    onGripUp();
+    onBlockGripUp();
+  });
+  _el$.$$pointerup = (ev) => {
+    onGripUp();
+    onBlockGripUp();
+  };
+  _el$.$$pointermove = (ev) => {
+    onGripMove(ev);
+    onBlockGripMove(ev);
+  };
+  _el$.$$pointerdown = (ev) => {
+    pressed = ev.target;
+    onGripDown(ev);
+    onBlockGripDown(ev);
+  };
+  ref(() => (el) => {
+    wrapEl = el;
+  }, _el$2);
+  insert(_el$2, createComponent(For, {
+    get each() {
+      return renderOrder();
+    },
+    children: (sid) => {
+      const s = () => sectionById(sid);
+      var _el$3 = _tmpl$0(), _el$11 = _el$3.firstChild, _el$13 = _el$11.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$14.nextSibling, _el$19 = _el$11.nextSibling;
+      ref(() => (el) => void panelEls.set(sid, el), _el$3);
+      setAttribute(_el$3, "data-board-section", sid);
+      insert(_el$3, createComponent(Show, {
+        get when() {
+          return s().title;
+        },
+        get children() {
+          var _el$4 = _tmpl$5(), _el$6 = _el$4.firstChild, _el$8 = _el$6.firstChild, _el$9 = _el$8.nextSibling, _el$0 = _el$6.nextSibling, _el$10 = _el$0.nextSibling;
+          _el$4.$$dblclick = () => editable() && toggleWide(s());
+          insert(_el$4, createComponent(Show, {
             get when() {
-              return s().title;
+              return editable();
             },
             get children() {
-              var _el$4 = _tmpl$5(), _el$6 = _el$4.firstChild, _el$8 = _el$6.nextSibling;
-              _el$4.$$dblclick = () => editable() && toggleWide(s());
-              insert(_el$4, createComponent(Show, {
-                get when() {
-                  return editable();
-                },
-                get children() {
-                  return _tmpl$2();
-                }
-              }), _el$6);
-              insert(_el$6, () => s().title, null);
-              insert(_el$6, createComponent(Show, {
-                get when() {
-                  return s().subtitle;
-                },
-                get children() {
-                  var _el$7 = _tmpl$3();
-                  insert(_el$7, () => s().subtitle);
-                  return _el$7;
-                }
-              }), null);
-              insert(_el$8, () => itemsOf(sid).length);
-              insert(_el$4, createComponent(Show, {
-                get when() {
-                  return props.sectionActions;
-                },
-                get children() {
-                  var _el$9 = _tmpl$4();
-                  insert(_el$9, () => props.sectionActions(s()));
-                  return _el$9;
-                }
-              }), null);
-              return _el$4;
+              return _tmpl$2();
             }
-          }), _el$0);
-          use((el) => {
-            zoneEls.set(sid, el);
-            sizes?.observe(el);
-          }, _el$0);
-          setAttribute(_el$0, "data-board-zone", sid);
-          insert(_el$0, createComponent(Show, {
+          }), _el$6);
+          insert(_el$6, () => s().title, _el$8);
+          insert(_el$6, createComponent(Show, {
             get when() {
-              return memo(() => !!editable())() && showGrid() !== false;
+              return s().subtitle;
             },
             get children() {
-              var _el$1 = _tmpl$6();
-              effect$1((_$p) => style(_el$1, {
-                ...linesOf(s()),
-                opacity: gridVisible() ? "1" : "0"
-              }, _$p));
+              var _el$7 = _tmpl$3();
+              insert(_el$7, () => s().subtitle);
+              return _el$7;
+            }
+          }), _el$9);
+          insert(_el$0, () => itemsOf(sid).length);
+          insert(_el$4, createComponent(Show, {
+            get when() {
+              return props.sectionActions;
+            },
+            get children() {
+              var _el$1 = _tmpl$4();
+              insert(_el$1, () => props.sectionActions(s()));
               return _el$1;
             }
-          }), null);
-          insert(_el$0, createComponent(For, {
-            get each() {
-              return renderItemsOf(sid);
-            },
-            children: (item) => {
-              const at = () => cellOf(sid, props.id(item));
-              return (() => {
-                var _el$13 = _tmpl$10();
-                use((el) => void blockEls.set(props.id(item), el), _el$13);
-                insert(_el$13, () => props.children(item, s()), null);
-                insert(_el$13, createComponent(Show, {
-                  get when() {
-                    return memo(() => !!editable())() && props.onBlockResize;
-                  },
-                  get children() {
-                    var _el$14 = _tmpl$1();
-                    effect$1((_p$) => {
-                      var _v$11 = props.id(item), _v$12 = props.labels?.resizeBlock ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440";
-                      _v$11 !== _p$.e && setAttribute(_el$14, "data-board-block-resize", _p$.e = _v$11);
-                      _v$12 !== _p$.t && setAttribute(_el$14, "title", _p$.t = _v$12);
-                      return _p$;
-                    }, {
-                      e: void 0,
-                      t: void 0
-                    });
-                    return _el$14;
-                  }
-                }), null);
-                effect$1((_p$) => {
-                  var _v$13 = `dumb-board-block ${held() === props.id(item) ? "held" : ""}`, _v$14 = props.id(item), _v$15 = editable() ? "true" : "false", _v$16 = `${(at()?.col ?? 0) + 1} / span ${at()?.w ?? 1}`, _v$17 = `${(at()?.row ?? 0) + 1} / span ${at()?.h ?? 1}`;
-                  _v$13 !== _p$.e && className(_el$13, _p$.e = _v$13);
-                  _v$14 !== _p$.t && setAttribute(_el$13, "data-board-block", _p$.t = _v$14);
-                  _v$15 !== _p$.a && setAttribute(_el$13, "draggable", _p$.a = _v$15);
-                  _v$16 !== _p$.o && setStyleProperty(_el$13, "grid-column", _p$.o = _v$16);
-                  _v$17 !== _p$.i && setStyleProperty(_el$13, "grid-row", _p$.i = _v$17);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0,
-                  a: void 0,
-                  o: void 0,
-                  i: void 0
-                });
-                return _el$13;
-              })();
-            }
-          }), null);
-          insert(_el$0, createComponent(Show, {
+          }), _el$10);
+          return _el$4;
+        }
+      }), _el$11);
+      ref(() => (el) => {
+        zoneEls.set(sid, el);
+        sizes?.observe(el);
+      }, _el$11);
+      setAttribute(_el$11, "data-board-zone", sid);
+      insert(_el$11, createComponent(Show, {
+        get when() {
+          return memo(() => !!editable())() ? showGrid() !== false : editable();
+        },
+        get children() {
+          var _el$12 = _tmpl$6();
+          effect$1(() => ({
+            ...linesOf(s()),
+            opacity: gridVisible() ? "1" : "0"
+          }), (_v$, _$p) => {
+            style(_el$12, _v$, _$p);
+          });
+          return _el$12;
+        }
+      }), _el$13);
+      insert(_el$11, createComponent(For, {
+        get each() {
+          return renderItemsOf(sid);
+        },
+        children: (item) => {
+          const at = () => cellOf(sid, props.id(item));
+          var _el$20 = _tmpl$10(), _el$22 = _el$20.firstChild, _el$23 = _el$22.nextSibling;
+          ref(() => (el) => void blockEls.set(props.id(item), el), _el$20);
+          insert(_el$20, () => props.children(item, s()), _el$22);
+          insert(_el$20, createComponent(Show, {
             get when() {
-              return memo(() => blockFrame()?.sectionId === sid)() ? blockFrame() : null;
-            },
-            children: (f) => {
-              const at = () => cellOf(sid, f().id);
-              return (() => {
-                var _el$15 = _tmpl$11();
-                effect$1((_p$) => {
-                  var _v$18 = `${(at()?.col ?? 0) + 1} / span ${f().w}`, _v$19 = `${(at()?.row ?? 0) + 1} / span ${f().h}`;
-                  _v$18 !== _p$.e && setStyleProperty(_el$15, "grid-column", _p$.e = _v$18);
-                  _v$19 !== _p$.t && setStyleProperty(_el$15, "grid-row", _p$.t = _v$19);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0
-                });
-                return _el$15;
-              })();
-            }
-          }), null);
-          insert(_el$3, createComponent(Show, {
-            get when() {
-              return memo(() => !!editable())() && resizable();
+              return memo(() => !!editable())() ? props.onBlockResize : editable();
             },
             get children() {
-              return [(() => {
-                var _el$10 = _tmpl$7();
-                setAttribute(_el$10, "data-board-resize", sid);
-                return _el$10;
-              })(), (() => {
-                var _el$11 = _tmpl$8();
-                setAttribute(_el$11, "data-board-resize", sid);
-                return _el$11;
-              })(), (() => {
-                var _el$12 = _tmpl$9();
-                setAttribute(_el$12, "data-board-resize", sid);
-                return _el$12;
-              })()];
+              var _el$21 = _tmpl$1();
+              effect$1(() => ({
+                e: props.id(item),
+                t: props.labels?.resizeBlock ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440"
+              }), ({
+                e,
+                t
+              }, _p$) => {
+                e !== _p$?.e && setAttribute(_el$21, "data-board-block-resize", e);
+                t !== _p$?.t && setAttribute(_el$21, "title", t);
+              });
+              return _el$21;
             }
-          }), null);
-          effect$1((_p$) => {
-            var _v$5 = `dumb-board-panel ${heldSection() === sid ? "held" : ""} ${sizing() === sid ? "sizing" : ""}`, _v$6 = editable() ? "true" : "false", _v$7 = `span ${spanOf(s())}`, _v$8 = String(showOrder(sid)), _v$9 = String(colsIn(s())), _v$0 = `${rowH()}px`, _v$1 = `${zoneGap()}px`, _v$10 = `${spanSize(s().rows || rowsUsed(sid) + 1, rowH(), zoneGap())}px`;
-            _v$5 !== _p$.e && className(_el$3, _p$.e = _v$5);
-            _v$6 !== _p$.t && setAttribute(_el$3, "draggable", _p$.t = _v$6);
-            _v$7 !== _p$.a && setStyleProperty(_el$3, "grid-column", _p$.a = _v$7);
-            _v$8 !== _p$.o && setStyleProperty(_el$3, "order", _p$.o = _v$8);
-            _v$9 !== _p$.i && setStyleProperty(_el$0, "--dumb-board-inner", _p$.i = _v$9);
-            _v$0 !== _p$.n && setStyleProperty(_el$0, "--dumb-board-row", _p$.n = _v$0);
-            _v$1 !== _p$.s && setStyleProperty(_el$0, "--dumb-board-zone-gap", _p$.s = _v$1);
-            _v$10 !== _p$.h && setStyleProperty(_el$0, "height", _p$.h = _v$10);
-            return _p$;
-          }, {
-            e: void 0,
-            t: void 0,
-            a: void 0,
-            o: void 0,
-            i: void 0,
-            n: void 0,
-            s: void 0,
-            h: void 0
+          }), _el$23);
+          effect$1(() => ({
+            e: `dumb-board-block ${held() === props.id(item) ? "held" : ""}`,
+            t: props.id(item),
+            a: editable() ? "true" : "false",
+            o: `${(at()?.col ?? 0) + 1} / span ${at()?.w ?? 1}`,
+            i: `${(at()?.row ?? 0) + 1} / span ${at()?.h ?? 1}`
+          }), ({
+            e,
+            t,
+            a,
+            o,
+            i
+          }, _p$) => {
+            className(_el$20, e, _p$?.e);
+            t !== _p$?.t && setAttribute(_el$20, "data-board-block", t);
+            a !== _p$?.a && setAttribute(_el$20, "draggable", a);
+            o !== _p$?.o && setStyleProperty(_el$20, "grid-column", o);
+            i !== _p$?.i && setStyleProperty(_el$20, "grid-row", i);
           });
-          return _el$3;
-        })();
-      }
-    }));
-    effect$1((_p$) => {
-      var _v$ = props.class, _v$2 = props.style, _v$3 = String(cols()), _v$4 = `${gap()}px`;
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      _v$3 !== _p$.a && setStyleProperty(_el$2, "--dumb-board-cols", _p$.a = _v$3);
-      _v$4 !== _p$.o && setStyleProperty(_el$2, "--dumb-board-gap", _p$.o = _v$4);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0,
-      o: void 0
-    });
-    return _el$;
-  })();
+          return _el$20;
+        }
+      }), _el$14);
+      insert(_el$11, createComponent(Show, {
+        get when() {
+          return memo(() => blockFrame()?.sectionId === sid)() ? blockFrame() : null;
+        },
+        children: (f) => {
+          const at = () => cellOf(sid, f().id);
+          var _el$24 = _tmpl$11();
+          effect$1(() => ({
+            e: `${(at()?.col ?? 0) + 1} / span ${f().w}`,
+            t: `${(at()?.row ?? 0) + 1} / span ${f().h}`
+          }), ({
+            e,
+            t
+          }, _p$) => {
+            e !== _p$?.e && setStyleProperty(_el$24, "grid-column", e);
+            t !== _p$?.t && setStyleProperty(_el$24, "grid-row", t);
+          });
+          return _el$24;
+        }
+      }), _el$15);
+      insert(_el$3, createComponent(Show, {
+        get when() {
+          return memo(() => !!editable())() ? resizable() : editable();
+        },
+        get children() {
+          return [(() => {
+            var _el$16 = _tmpl$7();
+            setAttribute(_el$16, "data-board-resize", sid);
+            return _el$16;
+          })(), (() => {
+            var _el$17 = _tmpl$8();
+            setAttribute(_el$17, "data-board-resize", sid);
+            return _el$17;
+          })(), (() => {
+            var _el$18 = _tmpl$9();
+            setAttribute(_el$18, "data-board-resize", sid);
+            return _el$18;
+          })()];
+        }
+      }), _el$19);
+      effect$1(() => ({
+        e: `dumb-board-panel ${heldSection() === sid ? "held" : ""} ${sizing() === sid ? "sizing" : ""}`,
+        t: editable() ? "true" : "false",
+        a: `span ${spanOf(s())}`,
+        o: String(showOrder(sid)),
+        i: String(colsIn(s())),
+        n: `${rowH()}px`,
+        s: `${zoneGap()}px`,
+        h: `${spanSize(s().rows || rowsUsed(sid) + 1, rowH(), zoneGap())}px`
+      }), ({
+        e,
+        t,
+        a,
+        o,
+        i,
+        n,
+        s: s2,
+        h
+      }, _p$) => {
+        className(_el$3, e, _p$?.e);
+        t !== _p$?.t && setAttribute(_el$3, "draggable", t);
+        a !== _p$?.a && setStyleProperty(_el$3, "grid-column", a);
+        o !== _p$?.o && setStyleProperty(_el$3, "order", o);
+        i !== _p$?.i && setStyleProperty(_el$11, "--dumb-board-inner", i);
+        n !== _p$?.n && setStyleProperty(_el$11, "--dumb-board-row", n);
+        s2 !== _p$?.s && setStyleProperty(_el$11, "--dumb-board-zone-gap", s2);
+        h !== _p$?.h && setStyleProperty(_el$11, "height", h);
+      });
+      return _el$3;
+    }
+  }));
+  effect$1(() => ({
+    e: props.class,
+    t: props.style,
+    a: String(cols()),
+    o: `${gap()}px`
+  }), ({
+    e,
+    t,
+    a,
+    o
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    style(_el$, t, _p$?.t);
+    a !== _p$?.a && setStyleProperty(_el$2, "--dumb-board-cols", a);
+    o !== _p$?.o && setStyleProperty(_el$2, "--dumb-board-gap", o);
+  });
+  return _el$;
 }
 delegateEvents(["pointerdown", "pointermove", "pointerup", "dblclick"]);
 

@@ -293,7 +293,7 @@ function createAutoScroller() {
 }
 
 // ../grid/dist/index.js
-import { delegateEvents, use, insert, createComponent, effect as effect2, setStyleProperty, memo, setAttribute, className, style, template } from "solid-js/web";
+import { delegateEvents, ref, insert, createComponent, effect as effect2, setStyleProperty, memo, addEvent, setAttribute, className, style, template } from "@solidjs/web";
 import * as solid2 from "solid-js";
 import { createSignal as createSignal2, onCleanup, createMemo, Show, For, createEffect as createEffect2, untrack as untrack2 } from "solid-js";
 
@@ -722,7 +722,7 @@ function gridLinesBackground(args) {
     size: `100% 100%, 100% ${stepY}px`
   };
 }
-delegateEvents(["click"]);
+delegateEvents(["pointerdown", "click"]);
 
 // src/boardMath.ts
 function panelFlow(order, opts) {

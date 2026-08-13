@@ -9,7 +9,7 @@
 pnpm add @solid-dumb-kit/timeline
 ```
 
-Peer-зависимости: `solid-js` и `@solidjs/web` — вторая линия Solid (`>=2.0.0-beta.30`). Тянет за собой: `temporal-polyfill`.
+Peer-зависимости: `solid-js` и `@solidjs/web` — вторая линия Solid (`>=2.0.0-rc.0`). Тянет за собой: `temporal-polyfill`.
 
 ## Документация
 

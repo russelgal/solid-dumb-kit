@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, effect, setStyleProperty, className, template } from 'solid-js/web';
+import { delegateEvents, ref, insert, createComponent, effect, setStyleProperty, className, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { For, Show, createSignal, createEffect, untrack } from 'solid-js';
 import * as v from 'valibot';
@@ -80,7 +80,7 @@ function restoreTextSelection() {
 // src/ResizableGrid.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<div class=resizable-grid-handle-row>`);
 var _tmpl$2 = /* @__PURE__ */ template(`<div style=display:grid;min-height:0>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<div style=display:grid;height:100%;width:100%;overflow:hidden><div style=display:grid;min-height:0>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<div style=display:grid;height:100%;width:100%;overflow:hidden><div style=display:grid;min-height:0></div><!><!>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<div class=resizable-grid-handle-col>`);
 var _tmpl$5 = /* @__PURE__ */ template(`<div style=min-width:0;min-height:0;overflow:auto>`);
 var HANDLE_SIZE = 6;
@@ -255,81 +255,83 @@ function ResizableGrid(props) {
     return `${split[0]}fr ${HANDLE_SIZE}px ${split[1]}fr`;
   };
   const hasRows = () => !!props.rows && props.rows.length > 0;
-  return (() => {
-    var _el$ = _tmpl$3(), _el$2 = _el$.firstChild;
-    var _ref$ = containerRef;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : containerRef = _el$;
-    insert(_el$2, createComponent(For, {
-      get each() {
-        return props.cols;
+  var _el$ = _tmpl$3(), _el$2 = _el$.firstChild, _el$5 = _el$2.nextSibling, _el$6 = _el$5.nextSibling;
+  var _ref$ = containerRef;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : containerRef = _el$;
+  insert(_el$2, createComponent(For, {
+    get each() {
+      return props.cols;
+    },
+    children: (col, i) => [createComponent(Show, {
+      get when() {
+        return i() > 0;
       },
-      children: (col, i) => [createComponent(Show, {
-        get when() {
-          return i() > 0;
+      get children() {
+        var _el$7 = _tmpl$4();
+        _el$7.$$mousedown = (e) => startColResize(i() - 1, e);
+        return _el$7;
+      }
+    }), (() => {
+      var _el$8 = _tmpl$5();
+      insert(_el$8, () => col.content());
+      return _el$8;
+    })()]
+  }));
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return hasRows();
+    },
+    get children() {
+      var _el$3 = _tmpl$();
+      _el$3.$$mousedown = startRowResize;
+      return _el$3;
+    }
+  }), _el$5);
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return hasRows();
+    },
+    get children() {
+      var _el$4 = _tmpl$2();
+      insert(_el$4, createComponent(For, {
+        get each() {
+          return props.rows;
         },
-        get children() {
-          var _el$5 = _tmpl$4();
-          _el$5.$$mousedown = (e) => startColResize(i() - 1, e);
-          return _el$5;
-        }
-      }), (() => {
-        var _el$6 = _tmpl$5();
-        insert(_el$6, () => col.content());
-        return _el$6;
-      })()]
-    }));
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return hasRows();
-      },
-      get children() {
-        var _el$3 = _tmpl$();
-        _el$3.$$mousedown = startRowResize;
-        return _el$3;
-      }
-    }), null);
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return hasRows();
-      },
-      get children() {
-        var _el$4 = _tmpl$2();
-        insert(_el$4, createComponent(For, {
-          get each() {
-            return props.rows;
+        children: (panel, i) => [createComponent(Show, {
+          get when() {
+            return i() > 0;
           },
-          children: (panel, i) => [createComponent(Show, {
-            get when() {
-              return i() > 0;
-            },
-            get children() {
-              var _el$7 = _tmpl$4();
-              _el$7.$$mousedown = (e) => startRow2ColResize(i() - 1, e);
-              return _el$7;
-            }
-          }), (() => {
-            var _el$8 = _tmpl$5();
-            insert(_el$8, () => panel.content());
-            return _el$8;
-          })()]
-        }));
-        effect((_$p) => setStyleProperty(_el$4, "grid-template-columns", row2Template()));
-        return _el$4;
-      }
-    }), null);
-    effect((_p$) => {
-      var _v$ = props.class, _v$2 = rowTemplate(), _v$3 = colTemplate();
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _v$2 !== _p$.t && setStyleProperty(_el$, "grid-template-rows", _p$.t = _v$2);
-      _v$3 !== _p$.a && setStyleProperty(_el$2, "grid-template-columns", _p$.a = _v$3);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0
-    });
-    return _el$;
-  })();
+          get children() {
+            var _el$9 = _tmpl$4();
+            _el$9.$$mousedown = (e) => startRow2ColResize(i() - 1, e);
+            return _el$9;
+          }
+        }), (() => {
+          var _el$0 = _tmpl$5();
+          insert(_el$0, () => panel.content());
+          return _el$0;
+        })()]
+      }));
+      effect(() => row2Template(), (_v$) => {
+        setStyleProperty(_el$4, "grid-template-columns", _v$);
+      });
+      return _el$4;
+    }
+  }), _el$6);
+  effect(() => ({
+    e: props.class,
+    t: rowTemplate(),
+    a: colTemplate()
+  }), ({
+    e,
+    t,
+    a
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    t !== _p$?.t && setStyleProperty(_el$, "grid-template-rows", t);
+    a !== _p$?.a && setStyleProperty(_el$2, "grid-template-columns", a);
+  });
+  return _el$;
 }
 var STYLES = `
 .resizable-grid-handle-col {

@@ -5,14 +5,6 @@ import { createMemo, createSignal as createSignal2, For, Show } from "solid-js";
 import * as solid from "solid-js";
 import { createEffect, untrack, createSignal } from "solid-js";
 var SOLID_2 = !("batch" in solid);
-function onMounted(fn) {
-  if (SOLID_2) {
-    createEffect(() => {
-    }, fn);
-  } else {
-    createEffect(() => untrack(fn));
-  }
-}
 function watch(dep, fn, opts) {
   let first = true;
   let prev;
@@ -63,6 +55,7 @@ var STYLES = `
   .dumb-tree-row[data-open="1"] .dumb-tree-twist > span { transform: rotate(90deg) }
   @media (prefers-reduced-motion: reduce) { .dumb-tree-twist > span { transition: none } }
 `;
+var textOf = (n) => typeof n.label === "string" ? n.label : n.searchText ?? "";
 function createOpened(key) {
   const read = () => {
     if (!key) return /* @__PURE__ */ new Set();
@@ -94,13 +87,13 @@ function DumbTree(props) {
   injectStyle("tree", STYLES);
   const opened = createOpened(props.storageKey);
   const query = () => props.query?.().trim().toLowerCase() ?? "";
-  const matches = (n) => props.match ? props.match(n, query()) : n.label.toLowerCase().includes(query());
+  const matches = (n) => props.match ? props.match(n, query()) : textOf(n).toLowerCase().includes(query());
   return <ul
     class={`dumb-tree ${props.class ?? ""}`}
     data-stripes={props.stripes === false ? void 0 : "1"}
     style={{ ...props.size ? { "--dumb-tree-size": props.size } : {}, ...props.style }}
   >
-      <Branch parentId="" nodes={props.roots} opened={opened} tree={props} matches={matches} />
+      <Branch parentId="" nodes={props.roots} opened={opened} tree={props} matches={matches} depth={0} />
     </ul>;
 }
 function Branch(p) {
@@ -112,7 +105,12 @@ function Branch(p) {
     setBusy(true);
     fn(p.parentId).then(setLoaded).catch(() => setLoaded([])).finally(() => setBusy(false));
   };
-  if (!p.nodes) onMounted(load);
+  watch(
+    () => !p.nodes,
+    (needsLoad) => {
+      if (needsLoad) load();
+    }
+  );
   watch(
     () => p.tree.refreshKey?.(),
     () => {
@@ -132,15 +130,21 @@ function Branch(p) {
         <li class="dumb-tree-wait px-1"><span class="loading loading-dots loading-xs" /></li>
       </Show>
       <For each={list()}>
-        {(node) => <Row node={node} opened={p.opened} tree={p.tree} matches={p.matches} />}
+        {(node) => <Row node={node} opened={p.opened} tree={p.tree} matches={p.matches} depth={p.depth} />}
       </For>
     </>;
 }
 function Row(p) {
   const kids = () => p.node.children;
   const branch = () => !!p.node.isFolder || !!kids()?.length;
-  const open = () => p.opened.has(p.node.id) || !!p.tree.query?.().trim();
   const chosen = () => p.tree.selected?.() === p.node.id;
+  const holdsChosen = () => {
+    const id = p.tree.selected?.();
+    if (!id) return false;
+    const inside = (list) => (list ?? []).some((n) => n.id === id || inside(n.children));
+    return inside(kids());
+  };
+  const open = () => p.opened.has(p.node.id) || !!p.tree.query?.().trim() || branch() && chosen() || holdsChosen() || p.depth < (p.tree.openDepth ?? 0);
   const icon = () => p.node.icon ?? (branch() ? open() ? p.tree.icons?.folderOpen ?? p.tree.icons?.folder : p.tree.icons?.folder : p.tree.icons?.leaf);
   const drag = () => p.tree.getDragData?.(p.node) ?? null;
   const inner = <>
@@ -212,6 +216,7 @@ function Row(p) {
     opened={p.opened}
     tree={p.tree}
     matches={p.matches}
+    depth={p.depth + 1}
   />
         </ul>
       </Show>

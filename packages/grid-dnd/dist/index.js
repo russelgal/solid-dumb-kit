@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, effect, className, style, template } from 'solid-js/web';
+import { delegateEvents, ref, insert, createComponent, effect, className, style, template } from '@solidjs/web';
 import { createSignal, onCleanup, createMemo, For } from 'solid-js';
 
 // src/DumbGridDnd.tsx
@@ -373,7 +373,7 @@ function moveDeltas(args) {
   }
   return out;
 }
-delegateEvents(["click"]);
+delegateEvents(["pointerdown", "click"]);
 
 // src/dndCore.ts
 function insertIndexReading(args) {
@@ -819,60 +819,58 @@ function DumbGridDnd(props) {
     const mine = a && (a.grid === name() || group.over() === name());
     return mine ? base + 1 : base;
   };
-  return (() => {
-    var _el$ = _tmpl$();
-    var _ref$ = g.container;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : g.container = _el$;
-    insert(_el$, createComponent(For, {
-      get each() {
-        return props.items;
-      },
-      children: (it) => {
-        const pos = () => posById().get(it.id);
-        return (() => {
-          var _el$2 = _tmpl$2();
-          var _ref$2 = props.disabled ? void 0 : g.bind(it.id);
-          typeof _ref$2 === "function" && use(_ref$2, _el$2);
-          insert(_el$2, () => it.content());
-          effect((_p$) => {
-            var _v$3 = props.blockClass, _v$4 = {
-              // позицию считаем мы, браузер её не домысливает
-              "grid-column": `${(pos()?.col ?? 0) + 1} / span ${pos()?.w ?? 1}`,
-              "grid-row": `${(pos()?.row ?? 0) + 1} / span ${pos()?.h ?? 1}`,
-              cursor: props.disabled ? "default" : "grab",
-              ...props.blockStyle
-            };
-            _v$3 !== _p$.e && className(_el$2, _p$.e = _v$3);
-            _p$.t = style(_el$2, _v$4, _p$.t);
-            return _p$;
-          }, {
-            e: void 0,
-            t: void 0
-          });
-          return _el$2;
-        })();
-      }
-    }));
-    effect((_p$) => {
-      var _v$ = props.class, _v$2 = {
-        "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
-        "grid-auto-rows": `${rowH()}px`,
-        gap: `${gap()}px`,
-        "min-height": `${(() => {
-          const n = liveRows();
-          return n * rowH() + Math.max(0, n - 1) * gap();
-        })()}px`,
-        ...props.style
-      };
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0
-    });
-    return _el$;
-  })();
+  var _el$ = _tmpl$();
+  var _ref$ = g.container;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : g.container = _el$;
+  insert(_el$, createComponent(For, {
+    get each() {
+      return props.items;
+    },
+    children: (it) => {
+      const pos = () => posById().get(it.id);
+      var _el$2 = _tmpl$2();
+      var _ref$2 = props.disabled ? void 0 : g.bind(it.id);
+      (typeof _ref$2 === "function" || Array.isArray(_ref$2)) && ref(() => _ref$2, _el$2);
+      insert(_el$2, () => it.content());
+      effect(() => ({
+        e: props.blockClass,
+        t: {
+          // позицию считаем мы, браузер её не домысливает
+          "grid-column": `${(pos()?.col ?? 0) + 1} / span ${pos()?.w ?? 1}`,
+          "grid-row": `${(pos()?.row ?? 0) + 1} / span ${pos()?.h ?? 1}`,
+          cursor: props.disabled ? "default" : "grab",
+          ...props.blockStyle
+        }
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        className(_el$2, e, _p$?.e);
+        style(_el$2, t, _p$?.t);
+      });
+      return _el$2;
+    }
+  }));
+  effect(() => ({
+    e: props.class,
+    t: {
+      "grid-template-columns": `repeat(${cols()}, minmax(0, 1fr))`,
+      "grid-auto-rows": `${rowH()}px`,
+      gap: `${gap()}px`,
+      "min-height": `${(() => {
+        const n = liveRows();
+        return n * rowH() + Math.max(0, n - 1) * gap();
+      })()}px`,
+      ...props.style
+    }
+  }), ({
+    e,
+    t
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    style(_el$, t, _p$?.t);
+  });
+  return _el$;
 }
 
 export { DND_MIME, DumbGridDnd, createDumbGridDndGroup, createGridDndEngine, dndSupported, planDrop };

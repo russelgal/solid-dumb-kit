@@ -1,4 +1,4 @@
-import { delegateEvents, insert, createComponent, memo, effect, className, style, setStyleProperty, use, setAttribute, addEventListener, template } from 'solid-js/web';
+import { delegateEvents, insert, createComponent, memo, effect, className, style, setStyleProperty, addEvent, ref, setAttribute, template } from '@solidjs/web';
 import { createSignal, createMemo, Show, For, onCleanup } from 'solid-js';
 
 // src/DumbTable.tsx
@@ -496,6 +496,15 @@ function createSortableEngine(opts) {
     ev.preventDefault();
     begin(id, handle, ev.pointerId, ev.clientX, ev.clientY);
   }
+  function pressOn(el, id, ev) {
+    const handle = el.querySelector("[data-drag-handle]");
+    if (handle) {
+      if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+    } else if (targetIsInteractive(ev)) {
+      return;
+    }
+    onDown(id, handle || el, ev);
+  }
   return {
     // самодостаточно: регистрирует элемент И навешивает старт драга.
     // ручка = дочка с [data-drag-handle] (делегирование); нет её → тянем за весь элемент.
@@ -504,20 +513,20 @@ function createSortableEngine(opts) {
       rowEls.set(id, el);
       const h = el.querySelector("[data-drag-handle]");
       if (h) h.style.touchAction = "none";
-      const down = (ev) => {
-        const handle = el.querySelector("[data-drag-handle]");
-        if (handle) {
-          if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-        } else if (targetIsInteractive(ev)) {
-          return;
-        }
-        onDown(id, handle || el, ev);
-      };
+      const down = (ev) => pressOn(el, id, ev);
       el.addEventListener("pointerdown", down);
       return () => {
         el.removeEventListener("pointerdown", down);
         if (rowEls.get(id) === el) rowEls.delete(id);
       };
+    },
+    // событие принесли снаружи — подписки нет вовсе
+    press(id, ev) {
+      const el = rowEls.get(id);
+      if (el) pressOn(el, id, ev);
+    },
+    pressHandle(id, el, ev) {
+      onDown(id, el, ev);
     },
     // низкоуровневое: ячейка и ручка порознь (когда ручка не потомок ячейки)
     attachRow(el, id) {
@@ -544,7 +553,9 @@ function createDumbSortable(opts) {
   return {
     bind: (id) => (el) => onCleanup(engine.attach(el, id)),
     row: (id) => (el) => onCleanup(engine.attachRow(el, id)),
-    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id))
+    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id)),
+    press: (id) => (ev) => engine.press(id, ev),
+    pressHandle: (id) => (ev) => engine.pressHandle(id, ev.currentTarget, ev)
   };
 }
 function prefersReducedMotion2() {
@@ -560,11 +571,11 @@ var _tmpl$2 = /* @__PURE__ */ template(`<progress class="progress progress-prima
 var _tmpl$3 = /* @__PURE__ */ template(`<th class=w-px>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
 var _tmpl$5 = /* @__PURE__ */ template(`<tfoot>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<table><thead><tr></tr></thead><tbody>`);
-var _tmpl$7 = /* @__PURE__ */ template(`<div>`);
-var _tmpl$8 = /* @__PURE__ */ template(`<th style=white-space:nowrap>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<table><thead><tr><!><!></tr></thead><tbody><!><!><!>`);
+var _tmpl$7 = /* @__PURE__ */ template(`<div><!><!>`);
+var _tmpl$8 = /* @__PURE__ */ template(`<th style=white-space:nowrap><!><!>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<td class=w-px><span data-drag-handle>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<tr>`);
+var _tmpl$0 = /* @__PURE__ */ template(`<tr><!><!>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<td>`);
 var withViewTransition = (on, fn) => {
   const doc = document;
@@ -572,14 +583,12 @@ var withViewTransition = (on, fn) => {
   else fn();
 };
 function SortMark(props) {
-  return (() => {
-    var _el$ = _tmpl$();
-    insert(_el$, (() => {
-      var _c$ = memo(() => props.dir === "asc");
-      return () => _c$() ? "\u25B2" : props.dir === "desc" ? "\u25BC" : "\u21C5";
-    })());
-    return _el$;
-  })();
+  var _el$ = _tmpl$();
+  insert(_el$, (() => {
+    var _c$ = memo(() => props.dir === "asc");
+    return () => _c$() ? "\u25B2" : props.dir === "desc" ? "\u25BC" : "\u21C5";
+  })());
+  return _el$;
 }
 function DumbTable(props) {
   const [localSort, setLocalSort] = createSignal(null);
@@ -664,183 +673,194 @@ function DumbTable(props) {
       width: c.width
     } : {}
   });
-  return (() => {
-    var _el$2 = _tmpl$7();
-    insert(_el$2, createComponent(Show, {
-      get when() {
-        return props.loading;
-      },
-      get children() {
-        return _tmpl$2();
-      }
-    }), null);
-    insert(_el$2, createComponent(Show, {
-      get when() {
-        return visibleRows().length;
-      },
-      get fallback() {
-        return props.empty;
-      },
-      get children() {
-        var _el$4 = _tmpl$6(), _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$8 = _el$5.nextSibling;
-        insert(_el$6, createComponent(Show, {
-          get when() {
-            return memo(() => !!props.onReorder)() && withHandle();
-          },
-          get children() {
-            return _tmpl$3();
-          }
-        }), null);
-        insert(_el$6, createComponent(For, {
-          get each() {
-            return props.columns;
-          },
-          children: (c) => (() => {
-            var _el$10 = _tmpl$8();
-            _el$10.$$click = () => toggleSort(c);
-            insert(_el$10, () => c.label ?? c.key, null);
-            insert(_el$10, createComponent(Show, {
-              get when() {
-                return c.sortable;
-              },
-              get children() {
-                return createComponent(SortMark, {
-                  get dir() {
-                    return memo(() => sortOf()?.key === c.key)() ? sortOf().desc ? "desc" : "asc" : false;
-                  }
-                });
-              }
-            }), null);
-            effect((_p$) => {
-              var _v$3 = `${c.class ?? ""} ${c.headClass ?? ""} ${c.sortable ? "cursor-pointer select-none" : ""}`.trim() || void 0, _v$4 = {
-                ...cellStyle(c)
-              };
-              _v$3 !== _p$.e && className(_el$10, _p$.e = _v$3);
-              _p$.t = style(_el$10, _v$4, _p$.t);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0
-            });
-            return _el$10;
-          })()
-        }), null);
-        insert(_el$8, createComponent(Show, {
-          get when() {
-            return props.spacerTop;
-          },
-          get children() {
-            var _el$9 = _tmpl$4();
-            effect((_$p) => setStyleProperty(_el$9, "height", `${props.spacerTop}px`));
-            return _el$9;
-          }
-        }), null);
-        insert(_el$8, createComponent(For, {
-          get each() {
-            return visibleRows();
-          },
-          children: (row, index) => (() => {
-            var _el$11 = _tmpl$0();
-            _el$11.$$click = () => props.onRowClick?.(row, index());
-            var _ref$ = props.onReorder ? sortable.bind(idOf(row, index())) : void 0;
-            typeof _ref$ === "function" && use(_ref$, _el$11);
-            insert(_el$11, createComponent(Show, {
-              get when() {
-                return memo(() => !!props.onReorder)() && withHandle();
-              },
-              get children() {
-                var _el$12 = _tmpl$9(), _el$13 = _el$12.firstChild;
-                _el$12.$$click = (e) => e.stopPropagation();
-                insert(_el$13, () => props.handle ?? "\u283F");
-                effect((_p$) => {
-                  var _v$5 = `inline-block touch-none ${dragDisabled() ? "cursor-not-allowed" : "cursor-grab"}`, _v$6 = dragDisabled() ? "reset sorting to reorder" : "drag";
-                  _v$5 !== _p$.e && className(_el$13, _p$.e = _v$5);
-                  _v$6 !== _p$.t && setAttribute(_el$13, "title", _p$.t = _v$6);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0
-                });
-                return _el$12;
-              }
-            }), null);
-            insert(_el$11, createComponent(For, {
-              get each() {
-                return props.columns;
-              },
-              children: (c) => (() => {
-                var _el$14 = _tmpl$1();
-                addEventListener(_el$14, "click", c.stopClick ? (e) => e.stopPropagation() : void 0, true);
-                insert(_el$14, (() => {
-                  var _c$2 = memo(() => !!c.render);
-                  return () => _c$2() ? c.render(row, index()) : String(valueOf(c, row) ?? "");
-                })());
-                effect((_p$) => {
-                  var _v$0 = c.class, _v$1 = cellStyle(c);
-                  _v$0 !== _p$.e && className(_el$14, _p$.e = _v$0);
-                  _p$.t = style(_el$14, _v$1, _p$.t);
-                  return _p$;
-                }, {
-                  e: void 0,
-                  t: void 0
-                });
-                return _el$14;
-              })()
-            }), null);
-            effect((_p$) => {
-              var _v$7 = idOf(row, index()), _v$8 = props.rowClass?.(row, index()), _v$9 = {
-                cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
-                ...props.rowStyle?.(row, index())
-              };
-              _v$7 !== _p$.e && setAttribute(_el$11, "data-key", _p$.e = _v$7);
-              _v$8 !== _p$.t && className(_el$11, _p$.t = _v$8);
-              _p$.a = style(_el$11, _v$9, _p$.a);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0,
-              a: void 0
-            });
-            return _el$11;
-          })()
-        }), null);
-        insert(_el$8, createComponent(Show, {
-          get when() {
-            return props.spacerBottom;
-          },
-          get children() {
-            var _el$0 = _tmpl$4();
-            effect((_$p) => setStyleProperty(_el$0, "height", `${props.spacerBottom}px`));
-            return _el$0;
-          }
-        }), null);
-        insert(_el$4, createComponent(Show, {
-          get when() {
-            return props.footer;
-          },
-          get children() {
-            var _el$1 = _tmpl$5();
-            insert(_el$1, () => props.footer);
-            return _el$1;
-          }
-        }), null);
-        effect((_p$) => {
-          var _v$ = `table ${props.tableClass ?? ""}`, _v$2 = props.headClass;
-          _v$ !== _p$.e && className(_el$4, _p$.e = _v$);
-          _v$2 !== _p$.t && className(_el$5, _p$.t = _v$2);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0
-        });
-        return _el$4;
-      }
-    }), null);
-    effect(() => className(_el$2, props.class));
-    return _el$2;
-  })();
+  var _el$2 = _tmpl$7(), _el$15 = _el$2.firstChild, _el$16 = _el$15.nextSibling;
+  insert(_el$2, createComponent(Show, {
+    get when() {
+      return props.loading;
+    },
+    get children() {
+      return _tmpl$2();
+    }
+  }), _el$15);
+  insert(_el$2, createComponent(Show, {
+    get when() {
+      return visibleRows().length;
+    },
+    get fallback() {
+      return props.empty;
+    },
+    get children() {
+      var _el$4 = _tmpl$6(), _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$8 = _el$6.firstChild, _el$9 = _el$8.nextSibling, _el$0 = _el$5.nextSibling, _el$11 = _el$0.firstChild, _el$12 = _el$11.nextSibling, _el$13 = _el$12.nextSibling;
+      insert(_el$6, createComponent(Show, {
+        get when() {
+          return memo(() => !!props.onReorder)() ? withHandle() : props.onReorder;
+        },
+        get children() {
+          return _tmpl$3();
+        }
+      }), _el$8);
+      insert(_el$6, createComponent(For, {
+        get each() {
+          return props.columns;
+        },
+        children: (c) => (() => {
+          var _el$17 = _tmpl$8(), _el$18 = _el$17.firstChild, _el$19 = _el$18.nextSibling;
+          _el$17.$$click = () => toggleSort(c);
+          insert(_el$17, () => c.label ?? c.key, _el$18);
+          insert(_el$17, createComponent(Show, {
+            get when() {
+              return c.sortable;
+            },
+            get children() {
+              return createComponent(SortMark, {
+                get dir() {
+                  return memo(() => sortOf()?.key === c.key)() ? sortOf().desc ? "desc" : "asc" : false;
+                }
+              });
+            }
+          }), _el$19);
+          effect(() => ({
+            e: `${c.class ?? ""} ${c.headClass ?? ""} ${c.sortable ? "cursor-pointer select-none" : ""}`.trim() || void 0,
+            t: {
+              ...cellStyle(c)
+            }
+          }), ({
+            e,
+            t
+          }, _p$) => {
+            className(_el$17, e, _p$?.e);
+            style(_el$17, t, _p$?.t);
+          });
+          return _el$17;
+        })()
+      }), _el$9);
+      insert(_el$0, createComponent(Show, {
+        get when() {
+          return props.spacerTop;
+        },
+        get children() {
+          var _el$1 = _tmpl$4();
+          effect(() => `${props.spacerTop}px`, (_v$) => {
+            setStyleProperty(_el$1, "height", _v$);
+          });
+          return _el$1;
+        }
+      }), _el$11);
+      insert(_el$0, createComponent(For, {
+        get each() {
+          return visibleRows();
+        },
+        children: (row, index) => (() => {
+          var _el$20 = _tmpl$0(), _el$23 = _el$20.firstChild, _el$24 = _el$23.nextSibling;
+          _el$20.$$click = () => props.onRowClick?.(row, index());
+          addEvent(_el$20, "pointerdown", props.onReorder ? sortable.press(idOf(row, index())) : void 0, true);
+          var _ref$ = props.onReorder ? sortable.row(idOf(row, index())) : void 0;
+          (typeof _ref$ === "function" || Array.isArray(_ref$)) && ref(() => _ref$, _el$20);
+          insert(_el$20, createComponent(Show, {
+            get when() {
+              return memo(() => !!props.onReorder)() ? withHandle() : props.onReorder;
+            },
+            get children() {
+              var _el$21 = _tmpl$9(), _el$22 = _el$21.firstChild;
+              _el$21.$$click = (e) => e.stopPropagation();
+              insert(_el$22, () => props.handle ?? "\u283F");
+              effect(() => ({
+                e: `inline-block touch-none ${dragDisabled() ? "cursor-not-allowed" : "cursor-grab"}`,
+                t: dragDisabled() ? "reset sorting to reorder" : "drag"
+              }), ({
+                e,
+                t
+              }, _p$) => {
+                className(_el$22, e, _p$?.e);
+                t !== _p$?.t && setAttribute(_el$22, "title", t);
+              });
+              return _el$21;
+            }
+          }), _el$23);
+          insert(_el$20, createComponent(For, {
+            get each() {
+              return props.columns;
+            },
+            children: (c) => (() => {
+              var _el$25 = _tmpl$1();
+              addEvent(_el$25, "click", c.stopClick ? (e) => e.stopPropagation() : void 0, true);
+              insert(_el$25, (() => {
+                var _c$2 = memo(() => !!c.render);
+                return () => _c$2() ? c.render(row, index()) : String(valueOf(c, row) ?? "");
+              })());
+              effect(() => ({
+                e: c.class,
+                t: cellStyle(c)
+              }), ({
+                e,
+                t
+              }, _p$) => {
+                className(_el$25, e, _p$?.e);
+                style(_el$25, t, _p$?.t);
+              });
+              return _el$25;
+            })()
+          }), _el$24);
+          effect(() => ({
+            e: idOf(row, index()),
+            t: props.rowClass?.(row, index()),
+            a: {
+              cursor: props.onReorder && !withHandle() && !dragDisabled() ? "grab" : props.onRowClick ? "pointer" : void 0,
+              ...props.rowStyle?.(row, index())
+            }
+          }), ({
+            e,
+            t,
+            a
+          }, _p$) => {
+            e !== _p$?.e && setAttribute(_el$20, "data-key", e);
+            className(_el$20, t, _p$?.t);
+            style(_el$20, a, _p$?.a);
+          });
+          return _el$20;
+        })()
+      }), _el$12);
+      insert(_el$0, createComponent(Show, {
+        get when() {
+          return props.spacerBottom;
+        },
+        get children() {
+          var _el$10 = _tmpl$4();
+          effect(() => `${props.spacerBottom}px`, (_v$) => {
+            setStyleProperty(_el$10, "height", _v$);
+          });
+          return _el$10;
+        }
+      }), _el$13);
+      insert(_el$4, createComponent(Show, {
+        get when() {
+          return props.footer;
+        },
+        get children() {
+          var _el$14 = _tmpl$5();
+          insert(_el$14, () => props.footer);
+          return _el$14;
+        }
+      }), null);
+      effect(() => ({
+        e: `table ${props.tableClass ?? ""}`,
+        t: props.headClass
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        className(_el$4, e, _p$?.e);
+        className(_el$5, t, _p$?.t);
+      });
+      return _el$4;
+    }
+  }), _el$16);
+  effect(() => props.class, (_v$, _$p) => {
+    className(_el$2, _v$, _$p);
+  });
+  return _el$2;
 }
-delegateEvents(["click"]);
+delegateEvents(["click", "pointerdown"]);
 var _tmpl$10 = /* @__PURE__ */ template(`<div class=join>`);
 var _tmpl$22 = /* @__PURE__ */ template(`<div class=join><button>\xAB</button><button>\xBB`);
 var _tmpl$32 = /* @__PURE__ */ template(`<div><div class="flex items-center gap-2"><span class=text-sm>`);
@@ -871,75 +891,82 @@ function DumbPagination(props) {
     total: props.total
   }) : `${props.total} \xB7 ${props.page}/${pages()}`;
   const btn = (active) => `join-item btn btn-sm ${active ? "btn-active" : "btn-ghost"}`;
-  return (() => {
-    var _el$ = _tmpl$32(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
-    insert(_el$3, summary);
-    insert(_el$2, createComponent(Show, {
-      get when() {
-        return memo(() => !!props.pageSizes?.length)() && props.onPageSizeChange;
-      },
-      get children() {
-        var _el$4 = _tmpl$10();
-        insert(_el$4, createComponent(For, {
-          get each() {
-            return props.pageSizes;
+  var _el$ = _tmpl$32(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
+  insert(_el$3, summary);
+  insert(_el$2, createComponent(Show, {
+    get when() {
+      return memo(() => !!props.pageSizes?.length)() ? props.onPageSizeChange : props.pageSizes?.length;
+    },
+    get children() {
+      var _el$4 = _tmpl$10();
+      insert(_el$4, createComponent(For, {
+        get each() {
+          return props.pageSizes;
+        },
+        children: (size) => (() => {
+          var _el$8 = _tmpl$42();
+          _el$8.$$click = () => props.onPageSizeChange(size);
+          insert(_el$8, size);
+          effect(() => `${btn(props.pageSize === size)} ${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`, (_v$, _$p) => {
+            className(_el$8, _v$, _$p);
+          });
+          return _el$8;
+        })()
+      }));
+      return _el$4;
+    }
+  }), null);
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return pages() > 1;
+    },
+    get children() {
+      var _el$5 = _tmpl$22(), _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling;
+      _el$6.$$click = () => props.onPageChange(props.page - 1);
+      insert(_el$5, createComponent(For, {
+        get each() {
+          return buildPageNumbers(props.page, pages());
+        },
+        children: (p) => createComponent(Show, {
+          when: p !== "\u2026",
+          get fallback() {
+            return _tmpl$52();
           },
-          children: (size) => (() => {
-            var _el$8 = _tmpl$42();
-            _el$8.$$click = () => props.onPageSizeChange(size);
-            insert(_el$8, size);
-            effect(() => className(_el$8, `${btn(props.pageSize === size)} ${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`));
-            return _el$8;
-          })()
-        }));
-        return _el$4;
-      }
-    }), null);
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return pages() > 1;
-      },
-      get children() {
-        var _el$5 = _tmpl$22(), _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling;
-        _el$6.$$click = () => props.onPageChange(props.page - 1);
-        insert(_el$5, createComponent(For, {
-          get each() {
-            return buildPageNumbers(props.page, pages());
-          },
-          children: (p) => createComponent(Show, {
-            when: p !== "\u2026",
-            get fallback() {
-              return _tmpl$52();
-            },
-            get children() {
-              var _el$9 = _tmpl$42();
-              _el$9.$$click = () => props.onPageChange(p);
-              insert(_el$9, p);
-              effect(() => className(_el$9, `${btn(props.page === p)} ${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`));
-              return _el$9;
-            }
-          })
-        }), _el$7);
-        _el$7.$$click = () => props.onPageChange(props.page + 1);
-        effect((_p$) => {
-          var _v$ = `${btn(false)} ${props.buttonClass ?? ""}`, _v$2 = props.page <= 1, _v$3 = `${btn(false)} ${props.buttonClass ?? ""}`, _v$4 = props.page >= pages();
-          _v$ !== _p$.e && className(_el$6, _p$.e = _v$);
-          _v$2 !== _p$.t && (_el$6.disabled = _p$.t = _v$2);
-          _v$3 !== _p$.a && className(_el$7, _p$.a = _v$3);
-          _v$4 !== _p$.o && (_el$7.disabled = _p$.o = _v$4);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0,
-          a: void 0,
-          o: void 0
-        });
-        return _el$5;
-      }
-    }), null);
-    effect(() => className(_el$, `flex flex-wrap items-center justify-between gap-3 ${props.class ?? ""}`));
-    return _el$;
-  })();
+          get children() {
+            var _el$9 = _tmpl$42();
+            _el$9.$$click = () => props.onPageChange(p);
+            insert(_el$9, p);
+            effect(() => `${btn(props.page === p)} ${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`, (_v$, _$p) => {
+              className(_el$9, _v$, _$p);
+            });
+            return _el$9;
+          }
+        })
+      }), _el$7);
+      _el$7.$$click = () => props.onPageChange(props.page + 1);
+      effect(() => ({
+        e: `${btn(false)} ${props.buttonClass ?? ""}`,
+        t: props.page <= 1,
+        a: `${btn(false)} ${props.buttonClass ?? ""}`,
+        o: props.page >= pages()
+      }), ({
+        e,
+        t,
+        a,
+        o
+      }, _p$) => {
+        className(_el$6, e, _p$?.e);
+        t !== _p$?.t && setAttribute(_el$6, "disabled", t);
+        className(_el$7, a, _p$?.a);
+        o !== _p$?.o && setAttribute(_el$7, "disabled", o);
+      });
+      return _el$5;
+    }
+  }), null);
+  effect(() => `flex flex-wrap items-center justify-between gap-3 ${props.class ?? ""}`, (_v$, _$p) => {
+    className(_el$, _v$, _$p);
+  });
+  return _el$;
 }
 delegateEvents(["click"]);
 

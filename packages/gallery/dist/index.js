@@ -1,4 +1,4 @@
-import { delegateEvents, insert, createComponent, effect as effect$1, setStyleProperty, className, setAttribute, memo, style, use, template } from 'solid-js/web';
+import { delegateEvents, insert, createComponent, effect as effect$1, setStyleProperty, className, setAttribute, memo, style, ref, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createSignal, onCleanup, createMemo, Show, For, createEffect } from 'solid-js';
 
@@ -552,36 +552,35 @@ function DumbSortableDnd(props) {
       if (el.style.order !== next) el.style.order = next;
     }
   });
-  return (() => {
-    var _el$ = _tmpl$();
-    var _ref$ = s.container;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : s.container = _el$;
-    insert(_el$, createComponent(For, {
-      get each() {
-        return rendered();
-      },
-      children: (item) => {
-        const id = props.id(item);
-        const el = props.children(item, () => places().get(id) ?? 0);
-        if (el instanceof HTMLElement) {
-          els.set(id, el);
-          el.style.order = String(places().get(id) ?? 0);
-          s.bind(id)(el);
-        }
-        return el;
+  var _el$ = _tmpl$();
+  var _ref$ = s.container;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : s.container = _el$;
+  insert(_el$, createComponent(For, {
+    get each() {
+      return rendered();
+    },
+    children: (item) => {
+      const id = props.id(item);
+      const el = props.children(item, () => places().get(id) ?? 0);
+      if (el instanceof HTMLElement) {
+        els.set(id, el);
+        el.style.order = String(places().get(id) ?? 0);
+        s.bind(id)(el);
       }
-    }));
-    effect$1((_p$) => {
-      var _v$ = props.class, _v$2 = props.style;
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0
-    });
-    return _el$;
-  })();
+      return el;
+    }
+  }));
+  effect$1(() => ({
+    e: props.class,
+    t: props.style
+  }), ({
+    e,
+    t
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    style(_el$, t, _p$?.t);
+  });
+  return _el$;
 }
 var toPicked = (file) => ({
   file,
@@ -767,11 +766,11 @@ async function walk(entry, prefix) {
 
 // src/DumbGallery.tsx
 var _tmpl$2 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-neutral mt-3">\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0444\u0430\u0439\u043B\u044B`);
-var _tmpl$22 = /* @__PURE__ */ template(`<span class="ml-3 text-sm"data-gallery-stats>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<div>`);
+var _tmpl$22 = /* @__PURE__ */ template(`<span class="ml-3 text-sm"data-gallery-stats><!><!>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<div><!><!><!>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="btn btn-xs btn-circle btn-neutral absolute top-1 right-1"data-no-drag draggable=false title=\u0443\u0431\u0440\u0430\u0442\u044C>\u2715`);
 var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-gallery-bar bg-base-300"><i>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<figure><img draggable=false>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<figure><img draggable=false><!><!>`);
 var STYLES = `
           /* grid, \u0430 \u043D\u0435 flex: \u043D\u0430 \u043D\u0451\u043C \u0438 \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F CSS order, \u043A\u043E\u0442\u043E\u0440\u044B\u043C \u0434\u0432\u0438\u0433\u0430\u044E\u0442\u0441\u044F \u043F\u043B\u0438\u0442\u043A\u0438 */
           .dumb-gallery { display: grid; gap: var(--dumb-gallery-gap, 10px);
@@ -905,124 +904,130 @@ function DumbGallery(props) {
     props.setItems(next);
   }
   const withFiles = (ev) => !!ev.dataTransfer?.types?.includes("Files");
-  return (() => {
-    var _el$ = _tmpl$3();
-    _el$.addEventListener("drop", (ev) => {
-      if (withFiles(ev)) {
-        ev.preventDefault();
-        void acceptDrop(ev);
-      } else setDragOver(false);
-    });
-    _el$.addEventListener("dragleave", (ev) => {
-      if (!ev.relatedTarget) setDragOver(false);
-    });
-    _el$.addEventListener("dragover", (ev) => {
-      if (withFiles(ev)) setDragOver(true);
-    });
-    insert(_el$, createComponent(DumbSortableDnd, {
-      "class": "dumb-gallery",
-      get style() {
-        return {
-          "--dumb-gallery-tile": props.tile ?? "minmax(120px, 1fr)",
-          "--dumb-gallery-gap": `${props.gap ?? 10}px`
-        };
-      },
-      get items() {
-        return props.items;
-      },
-      setItems: reorder,
-      id: (it) => it.id,
-      axis: "grid",
-      get disabled() {
-        return !editable();
-      },
-      get animate() {
-        return props.animate;
-      },
-      children: (item, i) => props.children?.(item, i, () => progressOf(item.id)) ?? (() => {
-        var _el$4 = _tmpl$6(), _el$5 = _el$4.firstChild;
-        _el$4.$$click = () => props.onOpen?.(item, i());
-        insert(_el$4, createComponent(Show, {
-          get when() {
-            return editable();
-          },
-          get children() {
-            var _el$6 = _tmpl$4();
-            _el$6.$$click = (ev) => {
-              ev.stopPropagation();
-              remove(item);
-            };
-            return _el$6;
-          }
-        }), null);
-        insert(_el$4, createComponent(Show, {
-          get when() {
-            return item.status === "uploading" || item.status === "queued";
-          },
-          get children() {
-            var _el$7 = _tmpl$5(), _el$8 = _el$7.firstChild;
-            effect$1((_$p) => setStyleProperty(_el$8, "width", `${Math.round(progressOf(item.id) * 100)}%`));
-            return _el$7;
-          }
-        }), null);
-        effect$1((_p$) => {
-          var _v$4 = `dumb-gallery-tile rounded-box bg-base-200 ${item.status === "error" ? "outline-error outline-2" : ""}`, _v$5 = item.status ?? "local", _v$6 = item.error ?? item.name, _v$7 = item.preview ?? item.url, _v$8 = item.name ?? "";
-          _v$4 !== _p$.e && className(_el$4, _p$.e = _v$4);
-          _v$5 !== _p$.t && setAttribute(_el$4, "data-status", _p$.t = _v$5);
-          _v$6 !== _p$.a && setAttribute(_el$4, "title", _p$.a = _v$6);
-          _v$7 !== _p$.o && setAttribute(_el$5, "src", _p$.o = _v$7);
-          _v$8 !== _p$.i && setAttribute(_el$5, "alt", _p$.i = _v$8);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0,
-          a: void 0,
-          o: void 0,
-          i: void 0
-        });
-        return _el$4;
-      })()
-    }), null);
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return editable();
-      },
-      get children() {
-        var _el$2 = _tmpl$2();
-        _el$2.$$click = () => pickFiles(accepted);
-        return _el$2;
-      }
-    }), null);
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return stats().up || stats().bad;
-      },
-      get children() {
-        var _el$3 = _tmpl$22();
-        insert(_el$3, (() => {
-          var _c$ = memo(() => !!stats().up);
-          return () => _c$() ? `\u0437\u0430\u043B\u0438\u0432\u0430\u0435\u0442\u0441\u044F: ${stats().up}` : "";
-        })(), null);
-        insert(_el$3, (() => {
-          var _c$2 = memo(() => !!stats().bad);
-          return () => _c$2() ? ` \xB7 \u0441 \u043E\u0448\u0438\u0431\u043A\u043E\u0439: ${stats().bad}` : "";
-        })(), null);
-        return _el$3;
-      }
-    }), null);
-    effect$1((_p$) => {
-      var _v$ = `dumb-gallery-drop ${props.class ?? ""}`, _v$2 = dragOver() && editable() ? "1" : void 0, _v$3 = props.style;
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _v$2 !== _p$.t && setAttribute(_el$, "data-over", _p$.t = _v$2);
-      _p$.a = style(_el$, _v$3, _p$.a);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0
-    });
-    return _el$;
-  })();
+  var _el$ = _tmpl$3(), _el$6 = _el$.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$7.nextSibling;
+  _el$.addEventListener("drop", (ev) => {
+    if (withFiles(ev)) {
+      ev.preventDefault();
+      void acceptDrop(ev);
+    } else setDragOver(false);
+  });
+  _el$.addEventListener("dragleave", (ev) => {
+    if (!ev.relatedTarget) setDragOver(false);
+  });
+  _el$.addEventListener("dragover", (ev) => {
+    if (withFiles(ev)) setDragOver(true);
+  });
+  insert(_el$, createComponent(DumbSortableDnd, {
+    "class": "dumb-gallery",
+    get style() {
+      return {
+        "--dumb-gallery-tile": props.tile ?? "minmax(120px, 1fr)",
+        "--dumb-gallery-gap": `${props.gap ?? 10}px`
+      };
+    },
+    get items() {
+      return props.items;
+    },
+    setItems: reorder,
+    id: (it) => it.id,
+    axis: "grid",
+    get disabled() {
+      return !editable();
+    },
+    get animate() {
+      return props.animate;
+    },
+    children: (item, i) => props.children?.(item, i, () => progressOf(item.id)) ?? (() => {
+      var _el$9 = _tmpl$6(), _el$0 = _el$9.firstChild, _el$12 = _el$0.nextSibling, _el$13 = _el$12.nextSibling;
+      _el$9.$$click = () => props.onOpen?.(item, i());
+      insert(_el$9, createComponent(Show, {
+        get when() {
+          return editable();
+        },
+        get children() {
+          var _el$1 = _tmpl$4();
+          _el$1.$$click = (ev) => {
+            ev.stopPropagation();
+            remove(item);
+          };
+          return _el$1;
+        }
+      }), _el$12);
+      insert(_el$9, createComponent(Show, {
+        get when() {
+          return item.status === "uploading" || item.status === "queued";
+        },
+        get children() {
+          var _el$10 = _tmpl$5(), _el$11 = _el$10.firstChild;
+          effect$1(() => `${Math.round(progressOf(item.id) * 100)}%`, (_v$) => {
+            setStyleProperty(_el$11, "width", _v$);
+          });
+          return _el$10;
+        }
+      }), _el$13);
+      effect$1(() => ({
+        e: `dumb-gallery-tile rounded-box bg-base-200 ${item.status === "error" ? "outline-error outline-2" : ""}`,
+        t: item.status ?? "local",
+        a: item.error ?? item.name,
+        o: item.preview ?? item.url,
+        i: item.name ?? ""
+      }), ({
+        e,
+        t,
+        a,
+        o,
+        i: i2
+      }, _p$) => {
+        className(_el$9, e, _p$?.e);
+        t !== _p$?.t && setAttribute(_el$9, "data-status", t);
+        a !== _p$?.a && setAttribute(_el$9, "title", a);
+        o !== _p$?.o && setAttribute(_el$0, "src", o);
+        i2 !== _p$?.i && setAttribute(_el$0, "alt", i2);
+      });
+      return _el$9;
+    })()
+  }), _el$6);
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return editable();
+    },
+    get children() {
+      var _el$2 = _tmpl$2();
+      _el$2.$$click = () => pickFiles(accepted);
+      return _el$2;
+    }
+  }), _el$7);
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return stats().up || stats().bad;
+    },
+    get children() {
+      var _el$3 = _tmpl$22(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
+      insert(_el$3, (() => {
+        var _c$ = memo(() => !!stats().up);
+        return () => _c$() ? `\u0437\u0430\u043B\u0438\u0432\u0430\u0435\u0442\u0441\u044F: ${stats().up}` : "";
+      })(), _el$4);
+      insert(_el$3, (() => {
+        var _c$2 = memo(() => !!stats().bad);
+        return () => _c$2() ? ` \xB7 \u0441 \u043E\u0448\u0438\u0431\u043A\u043E\u0439: ${stats().bad}` : "";
+      })(), _el$5);
+      return _el$3;
+    }
+  }), _el$8);
+  effect$1(() => ({
+    e: `dumb-gallery-drop ${props.class ?? ""}`,
+    t: dragOver() && editable() ? "1" : void 0,
+    a: props.style
+  }), ({
+    e,
+    t,
+    a
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    t !== _p$?.t && setAttribute(_el$, "data-over", t);
+    style(_el$, a, _p$?.a);
+  });
+  return _el$;
 }
 delegateEvents(["click"]);
 

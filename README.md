@@ -25,7 +25,7 @@ A small set of dependency-light **SolidJS** UI primitives that are easy to drop 
 
 **🔗 Live demo:** https://solid-dumb-kit.vercel.app/ · runnable source in [`examples/`](examples/).
 
-Version `0.x` targets **SolidJS 2** (`peerDependencies: solid-js >=2.0.0-beta.30`, `@solidjs/web`). The engines are framework-agnostic and the Solid-specific bits go through one compat layer (`@solid-dumb-kit/shared`), so a Solid 1 line stays cheap to bring back — but the published packages are built against the second line.
+Version `0.x` targets **SolidJS 2** (`peerDependencies: solid-js >=2.0.0-rc.0`, `@solidjs/web`). The engines are framework-agnostic and the Solid-specific bits go through one compat layer (`@solid-dumb-kit/shared`), so a Solid 1 line stays cheap to bring back — but the published packages are built against the second line.
 
 **📓 Changelog:** [CHANGELOG.md](CHANGELOG.md)
 

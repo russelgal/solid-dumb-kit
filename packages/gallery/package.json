@@ -34,8 +34,8 @@
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "peerDependencies": {
-    "@solidjs/web": ">=2.0.0-beta.30",
-    "solid-js": ">=2.0.0-beta.30"
+    "@solidjs/web": ">=2.0.0-rc.0",
+    "solid-js": ">=2.0.0-rc.0"
   },
   "publishConfig": {
     "access": "public"
@@ -43,6 +43,6 @@
   "devDependencies": {
     "@solid-dumb-kit/shared": "workspace:*",
     "@solid-dumb-kit/sortable-dnd": "workspace:*",
-    "@solidjs/web": "2.0.0-beta.32"
+    "@solidjs/web": "2.0.0-rc.0"
   }
 }

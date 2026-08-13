@@ -1,4 +1,4 @@
-import { delegateEvents, createComponent, effect as effect$1, setStyleProperty, use, insert, className, style, setAttribute, template } from 'solid-js/web';
+import { delegateEvents, createComponent, effect as effect$1, setStyleProperty, ref, insert, className, style, setAttribute, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createSignal, Show, createEffect, onCleanup, For } from 'solid-js';
 
@@ -48,7 +48,7 @@ var _tmpl$ = /* @__PURE__ */ template(`<div popover=manual tabindex=-1 role=menu
 var _tmpl$2 = /* @__PURE__ */ template(`<span>`);
 var _tmpl$3 = /* @__PURE__ */ template(`<span class="dumb-menu-hint text-xs opacity-90">`);
 var _tmpl$4 = /* @__PURE__ */ template(`<span class="dumb-menu-more text-sm"aria-hidden=true>\u25B8`);
-var _tmpl$5 = /* @__PURE__ */ template(`<li><button type=button role=menuitem><span class="dumb-menu-label flex-1 truncate">`);
+var _tmpl$5 = /* @__PURE__ */ template(`<li><button type=button role=menuitem><span class="dumb-menu-label flex-1 truncate"></span><!><!>`);
 var _tmpl$6 = /* @__PURE__ */ template(`<li class="dumb-menu-sep divider my-1"role=separator>`);
 var _tmpl$7 = /* @__PURE__ */ template(`<div class=dumb-menu-anchor>`);
 var STYLES = `
@@ -236,7 +236,7 @@ function Panel(props) {
   return [(() => {
     var _el$ = _tmpl$(), _el$2 = _el$.firstChild;
     var _ref$ = el;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : el = _el$;
+    typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : el = _el$;
     insert(_el$2, createComponent(For, {
       get each() {
         return props.items;
@@ -249,7 +249,7 @@ function Panel(props) {
           return _tmpl$6();
         },
         get children() {
-          var _el$3 = _tmpl$5(), _el$4 = _el$3.firstChild, _el$6 = _el$4.firstChild;
+          var _el$3 = _tmpl$5(), _el$4 = _el$3.firstChild, _el$6 = _el$4.firstChild, _el$9 = _el$6.nextSibling, _el$0 = _el$9.nextSibling;
           _el$4.$$click = (ev) => {
             if (branch(it)) return void highlight(i(), ev.clientX, ev.clientY);
             asItem(it).run?.();
@@ -262,7 +262,9 @@ function Panel(props) {
             },
             get children() {
               var _el$5 = _tmpl$2();
-              effect$1(() => className(_el$5, `dumb-menu-icon size-[1.1em] shrink-0 ${asItem(it).icon}`));
+              effect$1(() => `dumb-menu-icon size-[1.1em] shrink-0 ${asItem(it).icon}`, (_v$, _$p) => {
+                className(_el$5, _v$, _$p);
+              });
               return _el$5;
             }
           }), _el$6);
@@ -276,7 +278,7 @@ function Panel(props) {
               insert(_el$7, () => asItem(it).hint);
               return _el$7;
             }
-          }), null);
+          }), _el$9);
           insert(_el$4, createComponent(Show, {
             get when() {
               return branch(it);
@@ -284,44 +286,53 @@ function Panel(props) {
             get children() {
               return _tmpl$4();
             }
-          }), null);
-          effect$1((_p$) => {
-            var _v$4 = `dumb-menu-item flex w-full items-center gap-2 text-left ${asItem(it).danger ? "text-error" : ""}`, _v$5 = active() === i() ? "1" : void 0, _v$6 = asItem(it).danger ? "1" : void 0, _v$7 = branch(it) ? "1" : void 0, _v$8 = branch(it) ? "menu" : void 0, _v$9 = branch(it) ? sub()?.i === i() ? "true" : "false" : void 0, _v$0 = asItem(it).disabled, _v$1 = sub()?.i === i() ? {
+          }), _el$0);
+          effect$1(() => ({
+            e: `dumb-menu-item flex w-full items-center gap-2 text-left ${asItem(it).danger ? "text-error" : ""}`,
+            t: active() === i() ? "1" : void 0,
+            a: asItem(it).danger ? "1" : void 0,
+            o: branch(it) ? "1" : void 0,
+            i: branch(it) ? "menu" : void 0,
+            n: branch(it) ? sub()?.i === i() ? "true" : "false" : void 0,
+            s: asItem(it).disabled,
+            h: sub()?.i === i() ? {
               "anchor-name": itemAnchor
-            } : void 0;
-            _v$4 !== _p$.e && className(_el$4, _p$.e = _v$4);
-            _v$5 !== _p$.t && setAttribute(_el$4, "data-active", _p$.t = _v$5);
-            _v$6 !== _p$.a && setAttribute(_el$4, "data-danger", _p$.a = _v$6);
-            _v$7 !== _p$.o && setAttribute(_el$4, "data-sub", _p$.o = _v$7);
-            _v$8 !== _p$.i && setAttribute(_el$4, "aria-haspopup", _p$.i = _v$8);
-            _v$9 !== _p$.n && setAttribute(_el$4, "aria-expanded", _p$.n = _v$9);
-            _v$0 !== _p$.s && (_el$4.disabled = _p$.s = _v$0);
-            _p$.h = style(_el$4, _v$1, _p$.h);
-            return _p$;
-          }, {
-            e: void 0,
-            t: void 0,
-            a: void 0,
-            o: void 0,
-            i: void 0,
-            n: void 0,
-            s: void 0,
-            h: void 0
+            } : void 0
+          }), ({
+            e,
+            t,
+            a,
+            o,
+            i: i2,
+            n,
+            s,
+            h
+          }, _p$) => {
+            className(_el$4, e, _p$?.e);
+            t !== _p$?.t && setAttribute(_el$4, "data-active", t);
+            a !== _p$?.a && setAttribute(_el$4, "data-danger", a);
+            o !== _p$?.o && setAttribute(_el$4, "data-sub", o);
+            i2 !== _p$?.i && setAttribute(_el$4, "aria-haspopup", i2);
+            n !== _p$?.n && setAttribute(_el$4, "aria-expanded", n);
+            s !== _p$?.s && setAttribute(_el$4, "disabled", s);
+            style(_el$4, h, _p$?.h);
           });
           return _el$3;
         }
       })
     }));
-    effect$1((_p$) => {
-      var _v$ = `dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${props.depth > 0 ? "dumb-menu-sub" : ""} ${props.class ?? ""}`, _v$2 = place(), _v$3 = props.depth;
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      _v$3 !== _p$.a && setAttribute(_el$, "data-depth", _p$.a = _v$3);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0
+    effect$1(() => ({
+      e: `dumb-menu menu menu-sm rounded-box bg-base-100 border border-base-300 p-1 shadow-lg ${props.depth > 0 ? "dumb-menu-sub" : ""} ${props.class ?? ""}`,
+      t: place(),
+      a: props.depth
+    }), ({
+      e,
+      t,
+      a
+    }, _p$) => {
+      className(_el$, e, _p$?.e);
+      style(_el$, t, _p$?.t);
+      a !== _p$?.a && setAttribute(_el$, "data-depth", a);
     });
     return _el$;
   })(), createComponent(Show, {
@@ -495,17 +506,18 @@ function DumbContextMenu(props) {
       return at();
     },
     children: (p) => [(() => {
-      var _el$0 = _tmpl$7();
-      effect$1((_p$) => {
-        var _v$10 = `${p().x}px`, _v$11 = `${p().y}px`;
-        _v$10 !== _p$.e && setStyleProperty(_el$0, "left", _p$.e = _v$10);
-        _v$11 !== _p$.t && setStyleProperty(_el$0, "top", _p$.t = _v$11);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0
+      var _el$10 = _tmpl$7();
+      effect$1(() => ({
+        e: `${p().x}px`,
+        t: `${p().y}px`
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        e !== _p$?.e && setStyleProperty(_el$10, "left", e);
+        t !== _p$?.t && setStyleProperty(_el$10, "top", t);
       });
-      return _el$0;
+      return _el$10;
     })(), createComponent(Panel, {
       get items() {
         return props.items();
@@ -525,9 +537,9 @@ function DumbContextMenu(props) {
 delegateEvents(["click"]);
 var _tmpl$8 = /* @__PURE__ */ template(`<button type=button class="dumb-pop-x btn btn-xs btn-circle btn-ghost"title=\u0437\u0430\u043A\u0440\u044B\u0442\u044C>\u2715`);
 var _tmpl$22 = /* @__PURE__ */ template(`<div class=dumb-pop-anchor>`);
-var _tmpl$32 = /* @__PURE__ */ template(`<div class="dumb-pop-head mb-2 flex items-center gap-2 font-semibold"><div class="dumb-pop-title flex-1 truncate">`);
+var _tmpl$32 = /* @__PURE__ */ template(`<div class="dumb-pop-head mb-2 flex items-center gap-2 font-semibold"><div class="dumb-pop-title flex-1 truncate"></div><!>`);
 var _tmpl$42 = /* @__PURE__ */ template(`<div class="dumb-pop-foot mt-3 flex justify-end gap-2">`);
-var _tmpl$52 = /* @__PURE__ */ template(`<div popover=manual><div class=dumb-pop-body>`);
+var _tmpl$52 = /* @__PURE__ */ template(`<div popover=manual><div class=dumb-pop-body></div><!>`);
 var STYLES2 = `
   /* \u0422\u043E\u043B\u044C\u043A\u043E \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u043A \u0442\u043E\u0447\u043A\u0435 \u0438 top layer \u2014 \u0432\u0438\u0434 \u0434\u0430\u0451\u0442 daisyUI (card) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. */
   .dumb-pop-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none;
@@ -592,26 +604,27 @@ function DumbPopover(props) {
     },
     children: (spot) => [(() => {
       var _el$2 = _tmpl$22();
-      effect$1((_p$) => {
-        var _v$ = `${spot().x}px`, _v$2 = `${spot().y}px`;
-        _v$ !== _p$.e && setStyleProperty(_el$2, "left", _p$.e = _v$);
-        _v$2 !== _p$.t && setStyleProperty(_el$2, "top", _p$.t = _v$2);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0
+      effect$1(() => ({
+        e: `${spot().x}px`,
+        t: `${spot().y}px`
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        e !== _p$?.e && setStyleProperty(_el$2, "left", e);
+        t !== _p$?.t && setStyleProperty(_el$2, "top", t);
       });
       return _el$2;
     })(), (() => {
-      var _el$3 = _tmpl$52(), _el$6 = _el$3.firstChild;
+      var _el$3 = _tmpl$52(), _el$7 = _el$3.firstChild, _el$9 = _el$7.nextSibling;
       var _ref$ = box;
-      typeof _ref$ === "function" ? use(_ref$, _el$3) : box = _el$3;
+      typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$3) : box = _el$3;
       insert(_el$3, createComponent(Show, {
         get when() {
           return props.title;
         },
         get children() {
-          var _el$4 = _tmpl$32(), _el$5 = _el$4.firstChild;
+          var _el$4 = _tmpl$32(), _el$5 = _el$4.firstChild, _el$6 = _el$5.nextSibling;
           insert(_el$4, createComponent(Show, {
             get when() {
               return side() === "left";
@@ -628,31 +641,32 @@ function DumbPopover(props) {
             get children() {
               return closeButton();
             }
-          }), null);
+          }), _el$6);
           return _el$4;
         }
-      }), _el$6);
-      insert(_el$6, () => props.children);
+      }), _el$7);
+      insert(_el$7, () => props.children);
       insert(_el$3, createComponent(Show, {
         get when() {
           return props.footer;
         },
         get children() {
-          var _el$7 = _tmpl$42();
-          insert(_el$7, () => props.footer);
-          return _el$7;
+          var _el$8 = _tmpl$42();
+          insert(_el$8, () => props.footer);
+          return _el$8;
         }
-      }), null);
-      effect$1((_p$) => {
-        var _v$3 = `dumb-pop card rounded-box bg-base-100 border-base-300 border p-3 shadow-xl ${props.class ?? ""}`, _v$4 = props.width ? {
+      }), _el$9);
+      effect$1(() => ({
+        e: `dumb-pop card rounded-box bg-base-100 border-base-300 border p-3 shadow-xl ${props.class ?? ""}`,
+        t: props.width ? {
           "--dumb-pop-w": props.width
-        } : void 0;
-        _v$3 !== _p$.e && className(_el$3, _p$.e = _v$3);
-        _p$.t = style(_el$3, _v$4, _p$.t);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0
+        } : void 0
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        className(_el$3, e, _p$?.e);
+        style(_el$3, t, _p$?.t);
       });
       return _el$3;
     })()]

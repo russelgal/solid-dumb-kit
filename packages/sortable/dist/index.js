@@ -1,4 +1,4 @@
-import { createComponent } from 'solid-js/web';
+import { createComponent } from '@solidjs/web';
 import { onCleanup, For } from 'solid-js';
 
 // src/DumbSortable.tsx
@@ -500,6 +500,15 @@ function createSortableEngine(opts) {
     ev.preventDefault();
     begin(id, handle, ev.pointerId, ev.clientX, ev.clientY);
   }
+  function pressOn(el, id, ev) {
+    const handle = el.querySelector("[data-drag-handle]");
+    if (handle) {
+      if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+    } else if (targetIsInteractive(ev)) {
+      return;
+    }
+    onDown(id, handle || el, ev);
+  }
   return {
     // самодостаточно: регистрирует элемент И навешивает старт драга.
     // ручка = дочка с [data-drag-handle] (делегирование); нет её → тянем за весь элемент.
@@ -508,20 +517,20 @@ function createSortableEngine(opts) {
       rowEls.set(id, el);
       const h = el.querySelector("[data-drag-handle]");
       if (h) h.style.touchAction = "none";
-      const down = (ev) => {
-        const handle = el.querySelector("[data-drag-handle]");
-        if (handle) {
-          if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-        } else if (targetIsInteractive(ev)) {
-          return;
-        }
-        onDown(id, handle || el, ev);
-      };
+      const down = (ev) => pressOn(el, id, ev);
       el.addEventListener("pointerdown", down);
       return () => {
         el.removeEventListener("pointerdown", down);
         if (rowEls.get(id) === el) rowEls.delete(id);
       };
+    },
+    // событие принесли снаружи — подписки нет вовсе
+    press(id, ev) {
+      const el = rowEls.get(id);
+      if (el) pressOn(el, id, ev);
+    },
+    pressHandle(id, el, ev) {
+      onDown(id, el, ev);
     },
     // низкоуровневое: ячейка и ручка порознь (когда ручка не потомок ячейки)
     attachRow(el, id) {
@@ -971,6 +980,24 @@ function createSortableGroupEngine(opts) {
       const zone = zones.get(name) ?? { name, opts: listOpts, el: null, els: /* @__PURE__ */ new Map() };
       zone.opts = listOpts;
       zones.set(name, zone);
+      const register = (el, id) => {
+        zone.els.set(id, el);
+        el.dataset.flipId = id;
+        const h = el.querySelector("[data-drag-handle]");
+        if (h) h.style.touchAction = "none";
+        return () => {
+          if (zone.els.get(id) === el) zone.els.delete(id);
+        };
+      };
+      const pressCard = (el, id, ev) => {
+        const handle = el.querySelector("[data-drag-handle]");
+        if (handle) {
+          if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+        } else if (targetIsInteractive2(ev)) {
+          return;
+        }
+        onDown(name, id, handle || el, ev);
+      };
       return {
         attachContainer(el) {
           zone.el = el;
@@ -979,24 +1006,22 @@ function createSortableGroupEngine(opts) {
           };
         },
         attach(el, id) {
-          zone.els.set(id, el);
-          el.dataset.flipId = id;
-          const h = el.querySelector("[data-drag-handle]");
-          if (h) h.style.touchAction = "none";
-          const down = (ev) => {
-            const handle = el.querySelector("[data-drag-handle]");
-            if (handle) {
-              if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-            } else if (targetIsInteractive2(ev)) {
-              return;
-            }
-            onDown(name, id, handle || el, ev);
-          };
+          const off = register(el, id);
+          const down = (ev) => pressCard(el, id, ev);
           el.addEventListener("pointerdown", down);
           return () => {
             el.removeEventListener("pointerdown", down);
-            if (zone.els.get(id) === el) zone.els.delete(id);
+            off();
           };
+        },
+        // регистрация без слушателя: старт придёт из JSX (Solid
+        // делегирует pointerdown одним слушателем на документ)
+        attachCard(el, id) {
+          return register(el, id);
+        },
+        press(id, ev) {
+          const el = zone.els.get(id);
+          if (el) pressCard(el, id, ev);
         }
       };
     },
@@ -1016,7 +1041,9 @@ function createDumbSortable(opts) {
   return {
     bind: (id) => (el) => onCleanup(engine.attach(el, id)),
     row: (id) => (el) => onCleanup(engine.attachRow(el, id)),
-    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id))
+    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id)),
+    press: (id) => (ev) => engine.press(id, ev),
+    pressHandle: (id) => (ev) => engine.pressHandle(id, ev.currentTarget, ev)
   };
 }
 function createSortableGroup(opts) {
@@ -1027,7 +1054,9 @@ function createSortableGroup(opts) {
       const zone = engine.list(name, listOpts);
       return {
         container: (el) => onCleanup(zone.attachContainer(el)),
-        bind: (id) => (el) => onCleanup(zone.attach(el, id))
+        bind: (id) => (el) => onCleanup(zone.attach(el, id)),
+        card: (id) => (el) => onCleanup(zone.attachCard(el, id)),
+        press: (id) => (ev) => zone.press(id, ev)
       };
     },
     activeList: engine.activeList,

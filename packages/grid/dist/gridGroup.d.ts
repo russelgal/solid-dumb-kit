@@ -49,6 +49,12 @@ export type GridZoneEngine = {
     attachContainer: (el: HTMLElement) => () => void;
     attach: (el: HTMLElement, id: string) => () => void;
     attachResize: (el: HTMLElement, id: string) => () => void;
+    /** ref на блок БЕЗ слушателя: старт придёт снаружи, через press */
+    attachBlock: (el: HTMLElement, id: string) => () => void;
+    /** старт переноса событием из JSX (Solid делегирует pointerdown сам) */
+    press: (id: string, ev: PointerEvent) => void;
+    /** то же для ручки ресайза */
+    pressResize: (id: string, el: HTMLElement, ev: PointerEvent) => void;
 };
 export type GridGroupEngine = {
     grid: (name: string, opts: GridZoneOptions) => GridZoneEngine;

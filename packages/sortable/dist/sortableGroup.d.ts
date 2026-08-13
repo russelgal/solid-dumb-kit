@@ -31,6 +31,10 @@ export type SortableListOptions = {
 export type SortableListEngine = {
     attachContainer: (el: HTMLElement) => () => void;
     attach: (el: HTMLElement, id: string) => () => void;
+    /** регистрация карточки без слушателя — в паре с press */
+    attachCard: (el: HTMLElement, id: string) => () => void;
+    /** старт драга событием из JSX */
+    press: (id: string, ev: PointerEvent) => void;
 };
 /**
  * Движок кросс-контейнерного драга. Без привязки к фреймворку —

@@ -10,6 +10,18 @@ export type SortableEngine = {
     attachRow: (el: HTMLElement, id: string) => () => void;
     /** только повесить старт драга на отдельную ручку */
     attachHandle: (el: HTMLElement, id: string) => () => void;
+    /**
+     * Старт драга событием, которое принесли снаружи: движок сам ни на что не
+     * подписывается. Так работают компоненты кита — `pointerdown` приходит из
+     * JSX (`onPointerDown`), а его Solid делегирует одним слушателем на
+     * документ, вместо слушателя на каждой строке.
+     *
+     * Ручка ищется так же, как в `attach`: дочка с `[data-drag-handle]`, а нет
+     * её — тянется весь элемент, но не за поля и кнопки внутри.
+     */
+    press: (id: string, ev: PointerEvent) => void;
+    /** то же для отдельной ручки, не являющейся потомком ячейки */
+    pressHandle: (id: string, el: HTMLElement, ev: PointerEvent) => void;
     /** снять слушатели и прибрать стили */
     destroy: () => void;
 };

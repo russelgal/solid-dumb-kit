@@ -1,4 +1,4 @@
-import { use, insert, createComponent, effect as effect$1, className, style, template } from 'solid-js/web';
+import { ref, insert, createComponent, effect as effect$1, className, style, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createSignal, onCleanup, createMemo, For, createEffect } from 'solid-js';
 
@@ -558,36 +558,35 @@ function DumbSortableDnd(props) {
       if (el.style.order !== next) el.style.order = next;
     }
   });
-  return (() => {
-    var _el$ = _tmpl$();
-    var _ref$ = s.container;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : s.container = _el$;
-    insert(_el$, createComponent(For, {
-      get each() {
-        return rendered();
-      },
-      children: (item) => {
-        const id = props.id(item);
-        const el = props.children(item, () => places().get(id) ?? 0);
-        if (el instanceof HTMLElement) {
-          els.set(id, el);
-          el.style.order = String(places().get(id) ?? 0);
-          s.bind(id)(el);
-        }
-        return el;
+  var _el$ = _tmpl$();
+  var _ref$ = s.container;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : s.container = _el$;
+  insert(_el$, createComponent(For, {
+    get each() {
+      return rendered();
+    },
+    children: (item) => {
+      const id = props.id(item);
+      const el = props.children(item, () => places().get(id) ?? 0);
+      if (el instanceof HTMLElement) {
+        els.set(id, el);
+        el.style.order = String(places().get(id) ?? 0);
+        s.bind(id)(el);
       }
-    }));
-    effect$1((_p$) => {
-      var _v$ = props.class, _v$2 = props.style;
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0
-    });
-    return _el$;
-  })();
+      return el;
+    }
+  }));
+  effect$1(() => ({
+    e: props.class,
+    t: props.style
+  }), ({
+    e,
+    t
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    style(_el$, t, _p$?.t);
+  });
+  return _el$;
 }
 
 export { DumbSortableDnd, createDumbSortableDnd, createSortDndEngine };

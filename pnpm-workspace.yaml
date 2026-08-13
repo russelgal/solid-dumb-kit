@@ -4,3 +4,9 @@ packages:
 # pnpm 10 блокирует postinstall-скрипты; без esbuild сборка падает
 onlyBuiltDependencies:
   - esbuild
+
+# esbuild-plugin-solid (через tsup-preset-solid) тянет компилятор первой линии,
+# а тот генерирует импорты из solid-js/web — сабпути, которого в Solid 2 нет.
+# Скомпилированная ветка dist/index.js от этого не резолвится у потребителя.
+overrides:
+  babel-preset-solid: 2.0.0-rc.0

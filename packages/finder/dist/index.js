@@ -1,4 +1,4 @@
-import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, use, addEventListener, template } from 'solid-js/web';
+import { delegateEvents, insert, createComponent, effect, setAttribute, memo, className, style, setStyleProperty, ref, addEvent, template } from '@solidjs/web';
 import * as solid3 from 'solid-js';
 import { createSignal, onCleanup, createMemo, untrack, For, Show, createEffect } from 'solid-js';
 
@@ -392,24 +392,23 @@ function SelectionArea(props) {
     });
     area.attach(containerRef);
   });
-  return (() => {
-    var _el$ = _tmpl$();
-    var _ref$ = containerRef;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : containerRef = _el$;
-    insert(_el$, () => props.children);
-    effect((_p$) => {
-      var _v$ = props.class, _v$2 = {
-        ...props.style
-      };
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0
-    });
-    return _el$;
-  })();
+  var _el$ = _tmpl$();
+  var _ref$ = containerRef;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : containerRef = _el$;
+  insert(_el$, () => props.children);
+  effect(() => ({
+    e: props.class,
+    t: {
+      ...props.style
+    }
+  }), ({
+    e,
+    t
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    style(_el$, t, _p$?.t);
+  });
+  return _el$;
 }
 
 // ../../node_modules/.pnpm/valibot@1.4.2_typescript@7.0.2/node_modules/valibot/dist/index.mjs
@@ -745,7 +744,7 @@ function restoreTextSelection2() {
 }
 var _tmpl$2 = /* @__PURE__ */ template(`<div class=resizable-grid-handle-row>`);
 var _tmpl$22 = /* @__PURE__ */ template(`<div style=display:grid;min-height:0>`);
-var _tmpl$3 = /* @__PURE__ */ template(`<div style=display:grid;height:100%;width:100%;overflow:hidden><div style=display:grid;min-height:0>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<div style=display:grid;height:100%;width:100%;overflow:hidden><div style=display:grid;min-height:0></div><!><!>`);
 var _tmpl$4 = /* @__PURE__ */ template(`<div class=resizable-grid-handle-col>`);
 var _tmpl$5 = /* @__PURE__ */ template(`<div style=min-width:0;min-height:0;overflow:auto>`);
 var HANDLE_SIZE = 6;
@@ -920,81 +919,83 @@ function ResizableGrid(props) {
     return `${split[0]}fr ${HANDLE_SIZE}px ${split[1]}fr`;
   };
   const hasRows = () => !!props.rows && props.rows.length > 0;
-  return (() => {
-    var _el$ = _tmpl$3(), _el$2 = _el$.firstChild;
-    var _ref$ = containerRef;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : containerRef = _el$;
-    insert(_el$2, createComponent(For, {
-      get each() {
-        return props.cols;
+  var _el$ = _tmpl$3(), _el$2 = _el$.firstChild, _el$5 = _el$2.nextSibling, _el$6 = _el$5.nextSibling;
+  var _ref$ = containerRef;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : containerRef = _el$;
+  insert(_el$2, createComponent(For, {
+    get each() {
+      return props.cols;
+    },
+    children: (col, i) => [createComponent(Show, {
+      get when() {
+        return i() > 0;
       },
-      children: (col, i) => [createComponent(Show, {
-        get when() {
-          return i() > 0;
+      get children() {
+        var _el$7 = _tmpl$4();
+        _el$7.$$mousedown = (e) => startColResize(i() - 1, e);
+        return _el$7;
+      }
+    }), (() => {
+      var _el$8 = _tmpl$5();
+      insert(_el$8, () => col.content());
+      return _el$8;
+    })()]
+  }));
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return hasRows();
+    },
+    get children() {
+      var _el$3 = _tmpl$2();
+      _el$3.$$mousedown = startRowResize;
+      return _el$3;
+    }
+  }), _el$5);
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return hasRows();
+    },
+    get children() {
+      var _el$4 = _tmpl$22();
+      insert(_el$4, createComponent(For, {
+        get each() {
+          return props.rows;
         },
-        get children() {
-          var _el$5 = _tmpl$4();
-          _el$5.$$mousedown = (e) => startColResize(i() - 1, e);
-          return _el$5;
-        }
-      }), (() => {
-        var _el$6 = _tmpl$5();
-        insert(_el$6, () => col.content());
-        return _el$6;
-      })()]
-    }));
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return hasRows();
-      },
-      get children() {
-        var _el$3 = _tmpl$2();
-        _el$3.$$mousedown = startRowResize;
-        return _el$3;
-      }
-    }), null);
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return hasRows();
-      },
-      get children() {
-        var _el$4 = _tmpl$22();
-        insert(_el$4, createComponent(For, {
-          get each() {
-            return props.rows;
+        children: (panel, i) => [createComponent(Show, {
+          get when() {
+            return i() > 0;
           },
-          children: (panel, i) => [createComponent(Show, {
-            get when() {
-              return i() > 0;
-            },
-            get children() {
-              var _el$7 = _tmpl$4();
-              _el$7.$$mousedown = (e) => startRow2ColResize(i() - 1, e);
-              return _el$7;
-            }
-          }), (() => {
-            var _el$8 = _tmpl$5();
-            insert(_el$8, () => panel.content());
-            return _el$8;
-          })()]
-        }));
-        effect((_$p) => setStyleProperty(_el$4, "grid-template-columns", row2Template()));
-        return _el$4;
-      }
-    }), null);
-    effect((_p$) => {
-      var _v$ = props.class, _v$2 = rowTemplate(), _v$3 = colTemplate();
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _v$2 !== _p$.t && setStyleProperty(_el$, "grid-template-rows", _p$.t = _v$2);
-      _v$3 !== _p$.a && setStyleProperty(_el$2, "grid-template-columns", _p$.a = _v$3);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0
-    });
-    return _el$;
-  })();
+          get children() {
+            var _el$9 = _tmpl$4();
+            _el$9.$$mousedown = (e) => startRow2ColResize(i() - 1, e);
+            return _el$9;
+          }
+        }), (() => {
+          var _el$0 = _tmpl$5();
+          insert(_el$0, () => panel.content());
+          return _el$0;
+        })()]
+      }));
+      effect(() => row2Template(), (_v$) => {
+        setStyleProperty(_el$4, "grid-template-columns", _v$);
+      });
+      return _el$4;
+    }
+  }), _el$6);
+  effect(() => ({
+    e: props.class,
+    t: rowTemplate(),
+    a: colTemplate()
+  }), ({
+    e,
+    t,
+    a
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    t !== _p$?.t && setStyleProperty(_el$, "grid-template-rows", t);
+    a !== _p$?.a && setStyleProperty(_el$2, "grid-template-columns", a);
+  });
+  return _el$;
 }
 var STYLES = `
 .resizable-grid-handle-col {
@@ -2065,29 +2066,30 @@ var ICONS = {
 // src/DumbFinder.tsx
 var _tmpl$6 = /* @__PURE__ */ template(`<span>`);
 var _tmpl$23 = /* @__PURE__ */ template(`<button type=button class=dumb-finder-twist data-no-select>`);
-var _tmpl$32 = /* @__PURE__ */ template(`<span class=dumb-finder-weight> \xB7 `);
+var _tmpl$32 = /* @__PURE__ */ template(`<span class=dumb-finder-weight> \xB7 <!>`);
 var _tmpl$42 = /* @__PURE__ */ template(`<ul>`);
-var _tmpl$52 = /* @__PURE__ */ template(`<li><div class=dumb-finder-node><span class=dumb-finder-node-name>`);
+var _tmpl$52 = /* @__PURE__ */ template(`<li><div class=dumb-finder-node><!><span class=dumb-finder-node-name></span><!>`);
 var _tmpl$62 = /* @__PURE__ */ template(`<span class=dumb-finder-twist>`);
 var _tmpl$7 = /* @__PURE__ */ template(`<nav class=dumb-finder-side><input class="dumb-finder-find input input-xs w-full"placeholder=\u043F\u0430\u043F\u043A\u0430><ul class=dumb-finder-tree>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<div class=dumb-finder-head><span></span><span></span><button type=button>\u0418\u043C\u044F </button><button type=button>\u0420\u0430\u0437\u043C\u0435\u0440 </button><button type=button>\u0418\u0437\u043C\u0435\u043D\u0451\u043D </button><span>\u0412\u0438\u0434`);
 var _tmpl$9 = /* @__PURE__ */ template(`<div class="dumb-finder-empty p-6 text-center">`);
-var _tmpl$0 = /* @__PURE__ */ template(`<div class=dumb-finder-view tabindex=0><div class=dumb-finder-items>`);
+var _tmpl$0 = /* @__PURE__ */ template(`<div class=dumb-finder-view tabindex=0><div class=dumb-finder-items><!><!></div><!>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<div class=dumb-finder-item>`);
 var _tmpl$10 = /* @__PURE__ */ template(`<span class=dumb-finder-indent>`);
 var _tmpl$11 = /* @__PURE__ */ template(`<button type=button class=dumb-finder-twist data-no-select data-no-drag draggable=false>`);
-var _tmpl$12 = /* @__PURE__ */ template(`<img alt loading=lazy draggable=false>`, true, false, false);
+var _tmpl$12 = /* @__PURE__ */ template(`<img alt loading=lazy draggable=false>`, 1);
 var _tmpl$13 = /* @__PURE__ */ template(`<div class=dumb-finder-thumb>`);
 var _tmpl$14 = /* @__PURE__ */ template(`<div class=dumb-finder-name>`);
 var _tmpl$15 = /* @__PURE__ */ template(`<div class=dumb-finder-meta>`);
-var _tmpl$16 = /* @__PURE__ */ template(`<span class=dumb-finder-bar-progress><i>`);
-var _tmpl$17 = /* @__PURE__ */ template(`<div class=dumb-finder-item data-pending=1><div class=dumb-finder-thumb>\u2B06</div><div class=dumb-finder-name></div><div class=dumb-finder-meta>`);
-var _tmpl$18 = /* @__PURE__ */ template(`<button type=button class="dumb-finder-btn btn btn-xs btn-ghost"><span>`);
-var _tmpl$19 = /* @__PURE__ */ template(`<div class=dumb-finder-bar><span class="dumb-finder-err text-error">\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u0435\u0437\u0432\u043E\u0437\u0432\u0440\u0430\u0442\u043D\u043E: </span><button type=button>\u0414\u0430, \u0443\u0434\u0430\u043B\u0438\u0442\u044C</button><button type=button>\u041E\u0442\u043C\u0435\u043D\u0430`);
-var _tmpl$20 = /* @__PURE__ */ template(`<div class="dumb-finder-err alert alert-error py-1 text-sm">`);
-var _tmpl$21 = /* @__PURE__ */ template(`<div><div class=dumb-finder-bar><nav class=dumb-finder-crumbs><ul></ul></nav></div><div class=dumb-finder-main></div><div class="dumb-finder-status px-1.5 py-1 text-sm">`);
-var _tmpl$222 = /* @__PURE__ */ template(`<li><button type=button class=dumb-finder-crumb>`);
-var _tmpl$232 = /* @__PURE__ */ template(`<div class=dumb-finder-bar><input autofocus placeholder="\u0438\u043C\u044F \u043F\u0430\u043F\u043A\u0438"><button type=button>\u0413\u043E\u0442\u043E\u0432\u043E</button><button type=button>\u041E\u0442\u043C\u0435\u043D\u0430`);
+var _tmpl$16 = /* @__PURE__ */ template(`<div class=dumb-finder-meta><!><!>`);
+var _tmpl$17 = /* @__PURE__ */ template(`<span class=dumb-finder-bar-progress><i>`);
+var _tmpl$18 = /* @__PURE__ */ template(`<div class=dumb-finder-item data-pending=1><div class=dumb-finder-thumb>\u2B06</div><div class=dumb-finder-name></div><div class=dumb-finder-meta>`);
+var _tmpl$19 = /* @__PURE__ */ template(`<button type=button class="dumb-finder-btn btn btn-xs btn-ghost"><span>`);
+var _tmpl$20 = /* @__PURE__ */ template(`<div class=dumb-finder-bar><span class="dumb-finder-err text-error">\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0431\u0435\u0437\u0432\u043E\u0437\u0432\u0440\u0430\u0442\u043D\u043E: </span><button type=button>\u0414\u0430, \u0443\u0434\u0430\u043B\u0438\u0442\u044C</button><button type=button>\u041E\u0442\u043C\u0435\u043D\u0430`);
+var _tmpl$21 = /* @__PURE__ */ template(`<div class="dumb-finder-err alert alert-error py-1 text-sm">`);
+var _tmpl$222 = /* @__PURE__ */ template(`<div><div class=dumb-finder-bar><nav class=dumb-finder-crumbs><ul></ul></nav><!><!><!><!><!><!></div><!><!><div class=dumb-finder-main></div><div class="dumb-finder-status px-1.5 py-1 text-sm">`);
+var _tmpl$232 = /* @__PURE__ */ template(`<li><button type=button class=dumb-finder-crumb>`);
+var _tmpl$24 = /* @__PURE__ */ template(`<div class=dumb-finder-bar><input autofocus placeholder="\u0438\u043C\u044F \u043F\u0430\u043F\u043A\u0438"><button type=button>\u0413\u043E\u0442\u043E\u0432\u043E</button><button type=button>\u041E\u0442\u043C\u0435\u043D\u0430`);
 var STYLES2 = `
   /* \u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435 \u2014 daisyUI: \u043A\u043D\u043E\u043F\u043A\u0438, \u043F\u043E\u043B\u044F \u0438 \u043F\u043B\u0430\u0448\u043A\u0438 \u0431\u0435\u0440\u0443\u0442 \u043A\u043B\u0430\u0441\u0441\u044B \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435, \u0446\u0432\u0435\u0442\u0430
      \u0438\u0434\u0443\u0442 \u0438\u0437 \u0442\u043E\u043A\u0435\u043D\u043E\u0432 \u0442\u0435\u043C\u044B (--color-base-*, --color-primary, --color-error).
@@ -2811,107 +2813,114 @@ function DumbFinder(props) {
       children: (e) => {
         const open2 = () => opened().has(e.key) || !!matched();
         const w = () => weights().get(e.key);
-        return (() => {
-          var _el$ = _tmpl$52(), _el$2 = _el$.firstChild, _el$5 = _el$2.firstChild;
-          _el$2.addEventListener("drop", (ev) => {
-            ev.stopPropagation();
-            void drop(e.key, ev);
-          });
-          _el$2.addEventListener("dragleave", () => setDropAt(null));
-          _el$2.addEventListener("dragover", (ev) => over(e.key, ev));
-          _el$2.$$click = () => goto(e.key);
-          insert(_el$2, createComponent(Show, {
-            get when() {
-              return (kidsOf().get(e.key)?.length ?? 0) > 0;
-            },
-            get fallback() {
-              return _tmpl$62();
-            },
-            get children() {
-              var _el$3 = _tmpl$23();
-              _el$3.$$click = (ev) => {
-                ev.stopPropagation();
-                toggleNode(e.key);
-              };
-              insert(_el$3, createComponent(Show, {
-                get when() {
-                  return props.icons?.twist;
-                },
-                get fallback() {
-                  return open2() ? "\u25BE" : "\u25B8";
-                },
-                get children() {
-                  var _el$4 = _tmpl$6();
-                  effect(() => className(_el$4, `dumb-finder-glyph ${props.icons.twist}`));
-                  return _el$4;
-                }
-              }));
-              effect(() => setAttribute(_el$3, "title", open2() ? "\u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C" : "\u0440\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C"));
-              return _el$3;
-            }
-          }), _el$5);
-          insert(_el$2, createComponent(Glyph, {
-            entry: e,
-            get open() {
-              return open2();
-            }
-          }), _el$5);
-          insert(_el$5, () => e.name);
-          insert(_el$2, createComponent(Show, {
-            get when() {
-              return w()?.size !== void 0;
-            },
-            get children() {
-              var _el$6 = _tmpl$32(), _el$7 = _el$6.firstChild;
-              insert(_el$6, () => w().count ?? 0, _el$7);
-              insert(_el$6, () => fmtSize(w().size), null);
-              return _el$6;
-            }
-          }), null);
-          insert(_el$, createComponent(Show, {
-            get when() {
-              return open2();
-            },
-            get children() {
-              var _el$8 = _tmpl$42();
-              insert(_el$8, createComponent(Branch, {
-                get prefix() {
-                  return e.key;
-                },
-                get depth() {
-                  return p.depth + 1;
-                }
-              }));
-              return _el$8;
-            }
-          }), null);
-          effect((_p$) => {
-            var _v$ = path() === e.key ? "1" : void 0, _v$2 = open2() ? "1" : void 0, _v$3 = dropAt() === e.key && path() !== e.key ? "1" : void 0, _v$4 = e.name;
-            _v$ !== _p$.e && setAttribute(_el$2, "data-here", _p$.e = _v$);
-            _v$2 !== _p$.t && setAttribute(_el$2, "data-open", _p$.t = _v$2);
-            _v$3 !== _p$.a && setAttribute(_el$2, "data-drop", _p$.a = _v$3);
-            _v$4 !== _p$.o && setAttribute(_el$2, "title", _p$.o = _v$4);
-            return _p$;
-          }, {
-            e: void 0,
-            t: void 0,
-            a: void 0,
-            o: void 0
-          });
-          return _el$;
-        })();
+        var _el$ = _tmpl$52(), _el$2 = _el$.firstChild, _el$9 = _el$2.firstChild, _el$5 = _el$9.nextSibling, _el$0 = _el$5.nextSibling;
+        _el$2.addEventListener("drop", (ev) => {
+          ev.stopPropagation();
+          void drop(e.key, ev);
+        });
+        _el$2.addEventListener("dragleave", () => setDropAt(null));
+        _el$2.addEventListener("dragover", (ev) => over(e.key, ev));
+        _el$2.$$click = () => goto(e.key);
+        insert(_el$2, createComponent(Show, {
+          get when() {
+            return (kidsOf().get(e.key)?.length ?? 0) > 0;
+          },
+          get fallback() {
+            return _tmpl$62();
+          },
+          get children() {
+            var _el$3 = _tmpl$23();
+            _el$3.$$click = (ev) => {
+              ev.stopPropagation();
+              toggleNode(e.key);
+            };
+            insert(_el$3, createComponent(Show, {
+              get when() {
+                return props.icons?.twist;
+              },
+              get fallback() {
+                return open2() ? "\u25BE" : "\u25B8";
+              },
+              get children() {
+                var _el$4 = _tmpl$6();
+                effect(() => `dumb-finder-glyph ${props.icons.twist}`, (_v$, _$p) => {
+                  className(_el$4, _v$, _$p);
+                });
+                return _el$4;
+              }
+            }));
+            effect(() => open2() ? "\u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C" : "\u0440\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C", (_v$) => {
+              setAttribute(_el$3, "title", _v$);
+            });
+            return _el$3;
+          }
+        }), _el$9);
+        insert(_el$2, createComponent(Glyph, {
+          entry: e,
+          get open() {
+            return open2();
+          }
+        }), _el$5);
+        insert(_el$5, () => e.name);
+        insert(_el$2, createComponent(Show, {
+          get when() {
+            return w()?.size !== void 0;
+          },
+          get children() {
+            var _el$6 = _tmpl$32(), _el$7 = _el$6.firstChild, _el$8 = _el$7.nextSibling;
+            insert(_el$6, () => w().count ?? 0, _el$7);
+            insert(_el$6, () => fmtSize(w().size), _el$8);
+            return _el$6;
+          }
+        }), _el$0);
+        insert(_el$, createComponent(Show, {
+          get when() {
+            return open2();
+          },
+          get children() {
+            var _el$1 = _tmpl$42();
+            insert(_el$1, createComponent(Branch, {
+              get prefix() {
+                return e.key;
+              },
+              get depth() {
+                return p.depth + 1;
+              }
+            }));
+            return _el$1;
+          }
+        }), null);
+        effect(() => ({
+          e: path() === e.key ? "1" : void 0,
+          t: open2() ? "1" : void 0,
+          a: dropAt() === e.key && path() !== e.key ? "1" : void 0,
+          o: e.name
+        }), ({
+          e: e2,
+          t,
+          a,
+          o
+        }, _p$) => {
+          e2 !== _p$?.e && setAttribute(_el$2, "data-here", e2);
+          t !== _p$?.t && setAttribute(_el$2, "data-open", t);
+          a !== _p$?.a && setAttribute(_el$2, "data-drop", a);
+          o !== _p$?.o && setAttribute(_el$2, "title", o);
+        });
+        return _el$;
       }
     });
   }
   const SIDE = () => (() => {
-    var _el$0 = _tmpl$7(), _el$1 = _el$0.firstChild, _el$10 = _el$1.nextSibling;
-    _el$1.$$input = (ev) => setFind(ev.currentTarget.value);
-    insert(_el$10, createComponent(Branch, {
+    var _el$11 = _tmpl$7(), _el$12 = _el$11.firstChild, _el$13 = _el$12.nextSibling;
+    _el$12.$$input = (ev) => setFind(ev.currentTarget.value);
+    insert(_el$13, createComponent(Branch, {
       prefix: "",
       depth: 0
     }));
-    effect(() => _el$1.value = find());
-    return _el$0;
+    effect(() => find(), (_v$) => {
+      _el$12.value = _v$ ?? "";
+    });
+    return _el$11;
   })();
   const FILES = () => createComponent(SelectionArea, {
     selectables: ".dumb-finder-item",
@@ -2927,14 +2936,14 @@ function DumbFinder(props) {
       return !(key && selected().has(key));
     },
     get children() {
-      var _el$11 = _tmpl$0(), _el$21 = _el$11.firstChild;
-      _el$11.addEventListener("drop", (ev) => void drop(path(), ev));
-      _el$11.addEventListener("dragleave", (ev) => {
+      var _el$14 = _tmpl$0(), _el$24 = _el$14.firstChild, _el$25 = _el$24.firstChild, _el$26 = _el$25.nextSibling, _el$28 = _el$24.nextSibling;
+      _el$14.addEventListener("drop", (ev) => void drop(path(), ev));
+      _el$14.addEventListener("dragleave", (ev) => {
         if (ev.relatedTarget) return;
         setOverFiles(false);
         setDropAt(null);
       });
-      _el$11.addEventListener("dragover", (ev) => {
+      _el$14.addEventListener("dragover", (ev) => {
         if (hasFiles(ev)) {
           if (!(editable() && props.source.upload)) return;
           ev.preventDefault();
@@ -2944,250 +2953,267 @@ function DumbFinder(props) {
           setDropAt(path());
         }
       });
-      _el$11.$$keydown = onKey;
-      insert(_el$11, createComponent(Show, {
+      _el$14.$$keydown = onKey;
+      insert(_el$14, createComponent(Show, {
         get when() {
           return view() === "list";
         },
         get children() {
-          var _el$12 = _tmpl$8(), _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$14.nextSibling; _el$15.firstChild; var _el$17 = _el$15.nextSibling; _el$17.firstChild; var _el$19 = _el$17.nextSibling; _el$19.firstChild;
-          _el$15.$$click = () => flipSort("name");
-          insert(_el$15, () => mark(sort(), "name"), null);
-          _el$17.$$click = () => flipSort("size");
-          insert(_el$17, () => mark(sort(), "size"), null);
-          _el$19.$$click = () => flipSort("modified");
-          insert(_el$19, () => mark(sort(), "modified"), null);
-          return _el$12;
+          var _el$15 = _tmpl$8(), _el$16 = _el$15.firstChild, _el$17 = _el$16.nextSibling, _el$18 = _el$17.nextSibling; _el$18.firstChild; var _el$20 = _el$18.nextSibling; _el$20.firstChild; var _el$22 = _el$20.nextSibling; _el$22.firstChild;
+          _el$18.$$click = () => flipSort("name");
+          insert(_el$18, () => mark(sort(), "name"), null);
+          _el$20.$$click = () => flipSort("size");
+          insert(_el$20, () => mark(sort(), "size"), null);
+          _el$22.$$click = () => flipSort("modified");
+          insert(_el$22, () => mark(sort(), "modified"), null);
+          return _el$15;
         }
-      }), _el$21);
-      use((el) => {
+      }), _el$24);
+      ref(() => (el) => {
         itemsBox = el;
         queueMicrotask(measureCols);
-      }, _el$21);
-      insert(_el$21, createComponent(For, {
+      }, _el$24);
+      insert(_el$24, createComponent(For, {
         get each() {
           return rows();
         },
         children: (row) => {
           const entry = row.e;
-          return (() => {
-            var _el$23 = _tmpl$1();
-            _el$23.addEventListener("drop", (ev) => {
-              if (!entry.dir) return;
-              ev.stopPropagation();
-              void drop(entry.key, ev);
-            });
-            _el$23.addEventListener("dragleave", () => entry.dir && setDropAt(null));
-            _el$23.addEventListener("dragover", (ev) => entry.dir && over(entry.key, ev));
-            _el$23.addEventListener("dragend", () => {
-              setDragging([]);
-              setDropAt(null);
-            });
-            _el$23.addEventListener("dragstart", (ev) => startDrag(ev, entry));
-            _el$23.$$dblclick = () => open(entry);
-            insert(_el$23, () => props.children?.(entry, {
-              selected: selected().has(entry.key),
-              view: view()
-            }) ?? [createComponent(Show, {
-              get when() {
-                return view() === "list";
-              },
-              get children() {
-                return [(() => {
-                  var _el$24 = _tmpl$10();
-                  effect((_$p) => setStyleProperty(_el$24, "width", `${row.depth * 15}px`));
-                  return _el$24;
-                })(), createComponent(Show, {
-                  get when() {
-                    return entry.dir;
-                  },
-                  get fallback() {
-                    return _tmpl$62();
-                  },
-                  get children() {
-                    var _el$25 = _tmpl$11();
-                    _el$25.$$click = (ev) => {
-                      ev.stopPropagation();
-                      toggleRow(entry.key);
-                    };
-                    insert(_el$25, createComponent(Show, {
-                      get when() {
-                        return props.icons?.twist;
-                      },
-                      get fallback() {
-                        return openRows().has(entry.key) ? "\u25BE" : "\u25B8";
-                      },
-                      get children() {
-                        var _el$26 = _tmpl$6();
-                        effect(() => className(_el$26, `dumb-finder-glyph ${props.icons.twist}`));
-                        return _el$26;
-                      }
-                    }));
-                    effect(() => setAttribute(_el$25, "title", openRows().has(entry.key) ? "\u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C" : "\u0440\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C"));
-                    return _el$25;
-                  }
-                })];
-              }
-            }), (() => {
-              var _el$27 = _tmpl$13();
-              insert(_el$27, createComponent(Show, {
+          var _el$29 = _tmpl$1();
+          _el$29.addEventListener("drop", (ev) => {
+            if (!entry.dir) return;
+            ev.stopPropagation();
+            void drop(entry.key, ev);
+          });
+          _el$29.addEventListener("dragleave", () => entry.dir && setDropAt(null));
+          _el$29.addEventListener("dragover", (ev) => entry.dir && over(entry.key, ev));
+          _el$29.addEventListener("dragend", () => {
+            setDragging([]);
+            setDropAt(null);
+          });
+          _el$29.addEventListener("dragstart", (ev) => startDrag(ev, entry));
+          _el$29.$$dblclick = () => open(entry);
+          insert(_el$29, () => props.children?.(entry, {
+            selected: selected().has(entry.key),
+            view: view()
+          }) ?? [createComponent(Show, {
+            get when() {
+              return view() === "list";
+            },
+            get children() {
+              return [(() => {
+                var _el$30 = _tmpl$10();
+                effect(() => `${row.depth * 15}px`, (_v$) => {
+                  setStyleProperty(_el$30, "width", _v$);
+                });
+                return _el$30;
+              })(), createComponent(Show, {
                 get when() {
-                  return memo(() => !!(!entry.dir && entry.url))() && kindOf(entry.name) === "image";
+                  return entry.dir;
                 },
                 get fallback() {
-                  return createComponent(Glyph, {
-                    entry,
-                    get open() {
-                      return openRows().has(entry.key);
-                    }
-                  });
+                  return _tmpl$62();
                 },
                 get children() {
-                  var _el$28 = _tmpl$12();
-                  effect(() => setAttribute(_el$28, "src", entry.url));
-                  return _el$28;
-                }
-              }));
-              return _el$27;
-            })(), (() => {
-              var _el$29 = _tmpl$14();
-              insert(_el$29, () => entry.name);
-              return _el$29;
-            })(), createComponent(Show, {
-              get when() {
-                return view() === "list";
-              },
-              get children() {
-                return [(() => {
-                  var _el$30 = _tmpl$15();
-                  insert(_el$30, (() => {
-                    var _c$ = memo(() => !!entry.dir);
-                    return () => _c$() ? memo(() => weightOf(entry)?.size !== void 0)() ? fmtSize(weightOf(entry).size) : "" : fmtSize(entry.size ?? 0);
-                  })());
-                  return _el$30;
-                })(), (() => {
-                  var _el$31 = _tmpl$15();
-                  insert(_el$31, (() => {
-                    var _c$2 = memo(() => !!entry.modified);
-                    return () => _c$2() ? fmtDateTimeShort(entry.modified) : "";
-                  })());
+                  var _el$31 = _tmpl$11();
+                  _el$31.$$click = (ev) => {
+                    ev.stopPropagation();
+                    toggleRow(entry.key);
+                  };
+                  insert(_el$31, createComponent(Show, {
+                    get when() {
+                      return props.icons?.twist;
+                    },
+                    get fallback() {
+                      return openRows().has(entry.key) ? "\u25BE" : "\u25B8";
+                    },
+                    get children() {
+                      var _el$32 = _tmpl$6();
+                      effect(() => `dumb-finder-glyph ${props.icons.twist}`, (_v$, _$p) => {
+                        className(_el$32, _v$, _$p);
+                      });
+                      return _el$32;
+                    }
+                  }));
+                  effect(() => openRows().has(entry.key) ? "\u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C" : "\u0440\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C", (_v$) => {
+                    setAttribute(_el$31, "title", _v$);
+                  });
                   return _el$31;
-                })(), (() => {
-                  var _el$32 = _tmpl$15();
-                  insert(_el$32, (() => {
-                    var _c$3 = memo(() => !!(entry.dir && weightOf(entry)?.count !== void 0));
-                    return () => _c$3() ? `${weightOf(entry).count} \u0444\u0430\u0439\u043B.` : kindLabel(entry);
-                  })());
-                  return _el$32;
-                })()];
-              }
-            }), createComponent(Show, {
+                }
+              })];
+            }
+          }), (() => {
+            var _el$33 = _tmpl$13();
+            insert(_el$33, createComponent(Show, {
               get when() {
-                return memo(() => !!(view() === "grid" && !entry.dir))() && entry.size !== void 0;
+                return memo(() => !!(!entry.dir && entry.url))() ? kindOf(entry.name) === "image" : !entry.dir && entry.url;
+              },
+              get fallback() {
+                return createComponent(Glyph, {
+                  entry,
+                  get open() {
+                    return openRows().has(entry.key);
+                  }
+                });
               },
               get children() {
-                var _el$33 = _tmpl$15();
-                insert(_el$33, () => fmtSize(entry.size));
-                return _el$33;
-              }
-            }), createComponent(Show, {
-              get when() {
-                return memo(() => !!(view() === "grid" && entry.dir))() && weightOf(entry)?.size !== void 0;
-              },
-              get children() {
-                var _el$34 = _tmpl$15();
-                insert(_el$34, () => fmtSize(weightOf(entry).size), null);
-                insert(_el$34, (() => {
-                  var _c$4 = memo(() => !!weightOf(entry).count);
-                  return () => _c$4() ? ` \xB7 ${weightOf(entry).count}` : "";
-                })(), null);
+                var _el$34 = _tmpl$12();
+                effect(() => entry.url, (_v$) => {
+                  setAttribute(_el$34, "src", _v$);
+                });
                 return _el$34;
               }
-            })]);
-            effect((_p$) => {
-              var _v$7 = entry.key, _v$8 = selected().has(entry.key) ? "1" : void 0, _v$9 = entry.dir ? "1" : void 0, _v$0 = openRows().has(entry.key) ? "1" : void 0, _v$1 = entry.dir && dropAt() === entry.key ? "1" : void 0, _v$10 = canWrite() && !!props.source.move ? "true" : "false", _v$11 = entry.name;
-              _v$7 !== _p$.e && setAttribute(_el$23, "data-key", _p$.e = _v$7);
-              _v$8 !== _p$.t && setAttribute(_el$23, "data-selected", _p$.t = _v$8);
-              _v$9 !== _p$.a && setAttribute(_el$23, "data-dir", _p$.a = _v$9);
-              _v$0 !== _p$.o && setAttribute(_el$23, "data-open", _p$.o = _v$0);
-              _v$1 !== _p$.i && setAttribute(_el$23, "data-drop", _p$.i = _v$1);
-              _v$10 !== _p$.n && setAttribute(_el$23, "draggable", _p$.n = _v$10);
-              _v$11 !== _p$.s && setAttribute(_el$23, "title", _p$.s = _v$11);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0,
-              a: void 0,
-              o: void 0,
-              i: void 0,
-              n: void 0,
-              s: void 0
-            });
-            return _el$23;
-          })();
+            }));
+            return _el$33;
+          })(), (() => {
+            var _el$35 = _tmpl$14();
+            insert(_el$35, () => entry.name);
+            return _el$35;
+          })(), createComponent(Show, {
+            get when() {
+              return view() === "list";
+            },
+            get children() {
+              return [(() => {
+                var _el$36 = _tmpl$15();
+                insert(_el$36, (() => {
+                  var _c$ = memo(() => !!entry.dir);
+                  return () => _c$() ? memo(() => weightOf(entry)?.size !== void 0)() ? fmtSize(weightOf(entry).size) : "" : fmtSize(entry.size ?? 0);
+                })());
+                return _el$36;
+              })(), (() => {
+                var _el$37 = _tmpl$15();
+                insert(_el$37, (() => {
+                  var _c$2 = memo(() => !!entry.modified);
+                  return () => _c$2() ? fmtDateTimeShort(entry.modified) : "";
+                })());
+                return _el$37;
+              })(), (() => {
+                var _el$38 = _tmpl$15();
+                insert(_el$38, (() => {
+                  var _c$3 = memo(() => !!(entry.dir && weightOf(entry)?.count !== void 0));
+                  return () => _c$3() ? `${weightOf(entry).count} \u0444\u0430\u0439\u043B.` : kindLabel(entry);
+                })());
+                return _el$38;
+              })()];
+            }
+          }), createComponent(Show, {
+            get when() {
+              return memo(() => !!(view() === "grid" && !entry.dir))() ? entry.size !== void 0 : view() === "grid" && !entry.dir;
+            },
+            get children() {
+              var _el$39 = _tmpl$15();
+              insert(_el$39, () => fmtSize(entry.size));
+              return _el$39;
+            }
+          }), createComponent(Show, {
+            get when() {
+              return memo(() => !!(view() === "grid" && entry.dir))() ? weightOf(entry)?.size !== void 0 : view() === "grid" && entry.dir;
+            },
+            get children() {
+              var _el$40 = _tmpl$16(), _el$41 = _el$40.firstChild, _el$42 = _el$41.nextSibling;
+              insert(_el$40, () => fmtSize(weightOf(entry).size), _el$41);
+              insert(_el$40, (() => {
+                var _c$4 = memo(() => !!weightOf(entry).count);
+                return () => _c$4() ? ` \xB7 ${weightOf(entry).count}` : "";
+              })(), _el$42);
+              return _el$40;
+            }
+          })]);
+          effect(() => ({
+            e: entry.key,
+            t: selected().has(entry.key) ? "1" : void 0,
+            a: entry.dir ? "1" : void 0,
+            o: openRows().has(entry.key) ? "1" : void 0,
+            i: entry.dir && dropAt() === entry.key ? "1" : void 0,
+            n: canWrite() && !!props.source.move ? "true" : "false",
+            s: entry.name
+          }), ({
+            e,
+            t,
+            a,
+            o,
+            i,
+            n,
+            s
+          }, _p$) => {
+            e !== _p$?.e && setAttribute(_el$29, "data-key", e);
+            t !== _p$?.t && setAttribute(_el$29, "data-selected", t);
+            a !== _p$?.a && setAttribute(_el$29, "data-dir", a);
+            o !== _p$?.o && setAttribute(_el$29, "data-open", o);
+            i !== _p$?.i && setAttribute(_el$29, "data-drop", i);
+            n !== _p$?.n && setAttribute(_el$29, "draggable", n);
+            s !== _p$?.s && setAttribute(_el$29, "title", s);
+          });
+          return _el$29;
         }
-      }), null);
-      insert(_el$21, createComponent(For, {
+      }), _el$25);
+      insert(_el$24, createComponent(For, {
         get each() {
           return ghosts();
         },
         children: (p) => (() => {
-          var _el$36 = _tmpl$17(), _el$37 = _el$36.firstChild, _el$38 = _el$37.nextSibling, _el$39 = _el$38.nextSibling;
-          insert(_el$38, () => p.name);
-          insert(_el$39, () => p.error ?? `${Math.round(p.progress * 100)}%`);
-          insert(_el$36, createComponent(Show, {
+          var _el$44 = _tmpl$18(), _el$45 = _el$44.firstChild, _el$46 = _el$45.nextSibling, _el$47 = _el$46.nextSibling;
+          insert(_el$46, () => p.name);
+          insert(_el$47, () => p.error ?? `${Math.round(p.progress * 100)}%`);
+          insert(_el$44, createComponent(Show, {
             get when() {
               return !p.error;
             },
             get children() {
-              var _el$40 = _tmpl$16(), _el$41 = _el$40.firstChild;
-              effect((_$p) => setStyleProperty(_el$41, "width", `${Math.round(p.progress * 100)}%`));
-              return _el$40;
+              var _el$48 = _tmpl$17(), _el$49 = _el$48.firstChild;
+              effect(() => `${Math.round(p.progress * 100)}%`, (_v$) => {
+                setStyleProperty(_el$49, "width", _v$);
+              });
+              return _el$48;
             }
           }), null);
-          effect(() => setAttribute(_el$36, "data-failed", p.error ? "1" : void 0));
-          return _el$36;
+          effect(() => p.error ? "1" : void 0, (_v$) => {
+            setAttribute(_el$44, "data-failed", _v$);
+          });
+          return _el$44;
         })()
-      }), null);
-      insert(_el$11, createComponent(Show, {
+      }), _el$26);
+      insert(_el$14, createComponent(Show, {
         get when() {
-          return memo(() => !!(!shown().length && !ghosts().length))() && !loading();
+          return memo(() => !!(!shown().length && !ghosts().length))() ? !loading() : !shown().length && !ghosts().length;
         },
         get children() {
-          var _el$22 = _tmpl$9();
-          insert(_el$22, () => editable() && props.source.upload ? "\u041F\u0443\u0441\u0442\u043E. \u0411\u0440\u043E\u0441\u044C \u0441\u044E\u0434\u0430 \u0444\u0430\u0439\u043B\u044B." : "\u041F\u0443\u0441\u0442\u043E.");
-          return _el$22;
+          var _el$27 = _tmpl$9();
+          insert(_el$27, () => editable() && props.source.upload ? "\u041F\u0443\u0441\u0442\u043E. \u0411\u0440\u043E\u0441\u044C \u0441\u044E\u0434\u0430 \u0444\u0430\u0439\u043B\u044B." : "\u041F\u0443\u0441\u0442\u043E.");
+          return _el$27;
         }
-      }), null);
-      effect((_p$) => {
-        var _v$5 = view(), _v$6 = overFiles() ? "1" : void 0;
-        _v$5 !== _p$.e && setAttribute(_el$11, "data-view", _p$.e = _v$5);
-        _v$6 !== _p$.t && setAttribute(_el$11, "data-files", _p$.t = _v$6);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0
+      }), _el$28);
+      effect(() => ({
+        e: view(),
+        t: overFiles() ? "1" : void 0
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        e !== _p$?.e && setAttribute(_el$14, "data-view", e);
+        t !== _p$?.t && setAttribute(_el$14, "data-files", t);
       });
-      return _el$11;
+      return _el$14;
     }
   });
   function BarButton(p) {
-    return (() => {
-      var _el$42 = _tmpl$18(), _el$44 = _el$42.firstChild;
-      addEventListener(_el$42, "click", p.onClick, true);
-      insert(_el$42, createComponent(Show, {
-        get when() {
-          return p.icon;
-        },
-        get children() {
-          var _el$43 = _tmpl$6();
-          effect(() => className(_el$43, `dumb-finder-glyph ${p.icon}`));
-          return _el$43;
-        }
-      }), _el$44);
-      insert(_el$44, () => p.children);
-      return _el$42;
-    })();
+    var _el$50 = _tmpl$19(), _el$52 = _el$50.firstChild;
+    addEvent(_el$50, "click", p.onClick, true);
+    insert(_el$50, createComponent(Show, {
+      get when() {
+        return p.icon;
+      },
+      get children() {
+        var _el$51 = _tmpl$6();
+        effect(() => `dumb-finder-glyph ${p.icon}`, (_v$, _$p) => {
+          className(_el$51, _v$, _$p);
+        });
+        return _el$51;
+      }
+    }), _el$52);
+    insert(_el$52, () => p.children);
+    return _el$50;
   }
   function Glyph(p) {
     const kind = () => p.entry.dir ? p.open ? "dirOpen" : "dir" : kindOf(p.entry.name);
@@ -3204,224 +3230,229 @@ function DumbFinder(props) {
         return memo(() => !!p.entry.dir)() ? memo(() => !!p.open)() ? "\u{1F4C2}" : ICONS.dir : ICONS[kindOf(p.entry.name)];
       },
       get children() {
-        var _el$45 = _tmpl$6();
-        effect(() => className(_el$45, `dumb-finder-glyph ${cls()}`));
-        return _el$45;
+        var _el$53 = _tmpl$6();
+        effect(() => `dumb-finder-glyph ${cls()}`, (_v$, _$p) => {
+          className(_el$53, _v$, _$p);
+        });
+        return _el$53;
       }
     });
   }
-  return (() => {
-    var _el$46 = _tmpl$21(), _el$47 = _el$46.firstChild, _el$48 = _el$47.firstChild, _el$49 = _el$48.firstChild, _el$56 = _el$47.nextSibling, _el$57 = _el$56.nextSibling;
-    insert(_el$49, createComponent(For, {
-      get each() {
-        return crumbs(path(), props.rootLabel ?? "\u0412\u0441\u0451");
-      },
-      children: (c) => (() => {
-        var _el$58 = _tmpl$222(), _el$59 = _el$58.firstChild;
-        _el$59.addEventListener("drop", (ev) => void drop(c.prefix, ev));
-        _el$59.addEventListener("dragleave", () => setDropAt(null));
-        _el$59.addEventListener("dragover", (ev) => c.prefix !== path() && over(c.prefix, ev));
-        _el$59.$$click = () => goto(c.prefix);
-        insert(_el$59, () => c.name);
-        effect((_p$) => {
-          var _v$15 = c.prefix === path() ? "true" : void 0, _v$16 = dropAt() === c.prefix && c.prefix !== path() ? "1" : void 0;
-          _v$15 !== _p$.e && setAttribute(_el$59, "aria-current", _p$.e = _v$15);
-          _v$16 !== _p$.t && setAttribute(_el$59, "data-drop", _p$.t = _v$16);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0
-        });
-        return _el$58;
-      })()
-    }));
-    insert(_el$47, createComponent(BarButton, {
-      get icon() {
-        return props.icons?.refresh;
-      },
-      onClick: () => {
-        bumpTree();
-        void reload();
-      },
-      children: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C"
-    }), null);
-    insert(_el$47, createComponent(BarButton, {
-      get icon() {
-        return memo(() => view() === "grid")() ? props.icons?.viewList : props.icons?.viewGrid;
-      },
-      onClick: () => setView(view() === "grid" ? "list" : "grid"),
-      get children() {
-        return view() === "grid" ? "\u0421\u043F\u0438\u0441\u043A\u043E\u043C" : "\u041F\u043B\u0438\u0442\u043A\u0430\u043C\u0438";
-      }
-    }), null);
-    insert(_el$47, createComponent(Show, {
-      get when() {
-        return memo(() => !!canWrite())() && props.source.mkdir;
-      },
-      get children() {
-        return createComponent(BarButton, {
-          get icon() {
-            return props.icons?.mkdir;
-          },
-          onClick: () => setAsking({
-            kind: "mkdir",
-            value: ""
-          }),
-          children: "\u041D\u043E\u0432\u0430\u044F \u043F\u0430\u043F\u043A\u0430"
-        });
-      }
-    }), null);
-    insert(_el$47, createComponent(Show, {
-      get when() {
-        return memo(() => !!canWrite())() && props.source.upload;
-      },
-      get children() {
-        return createComponent(BarButton, {
-          get icon() {
-            return props.icons?.upload;
-          },
-          onClick: pickFiles,
-          children: "\u0417\u0430\u043B\u0438\u0442\u044C"
-        });
-      }
-    }), null);
-    insert(_el$47, createComponent(Show, {
-      get when() {
-        return memo(() => !!canWrite())() && canUndo();
-      },
-      get children() {
-        return createComponent(BarButton, {
-          get icon() {
-            return props.icons?.undo;
-          },
-          onClick: () => void undoStack.undo(),
-          get children() {
-            return ["\u041E\u0442\u043C\u0435\u043D\u0438\u0442\u044C: ", memo(() => undoLabel())];
-          }
-        });
-      }
-    }), null);
-    insert(_el$47, createComponent(Show, {
-      get when() {
-        return memo(() => !!(canWrite() && props.source.remove))() && picked().length > 0;
-      },
-      get children() {
-        return createComponent(BarButton, {
-          get icon() {
-            return props.icons?.remove;
-          },
-          onClick: () => setConfirming(true),
-          get children() {
-            return ["\u0423\u0434\u0430\u043B\u0438\u0442\u044C ", memo(() => picked().length)];
-          }
-        });
-      }
-    }), null);
-    insert(_el$46, createComponent(Show, {
-      get when() {
-        return memo(() => !!confirming())() && picked().length;
-      },
-      get children() {
-        var _el$50 = _tmpl$19(), _el$51 = _el$50.firstChild; _el$51.firstChild; var _el$53 = _el$51.nextSibling, _el$54 = _el$53.nextSibling;
-        insert(_el$51, () => picked().map(nameOf).join(", "), null);
-        _el$53.$$click = doRemove;
-        _el$54.$$click = closeAsk;
-        return _el$50;
-      }
-    }), _el$56);
-    insert(_el$46, createComponent(Show, {
-      get when() {
-        return asking();
-      },
-      children: (a) => (() => {
-        var _el$60 = _tmpl$232(), _el$61 = _el$60.firstChild, _el$62 = _el$61.nextSibling, _el$63 = _el$62.nextSibling;
-        _el$61.$$keydown = (ev) => {
-          if (ev.key === "Escape") closeAsk();
-          if (ev.key === "Enter") doAsk();
-        };
-        _el$61.$$input = (ev) => setAsking({
+  var _el$54 = _tmpl$222(), _el$55 = _el$54.firstChild, _el$56 = _el$55.firstChild, _el$57 = _el$56.firstChild, _el$58 = _el$56.nextSibling, _el$59 = _el$58.nextSibling, _el$60 = _el$59.nextSibling, _el$61 = _el$60.nextSibling, _el$62 = _el$61.nextSibling, _el$63 = _el$62.nextSibling, _el$72 = _el$55.nextSibling, _el$73 = _el$72.nextSibling, _el$70 = _el$73.nextSibling, _el$71 = _el$70.nextSibling;
+  insert(_el$57, createComponent(For, {
+    get each() {
+      return crumbs(path(), props.rootLabel ?? "\u0412\u0441\u0451");
+    },
+    children: (c) => (() => {
+      var _el$74 = _tmpl$232(), _el$75 = _el$74.firstChild;
+      _el$75.addEventListener("drop", (ev) => void drop(c.prefix, ev));
+      _el$75.addEventListener("dragleave", () => setDropAt(null));
+      _el$75.addEventListener("dragover", (ev) => c.prefix !== path() && over(c.prefix, ev));
+      _el$75.$$click = () => goto(c.prefix);
+      insert(_el$75, () => c.name);
+      effect(() => ({
+        e: c.prefix === path() ? "true" : void 0,
+        t: dropAt() === c.prefix && c.prefix !== path() ? "1" : void 0
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        e !== _p$?.e && setAttribute(_el$75, "aria-current", e);
+        t !== _p$?.t && setAttribute(_el$75, "data-drop", t);
+      });
+      return _el$74;
+    })()
+  }));
+  insert(_el$55, createComponent(BarButton, {
+    get icon() {
+      return props.icons?.refresh;
+    },
+    onClick: () => {
+      bumpTree();
+      void reload();
+    },
+    children: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C"
+  }), _el$58);
+  insert(_el$55, createComponent(BarButton, {
+    get icon() {
+      return memo(() => view() === "grid")() ? props.icons?.viewList : props.icons?.viewGrid;
+    },
+    onClick: () => setView(view() === "grid" ? "list" : "grid"),
+    get children() {
+      return view() === "grid" ? "\u0421\u043F\u0438\u0441\u043A\u043E\u043C" : "\u041F\u043B\u0438\u0442\u043A\u0430\u043C\u0438";
+    }
+  }), _el$59);
+  insert(_el$55, createComponent(Show, {
+    get when() {
+      return memo(() => !!canWrite())() ? props.source.mkdir : canWrite();
+    },
+    get children() {
+      return createComponent(BarButton, {
+        get icon() {
+          return props.icons?.mkdir;
+        },
+        onClick: () => setAsking({
           kind: "mkdir",
-          value: ev.currentTarget.value
-        });
-        _el$62.$$click = doAsk;
-        _el$63.$$click = closeAsk;
-        effect(() => _el$61.value = a().value);
-        return _el$60;
-      })()
-    }), _el$56);
-    insert(_el$46, createComponent(Show, {
-      get when() {
-        return error();
-      },
-      get children() {
-        var _el$55 = _tmpl$20();
-        insert(_el$55, error);
-        return _el$55;
-      }
-    }), _el$56);
-    insert(_el$56, createComponent(Show, {
-      get when() {
-        return props.sidebar !== false;
-      },
-      get fallback() {
-        return FILES();
-      },
-      get children() {
-        return createComponent(ResizableGrid, {
-          "class": "dumb-finder-split",
-          get storageKey() {
-            return `${props.treeKey ?? "dumb-finder"}:split`;
-          },
-          cols: [{
-            id: "tree",
-            content: SIDE,
-            min: 170,
-            initial: 1
-          }, {
-            id: "files",
-            content: FILES,
-            min: 320,
-            initial: 3.2
-          }]
-        });
-      }
-    }));
-    insert(_el$57, createComponent(Show, {
-      get when() {
-        return loading();
-      },
-      get fallback() {
-        return ["\u043F\u0430\u043F\u043E\u043A: ", memo(() => totals().dirs), " \xB7 \u0444\u0430\u0439\u043B\u043E\u0432: ", memo(() => totals().files), " \xB7 ", memo(() => fmtSize(totals().size)), createComponent(Show, {
-          get when() {
-            return picked().length;
-          },
-          get children() {
-            return ` \xB7 \u0432\u044B\u0434\u0435\u043B\u0435\u043D\u043E: ${picked().length}`;
-          }
-        }), createComponent(Show, {
-          get when() {
-            return pending().length;
-          },
-          get children() {
-            return ` \xB7 \u0437\u0430\u043B\u0438\u0432\u0430\u0435\u0442\u0441\u044F: ${pending().length}`;
-          }
-        })];
-      },
-      children: "\u0447\u0438\u0442\u0430\u044E\u2026"
-    }));
-    effect((_p$) => {
-      var _v$12 = `dumb-finder ${props.class ?? ""}`, _v$13 = props.style, _v$14 = props.height ?? "60vh";
-      _v$12 !== _p$.e && className(_el$46, _p$.e = _v$12);
-      _p$.t = style(_el$46, _v$13, _p$.t);
-      _v$14 !== _p$.a && setStyleProperty(_el$56, "height", _p$.a = _v$14);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0
-    });
-    return _el$46;
-  })();
+          value: ""
+        }),
+        children: "\u041D\u043E\u0432\u0430\u044F \u043F\u0430\u043F\u043A\u0430"
+      });
+    }
+  }), _el$60);
+  insert(_el$55, createComponent(Show, {
+    get when() {
+      return memo(() => !!canWrite())() ? props.source.upload : canWrite();
+    },
+    get children() {
+      return createComponent(BarButton, {
+        get icon() {
+          return props.icons?.upload;
+        },
+        onClick: pickFiles,
+        children: "\u0417\u0430\u043B\u0438\u0442\u044C"
+      });
+    }
+  }), _el$61);
+  insert(_el$55, createComponent(Show, {
+    get when() {
+      return memo(() => !!canWrite())() ? canUndo() : canWrite();
+    },
+    get children() {
+      return createComponent(BarButton, {
+        get icon() {
+          return props.icons?.undo;
+        },
+        onClick: () => void undoStack.undo(),
+        get children() {
+          return ["\u041E\u0442\u043C\u0435\u043D\u0438\u0442\u044C: ", memo(() => undoLabel())];
+        }
+      });
+    }
+  }), _el$62);
+  insert(_el$55, createComponent(Show, {
+    get when() {
+      return memo(() => !!(canWrite() && props.source.remove))() ? picked().length > 0 : canWrite() && props.source.remove;
+    },
+    get children() {
+      return createComponent(BarButton, {
+        get icon() {
+          return props.icons?.remove;
+        },
+        onClick: () => setConfirming(true),
+        get children() {
+          return ["\u0423\u0434\u0430\u043B\u0438\u0442\u044C ", memo(() => picked().length)];
+        }
+      });
+    }
+  }), _el$63);
+  insert(_el$54, createComponent(Show, {
+    get when() {
+      return memo(() => !!confirming())() ? picked().length : confirming();
+    },
+    get children() {
+      var _el$64 = _tmpl$20(), _el$65 = _el$64.firstChild; _el$65.firstChild; var _el$67 = _el$65.nextSibling, _el$68 = _el$67.nextSibling;
+      insert(_el$65, () => picked().map(nameOf).join(", "), null);
+      _el$67.$$click = doRemove;
+      _el$68.$$click = closeAsk;
+      return _el$64;
+    }
+  }), _el$72);
+  insert(_el$54, createComponent(Show, {
+    get when() {
+      return asking();
+    },
+    children: (a) => (() => {
+      var _el$76 = _tmpl$24(), _el$77 = _el$76.firstChild, _el$78 = _el$77.nextSibling, _el$79 = _el$78.nextSibling;
+      _el$77.$$keydown = (ev) => {
+        if (ev.key === "Escape") closeAsk();
+        if (ev.key === "Enter") doAsk();
+      };
+      _el$77.$$input = (ev) => setAsking({
+        kind: "mkdir",
+        value: ev.currentTarget.value
+      });
+      _el$78.$$click = doAsk;
+      _el$79.$$click = closeAsk;
+      effect(() => a().value, (_v$) => {
+        _el$77.value = _v$ ?? "";
+      });
+      return _el$76;
+    })()
+  }), _el$73);
+  insert(_el$54, createComponent(Show, {
+    get when() {
+      return error();
+    },
+    get children() {
+      var _el$69 = _tmpl$21();
+      insert(_el$69, error);
+      return _el$69;
+    }
+  }), _el$70);
+  insert(_el$70, createComponent(Show, {
+    get when() {
+      return props.sidebar !== false;
+    },
+    get fallback() {
+      return FILES();
+    },
+    get children() {
+      return createComponent(ResizableGrid, {
+        "class": "dumb-finder-split",
+        get storageKey() {
+          return `${props.treeKey ?? "dumb-finder"}:split`;
+        },
+        cols: [{
+          id: "tree",
+          content: SIDE,
+          min: 170,
+          initial: 1
+        }, {
+          id: "files",
+          content: FILES,
+          min: 320,
+          initial: 3.2
+        }]
+      });
+    }
+  }));
+  insert(_el$71, createComponent(Show, {
+    get when() {
+      return loading();
+    },
+    get fallback() {
+      return ["\u043F\u0430\u043F\u043E\u043A: ", memo(() => totals().dirs), " \xB7 \u0444\u0430\u0439\u043B\u043E\u0432: ", memo(() => totals().files), " \xB7 ", memo(() => fmtSize(totals().size)), createComponent(Show, {
+        get when() {
+          return picked().length;
+        },
+        get children() {
+          return ` \xB7 \u0432\u044B\u0434\u0435\u043B\u0435\u043D\u043E: ${picked().length}`;
+        }
+      }), createComponent(Show, {
+        get when() {
+          return pending().length;
+        },
+        get children() {
+          return ` \xB7 \u0437\u0430\u043B\u0438\u0432\u0430\u0435\u0442\u0441\u044F: ${pending().length}`;
+        }
+      })];
+    },
+    children: "\u0447\u0438\u0442\u0430\u044E\u2026"
+  }));
+  effect(() => ({
+    e: `dumb-finder ${props.class ?? ""}`,
+    t: props.style,
+    a: props.height ?? "60vh"
+  }), ({
+    e,
+    t,
+    a
+  }, _p$) => {
+    className(_el$54, e, _p$?.e);
+    style(_el$54, t, _p$?.t);
+    a !== _p$?.a && setStyleProperty(_el$70, "height", a);
+  });
+  return _el$54;
 }
 var KIND_LABEL = {
   image: "\u041A\u0430\u0440\u0442\u0438\u043D\u043A\u0430",

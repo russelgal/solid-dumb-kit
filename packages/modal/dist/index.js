@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, effect as effect$1, className, setAttribute, style, memo, template } from 'solid-js/web';
+import { delegateEvents, ref, insert, createComponent, effect as effect$1, className, setAttribute, style, memo, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { onCleanup, Show, createSignal, For, createEffect, untrack } from 'solid-js';
 
@@ -60,9 +60,9 @@ function injectStyle(id, css) {
 
 // src/DumbModal.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<button type=button class="dumb-modal-x btn btn-sm btn-circle btn-ghost"title=\u0437\u0430\u043A\u0440\u044B\u0442\u044C>\u2715`);
-var _tmpl$2 = /* @__PURE__ */ template(`<div class="dumb-modal-head mb-3 flex items-center gap-3"><div class="dumb-modal-title flex-1 text-lg font-semibold">`);
+var _tmpl$2 = /* @__PURE__ */ template(`<div class="dumb-modal-head mb-3 flex items-center gap-3"><div class="dumb-modal-title flex-1 text-lg font-semibold"></div><!>`);
 var _tmpl$3 = /* @__PURE__ */ template(`<div class="dumb-modal-foot modal-action">`);
-var _tmpl$4 = /* @__PURE__ */ template(`<dialog><div class="dumb-modal-box modal-box"><div class=dumb-modal-body>`);
+var _tmpl$4 = /* @__PURE__ */ template(`<dialog><div class="dumb-modal-box modal-box"><div class=dumb-modal-body></div><!>`);
 var STYLES = `
   /* \u0422\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430 \u0438 \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430. \u0412\u0438\u0434 \u043E\u043A\u043D\u0430 \u2014 daisyUI (\u043A\u043B\u0430\u0441\u0441\u044B modal \u0438 modal-box \u0432
      \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435), \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u0437\u0434\u0435\u0441\u044C \u043D\u0438 \u0446\u0432\u0435\u0442\u043E\u0432, \u043D\u0438 \u0441\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u0438\u0439, \u043D\u0438 \u0442\u0435\u043D\u0435\u0439.
@@ -115,73 +115,73 @@ function DumbModal(props) {
   onCleanup(() => {
     if (dialog?.open) dialog.close();
   });
-  return (() => {
-    var _el$2 = _tmpl$4(), _el$3 = _el$2.firstChild, _el$6 = _el$3.firstChild;
-    _el$2.$$click = (ev) => {
-      if (props.keepOnBackdrop) return;
-      if (ev.target === ev.currentTarget) void tryClose();
-    };
-    _el$2.addEventListener("cancel", (ev) => {
-      ev.preventDefault();
-      if (!props.keepOnEsc) void tryClose();
-    });
-    var _ref$ = dialog;
-    typeof _ref$ === "function" ? use(_ref$, _el$2) : dialog = _el$2;
-    insert(_el$3, createComponent(Show, {
-      get when() {
-        return props.title;
-      },
-      get children() {
-        var _el$4 = _tmpl$2(), _el$5 = _el$4.firstChild;
-        insert(_el$4, createComponent(Show, {
-          get when() {
-            return side() === "left";
-          },
-          get children() {
-            return closeButton();
-          }
-        }), _el$5);
-        insert(_el$5, () => props.title);
-        insert(_el$4, createComponent(Show, {
-          get when() {
-            return side() === "right";
-          },
-          get children() {
-            return closeButton();
-          }
-        }), null);
-        return _el$4;
-      }
-    }), _el$6);
-    insert(_el$6, () => props.children);
-    insert(_el$3, createComponent(Show, {
-      get when() {
-        return props.footer;
-      },
-      get children() {
-        var _el$7 = _tmpl$3();
-        insert(_el$7, () => props.footer);
-        return _el$7;
-      }
-    }), null);
-    effect$1((_p$) => {
-      var _v$ = `dumb-modal modal ${props.class ?? ""}`, _v$2 = shouldAnimate(props.animate) ? "1" : "0", _v$3 = {
-        ...props.width ? {
-          "--dumb-modal-w": props.width
-        } : {},
-        ...props.style
-      };
-      _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
-      _v$2 !== _p$.t && setAttribute(_el$2, "data-animate", _p$.t = _v$2);
-      _p$.a = style(_el$2, _v$3, _p$.a);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0
-    });
-    return _el$2;
-  })();
+  var _el$2 = _tmpl$4(), _el$3 = _el$2.firstChild, _el$7 = _el$3.firstChild, _el$9 = _el$7.nextSibling;
+  _el$2.$$click = (ev) => {
+    if (props.keepOnBackdrop) return;
+    if (ev.target === ev.currentTarget) void tryClose();
+  };
+  _el$2.addEventListener("cancel", (ev) => {
+    ev.preventDefault();
+    if (!props.keepOnEsc) void tryClose();
+  });
+  var _ref$ = dialog;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$2) : dialog = _el$2;
+  insert(_el$3, createComponent(Show, {
+    get when() {
+      return props.title;
+    },
+    get children() {
+      var _el$4 = _tmpl$2(), _el$5 = _el$4.firstChild, _el$6 = _el$5.nextSibling;
+      insert(_el$4, createComponent(Show, {
+        get when() {
+          return side() === "left";
+        },
+        get children() {
+          return closeButton();
+        }
+      }), _el$5);
+      insert(_el$5, () => props.title);
+      insert(_el$4, createComponent(Show, {
+        get when() {
+          return side() === "right";
+        },
+        get children() {
+          return closeButton();
+        }
+      }), _el$6);
+      return _el$4;
+    }
+  }), _el$7);
+  insert(_el$7, () => props.children);
+  insert(_el$3, createComponent(Show, {
+    get when() {
+      return props.footer;
+    },
+    get children() {
+      var _el$8 = _tmpl$3();
+      insert(_el$8, () => props.footer);
+      return _el$8;
+    }
+  }), _el$9);
+  effect$1(() => ({
+    e: `dumb-modal modal ${props.class ?? ""}`,
+    t: shouldAnimate(props.animate) ? "1" : "0",
+    a: {
+      ...props.width ? {
+        "--dumb-modal-w": props.width
+      } : {},
+      ...props.style
+    }
+  }), ({
+    e,
+    t,
+    a
+  }, _p$) => {
+    className(_el$2, e, _p$?.e);
+    t !== _p$?.t && setAttribute(_el$2, "data-animate", t);
+    style(_el$2, a, _p$?.a);
+  });
+  return _el$2;
 }
 delegateEvents(["click"]);
 
@@ -293,30 +293,29 @@ function DumbModalHost(props) {
       return props.class;
     },
     get footer() {
-      return (() => {
-        var _el$2 = _tmpl$22();
-        insert(_el$2, createComponent(For, {
-          get each() {
-            return ask()?.actions ?? [];
-          },
-          children: (a) => (() => {
-            var _el$3 = _tmpl$32();
-            _el$3.$$click = () => answer(a.value);
-            insert(_el$3, () => a.label);
-            effect$1((_p$) => {
-              var _v$ = actionClass(a.kind), _v$2 = a.kind;
-              _v$ !== _p$.e && className(_el$3, _p$.e = _v$);
-              _v$2 !== _p$.t && setAttribute(_el$3, "data-kind", _p$.t = _v$2);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0
-            });
-            return _el$3;
-          })()
-        }));
-        return _el$2;
-      })();
+      var _el$2 = _tmpl$22();
+      insert(_el$2, createComponent(For, {
+        get each() {
+          return ask()?.actions ?? [];
+        },
+        children: (a) => (() => {
+          var _el$3 = _tmpl$32();
+          _el$3.$$click = () => answer(a.value);
+          insert(_el$3, () => a.label);
+          effect$1(() => ({
+            e: actionClass(a.kind),
+            t: a.kind
+          }), ({
+            e,
+            t
+          }, _p$) => {
+            className(_el$3, e, _p$?.e);
+            t !== _p$?.t && setAttribute(_el$3, "data-kind", t);
+          });
+          return _el$3;
+        })()
+      }));
+      return _el$2;
     },
     get children() {
       var _el$ = _tmpl$5();

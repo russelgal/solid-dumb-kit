@@ -45,8 +45,22 @@ export type GridEngine = {
     attachContainer: (el: HTMLElement) => () => void;
     /** ref на блок: регистрация + старт драга (ручка = дочка с [data-drag-handle]) */
     attach: (el: HTMLElement, id: string) => () => void;
+    /** ref на блок БЕЗ слушателя: старт придёт снаружи, через press */
+    attachBlock: (el: HTMLElement, id: string) => () => void;
     /** ref на ручку ресайза внутри блока */
     attachResize: (el: HTMLElement, id: string) => () => void;
+    /**
+     * Старт переноса событием снаружи: движок сам ни на что не подписывается.
+     * В ките pointerdown приходит из JSX, а его Solid делегирует одним
+     * слушателем на документ — блоки своих слушателей не носят.
+     *
+     * Вложенность разбирается по цели события (ближайший [data-grid-block]),
+     * а не по тому, на каком элементе висел слушатель, поэтому сетка в сетке
+     * работает так же, как и раньше.
+     */
+    press: (id: string, ev: PointerEvent) => void;
+    /** то же для ручки ресайза */
+    pressResize: (id: string, el: HTMLElement, ev: PointerEvent) => void;
     /** ширина колонки в px по последнему ResizeObserver (0 — ещё не измерено) */
     colWidth: () => number;
     /** id блока под жестом и его вид — для подсветки в UI */

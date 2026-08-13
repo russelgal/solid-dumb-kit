@@ -781,6 +781,21 @@ function createGridEngine(opts) {
   function canStart() {
     return !opts.disabled?.() && !gesture && !gate.pending();
   }
+  function pressBlock(el, id, ev) {
+    if (ev.button !== 0 || !canStart()) return;
+    if (!(ev.target instanceof Element)) return;
+    if (ev.target.closest("[data-grid-resize]")) return;
+    if (ev.target.closest("[data-flip-id]")) return;
+    const nested = ev.target.closest("[data-grid-block]");
+    if (nested && nested !== el) return;
+    const handle = el.querySelector("[data-drag-handle]");
+    if (handle) {
+      if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+    } else if (targetIsInteractive(ev)) {
+      return;
+    }
+    gate.arm(ev, (x, y) => begin("move", id, handle || el, ev.pointerId, x, y));
+  }
   return {
     attachContainer(el) {
       container = el;
@@ -803,21 +818,7 @@ function createGridEngine(opts) {
     attach(el, id) {
       blockEls.set(id, el);
       el.dataset.gridBlock = id;
-      const down = (ev) => {
-        if (ev.button !== 0 || !canStart()) return;
-        if (!(ev.target instanceof Element)) return;
-        if (ev.target.closest("[data-grid-resize]")) return;
-        if (ev.target.closest("[data-flip-id]")) return;
-        const nested = ev.target.closest("[data-grid-block]");
-        if (nested && nested !== el) return;
-        const handle2 = el.querySelector("[data-drag-handle]");
-        if (handle2) {
-          if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
-        } else if (targetIsInteractive(ev)) {
-          return;
-        }
-        gate.arm(ev, (x, y) => begin("move", id, handle2 || el, ev.pointerId, x, y));
-      };
+      const down = (ev) => pressBlock(el, id, ev);
       el.addEventListener("pointerdown", down);
       const handle = el.querySelector("[data-drag-handle]");
       if (handle) handle.style.touchAction = "none";
@@ -826,6 +827,26 @@ function createGridEngine(opts) {
         delete el.dataset.gridBlock;
         if (blockEls.get(id) === el) blockEls.delete(id);
       };
+    },
+    attachBlock(el, id) {
+      blockEls.set(id, el);
+      el.dataset.gridBlock = id;
+      const handle = el.querySelector("[data-drag-handle]");
+      if (handle) handle.style.touchAction = "none";
+      return () => {
+        delete el.dataset.gridBlock;
+        if (blockEls.get(id) === el) blockEls.delete(id);
+      };
+    },
+    press(id, ev) {
+      const el = blockEls.get(id);
+      if (el) pressBlock(el, id, ev);
+    },
+    pressResize(id, el, ev) {
+      if (ev.button !== 0 || !canStart() || opts.resizable?.() === false) return;
+      ev.stopPropagation();
+      ev.preventDefault();
+      begin("resize", id, el, ev.pointerId, ev.clientX, ev.clientY);
     },
     attachResize(el, id) {
       el.dataset.gridResize = "";
@@ -1334,6 +1355,21 @@ function createGridGroupEngine(opts) {
       };
       zone.opts = zoneOpts;
       zones.set(name, zone);
+      function pressBlock(el, id, ev) {
+        if (ev.button !== 0 || !canStart(zone)) return;
+        if (!(ev.target instanceof Element)) return;
+        if (ev.target.closest("[data-grid-resize]")) return;
+        if (ev.target.closest("[data-flip-id]")) return;
+        const nested = ev.target.closest("[data-grid-block]");
+        if (nested && nested !== el) return;
+        const handle = el.querySelector("[data-drag-handle]");
+        if (handle) {
+          if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+        } else if (targetIsInteractive(ev)) {
+          return;
+        }
+        gate.arm(ev, (px, py) => begin("move", name, id, handle || el, ev.pointerId, px, py));
+      }
       return {
         attachContainer(el) {
           zone.el = el;
@@ -1356,21 +1392,7 @@ function createGridGroupEngine(opts) {
         attach(el, id) {
           zone.els.set(id, el);
           el.dataset.gridBlock = id;
-          const down = (ev) => {
-            if (ev.button !== 0 || !canStart(zone)) return;
-            if (!(ev.target instanceof Element)) return;
-            if (ev.target.closest("[data-grid-resize]")) return;
-            if (ev.target.closest("[data-flip-id]")) return;
-            const nested = ev.target.closest("[data-grid-block]");
-            if (nested && nested !== el) return;
-            const handle2 = el.querySelector("[data-drag-handle]");
-            if (handle2) {
-              if (!(ev.target instanceof Node && handle2.contains(ev.target))) return;
-            } else if (targetIsInteractive(ev)) {
-              return;
-            }
-            gate.arm(ev, (px, py) => begin("move", name, id, handle2 || el, ev.pointerId, px, py));
-          };
+          const down = (ev) => pressBlock(el, id, ev);
           el.addEventListener("pointerdown", down);
           const handle = el.querySelector("[data-drag-handle]");
           if (handle) handle.style.touchAction = "none";
@@ -1379,6 +1401,26 @@ function createGridGroupEngine(opts) {
             delete el.dataset.gridBlock;
             if (zone.els.get(id) === el) zone.els.delete(id);
           };
+        },
+        attachBlock(el, id) {
+          zone.els.set(id, el);
+          el.dataset.gridBlock = id;
+          const handle = el.querySelector("[data-drag-handle]");
+          if (handle) handle.style.touchAction = "none";
+          return () => {
+            delete el.dataset.gridBlock;
+            if (zone.els.get(id) === el) zone.els.delete(id);
+          };
+        },
+        press(id, ev) {
+          const el = zone.els.get(id);
+          if (el) pressBlock(el, id, ev);
+        },
+        pressResize(id, el, ev) {
+          if (ev.button !== 0 || !canStart(zone) || zone.opts.resizable?.() === false) return;
+          ev.stopPropagation();
+          ev.preventDefault();
+          begin("resize", name, id, el, ev.pointerId, ev.clientX, ev.clientY);
         },
         attachResize(el, id) {
           el.dataset.gridResize = "";
@@ -1425,6 +1467,9 @@ function createDumbGrid(opts) {
     container: (el) => onCleanup(engine.attachContainer(el)),
     bind: (id) => (el) => onCleanup(engine.attach(el, id)),
     resize: (id) => (el) => onCleanup(engine.attachResize(el, id)),
+    block: (id) => (el) => onCleanup(engine.attachBlock(el, id)),
+    press: (id) => (ev) => engine.press(id, ev),
+    pressResize: (id) => (ev) => engine.pressResize(id, ev.currentTarget, ev),
     active
   };
 }
@@ -1450,6 +1495,9 @@ function createDumbGridGroup(opts) {
         container: (el) => onCleanup(zone.attachContainer(el)),
         bind: (id) => (el) => onCleanup(zone.attach(el, id)),
         resize: (id) => (el) => onCleanup(zone.attachResize(el, id)),
+        block: (id) => (el) => onCleanup(zone.attachBlock(el, id)),
+        press: (id) => (ev) => zone.press(id, ev),
+        pressResize: (id) => (ev) => zone.pressResize(id, ev.currentTarget, ev),
         // «активен ли этот блок» — общий сигнал группы, суженный до своей сетки
         active: () => {
           const a = active();
@@ -1697,7 +1745,8 @@ function DumbGrid(props) {
     const dragging = () => g.active()?.id === it.id;
     return <Show when={span()}>
               {(s) => <div
-      ref={g.bind(it.id)}
+      ref={g.block(it.id)}
+      onPointerDown={g.press(it.id)}
       class={props.blockClass}
       style={{
         ...blockBox(s(), posById().get(it.id)),
@@ -1743,10 +1792,12 @@ function DumbGrid(props) {
 
                   <Show when={props.resizable !== false && !it.locked && !props.disabled}>
                     <div
-      ref={g.resize(it.id)}
+      data-grid-resize
+      onPointerDown={g.pressResize(it.id)}
       title={props.labels?.resize ?? "\u041F\u043E\u0442\u044F\u043D\u0438, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0440\u0430\u0437\u043C\u0435\u0440"}
       style={{
         position: "absolute",
+        "touch-action": "none",
         right: "0",
         bottom: "0",
         width: `${HANDLE}px`,

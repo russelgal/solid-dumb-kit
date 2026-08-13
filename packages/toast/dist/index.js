@@ -1,4 +1,4 @@
-import { delegateEvents, use, insert, createComponent, memo, effect as effect$1, className, setAttribute, setStyleProperty, template } from 'solid-js/web';
+import { delegateEvents, ref, insert, createComponent, memo, effect as effect$1, className, setAttribute, setStyleProperty, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { createSignal, onCleanup, For, Show, createEffect, untrack } from 'solid-js';
 
@@ -339,50 +339,50 @@ var kindTone = (kind) => kind === "error" ? "bg-error text-error-content" : kind
 var kindGlyph = (kind) => kind === "error" ? "!" : kind === "success" ? "\u2713" : "i";
 function ToastIcon(props) {
   const box = () => props.size === "sm" ? "size-7 rounded-lg text-sm" : "size-9 rounded-xl text-base";
-  return (() => {
-    var _el$ = _tmpl$2();
-    insert(_el$, createComponent(Show, {
-      get when() {
-        return props.t.icon;
-      },
-      get fallback() {
-        return kindGlyph(props.t.kind);
-      },
-      get children() {
-        var _el$2 = _tmpl$();
-        effect$1(() => className(_el$2, `${props.t.icon} size-[1.2em]`));
-        return _el$2;
-      }
-    }));
-    effect$1(() => className(_el$, `dumb-toast-icon grid shrink-0 place-items-center font-bold ${box()} ${kindTone(props.t.kind)}`));
-    return _el$;
-  })();
+  var _el$ = _tmpl$2();
+  insert(_el$, createComponent(Show, {
+    get when() {
+      return props.t.icon;
+    },
+    get fallback() {
+      return kindGlyph(props.t.kind);
+    },
+    get children() {
+      var _el$2 = _tmpl$();
+      effect$1(() => `${props.t.icon} size-[1.2em]`, (_v$, _$p) => {
+        className(_el$2, _v$, _$p);
+      });
+      return _el$2;
+    }
+  }));
+  effect$1(() => `dumb-toast-icon grid shrink-0 place-items-center font-bold ${box()} ${kindTone(props.t.kind)}`, (_v$, _$p) => {
+    className(_el$, _v$, _$p);
+  });
+  return _el$;
 }
 function ToastBody(props) {
-  return (() => {
-    var _el$3 = _tmpl$4(), _el$5 = _el$3.firstChild;
-    insert(_el$3, createComponent(Show, {
-      get when() {
-        return props.t.title;
-      },
-      get children() {
-        var _el$4 = _tmpl$3();
-        insert(_el$4, () => props.t.title);
-        return _el$4;
-      }
-    }), _el$5);
-    insert(_el$5, () => props.t.text);
-    return _el$3;
-  })();
+  var _el$3 = _tmpl$4(), _el$5 = _el$3.firstChild;
+  insert(_el$3, createComponent(Show, {
+    get when() {
+      return props.t.title;
+    },
+    get children() {
+      var _el$4 = _tmpl$3();
+      insert(_el$4, () => props.t.title);
+      return _el$4;
+    }
+  }), _el$5);
+  insert(_el$5, () => props.t.text);
+  return _el$3;
 }
 
 // src/DumbToaster.tsx
 var _tmpl$5 = /* @__PURE__ */ template(`<button type=button class="dumb-toast-close btn btn-xs btn-circle btn-neutral shadow"title=\u0437\u0430\u043A\u0440\u044B\u0442\u044C>\u2715`);
-var _tmpl$22 = /* @__PURE__ */ template(`<div popover=manual>`);
-var _tmpl$32 = /* @__PURE__ */ template(`<div>`);
-var _tmpl$42 = /* @__PURE__ */ template(`<button type=button>`);
-var _tmpl$52 = /* @__PURE__ */ template(`<div class=dumb-toast-anchor>`);
-var _tmpl$6 = /* @__PURE__ */ template(`<div popover=manual class="dumb-toast dumb-toast-at card flex-row items-start gap-3 rounded-2xl border border-base-300 bg-base-100/80 p-3 shadow-lg backdrop-blur-xl">`);
+var _tmpl$22 = /* @__PURE__ */ template(`<div popover=manual><!><!>`);
+var _tmpl$32 = /* @__PURE__ */ template(`<div class=dumb-toast-anchor>`);
+var _tmpl$42 = /* @__PURE__ */ template(`<div popover=manual class="dumb-toast dumb-toast-at card flex-row items-start gap-3 rounded-2xl border border-base-300 bg-base-100/80 p-3 shadow-lg backdrop-blur-xl"><!><!><!><!>`);
+var _tmpl$52 = /* @__PURE__ */ template(`<button type=button>`);
+var _tmpl$6 = /* @__PURE__ */ template(`<div><!><!><!><!>`);
 var GAP = 20;
 var STYLES = `
   /* \u0417\u0434\u0435\u0441\u044C \u0422\u041E\u041B\u042C\u041A\u041E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430: popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u0432 \u0442\u043E\u0447\u043A\u0443 \u0438 \u0441\u0442\u043E\u0438\u0442 \u043F\u043E
@@ -601,7 +601,9 @@ function DumbToaster(props) {
   const closeButton = (t) => (() => {
     var _el$ = _tmpl$5();
     _el$.$$click = () => bus().dismiss(t.id);
-    effect$1(() => setAttribute(_el$, "data-side", side()));
+    effect$1(() => side(), (_v$) => {
+      setAttribute(_el$, "data-side", _v$);
+    });
     return _el$;
   })();
   const [pointer, setPointer] = createSignal({
@@ -625,105 +627,113 @@ function DumbToaster(props) {
     });
   });
   const spotOf = (t) => t.at === "pointer" ? pointer() : t.at;
-  return (() => {
-    var _el$2 = _tmpl$22();
-    _el$2.addEventListener("mouseleave", () => bus().resume());
-    _el$2.addEventListener("mouseenter", () => bus().pause());
-    var _ref$ = box;
-    typeof _ref$ === "function" ? use(_ref$, _el$2) : box = _el$2;
-    insert(_el$2, createComponent(For, {
-      get each() {
-        return rows();
-      },
-      children: (t) => props.children?.(t, () => bus().dismiss(t.id)) ?? (() => {
-        var _el$3 = _tmpl$32();
-        _el$3.addEventListener("pointercancel", () => drop(t));
-        _el$3.$$pointerup = () => drop(t);
-        _el$3.$$pointermove = (ev) => drag(t, ev);
-        _el$3.$$pointerdown = (ev) => !isLeaving(t) && grab(t, ev);
-        use((el) => hold(t.id, el), _el$3);
-        insert(_el$3, createComponent(Show, {
-          get when() {
-            return memo(() => !!t.closable)() && !isLeaving(t);
-          },
-          get children() {
-            return closeButton(t);
-          }
-        }), null);
-        insert(_el$3, createComponent(ToastIcon, {
-          t
-        }), null);
-        insert(_el$3, createComponent(ToastBody, {
-          t
-        }), null);
-        insert(_el$3, createComponent(For, {
-          get each() {
-            return t.actions ?? [];
-          },
-          children: (a) => (() => {
-            var _el$4 = _tmpl$42();
-            _el$4.$$click = () => {
-              a.run?.();
-              if (!a.keepOpen) bus().dismiss(t.id);
-            };
-            insert(_el$4, () => a.label);
-            effect$1((_p$) => {
-              var _v$10 = actionClass(a.kind), _v$11 = a.kind;
-              _v$10 !== _p$.e && className(_el$4, _p$.e = _v$10);
-              _v$11 !== _p$.t && setAttribute(_el$4, "data-kind", _p$.t = _v$11);
-              return _p$;
-            }, {
-              e: void 0,
-              t: void 0
-            });
-            return _el$4;
-          })()
-        }), null);
-        effect$1((_p$) => {
-          var _v$4 = `dumb-toast ${cardClass} ${isLeaving(t) ? "dumb-toast-leave" : ""}`, _v$5 = t.id, _v$6 = t.kind, _v$7 = isLeaving(t) ? "true" : void 0, _v$8 = t.kind === "error" ? "alert" : "status", _v$9 = shift(t) ? `translateX(${shift(t)}px)` : void 0, _v$0 = shift(t) ? String(Math.max(0.15, 1 - Math.abs(shift(t)) / SWIPE_FADE)) : void 0, _v$1 = dragging(t) ? "1" : void 0;
-          _v$4 !== _p$.e && className(_el$3, _p$.e = _v$4);
-          _v$5 !== _p$.t && setAttribute(_el$3, "data-toast-id", _p$.t = _v$5);
-          _v$6 !== _p$.a && setAttribute(_el$3, "data-kind", _p$.a = _v$6);
-          _v$7 !== _p$.o && setAttribute(_el$3, "aria-hidden", _p$.o = _v$7);
-          _v$8 !== _p$.i && setAttribute(_el$3, "role", _p$.i = _v$8);
-          _v$9 !== _p$.n && setStyleProperty(_el$3, "transform", _p$.n = _v$9);
-          _v$0 !== _p$.s && setStyleProperty(_el$3, "opacity", _p$.s = _v$0);
-          _v$1 !== _p$.h && setAttribute(_el$3, "data-swipe", _p$.h = _v$1);
-          return _p$;
-        }, {
-          e: void 0,
-          t: void 0,
-          a: void 0,
-          o: void 0,
-          i: void 0,
-          n: void 0,
-          s: void 0,
-          h: void 0
-        });
-        return _el$3;
-      })()
-    }), null);
-    insert(_el$2, createComponent(For, {
-      get each() {
-        return anchored();
-      },
-      children: (t) => createComponent(AtToast, {
+  var _el$2 = _tmpl$22(), _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling;
+  _el$2.addEventListener("mouseleave", () => bus().resume());
+  _el$2.addEventListener("mouseenter", () => bus().pause());
+  var _ref$ = box;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$2) : box = _el$2;
+  insert(_el$2, createComponent(For, {
+    get each() {
+      return rows();
+    },
+    children: (t) => props.children?.(t, () => bus().dismiss(t.id)) ?? (() => {
+      var _el$10 = _tmpl$6(), _el$11 = _el$10.firstChild, _el$12 = _el$11.nextSibling, _el$13 = _el$12.nextSibling, _el$14 = _el$13.nextSibling;
+      _el$10.addEventListener("pointercancel", () => drop(t));
+      _el$10.$$pointerup = () => drop(t);
+      _el$10.$$pointermove = (ev) => drag(t, ev);
+      _el$10.$$pointerdown = (ev) => !isLeaving(t) && grab(t, ev);
+      ref(() => (el) => hold(t.id, el), _el$10);
+      insert(_el$10, createComponent(Show, {
+        get when() {
+          return memo(() => !!t.closable)() ? !isLeaving(t) : t.closable;
+        },
+        get children() {
+          return closeButton(t);
+        }
+      }), _el$11);
+      insert(_el$10, createComponent(ToastIcon, {
         t
-      })
-    }), null);
-    effect$1((_p$) => {
-      var _v$ = `dumb-toaster ${props.class ?? ""}`, _v$2 = props.position ?? "bottom-right", _v$3 = fly();
-      _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
-      _v$2 !== _p$.t && setAttribute(_el$2, "data-at", _p$.t = _v$2);
-      _v$3 !== _p$.a && setAttribute(_el$2, "data-fly", _p$.a = _v$3);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0
-    });
-    return _el$2;
-  })();
+      }), _el$12);
+      insert(_el$10, createComponent(ToastBody, {
+        t
+      }), _el$13);
+      insert(_el$10, createComponent(For, {
+        get each() {
+          return t.actions ?? [];
+        },
+        children: (a) => (() => {
+          var _el$15 = _tmpl$52();
+          _el$15.$$click = () => {
+            a.run?.();
+            if (!a.keepOpen) bus().dismiss(t.id);
+          };
+          insert(_el$15, () => a.label);
+          effect$1(() => ({
+            e: actionClass(a.kind),
+            t: a.kind
+          }), ({
+            e,
+            t: t2
+          }, _p$) => {
+            className(_el$15, e, _p$?.e);
+            t2 !== _p$?.t && setAttribute(_el$15, "data-kind", t2);
+          });
+          return _el$15;
+        })()
+      }), _el$14);
+      effect$1(() => ({
+        e: `dumb-toast ${cardClass} ${isLeaving(t) ? "dumb-toast-leave" : ""}`,
+        t: t.id,
+        a: t.kind,
+        o: isLeaving(t) ? "true" : void 0,
+        i: t.kind === "error" ? "alert" : "status",
+        n: shift(t) ? `translateX(${shift(t)}px)` : void 0,
+        s: shift(t) ? String(Math.max(0.15, 1 - Math.abs(shift(t)) / SWIPE_FADE)) : void 0,
+        h: dragging(t) ? "1" : void 0
+      }), ({
+        e,
+        t: t2,
+        a,
+        o,
+        i,
+        n,
+        s,
+        h
+      }, _p$) => {
+        className(_el$10, e, _p$?.e);
+        t2 !== _p$?.t && setAttribute(_el$10, "data-toast-id", t2);
+        a !== _p$?.a && setAttribute(_el$10, "data-kind", a);
+        o !== _p$?.o && setAttribute(_el$10, "aria-hidden", o);
+        i !== _p$?.i && setAttribute(_el$10, "role", i);
+        n !== _p$?.n && setStyleProperty(_el$10, "transform", n);
+        s !== _p$?.s && setStyleProperty(_el$10, "opacity", s);
+        h !== _p$?.h && setAttribute(_el$10, "data-swipe", h);
+      });
+      return _el$10;
+    })()
+  }), _el$3);
+  insert(_el$2, createComponent(For, {
+    get each() {
+      return anchored();
+    },
+    children: (t) => createComponent(AtToast, {
+      t
+    })
+  }), _el$4);
+  effect$1(() => ({
+    e: `dumb-toaster ${props.class ?? ""}`,
+    t: props.position ?? "bottom-right",
+    a: fly()
+  }), ({
+    e,
+    t,
+    a
+  }, _p$) => {
+    className(_el$2, e, _p$?.e);
+    t !== _p$?.t && setAttribute(_el$2, "data-at", t);
+    a !== _p$?.a && setAttribute(_el$2, "data-fly", a);
+  });
+  return _el$2;
   function AtToast(p) {
     let el;
     onMounted(() => {
@@ -746,21 +756,22 @@ function DumbToaster(props) {
     });
     const spot = spotOf(p.t);
     return [(() => {
-      var _el$5 = _tmpl$52();
-      effect$1((_p$) => {
-        var _v$12 = `${spot.x}px`, _v$13 = `${spot.y}px`;
-        _v$12 !== _p$.e && setStyleProperty(_el$5, "left", _p$.e = _v$12);
-        _v$13 !== _p$.t && setStyleProperty(_el$5, "top", _p$.t = _v$13);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0
+      var _el$5 = _tmpl$32();
+      effect$1(() => ({
+        e: `${spot.x}px`,
+        t: `${spot.y}px`
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        e !== _p$?.e && setStyleProperty(_el$5, "left", e);
+        t !== _p$?.t && setStyleProperty(_el$5, "top", t);
       });
       return _el$5;
     })(), (() => {
-      var _el$6 = _tmpl$6();
+      var _el$6 = _tmpl$42(), _el$7 = _el$6.firstChild, _el$8 = _el$7.nextSibling, _el$9 = _el$8.nextSibling, _el$0 = _el$9.nextSibling;
       var _ref$2 = el;
-      typeof _ref$2 === "function" ? use(_ref$2, _el$6) : el = _el$6;
+      typeof _ref$2 === "function" || Array.isArray(_ref$2) ? ref(() => _ref$2, _el$6) : el = _el$6;
       insert(_el$6, createComponent(Show, {
         get when() {
           return p.t.closable;
@@ -768,48 +779,50 @@ function DumbToaster(props) {
         get children() {
           return closeButton(p.t);
         }
-      }), null);
+      }), _el$7);
       insert(_el$6, createComponent(ToastIcon, {
         get t() {
           return p.t;
         }
-      }), null);
+      }), _el$8);
       insert(_el$6, createComponent(ToastBody, {
         get t() {
           return p.t;
         }
-      }), null);
+      }), _el$9);
       insert(_el$6, createComponent(For, {
         get each() {
           return p.t.actions ?? [];
         },
         children: (a) => (() => {
-          var _el$7 = _tmpl$42();
-          _el$7.$$click = () => {
+          var _el$1 = _tmpl$52();
+          _el$1.$$click = () => {
             a.run?.();
             if (!a.keepOpen) bus().dismiss(p.t.id);
           };
-          insert(_el$7, () => a.label);
-          effect$1((_p$) => {
-            var _v$16 = actionClass(a.kind), _v$17 = a.kind;
-            _v$16 !== _p$.e && className(_el$7, _p$.e = _v$16);
-            _v$17 !== _p$.t && setAttribute(_el$7, "data-kind", _p$.t = _v$17);
-            return _p$;
-          }, {
-            e: void 0,
-            t: void 0
+          insert(_el$1, () => a.label);
+          effect$1(() => ({
+            e: actionClass(a.kind),
+            t: a.kind
+          }), ({
+            e,
+            t
+          }, _p$) => {
+            className(_el$1, e, _p$?.e);
+            t !== _p$?.t && setAttribute(_el$1, "data-kind", t);
           });
-          return _el$7;
+          return _el$1;
         })()
-      }), null);
-      effect$1((_p$) => {
-        var _v$14 = p.t.kind, _v$15 = p.t.kind === "error" ? "alert" : "status";
-        _v$14 !== _p$.e && setAttribute(_el$6, "data-kind", _p$.e = _v$14);
-        _v$15 !== _p$.t && setAttribute(_el$6, "role", _p$.t = _v$15);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0
+      }), _el$0);
+      effect$1(() => ({
+        e: p.t.kind,
+        t: p.t.kind === "error" ? "alert" : "status"
+      }), ({
+        e,
+        t
+      }, _p$) => {
+        e !== _p$?.e && setAttribute(_el$6, "data-kind", e);
+        t !== _p$?.t && setAttribute(_el$6, "role", t);
       });
       return _el$6;
     })()];
@@ -821,9 +834,9 @@ var _tmpl$23 = /* @__PURE__ */ template(`<button type=button class="dumb-center-
 var _tmpl$33 = /* @__PURE__ */ template(`<span class="badge badge-sm badge-error absolute -right-1 -top-1 tabular-nums">`);
 var _tmpl$43 = /* @__PURE__ */ template(`<div class=dumb-center-bell><button type=button class="btn btn-circle btn-neutral shadow-lg"><span class="text-lg leading-none"aria-hidden=true>\u{1F514}`);
 var _tmpl$53 = /* @__PURE__ */ template(`<button type=button class="btn btn-sm btn-ghost">\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C`);
-var _tmpl$62 = /* @__PURE__ */ template(`<div popover=manual role=region><div class="flex items-center gap-2 border-b border-base-300 p-3"><h2 class="flex-1 font-semibold"></h2></div><ul class="dumb-center-list flex flex-col gap-3 px-4 py-3">`);
+var _tmpl$62 = /* @__PURE__ */ template(`<div popover=manual role=region><div class="flex items-center gap-2 border-b border-base-300 p-3"><h2 class="flex-1 font-semibold"></h2><!><!></div><ul class="dumb-center-list flex flex-col gap-3 px-4 py-3">`);
 var _tmpl$72 = /* @__PURE__ */ template(`<li class="py-8 text-center text-sm text-base-content opacity-90">\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u043B\u043E`);
-var _tmpl$8 = /* @__PURE__ */ template(`<li class="dumb-center-item card relative flex-row items-start gap-3 rounded-2xl border border-base-300 bg-base-100/80 p-3 shadow backdrop-blur-xl"><span class="shrink-0 text-xs opacity-90 tabular-nums">`);
+var _tmpl$8 = /* @__PURE__ */ template(`<li class="dumb-center-item card relative flex-row items-start gap-3 rounded-2xl border border-base-300 bg-base-100/80 p-3 shadow backdrop-blur-xl"><!><!><span class="shrink-0 text-xs opacity-90 tabular-nums">`);
 var STYLES2 = `
   /* \u041F\u0430\u043D\u0435\u043B\u044C. \u0417\u0434\u0435\u0441\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u0441\u0442\u0440\u0443\u043A\u0442\u0443\u0440\u0430 \u0438 \u043C\u0435\u0445\u0430\u043D\u0438\u043A\u0430: \u0432\u0438\u0434 \u2014 daisyUI \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435.
      popover \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E \u0446\u0435\u043D\u0442\u0440\u0438\u0440\u0443\u0435\u0442\u0441\u044F \u0438 \u0441\u0436\u0438\u043C\u0430\u0435\u0442\u0441\u044F \u043F\u043E \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u043C\u0443 \u2014 \u0440\u0430\u0441\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C
@@ -948,7 +961,9 @@ function DumbToastCenter(props) {
   const forgetButton = (t) => (() => {
     var _el$2 = _tmpl$23();
     _el$2.$$click = () => bus().forget(t.id);
-    effect$1(() => setAttribute(_el$2, "data-side", closeAt()));
+    effect$1(() => closeAt(), (_v$) => {
+      setAttribute(_el$2, "data-side", _v$);
+    });
     return _el$2;
   })();
   return [createComponent(Show, {
@@ -958,7 +973,7 @@ function DumbToastCenter(props) {
     get children() {
       var _el$3 = _tmpl$43(), _el$4 = _el$3.firstChild; _el$4.firstChild;
       var _ref$ = bell;
-      typeof _ref$ === "function" ? use(_ref$, _el$3) : bell = _el$3;
+      typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$3) : bell = _el$3;
       _el$4.$$click = () => bus().toggleHistory();
       insert(_el$4, createComponent(Show, {
         get when() {
@@ -970,23 +985,25 @@ function DumbToastCenter(props) {
           return _el$6;
         }
       }), null);
-      effect$1((_p$) => {
-        var _v$ = side(), _v$2 = `\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F${unread() ? `: \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0445 ${unread()}` : ""}`, _v$3 = open() ? "true" : "false";
-        _v$ !== _p$.e && setAttribute(_el$3, "data-side", _p$.e = _v$);
-        _v$2 !== _p$.t && setAttribute(_el$4, "aria-label", _p$.t = _v$2);
-        _v$3 !== _p$.a && setAttribute(_el$4, "aria-expanded", _p$.a = _v$3);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0,
-        a: void 0
+      effect$1(() => ({
+        e: side(),
+        t: `\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F${unread() ? `: \u043D\u0435\u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0445 ${unread()}` : ""}`,
+        a: open() ? "true" : "false"
+      }), ({
+        e,
+        t,
+        a
+      }, _p$) => {
+        e !== _p$?.e && setAttribute(_el$3, "data-side", e);
+        t !== _p$?.t && setAttribute(_el$4, "aria-label", t);
+        a !== _p$?.a && setAttribute(_el$4, "aria-expanded", a);
       });
       return _el$3;
     }
   }), (() => {
-    var _el$7 = _tmpl$62(), _el$8 = _el$7.firstChild, _el$9 = _el$8.firstChild, _el$1 = _el$8.nextSibling;
+    var _el$7 = _tmpl$62(), _el$8 = _el$7.firstChild, _el$9 = _el$8.firstChild, _el$1 = _el$9.nextSibling, _el$10 = _el$1.nextSibling, _el$11 = _el$8.nextSibling;
     var _ref$2 = panel;
-    typeof _ref$2 === "function" ? use(_ref$2, _el$7) : panel = _el$7;
+    typeof _ref$2 === "function" || Array.isArray(_ref$2) ? ref(() => _ref$2, _el$7) : panel = _el$7;
     insert(_el$8, createComponent(Show, {
       get when() {
         return closeAt() === "left";
@@ -1008,7 +1025,7 @@ function DumbToastCenter(props) {
         };
         return _el$0;
       }
-    }), null);
+    }), _el$1);
     insert(_el$8, createComponent(Show, {
       get when() {
         return closeAt() === "right";
@@ -1016,8 +1033,8 @@ function DumbToastCenter(props) {
       get children() {
         return closeButton();
       }
-    }), null);
-    insert(_el$1, createComponent(Show, {
+    }), _el$10);
+    insert(_el$11, createComponent(Show, {
       get when() {
         return items().length > 0;
       },
@@ -1030,34 +1047,39 @@ function DumbToastCenter(props) {
             return items();
           },
           children: (t) => props.children?.(t, () => bus().forget(t.id)) ?? (() => {
-            var _el$11 = _tmpl$8(), _el$12 = _el$11.firstChild;
-            insert(_el$11, () => forgetButton(t), _el$12);
-            insert(_el$11, createComponent(ToastIcon, {
+            var _el$13 = _tmpl$8(), _el$15 = _el$13.firstChild, _el$16 = _el$15.nextSibling, _el$14 = _el$16.nextSibling;
+            insert(_el$13, () => forgetButton(t), _el$15);
+            insert(_el$13, createComponent(ToastIcon, {
               t,
               size: "sm"
-            }), _el$12);
-            insert(_el$11, createComponent(ToastBody, {
+            }), _el$16);
+            insert(_el$13, createComponent(ToastBody, {
               t
-            }), _el$12);
-            insert(_el$12, () => ago(t.time, now()));
-            effect$1(() => setAttribute(_el$11, "data-kind", t.kind));
-            return _el$11;
+            }), _el$14);
+            insert(_el$14, () => ago(t.time, now()));
+            effect$1(() => t.kind, (_v$) => {
+              setAttribute(_el$13, "data-kind", _v$);
+            });
+            return _el$13;
           })()
         });
       }
     }));
-    effect$1((_p$) => {
-      var _v$4 = `dumb-center bg-base-100 border-base-300 shadow-2xl ${side() === "right" ? "border-l" : "border-r"} ${props.class ?? ""}`, _v$5 = side(), _v$6 = shouldAnimate(props.animate) ? "1" : "0", _v$7 = props.title ?? "\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F";
-      _v$4 !== _p$.e && className(_el$7, _p$.e = _v$4);
-      _v$5 !== _p$.t && setAttribute(_el$7, "data-side", _p$.t = _v$5);
-      _v$6 !== _p$.a && setAttribute(_el$7, "data-animate", _p$.a = _v$6);
-      _v$7 !== _p$.o && setAttribute(_el$7, "aria-label", _p$.o = _v$7);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0,
-      a: void 0,
-      o: void 0
+    effect$1(() => ({
+      e: `dumb-center bg-base-100 border-base-300 shadow-2xl ${side() === "right" ? "border-l" : "border-r"} ${props.class ?? ""}`,
+      t: side(),
+      a: shouldAnimate(props.animate) ? "1" : "0",
+      o: props.title ?? "\u0423\u0432\u0435\u0434\u043E\u043C\u043B\u0435\u043D\u0438\u044F"
+    }), ({
+      e,
+      t,
+      a,
+      o
+    }, _p$) => {
+      className(_el$7, e, _p$?.e);
+      t !== _p$?.t && setAttribute(_el$7, "data-side", t);
+      a !== _p$?.a && setAttribute(_el$7, "data-animate", a);
+      o !== _p$?.o && setAttribute(_el$7, "aria-label", o);
     });
     return _el$7;
   })()];

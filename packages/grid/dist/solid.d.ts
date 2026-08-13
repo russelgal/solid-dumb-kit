@@ -9,8 +9,17 @@ export type DumbGridHandle = {
     container: (el: HTMLElement) => void;
     /** ref на блок (ручка = дочка с [data-drag-handle]) */
     bind: (id: string) => (el: HTMLElement) => void;
+    /** ref на блок без слушателя — в паре с press */
+    block: (id: string) => (el: HTMLElement) => void;
     /** ref на ручку ресайза внутри блока */
     resize: (id: string) => (el: HTMLElement) => void;
+    /**
+     * Старт переноса для JSX: `ref={g.block(id)} onPointerDown={g.press(id)}`.
+     * Так блок не носит своего слушателя — pointerdown делегирует Solid.
+     */
+    press: (id: string) => (ev: PointerEvent) => void;
+    /** то же для ручки ресайза */
+    pressResize: (id: string) => (ev: PointerEvent) => void;
     /** блок под жестом и вид жеста, реактивно */
     active: () => GridActive;
 };

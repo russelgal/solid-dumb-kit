@@ -9,7 +9,7 @@
 pnpm add @solid-dumb-kit/resizable-grid
 ```
 
-Peer-зависимости: `solid-js` и `@solidjs/web` — вторая линия Solid (`>=2.0.0-beta.30`). Тянет за собой: `valibot`.
+Peer-зависимости: `solid-js` и `@solidjs/web` — вторая линия Solid (`>=2.0.0-rc.0`). Тянет за собой: `valibot`.
 
 ## Документация
 

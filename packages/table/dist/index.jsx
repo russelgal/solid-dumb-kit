@@ -2,7 +2,7 @@
 import { For as For2, Show, createSignal as createSignal2, createMemo } from "solid-js";
 
 // ../sortable/dist/index.js
-import { createComponent } from "solid-js/web";
+import { createComponent } from "@solidjs/web";
 import { onCleanup, For } from "solid-js";
 function prefersReducedMotion() {
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -498,6 +498,15 @@ function createSortableEngine(opts) {
     ev.preventDefault();
     begin(id, handle, ev.pointerId, ev.clientX, ev.clientY);
   }
+  function pressOn(el, id, ev) {
+    const handle = el.querySelector("[data-drag-handle]");
+    if (handle) {
+      if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
+    } else if (targetIsInteractive(ev)) {
+      return;
+    }
+    onDown(id, handle || el, ev);
+  }
   return {
     // самодостаточно: регистрирует элемент И навешивает старт драга.
     // ручка = дочка с [data-drag-handle] (делегирование); нет её → тянем за весь элемент.
@@ -506,20 +515,20 @@ function createSortableEngine(opts) {
       rowEls.set(id, el);
       const h = el.querySelector("[data-drag-handle]");
       if (h) h.style.touchAction = "none";
-      const down = (ev) => {
-        const handle = el.querySelector("[data-drag-handle]");
-        if (handle) {
-          if (!(ev.target instanceof Node && handle.contains(ev.target))) return;
-        } else if (targetIsInteractive(ev)) {
-          return;
-        }
-        onDown(id, handle || el, ev);
-      };
+      const down = (ev) => pressOn(el, id, ev);
       el.addEventListener("pointerdown", down);
       return () => {
         el.removeEventListener("pointerdown", down);
         if (rowEls.get(id) === el) rowEls.delete(id);
       };
+    },
+    // событие принесли снаружи — подписки нет вовсе
+    press(id, ev) {
+      const el = rowEls.get(id);
+      if (el) pressOn(el, id, ev);
+    },
+    pressHandle(id, el, ev) {
+      onDown(id, el, ev);
     },
     // низкоуровневое: ячейка и ручка порознь (когда ручка не потомок ячейки)
     attachRow(el, id) {
@@ -546,7 +555,9 @@ function createDumbSortable(opts) {
   return {
     bind: (id) => (el) => onCleanup(engine.attach(el, id)),
     row: (id) => (el) => onCleanup(engine.attachRow(el, id)),
-    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id))
+    handle: (id) => (el) => onCleanup(engine.attachHandle(el, id)),
+    press: (id) => (ev) => engine.press(id, ev),
+    pressHandle: (id) => (ev) => engine.pressHandle(id, ev.currentTarget, ev)
   };
 }
 
@@ -674,7 +685,8 @@ function DumbTable(props) {
             </Show>
             <For2 each={visibleRows()}>
               {(row, index) => <tr
-    ref={props.onReorder ? sortable.bind(idOf(row, index())) : void 0}
+    ref={props.onReorder ? sortable.row(idOf(row, index())) : void 0}
+    onPointerDown={props.onReorder ? sortable.press(idOf(row, index())) : void 0}
     data-key={idOf(row, index())}
     class={props.rowClass?.(row, index())}
     style={{

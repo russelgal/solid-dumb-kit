@@ -33,7 +33,7 @@
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
   "peerDependencies": {
-    "solid-js": ">=2.0.0-beta.30"
+    "solid-js": ">=2.0.0-rc.0"
   },
   "publishConfig": {
     "access": "public"

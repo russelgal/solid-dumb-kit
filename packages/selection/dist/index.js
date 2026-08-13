@@ -1,4 +1,4 @@
-import { use, insert, effect, className, style, template } from 'solid-js/web';
+import { ref, insert, effect, className, style, template } from '@solidjs/web';
 import * as solid from 'solid-js';
 import { onCleanup, createEffect, untrack } from 'solid-js';
 
@@ -400,24 +400,23 @@ function SelectionArea(props) {
     });
     area.attach(containerRef);
   });
-  return (() => {
-    var _el$ = _tmpl$();
-    var _ref$ = containerRef;
-    typeof _ref$ === "function" ? use(_ref$, _el$) : containerRef = _el$;
-    insert(_el$, () => props.children);
-    effect((_p$) => {
-      var _v$ = props.class, _v$2 = {
-        ...props.style
-      };
-      _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0
-    });
-    return _el$;
-  })();
+  var _el$ = _tmpl$();
+  var _ref$ = containerRef;
+  typeof _ref$ === "function" || Array.isArray(_ref$) ? ref(() => _ref$, _el$) : containerRef = _el$;
+  insert(_el$, () => props.children);
+  effect(() => ({
+    e: props.class,
+    t: {
+      ...props.style
+    }
+  }), ({
+    e,
+    t
+  }, _p$) => {
+    className(_el$, e, _p$?.e);
+    style(_el$, t, _p$?.t);
+  });
+  return _el$;
 }
 
 export { SelectionArea, areaFrom, clampPoint, createSelectionArea, createSelectionEngine, diffSelection, hits, pickHits, resolveSelection, tapSelection };
