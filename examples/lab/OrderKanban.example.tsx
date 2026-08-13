@@ -141,7 +141,9 @@ export default function OrderKanbanExample() {
   onCleanup(() => ro?.disconnect())
   const holdZone = (id: string, el: HTMLElement) => {
     zoneEls.set(id, el)
-    ro?.observe(el)
+    // нет ResizeObserver (старый браузер, SSR) — снимаем места сами
+    if (ro) ro.observe(el)
+    else queueMicrotask(measure)
   }
 
   /**

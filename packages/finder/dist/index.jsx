@@ -2463,7 +2463,9 @@ function DumbFinder(props) {
       }
     }
   }
-  createEffect3(path, (p) => void reload(p));
+  createEffect3(path, (p) => {
+    void reload(p);
+  });
   onCleanup2(() => listing?.abort());
   function fail(err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2471,7 +2473,9 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
-  createEffect3(view, () => queueMicrotask(measureCols), { defer: true });
+  createEffect3(view, () => {
+    queueMicrotask(measureCols);
+  }, { defer: true });
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)));
   const [tree, setTree] = createSignal3({});

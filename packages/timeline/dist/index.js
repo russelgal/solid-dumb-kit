@@ -614,12 +614,12 @@ function DumbTimeline(props) {
     scrollToNow: () => api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange
   };
-  props.ref?.(api);
   const holdViewport = (el) => {
     viewport = el;
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0));
     ro.observe(el);
     onCleanup(() => ro.disconnect());
+    props.ref?.(api);
   };
   createEffect(() => [scale(), vpW()], ([, width]) => {
     if (width > 0) props.onVisibleRange?.(visibleRange());

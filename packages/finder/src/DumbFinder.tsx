@@ -379,7 +379,7 @@ export function DumbFinder(props: DumbFinderProps) {
       }
     }
   }
-  createEffect(path, (p) => void reload(p))
+  createEffect(path, (p) => { void reload(p) })
   onCleanup(() => listing?.abort())
 
   function fail(err: unknown) {
@@ -390,7 +390,7 @@ export function DumbFinder(props: DumbFinderProps) {
 
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc))
   // вид сменился — число колонок другое
-  createEffect(view, () => queueMicrotask(measureCols), { defer: true })
+  createEffect(view, () => { queueMicrotask(measureCols) }, { defer: true })
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])))
   const picked = createMemo(() => [...selected()].filter((k) => byKey().has(k)))
 

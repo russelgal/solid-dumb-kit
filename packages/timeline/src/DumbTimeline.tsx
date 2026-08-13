@@ -677,15 +677,18 @@ export function DumbTimeline<S extends Span>(props: DumbTimelineProps<S>) {
       api.scrollTo(props.now ?? Temporal.Now.plainDateTimeISO().toString().slice(0, 16)),
     visibleRange,
   }
-  // API отдаём сразу — оно готово и ни от чего не зависит
-  props.ref?.(api)
-
-  /** ширину окна слушаем с колбэк-ref: элемент есть — вешаем наблюдателя */
+  /**
+   * Колбэк-ref канвы: элемент есть — вешаем наблюдателя ширины и только ПОСЛЕ
+   * этого отдаём api наружу. Порядок важен: `scrollTo` без `viewport` молча
+   * ничего не делает, а потребитель нередко зовёт `scrollToNow()` сразу, как
+   * получил ref.
+   */
   const holdViewport = (el: HTMLDivElement) => {
     viewport = el
     const ro = new ResizeObserver((es) => setVpW(es[0]?.contentRect.width ?? 0))
     ro.observe(el)
     onCleanup(() => ro.disconnect())
+    props.ref?.(api)
   }
   // диапазон меняется не только прокруткой: сменили `from`/`days`/шаг или
   // ширину окна — потребителю нужен свежий диапазон для догрузки. Колбэк зовём

@@ -239,8 +239,9 @@ export default function OrderBoardExample() {
       })
     : null
   onCleanup(() => ro?.disconnect())
-  const holdWrap = (el: HTMLElement) => { wrapEl = el; ro?.observe(el) }
-  const holdZone = (id: string, el: HTMLElement) => { zoneEls.set(id, el); ro?.observe(el) }
+  // нет ResizeObserver (старый браузер, SSR) — снимаем места сами
+  const holdWrap = (el: HTMLElement) => { wrapEl = el; if (ro) ro.observe(el); else queueMicrotask(measure) }
+  const holdZone = (id: string, el: HTMLElement) => { zoneEls.set(id, el); if (ro) ro.observe(el) }
 
   /** Применить раскладку и доиграть переезды: смещения считаются ДО смены. */
   function apply(nextBoard: Record<string, Array<string>>, nextPlace: Record<string, number>) {

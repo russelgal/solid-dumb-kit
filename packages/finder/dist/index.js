@@ -2288,7 +2288,9 @@ function DumbFinder(props) {
       }
     }
   }
-  createEffect(path, (p) => void reload(p));
+  createEffect(path, (p) => {
+    void reload(p);
+  });
   onCleanup(() => listing?.abort());
   function fail(err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2296,7 +2298,9 @@ function DumbFinder(props) {
     props.onError?.(msg);
   }
   const shown = createMemo(() => sortEntries(entries(), sort().key, sort().desc));
-  createEffect(view, () => queueMicrotask(measureCols), {
+  createEffect(view, () => {
+    queueMicrotask(measureCols);
+  }, {
     defer: true
   });
   const byKey = createMemo(() => new Map(shown().map((e) => [e.key, e])));
