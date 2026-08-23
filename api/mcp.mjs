@@ -48,6 +48,19 @@ export default async function handler(req, res) {
     return
   }
 
+  // По спеке Streamable HTTP GET с `Accept: text/event-stream` открывает канал
+  // серверных сообщений. Канала у нас нет (см. шапку), и клиент обязан узнать об
+  // этом из 405: получив 200, он считает, что стрим открылся и сразу оборвался,
+  // и переподключается без паузы. Так `claude-code` выдал 73 тысячи запросов за
+  // 12 часов — три четверти месячного лимита Vercel за сутки. Ответ идёт до
+  // чтения снимка: на отлуп незачем поднимать 2 МБ JSON.
+  if (req.method === 'GET' && (req.headers.accept ?? '').includes('text/event-stream')) {
+    res.statusCode = 405
+    res.setHeader('allow', 'POST, OPTIONS')
+    res.end()
+    return
+  }
+
   const src = await source()
 
   // GET — для человека: открыл в браузере и видишь, что сервер жив и чем набит
