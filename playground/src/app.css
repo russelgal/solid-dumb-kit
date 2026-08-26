@@ -127,6 +127,146 @@
   --noise: 0;
 }
 
+/* ── Темы проектов ───────────────────────────────────────────────────────────
+   Палитры реальных сайтов из монорепы `_pioneer`
+   (`packages/web-shared/src/themes.css`), перенесённые сюда БЕЗ изменений:
+   смысл именно в том, чтобы кит проверялся на тех же цветах, на которых он
+   потом и живёт. Свои темы витрины (`scifi`) ловят хардкод контрастом; эти —
+   ловят другое: чужой радиус, чужой акцент, розовый primary там, где кит мог
+   тихо предположить синий.
+
+   Из донора взята только цветовая часть. Шрифты, `@apply` и правила вида
+   `[data-theme="landing"] h2` остались в проекте: это оформление конкретного
+   лендинга, к киту отношения не имеющее.
+
+   Пятая тема донора, `landing` (зелёная с розовым CTA), сюда не перенесена:
+   это палитра посадочных страниц, а не сайта. */
+
+/* Пионер — тёплая оранжевая. В доноре зовётся `hostel`; имя сохранено, чтобы
+   палитры можно было сверять с проектом глазами.
+
+   Оранжевый `primary` тут полезнее прочих: кит нигде не обязан знать, какого
+   цвета акцент, и место, где он молча предположил синий, на этой теме видно
+   сразу. */
+@plugin "daisyui/theme" {
+  name: "hostel";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(98% 0.005 60);
+  --color-base-200: oklch(95% 0.01 60);
+  --color-base-300: oklch(91% 0.015 60);
+  --color-base-content: oklch(25% 0.02 40);
+  --color-primary: oklch(55% 0.195 38.402);
+  --color-primary-content: oklch(98% 0.01 38.402);
+  --color-secondary: oklch(60% 0.14 20);
+  --color-secondary-content: oklch(98% 0.01 20);
+  --color-accent: oklch(70% 0.13 60);
+  --color-accent-content: oklch(25% 0.03 60);
+  --color-neutral: oklch(30% 0.025 38);
+  --color-neutral-content: oklch(95% 0.01 38);
+  --color-info: oklch(70% 0.15 230);
+  --color-info-content: oklch(98% 0.01 230);
+  --color-success: oklch(65% 0.2 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(80% 0.18 80);
+  --color-warning-content: oklch(25% 0.05 80);
+  --color-error: oklch(55% 0.22 27);
+  --color-error-content: oklch(98% 0.01 27);
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+}
+
+/* Квартирный вопрос — фиолетовая, городская */
+@plugin "daisyui/theme" {
+  name: "kvartira";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(98% 0.005 289);
+  --color-base-200: oklch(95% 0.008 289);
+  --color-base-300: oklch(91% 0.012 289);
+  --color-base-content: oklch(25% 0.02 289);
+  --color-primary: oklch(55.49% 0.1274 289.22);
+  --color-primary-content: oklch(98% 0.01 289.22);
+  --color-secondary: oklch(58% 0.12 250);
+  --color-secondary-content: oklch(98% 0.01 250);
+  --color-accent: oklch(65% 0.15 200);
+  --color-accent-content: oklch(98% 0.01 200);
+  --color-neutral: oklch(30% 0.025 289);
+  --color-neutral-content: oklch(95% 0.01 289);
+  --color-info: oklch(70% 0.15 230);
+  --color-info-content: oklch(98% 0.01 230);
+  --color-success: oklch(65% 0.2 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(80% 0.18 80);
+  --color-warning-content: oklch(25% 0.05 80);
+  --color-error: oklch(55% 0.22 27);
+  --color-error-content: oklch(98% 0.01 27);
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+}
+
+/* Черёмушки — вишнёво-розовая */
+@plugin "daisyui/theme" {
+  name: "cheremushki";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(98% 0.005 350);
+  --color-base-200: oklch(95% 0.008 350);
+  --color-base-300: oklch(91% 0.012 350);
+  --color-base-content: oklch(25% 0.02 350);
+  --color-primary: oklch(44.41% 0.183 350.86);
+  --color-primary-content: oklch(98% 0.01 350.86);
+  --color-secondary: oklch(58% 0.14 330);
+  --color-secondary-content: oklch(98% 0.01 330);
+  --color-accent: oklch(62% 0.16 30);
+  --color-accent-content: oklch(98% 0.01 30);
+  --color-neutral: oklch(30% 0.03 350);
+  --color-neutral-content: oklch(95% 0.01 350);
+  --color-info: oklch(70% 0.18 230);
+  --color-info-content: oklch(98% 0.01 230);
+  --color-success: oklch(65% 0.2 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(80% 0.18 80);
+  --color-warning-content: oklch(25% 0.05 80);
+  --color-error: oklch(55% 0.25 27);
+  --color-error-content: oklch(98% 0.01 27);
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+}
+
+/* Сосновка — хвойно-зелёная */
+@plugin "daisyui/theme" {
+  name: "sosnovka";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(98% 0.005 155);
+  --color-base-200: oklch(95% 0.01 155);
+  --color-base-300: oklch(91% 0.015 155);
+  --color-base-content: oklch(25% 0.02 155);
+  --color-primary: oklch(47.19% 0.0877 173.46);
+  --color-primary-content: oklch(98% 0.01 173.46);
+  --color-secondary: oklch(55% 0.1 140);
+  --color-secondary-content: oklch(98% 0.01 140);
+  --color-accent: oklch(68% 0.14 85);
+  --color-accent-content: oklch(25% 0.03 85);
+  --color-neutral: oklch(30% 0.025 173);
+  --color-neutral-content: oklch(95% 0.01 173);
+  --color-info: oklch(70% 0.15 230);
+  --color-info-content: oklch(98% 0.01 230);
+  --color-success: oklch(65% 0.2 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(80% 0.18 80);
+  --color-warning-content: oklch(25% 0.05 80);
+  --color-error: oklch(55% 0.22 27);
+  --color-error-content: oklch(98% 0.01 27);
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+}
+
 /* Неон отдельным блоком: daisyUI-тема — это только цвета, свечение, скосы и
    сканлайны темой не задаются. Декор навешан на те же классы daisyUI, которыми
    размечена витрина (`btn`, `card`, `badge`, `menu`, `table`), — примеры ради

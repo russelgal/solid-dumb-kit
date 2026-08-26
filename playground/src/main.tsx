@@ -353,14 +353,36 @@ const hrefOf = (id: string) => `/${id}`;
  * выбор в `localStorage`. Начальное значение читаем ДО первого рендера, иначе
  * страница успевает моргнуть светлой.
  */
-const THEMES = ["nord", "dark", "scifi", "scifi-light"] as const;
+/** Темы витрины: ловят хардкод — тёмная контрастом, `scifi` чужой палитрой. */
+const KIT_THEMES = ["nord", "dark", "scifi", "scifi-light"] as const;
+
+/**
+ * Палитры реальных сайтов из `_pioneer` — перенесены в `app.css` без правок.
+ * Проверяют не контраст (он у них в порядке), а живучесть кита в чужой теме:
+ * розовый `primary` и пилюльные поля вылезают там, где кит что-то молча
+ * предположил о себе сам.
+ *
+ * Отдельным списком, а не общей лентой кнопок: восемь кнопок с русскими
+ * подписями шапку разносят, поэтому эти четыре живут в выпадашке.
+ */
+const SITE_THEMES = ["hostel", "kvartira", "cheremushki", "sosnovka"] as const;
+
+const THEMES = [...KIT_THEMES, ...SITE_THEMES] as const;
 type Theme = (typeof THEMES)[number];
+
+/** Тема из выпадашки, а не из ленты кнопок — от этого зависит вид самой кнопки. */
+const isSiteTheme = (t: Theme): t is (typeof SITE_THEMES)[number] =>
+  (SITE_THEMES as readonly string[]).includes(t);
 
 const THEME_LABEL: Record<Theme, string> = {
   nord: "☀ nord",
   dark: "☾ dark",
   scifi: "⬡ scifi",
   "scifi-light": "⬡ scifi·день",
+  hostel: "◆ пионер",
+  kvartira: "◆ квартирный вопрос",
+  cheremushki: "◆ черёмушки",
+  sosnovka: "◆ сосновка",
 };
 
 const readTheme = (): Theme => {
@@ -571,7 +593,7 @@ function App(props: { children?: JSX.Element }) {
           {/* Тема — `join` из всех вариантов, а не кнопка «следующая по кругу»:
               видно и текущую, и куда можно переключиться, одним взглядом. */}
           <div class="join" role="group" aria-label="Тема витрины">
-            <For each={THEMES}>
+            <For each={KIT_THEMES}>
               {(th) => (
                 <button
                   type="button"
@@ -585,6 +607,47 @@ function App(props: { children?: JSX.Element }) {
                 </button>
               )}
             </For>
+          </div>
+
+          {/* Палитры сайтов — выпадашкой. Подпись кнопки показывает выбранную
+              тему, если она отсюда: иначе по шапке не понять, что витрина стоит
+              не в `nord`, а в «черёмушках». */}
+          <div class="dropdown dropdown-end">
+            <div
+              tabindex="0"
+              role="button"
+              class="btn btn-sm"
+              classList={{ "btn-primary": isSiteTheme(theme()) }}
+            >
+              {isSiteTheme(theme()) ? THEME_LABEL[theme()] : "◆ сайты"}
+            </div>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu z-10 mt-1 w-56 gap-1 rounded-box bg-base-100 p-2 shadow-lg ring-1 ring-base-300"
+            >
+              <li class="menu-title">Палитры проектов</li>
+              <For each={SITE_THEMES}>
+                {(th) => (
+                  <li>
+                    <button
+                      type="button"
+                      classList={{ "menu-active": theme() === th }}
+                      aria-pressed={theme() === th}
+                      title={`Тема ${th}`}
+                      // Выпадашка daisyUI держится на `:focus` — без снятия
+                      // фокуса она остаётся раскрытой поверх витрины, а посмотреть
+                      // надо как раз на витрину.
+                      onClick={(e) => {
+                        setTheme(th);
+                        e.currentTarget.blur();
+                      }}
+                    >
+                      {THEME_LABEL[th]}
+                    </button>
+                  </li>
+                )}
+              </For>
+            </ul>
           </div>
 
           {/* Ссылки на гит: исходник открытого примера, пакет, из которого он
