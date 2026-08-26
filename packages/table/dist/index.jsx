@@ -690,7 +690,9 @@ function DumbTable(props) {
             <For2 each={visibleRows()}>
               {(original) => {
     const row = () => rowOf(original);
-    return <tr
+    const detailSpan = () => props.columns.length + (props.onReorder && withHandle() ? 1 : 0);
+    return <>
+                <tr
       ref={props.onReorder ? sortable.bind(row().id) : void 0}
       data-key={row().id}
       class={props.rowClass?.(original, row().index)}
@@ -728,7 +730,15 @@ function DumbTable(props) {
                         </td>;
     }}
                   </For2>
-                </tr>;
+                </tr>
+                <Show when={props.renderDetail?.(original, row().index)}>
+                  {(detail) => <tr data-detail-for={row().id}>
+                      <td colSpan={detailSpan()} style={{ padding: "0" }}>
+                        {detail()}
+                      </td>
+                    </tr>}
+                </Show>
+                </>;
   }}
             </For2>
             <Show when={props.spacerBottom}>

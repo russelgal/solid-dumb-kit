@@ -568,6 +568,7 @@ var _tmpl$7 = /* @__PURE__ */ template(`<tr>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<th style="padding:6px 8px;white-space:nowrap">`);
 var _tmpl$9 = /* @__PURE__ */ template(`<td style="padding:6px 4px;width:1%"><span data-drag-handle style=display:inline-block;touch-action:none>`);
 var _tmpl$0 = /* @__PURE__ */ template(`<td style="padding:6px 8px">`);
+var _tmpl$1 = /* @__PURE__ */ template(`<tr><td style=padding:0>`);
 var withViewTransition = (on, fn) => {
   const doc = document;
   if (on && shouldAnimate2() && typeof doc.startViewTransition === "function") doc.startViewTransition(fn);
@@ -743,7 +744,8 @@ function DumbTable(props) {
           },
           children: (original) => {
             const row = () => rowOf(original);
-            return (() => {
+            const detailSpan = () => props.columns.length + (props.onReorder && withHandle() ? 1 : 0);
+            return [(() => {
               var _el$10 = _tmpl$7();
               _el$10.$$click = () => props.onRowClick?.(original, row().index);
               var _ref$ = props.onReorder ? sortable.bind(row().id) : void 0;
@@ -810,7 +812,25 @@ function DumbTable(props) {
                 a: void 0
               });
               return _el$10;
-            })();
+            })(), createComponent(Show, {
+              get when() {
+                return props.renderDetail?.(original, row().index);
+              },
+              children: (detail) => (() => {
+                var _el$14 = _tmpl$1(), _el$15 = _el$14.firstChild;
+                insert(_el$15, detail);
+                effect((_p$) => {
+                  var _v$13 = row().id, _v$14 = detailSpan();
+                  _v$13 !== _p$.e && setAttribute(_el$14, "data-detail-for", _p$.e = _v$13);
+                  _v$14 !== _p$.t && setAttribute(_el$15, "colspan", _p$.t = _v$14);
+                  return _p$;
+                }, {
+                  e: void 0,
+                  t: void 0
+                });
+                return _el$14;
+              })()
+            })];
           }
         }), null);
         insert(_el$5, createComponent(Show, {

@@ -48,6 +48,13 @@ export type DumbTableProps<T> = {
   columns: Array<DumbColumn<T>>
   /** стабильный id строки (нужен перетаскиванию); по умолчанию — индекс */
   rowId?: (row: T, index: number) => string
+  /**
+   * Аккордеон: содержимое, раскрываемое ПОД строкой. Вернул разметку —
+   * после строки рендерится <tr> с одной ячейкой на всю ширину; вернул
+   * null/undefined — строка обычная. Управление тем, какая строка раскрыта,
+   * остаётся снаружи (сигнал в приложении).
+   */
+  renderDetail?: (row: T, index: number) => JSX.Element | null | undefined
 
   /** активная колонка сортировки — задаёт СЕРВЕРНЫЙ режим (вместе с onSort) */
   sort?: string
@@ -255,7 +262,11 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
             <For each={visibleRows()}>
               {(original) => {
                 const row = () => rowOf(original)
+                // ширина detail-ячейки: все колонки + ручка перетаскивания
+                const detailSpan = () =>
+                  props.columns.length + (props.onReorder && withHandle() ? 1 : 0)
                 return (
+                <>
                 <tr
                   ref={props.onReorder ? sortable.bind(row().id) : undefined}
                   data-key={row().id}
@@ -299,6 +310,16 @@ export function DumbTable<T>(props: DumbTableProps<T>) {
                     }}
                   </For>
                 </tr>
+                <Show when={props.renderDetail?.(original, row().index)}>
+                  {(detail) => (
+                    <tr data-detail-for={row().id}>
+                      <td colSpan={detailSpan()} style={{ padding: '0' }}>
+                        {detail()}
+                      </td>
+                    </tr>
+                  )}
+                </Show>
+                </>
                 )
               }}
             </For>
