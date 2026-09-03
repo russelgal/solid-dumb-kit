@@ -1,5 +1,18 @@
 # @solid-dumb-kit/props-table
 
+## 0.3.0
+
+### Minor Changes
+
+- 693ebcc: Solid 2 дошёл до release candidate: `peerDependencies` подняты с
+  `>=2.0.0-beta.30` до `>=2.0.0-rc.0` — `@solidjs/web@2.0.0-rc.0` требует
+  `solid-js ^2.0.0-rc.0`, и на бете связка больше не сходится.
+  
+  Заодно починена скомпилированная ветка `dist/index.js`: сборка шла через
+  компилятор первой линии (`babel-preset-solid@1`), который генерировал импорты
+  из удалённой в Solid 2 сабпути `solid-js/web`. Компилятор запинен на
+  `babel-preset-solid@2.0.0-rc.2`, импорт теперь идёт из `@solidjs/web`.
+
 ## 0.2.0
 
 ### Minor Changes

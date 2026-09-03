@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/props-table",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Таблица пропсов для отладки: показывает всё, включая функции и вложенные объекты",
   "license": "MIT",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/locator",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Alt-клик по элементу открывает его разметку в редакторе",
   "license": "MIT",
   "type": "module",

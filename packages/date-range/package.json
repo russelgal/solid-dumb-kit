@@ -1,6 +1,6 @@
 {
   "name": "@solid-dumb-kit/date-range",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Выбор даты и периода: календарь, протяжка по дням, занятость",
   "license": "MIT",
   "type": "module",
