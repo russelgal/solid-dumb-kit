@@ -277,7 +277,7 @@ export default function OrderTableExample() {
           <For each={ROWS}>
             {(row) => (
               <tr
-                classList={{ 'opacity-35': held() === row.id }}
+                class={[held() === row.id && 'opacity-35']}
                 data-row={row.id}
                 draggable="true"
                 ref={(el) => rowEls.set(row.id, el)}

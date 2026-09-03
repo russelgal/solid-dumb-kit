@@ -42,7 +42,7 @@ const Panel = (p: { title: string; bg?: string; fg?: string; children?: any }) =
 
 const list = (n: number, label: string) => (
   <For each={Array.from({ length: n }, (_, i) => i)}>
-    {(i) => <div class="rounded px-1.5 py-1 text-[13px]" classList={{ 'bg-base-content/10': i % 2 === 0 }}>{label} {i + 1}</div>}
+    {(i) => <div class={['rounded px-1.5 py-1 text-[13px]', i % 2 === 0 && 'bg-base-content/10']}>{label} {i + 1}</div>}
   </For>
 )
 

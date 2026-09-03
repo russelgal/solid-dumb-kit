@@ -590,11 +590,11 @@ export default function OrderBoardExample() {
         <For each={ZONES}>
           {(zone) => (
             <section
-              class="relative min-w-0"
-              classList={{
-                'opacity-35': heldZone() === zone.id,
-                'rounded-xl outline-2 outline-offset-4 outline-primary': sizing() === zone.id,
-              }}
+              class={[
+                'relative min-w-0',
+                heldZone() === zone.id && 'opacity-35',
+                sizing() === zone.id && 'rounded-xl outline-2 outline-offset-4 outline-primary',
+              ]}
               data-panel={zone.id}
               draggable={edit()}
               ref={(el) => panelEls.set(zone.id, el)}
@@ -633,8 +633,10 @@ export default function OrderBoardExample() {
                 <For each={board()[zone.id]}>
                   {(id) => (
                     <article
-                      class="flex h-17 cursor-grab flex-col justify-center gap-0.5 rounded-box border-t-4 bg-base-100 px-2.5 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing"
-                      classList={{ 'opacity-35': held() === id }}
+                      class={[
+                        'flex h-17 cursor-grab flex-col justify-center gap-0.5 rounded-box border-t-4 bg-base-100 px-2.5 py-2 shadow-sm ring-1 ring-base-300 active:cursor-grabbing',
+                        held() === id && 'opacity-35',
+                      ]}
                       data-block={id}
                       draggable={edit()}
                       ref={(el) => blockEls.set(id, el)}

@@ -25,7 +25,7 @@ export default {
     '      <For each={files()}>',
     '        {(f) => (',
     '          // data-key — тот самый ключ, что придёт в Set',
-    '          <div class="card" data-key={f.id} classList={{ on: sel().has(f.id) }}>',
+    "          <div data-key={f.id} class={['card', sel().has(f.id) && 'on']}>",
     '            {f.name}',
     '          </div>',
     '        )}',

@@ -45,7 +45,7 @@ export type SelectionAreaProps = {
  * <SelectionArea selectables=".card" selected={sel} onChange={setSel}
  *                style={{ 'max-height': '60vh', 'overflow-y': 'auto' }}>
  *   <For each={files()}>
- *     {(f) => <div class="card" data-key={f.id} classList={{ on: sel().has(f.id) }} />}
+ *     {(f) => <div data-key={f.id} class={['card', sel().has(f.id) && 'on']} />}
  *   </For>
  * </SelectionArea>
  * ```

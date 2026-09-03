@@ -320,10 +320,9 @@ export default function OrderTreeExample() {
       <For each={kids(props.pid)}>
         {(id) => (
           <li
-            class="grid grid-cols-1 gap-0"
             // приглушаем весь <li>: раз браузер тащит ветку целиком, пусть и
             // видно будет, что уезжает именно ветка
-            classList={{ 'opacity-35': held() === id }}
+            class={['grid grid-cols-1 gap-0', held() === id && 'opacity-35']}
             data-node={id}
             draggable="true"
             ref={(el) => items.set(id, el)}

@@ -164,8 +164,10 @@ export default function KanbanExample() {
             const isActive = () => group.activeList() === colId && !!group.draggingId()
             return (
               <section
-                class="flex min-w-0 flex-col rounded-xl border border-base-300 bg-base-200 transition-colors [&>header]:flex [&>header]:items-center [&>header]:gap-1.5 [&>header]:px-3 [&>header]:pt-2.5 [&>header]:pb-1.5 [&>header]:text-[13px]"
-                classList={{ 'border-primary bg-primary/15': isActive() }}
+                class={[
+                  'flex min-w-0 flex-col rounded-xl border border-base-300 bg-base-200 transition-colors [&>header]:flex [&>header]:items-center [&>header]:gap-1.5 [&>header]:px-3 [&>header]:pt-2.5 [&>header]:pb-1.5 [&>header]:text-[13px]',
+                  isActive() && 'border-primary bg-primary/15',
+                ]}
               >
                 <header>
                   <strong>{TITLES[colId]}</strong>

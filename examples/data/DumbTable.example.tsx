@@ -173,12 +173,12 @@ export default function DumbTableExample() {
     { key: 'stock', label: 'Остаток', sortable: true, align: 'right', width: '110px', stopClick: true,
       render: (p) => (
         <input
-          class="w-full box-border rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-right text-[13px] tabular-nums hover:border-base-300 focus:border-primary focus:bg-base-100 focus:outline-none"
-          classList={{
-            'text-error': p.stock === 0,
-            'text-warning': p.stock > 0 && p.stock < 30,
-            'text-success': p.stock >= 30,
-          }}
+          class={[
+            'w-full box-border rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-right text-[13px] tabular-nums hover:border-base-300 focus:border-primary focus:bg-base-100 focus:outline-none',
+            p.stock === 0 && 'text-error',
+            p.stock > 0 && p.stock < 30 && 'text-warning',
+            p.stock >= 30 && 'text-success',
+          ]}
           type="number"
           min="0"
           value={p.stock}
@@ -197,7 +197,7 @@ export default function DumbTableExample() {
     // stopClick: клик по кнопке не должен всплывать в onRowClick
     { key: 'buy', label: '', align: 'right', width: '110px', stopClick: true,
       render: (p) => (
-        <button class="btn btn-xs" classList={{ 'btn-success': cart().has(p.id) }} onClick={() => toggleCart(p)}>
+        <button class={['btn btn-xs', cart().has(p.id) && 'btn-success']} onClick={() => toggleCart(p)}>
           {cart().has(p.id) ? '✓ в заказе' : 'заказать'}
         </button>
       ) },

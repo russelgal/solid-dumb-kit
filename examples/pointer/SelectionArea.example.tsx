@@ -94,8 +94,10 @@ function Board(props: {
           <For each={items()}>
             {(f) => (
               <div
-                class="card flex cursor-default flex-col items-center gap-1 rounded-box bg-base-100 px-1.5 py-3 ring-1 ring-base-300 transition-colors select-none"
-                classList={{ 'bg-primary/15 ring-2 ring-primary': selected().has(f.id) }}
+                class={[
+                  'card flex cursor-default flex-col items-center gap-1 rounded-box bg-base-100 px-1.5 py-3 ring-1 ring-base-300 transition-colors select-none',
+                  selected().has(f.id) && 'bg-primary/15 ring-2 ring-primary',
+                ]}
                 data-key={f.id}
               >
                 <span class="text-[26px]">{f.icon}</span>

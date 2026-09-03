@@ -113,9 +113,11 @@ export default function RawDndExample() {
         <For each={cards()}>
           {(card) => (
             <div
-              class="grid h-23 cursor-grab place-items-center rounded-xl border-t-5 bg-base-100 text-lg font-semibold text-base-content ring-1 ring-base-300 active:cursor-grabbing"
               // только прозрачность: спрятать оригинал совсем — оборвать жест
-              classList={{ 'opacity-35': held() === card.id }}
+              class={[
+                'grid h-23 cursor-grab place-items-center rounded-xl border-t-5 bg-base-100 text-lg font-semibold text-base-content ring-1 ring-base-300 active:cursor-grabbing',
+                held() === card.id && 'opacity-35',
+              ]}
               data-id={card.id}
               draggable="true"
               style={{ 'border-top-color': HUE(card.n) }}

@@ -179,11 +179,12 @@ export default function BoardExample() {
 
         {/* ВЛОЖЕННАЯ сетка: свои колонки, свой шаг строки, своя раскладка */}
         <div
-          class="min-h-0 flex-1 overflow-auto rounded-b-xl p-2 transition-colors [scrollbar-gutter:stable]"
-          classList={{
-            'bg-primary/15 ring-2 ring-primary ring-inset':
-              group.over() === p.section.id && group.active()?.grid !== p.section.id,
-          }}
+          class={[
+            'min-h-0 flex-1 overflow-auto rounded-b-xl p-2 transition-colors [scrollbar-gutter:stable]',
+            group.over() === p.section.id &&
+              group.active()?.grid !== p.section.id &&
+              'bg-primary/15 ring-2 ring-primary ring-inset',
+          ]}
         >
           <DumbGrid
             group={group}

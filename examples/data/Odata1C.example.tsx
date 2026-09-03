@@ -165,8 +165,7 @@ export default function Odata1CExample() {
           <For each={PRESETS}>
             {(p, i) => (
               <button
-                class="btn btn-xs"
-                classList={{ 'btn-primary': preset() === i() }} onClick={() => usePreset(i())}>
+                class={['btn btn-xs', preset() === i() && 'btn-primary']} onClick={() => usePreset(i())}>
                 {p.label}
               </button>
             )}
@@ -219,11 +218,10 @@ export default function Odata1CExample() {
         </button>
         <Show when={result()}>
           <code
-            class="out mt-2.5 block rounded-lg px-2.5 py-2 whitespace-pre-wrap [overflow-wrap:anywhere]"
-            classList={{
-              'bg-neutral text-neutral-content': !failed(),
-              'bg-error text-error-content': failed(),
-            }}
+            class={[
+              'out mt-2.5 block rounded-lg px-2.5 py-2 whitespace-pre-wrap [overflow-wrap:anywhere]',
+              failed() ? 'bg-error text-error-content' : 'bg-neutral text-neutral-content',
+            ]}
           >{result()}</code>
         </Show>
       </section>

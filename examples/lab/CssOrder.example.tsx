@@ -246,15 +246,16 @@ function Deck(props: DeckProps) {
           иначе на двухстах карточках висело бы восемьсот. Кто под курсором,
           отвечает `ev.target.closest('[data-card]')`. */}
       <div
-        class="grid gap-2"
-        classList={{
-          'grid-cols-[repeat(auto-fill,minmax(76px,1fr))]': !props.list,
-          'max-w-[560px] grid-cols-1 gap-1.5': props.list,
+        class={[
+          'grid gap-2',
+          props.list
+            ? 'max-w-[560px] grid-cols-1 gap-1.5'
+            : 'grid-cols-[repeat(auto-fill,minmax(76px,1fr))]',
           // контейнер со своей прокруткой: место под полосу резервируем заранее
           // (`sd-scroll`), иначе её появление меняет ширину — и сетка
           // пересчитывается посреди жеста
-          'sd-scroll max-h-90 content-start rounded-xl bg-base-200 p-2 ring-1 ring-base-300': props.scroll,
-        }}
+          props.scroll && 'sd-scroll max-h-90 content-start rounded-xl bg-base-200 p-2 ring-1 ring-base-300',
+        ]}
         ref={holdBox}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -264,13 +265,14 @@ function Deck(props: DeckProps) {
         <For each={cards()}>
           {(i) => (
             <div
-              class="grid cursor-grab place-items-center rounded-box bg-base-100 font-semibold ring-1 ring-base-300 active:cursor-grabbing"
-              classList={{
-                'h-16 border-t-5 text-[15px]': !props.list,
-                'h-10.5 justify-items-start border-l-5 pl-3.5 text-sm font-medium': props.list,
+              class={[
+                'grid cursor-grab place-items-center rounded-box bg-base-100 font-semibold ring-1 ring-base-300 active:cursor-grabbing',
+                props.list
+                  ? 'h-10.5 justify-items-start border-l-5 pl-3.5 text-sm font-medium'
+                  : 'h-16 border-t-5 text-[15px]',
                 // только прозрачность: спрятать оригинал совсем — оборвать жест
-                'opacity-35': held() === i,
-              }}
+                held() === i && 'opacity-35',
+              ]}
               data-card={i}
               draggable="true"
               ref={(el) => { els[i] = el }}

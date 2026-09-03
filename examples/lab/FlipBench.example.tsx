@@ -243,8 +243,10 @@ export default function FlipBenchExample() {
         <For each={CARDS}>
           {(i) => (
             <div
-              class="card grid h-16 cursor-grab place-items-center rounded-box border-t-5 bg-base-100 text-[15px] font-semibold ring-1 ring-base-300 active:cursor-grabbing"
-              classList={{ 'opacity-35': held() === i }}
+              class={[
+                'card grid h-16 cursor-grab place-items-center rounded-box border-t-5 bg-base-100 text-[15px] font-semibold ring-1 ring-base-300 active:cursor-grabbing',
+                held() === i && 'opacity-35',
+              ]}
               data-card={i}
               draggable="true"
               ref={(el) => { els[i] = el }}
