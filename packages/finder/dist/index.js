@@ -2494,9 +2494,9 @@ function DumbFinder(props) {
   const [dropAt, setDropAt] = createSignal(null);
   const [overFiles, setOverFiles] = createSignal(false);
   const canMoveTo = (to) => !!src().move && editable() && dragging().length > 0 && dragging().every((k) => canMove(k, to));
-  function startDrag(ev, entry) {
+  function startDrag(ev, key) {
     if (!src().move || !editable()) return;
-    const keys = selected().has(entry.key) ? picked() : [entry.key];
+    const keys = selected().has(key) ? picked() : [key];
     setDragging(keys);
     ev.dataTransfer?.setData("text/plain", keys.join("\n"));
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
@@ -2555,6 +2555,59 @@ function DumbFinder(props) {
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = files ? "copy" : "move";
     setDropAt(to);
   }
+  const aim = (ev, selector, attr = "data-key") => {
+    const el = ev.target?.closest?.(selector);
+    return el ? {
+      el,
+      key: el.getAttribute(attr) ?? ""
+    } : null;
+  };
+  const itemsDragStart = (ev) => {
+    const hit = aim(ev, ".dumb-finder-item");
+    if (hit) startDrag(ev, hit.key);
+  };
+  const itemsDragEnd = () => {
+    setDragging([]);
+    setDropAt(null);
+  };
+  const itemsDragOver = (ev) => {
+    const hit = aim(ev, ".dumb-finder-item");
+    if (hit?.el.dataset.dir) over(hit.key, ev);
+  };
+  const itemsDragLeave = (ev) => {
+    const hit = aim(ev, ".dumb-finder-item");
+    if (hit?.el.dataset.dir) setDropAt(null);
+  };
+  const itemsDrop = (ev) => {
+    const hit = aim(ev, ".dumb-finder-item");
+    if (!hit?.el.dataset.dir) return;
+    ev.stopPropagation();
+    void drop(hit.key, ev);
+  };
+  const treeDragOver = (ev) => {
+    const hit = aim(ev, ".dumb-finder-node");
+    if (hit) over(hit.key, ev);
+  };
+  const treeDragLeave = (ev) => {
+    if (aim(ev, ".dumb-finder-node")) setDropAt(null);
+  };
+  const treeDrop = (ev) => {
+    const hit = aim(ev, ".dumb-finder-node");
+    if (!hit) return;
+    ev.stopPropagation();
+    void drop(hit.key, ev);
+  };
+  const crumbsDragOver = (ev) => {
+    const hit = aim(ev, ".dumb-finder-crumb", "data-prefix");
+    if (hit && hit.key !== path()) over(hit.key, ev);
+  };
+  const crumbsDragLeave = (ev) => {
+    if (aim(ev, ".dumb-finder-crumb", "data-prefix")) setDropAt(null);
+  };
+  const crumbsDrop = (ev) => {
+    const hit = aim(ev, ".dumb-finder-crumb", "data-prefix");
+    if (hit) void drop(hit.key, ev);
+  };
   const [undoTick, bumpUndo] = createSignal(0, {
     equals: false
   });
@@ -2772,12 +2825,6 @@ function DumbFinder(props) {
         const open2 = () => opened().has(e.key) || !!matched();
         const w = () => weights().get(e.key);
         var _el$ = _tmpl$52(), _el$2 = _el$.firstChild, _el$9 = _el$2.firstChild, _el$5 = _el$9.nextSibling, _el$0 = _el$5.nextSibling;
-        _el$2.addEventListener("drop", (ev) => {
-          ev.stopPropagation();
-          void drop(e.key, ev);
-        });
-        _el$2.addEventListener("dragleave", () => setDropAt(null));
-        _el$2.addEventListener("dragover", (ev) => over(e.key, ev));
         _el$2.$$click = () => goto(e.key);
         insert(_el$2, createComponent(Show, {
           get when() {
@@ -2849,20 +2896,23 @@ function DumbFinder(props) {
           }
         }), null);
         effect(() => ({
-          e: path() === e.key ? "1" : void 0,
-          t: open2() ? "1" : void 0,
-          a: dropAt() === e.key && path() !== e.key ? "1" : void 0,
-          o: e.name
+          e: e.key,
+          t: path() === e.key ? "1" : void 0,
+          a: open2() ? "1" : void 0,
+          o: dropAt() === e.key && path() !== e.key ? "1" : void 0,
+          i: e.name
         }), ({
           e: e2,
           t,
           a,
-          o
+          o,
+          i
         }, _p$) => {
-          e2 !== _p$?.e && setAttribute(_el$2, "data-here", e2);
-          t !== _p$?.t && setAttribute(_el$2, "data-open", t);
-          a !== _p$?.a && setAttribute(_el$2, "data-drop", a);
-          o !== _p$?.o && setAttribute(_el$2, "title", o);
+          e2 !== _p$?.e && setAttribute(_el$2, "data-key", e2);
+          t !== _p$?.t && setAttribute(_el$2, "data-here", t);
+          a !== _p$?.a && setAttribute(_el$2, "data-open", a);
+          o !== _p$?.o && setAttribute(_el$2, "data-drop", o);
+          i !== _p$?.i && setAttribute(_el$2, "title", i);
         });
         return _el$;
       }
@@ -2871,6 +2921,9 @@ function DumbFinder(props) {
   const SIDE = () => (() => {
     var _el$11 = _tmpl$7(), _el$12 = _el$11.firstChild, _el$13 = _el$12.nextSibling;
     _el$12.$$input = (ev) => setFind(ev.currentTarget.value);
+    _el$13.addEventListener("drop", treeDrop);
+    _el$13.addEventListener("dragleave", treeDragLeave);
+    _el$13.addEventListener("dragover", treeDragOver);
     insert(_el$13, createComponent(Branch, {
       prefix: "",
       depth: 0
@@ -2927,6 +2980,11 @@ function DumbFinder(props) {
           return _el$15;
         }
       }), _el$24);
+      _el$24.addEventListener("drop", itemsDrop);
+      _el$24.addEventListener("dragleave", itemsDragLeave);
+      _el$24.addEventListener("dragover", itemsDragOver);
+      _el$24.addEventListener("dragend", itemsDragEnd);
+      _el$24.addEventListener("dragstart", itemsDragStart);
       ref(() => (el) => {
         itemsBox = el;
         queueMicrotask(measureCols);
@@ -2938,18 +2996,6 @@ function DumbFinder(props) {
         children: (row) => {
           const entry = row.e;
           var _el$29 = _tmpl$1();
-          _el$29.addEventListener("drop", (ev) => {
-            if (!entry.dir) return;
-            ev.stopPropagation();
-            void drop(entry.key, ev);
-          });
-          _el$29.addEventListener("dragleave", () => entry.dir && setDropAt(null));
-          _el$29.addEventListener("dragover", (ev) => entry.dir && over(entry.key, ev));
-          _el$29.addEventListener("dragend", () => {
-            setDragging([]);
-            setDropAt(null);
-          });
-          _el$29.addEventListener("dragstart", (ev) => startDrag(ev, entry));
           _el$29.$$dblclick = () => open(entry);
           insert(_el$29, () => props.children?.(entry, {
             selected: selected().has(entry.key),
@@ -3197,26 +3243,29 @@ function DumbFinder(props) {
     });
   }
   var _el$54 = _tmpl$222(), _el$55 = _el$54.firstChild, _el$56 = _el$55.firstChild, _el$57 = _el$56.firstChild, _el$58 = _el$56.nextSibling, _el$59 = _el$58.nextSibling, _el$60 = _el$59.nextSibling, _el$61 = _el$60.nextSibling, _el$62 = _el$61.nextSibling, _el$63 = _el$62.nextSibling, _el$72 = _el$55.nextSibling, _el$73 = _el$72.nextSibling, _el$70 = _el$73.nextSibling, _el$71 = _el$70.nextSibling;
+  _el$56.addEventListener("drop", crumbsDrop);
+  _el$56.addEventListener("dragleave", crumbsDragLeave);
+  _el$56.addEventListener("dragover", crumbsDragOver);
   insert(_el$57, createComponent(For, {
     get each() {
       return crumbs(path(), props.rootLabel ?? "\u0412\u0441\u0451");
     },
     children: (c) => (() => {
       var _el$74 = _tmpl$232(), _el$75 = _el$74.firstChild;
-      _el$75.addEventListener("drop", (ev) => void drop(c.prefix, ev));
-      _el$75.addEventListener("dragleave", () => setDropAt(null));
-      _el$75.addEventListener("dragover", (ev) => c.prefix !== path() && over(c.prefix, ev));
       _el$75.$$click = () => goto(c.prefix);
       insert(_el$75, () => c.name);
       effect(() => ({
         e: c.prefix === path() ? "true" : void 0,
-        t: dropAt() === c.prefix && c.prefix !== path() ? "1" : void 0
+        t: c.prefix,
+        a: dropAt() === c.prefix && c.prefix !== path() ? "1" : void 0
       }), ({
         e,
-        t
+        t,
+        a
       }, _p$) => {
         e !== _p$?.e && setAttribute(_el$75, "aria-current", e);
-        t !== _p$?.t && setAttribute(_el$75, "data-drop", t);
+        t !== _p$?.t && setAttribute(_el$75, "data-prefix", t);
+        a !== _p$?.a && setAttribute(_el$75, "data-drop", a);
       });
       return _el$74;
     })()

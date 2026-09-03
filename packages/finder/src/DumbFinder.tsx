@@ -628,10 +628,12 @@ export function DumbFinder(props: DumbFinderProps) {
     !!src().move && editable() && dragging().length > 0 &&
     dragging().every((k) => canMove(k, to))
 
-  function startDrag(ev: DragEvent, entry: FinderEntry) {
+  // Ключ, а не сам `FinderEntry`: больше отсюда ничего и не нужно, а по ключу
+  // жест собирается из DOM — это то, что позволяет слушать drag делегированно.
+  function startDrag(ev: DragEvent, key: string) {
     if (!src().move || !editable()) return
     // тащим выделенное, если схватили одно из выделенного; иначе — только его
-    const keys = selected().has(entry.key) ? picked() : [entry.key]
+    const keys = selected().has(key) ? picked() : [key]
     setDragging(keys)
     ev.dataTransfer?.setData('text/plain', keys.join('\n'))
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move'
@@ -697,6 +699,97 @@ export function DumbFinder(props: DumbFinderProps) {
     ev.stopPropagation()
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = files ? 'copy' : 'move'
     setDropAt(to)
+  }
+
+  /* ─── делегирование drag-событий ─────────────────────────────────────────
+   *
+   * Всё перетаскивание слушается НА КОНТЕЙНЕРАХ, а не на плитках, узлах дерева
+   * и крошках. Причина простая: Solid делегирует события сам, но по своему
+   * списку (`click`, `contextmenu`, `pointerdown`), и ни одного drag-события в
+   * нём нет — `onDragOver` в разметке плитки означает настоящий
+   * `addEventListener` на каждую. Плитка стоила пяти слушателей
+   * (`dragstart`, `dragend`, `dragover`, `dragleave`, `drop`), узел дерева и
+   * крошка — трёх; на папке в полсотни файлов это уже три сотни слушателей,
+   * которые ещё и снимать при каждой перерисовке списка.
+   *
+   * Все пять событий всплывают, поэтому контейнеру достаточно спросить
+   * `closest`, куда именно целятся. Ключ берётся из `data-`атрибута: ничего,
+   * кроме него, обработчикам от строки и не нужно — `startDrag` смотрит только
+   * на `entry.key`.
+   */
+
+  /** Куда целятся: элемент нужного вида под курсором и его ключ. */
+  const aim = (ev: Event, selector: string, attr = 'data-key') => {
+    const el = (ev.target as Element | null)?.closest?.(selector)
+    return el ? { el: el as HTMLElement, key: el.getAttribute(attr) ?? '' } : null
+  }
+
+  /* — плитки и строки списка — */
+
+  const itemsDragStart = (ev: DragEvent) => {
+    const hit = aim(ev, '.dumb-finder-item')
+    if (hit) startDrag(ev, hit.key)
+  }
+
+  const itemsDragEnd = () => {
+    setDragging([])
+    setDropAt(null)
+  }
+
+  /**
+   * Целятся в папку — подсвечиваем её, иначе не трогаем вовсе: событие всплывёт
+   * до `.dumb-finder-view`, и сработает приём «в текущую папку». Ровно так же
+   * вёл себя и обработчик на самой плитке — он для файла просто ничего не делал.
+   */
+  const itemsDragOver = (ev: DragEvent) => {
+    const hit = aim(ev, '.dumb-finder-item')
+    if (hit?.el.dataset.dir) over(hit.key, ev)
+  }
+
+  const itemsDragLeave = (ev: DragEvent) => {
+    const hit = aim(ev, '.dumb-finder-item')
+    if (hit?.el.dataset.dir) setDropAt(null)
+  }
+
+  const itemsDrop = (ev: DragEvent) => {
+    const hit = aim(ev, '.dumb-finder-item')
+    if (!hit?.el.dataset.dir) return
+    ev.stopPropagation()
+    void drop(hit.key, ev)
+  }
+
+  /* — дерево папок слева — */
+
+  const treeDragOver = (ev: DragEvent) => {
+    const hit = aim(ev, '.dumb-finder-node')
+    if (hit) over(hit.key, ev)
+  }
+
+  const treeDragLeave = (ev: DragEvent) => {
+    if (aim(ev, '.dumb-finder-node')) setDropAt(null)
+  }
+
+  const treeDrop = (ev: DragEvent) => {
+    const hit = aim(ev, '.dumb-finder-node')
+    if (!hit) return
+    ev.stopPropagation()
+    void drop(hit.key, ev)
+  }
+
+  /* — крошки — */
+
+  const crumbsDragOver = (ev: DragEvent) => {
+    const hit = aim(ev, '.dumb-finder-crumb', 'data-prefix')
+    if (hit && hit.key !== path()) over(hit.key, ev)
+  }
+
+  const crumbsDragLeave = (ev: DragEvent) => {
+    if (aim(ev, '.dumb-finder-crumb', 'data-prefix')) setDropAt(null)
+  }
+
+  const crumbsDrop = (ev: DragEvent) => {
+    const hit = aim(ev, '.dumb-finder-crumb', 'data-prefix')
+    if (hit) void drop(hit.key, ev)
   }
 
   /* ─── отмена ────────────────────────────────────────────────────────────── */
@@ -963,17 +1056,14 @@ export function DumbFinder(props: DumbFinderProps) {
             <li>
               <div
                 class="dumb-finder-node"
+                // ключ в разметке: по нему делегированный приём на `.dumb-finder-tree`
+                // понимает, в какую папку целятся
+                data-key={e.key}
                 data-here={path() === e.key ? '1' : undefined}
                 data-open={open() ? '1' : undefined}
                 data-drop={dropAt() === e.key && path() !== e.key ? '1' : undefined}
                 title={e.name}
                 onClick={() => goto(e.key)}
-                onDragOver={(ev) => over(e.key, ev)}
-                onDragLeave={() => setDropAt(null)}
-                onDrop={(ev) => {
-                  ev.stopPropagation()
-                  void drop(e.key, ev)
-                }}
               >
                 {/* нет детей — распорка той же ширины, иначе имена скачут */}
                 <Show
@@ -1032,7 +1122,12 @@ export function DumbFinder(props: DumbFinderProps) {
         value={find()}
         onInput={(ev) => setFind(ev.currentTarget.value)}
       />
-      <ul class="dumb-finder-tree">
+      <ul
+        class="dumb-finder-tree"
+        onDragOver={treeDragOver}
+        onDragLeave={treeDragLeave}
+        onDrop={treeDrop}
+      >
         <Branch prefix="" depth={0} />
       </ul>
     </nav>
@@ -1101,6 +1196,11 @@ export function DumbFinder(props: DumbFinderProps) {
               itemsBox = el
               queueMicrotask(measureCols)
             }}
+            onDragStart={itemsDragStart}
+            onDragEnd={itemsDragEnd}
+            onDragOver={itemsDragOver}
+            onDragLeave={itemsDragLeave}
+            onDrop={itemsDrop}
           >
               <For each={rows()}>
                 {(row) => {
@@ -1116,18 +1216,8 @@ export function DumbFinder(props: DumbFinderProps) {
                     draggable={canWrite() && !!src().move ? 'true' : 'false'}
                     title={entry.name}
                     onDblClick={() => open(entry)}
-                    onDragStart={(ev) => startDrag(ev, entry)}
-                    onDragEnd={() => {
-                      setDragging([])
-                      setDropAt(null)
-                    }}
-                    onDragOver={(ev) => entry.dir && over(entry.key, ev)}
-                    onDragLeave={() => entry.dir && setDropAt(null)}
-                    onDrop={(ev) => {
-                      if (!entry.dir) return
-                      ev.stopPropagation()
-                      void drop(entry.key, ev)
-                    }}
+                    // Слушателей drag здесь НЕТ намеренно: все пять висят на
+                    // `.dumb-finder-items`, а плитке хватает `data-key`/`data-dir`.
                   >
                     {props.children?.(entry, { selected: selected().has(entry.key), view: view() }) ?? (
                       <>
@@ -1283,7 +1373,12 @@ export function DumbFinder(props: DumbFinderProps) {
           рисуем через переменную, чтобы при таком классе его можно было
           погасить (`--dumb-finder-crumb-sep: none`) и не получить два подряд.
         */}
-        <nav class="dumb-finder-crumbs">
+        <nav
+          class="dumb-finder-crumbs"
+          onDragOver={crumbsDragOver}
+          onDragLeave={crumbsDragLeave}
+          onDrop={crumbsDrop}
+        >
           <ul>
             <For each={crumbs(path(), props.rootLabel ?? 'Всё')}>
               {(c) => (
@@ -1292,11 +1387,10 @@ export function DumbFinder(props: DumbFinderProps) {
                   type="button"
                   class="dumb-finder-crumb"
                   aria-current={c.prefix === path() ? 'true' : undefined}
+                  // приём делегирован на `nav`, крошке хватает своего префикса
+                  data-prefix={c.prefix}
                   data-drop={dropAt() === c.prefix && c.prefix !== path() ? '1' : undefined}
                   onClick={() => goto(c.prefix)}
-                  onDragOver={(ev) => c.prefix !== path() && over(c.prefix, ev)}
-                  onDragLeave={() => setDropAt(null)}
-                  onDrop={(ev) => void drop(c.prefix, ev)}
                 >
                   {c.name}
                 </button>

@@ -1,5 +1,6 @@
 // src/DumbTree.tsx
 import { createEffect as createEffect2, createMemo, createSignal as createSignal2, For, Show } from "solid-js";
+import { Dynamic } from "@solidjs/web";
 
 // ../shared/dist/index.js
 import { getOwner, runWithOwner, createSignal, createEffect } from "solid-js";
@@ -68,17 +69,39 @@ function createOpened(key) {
     })
   };
 }
+var ROW_NODE = /* @__PURE__ */ new WeakMap();
 function DumbTree(props) {
   injectStyle("tree", STYLES);
   const opened = createOpened(props.storageKey);
   const query = () => props.query?.().trim().toLowerCase() ?? "";
   const matches = (n) => props.match ? props.match(n, query()) : textOf(n).toLowerCase().includes(query());
+  const onDragStart = (ev) => {
+    const fn = props.getDragData;
+    if (!fn || !ev.dataTransfer) return;
+    const row = ev.target?.closest?.(".dumb-tree-row");
+    const node = row && ROW_NODE.get(row)?.();
+    const data = node && fn(node);
+    if (!data) return;
+    ev.dataTransfer.setData("application/json", JSON.stringify(data));
+    ev.dataTransfer.effectAllowed = "copy";
+  };
   return <ul
     class={`dumb-tree ${props.class ?? ""}`}
     data-stripes={props.stripes === false ? void 0 : "1"}
-    style={{ ...props.size ? { "--dumb-tree-size": props.size } : {}, ...props.style }}
+    onDragStart={onDragStart}
+    style={{
+      ...props.size ? { "--dumb-tree-size": props.size } : {},
+      ...props.style
+    }}
   >
-      <Branch parentId="" nodes={props.roots} opened={opened} tree={props} matches={matches} depth={0} />
+      <Branch
+    parentId=""
+    nodes={props.roots}
+    opened={opened}
+    tree={props}
+    matches={matches}
+    depth={0}
+  />
     </ul>;
 }
 function Branch(p) {
@@ -112,10 +135,18 @@ function Branch(p) {
   });
   return <>
       <Show when={busy() && !p.parentId}>
-        <li class="dumb-tree-wait px-1"><span class="loading loading-dots loading-xs" /></li>
+        <li class="dumb-tree-wait px-1">
+          <span class="loading loading-dots loading-xs" />
+        </li>
       </Show>
       <For each={list()}>
-        {(node) => <Row node={node} opened={p.opened} tree={p.tree} matches={p.matches} depth={p.depth} />}
+        {(node) => <Row
+    node={node}
+    opened={p.opened}
+    tree={p.tree}
+    matches={p.matches}
+    depth={p.depth}
+  />}
       </For>
     </>;
 }
@@ -133,7 +164,10 @@ function Row(p) {
   const icon = () => p.node.icon ?? (branch() ? open() ? p.tree.icons?.folderOpen ?? p.tree.icons?.folder : p.tree.icons?.folder : p.tree.icons?.leaf);
   const drag = () => p.tree.getDragData?.(p.node) ?? null;
   const inner = <>
-      <Show when={branch()} fallback={<span class="dumb-tree-twist shrink-0" />}>
+      <Show
+    when={branch()}
+    fallback={<span class="dumb-tree-twist shrink-0" />}
+  >
         <button
     type="button"
     class="dumb-tree-twist grid shrink-0 cursor-pointer place-items-center border-0 bg-transparent p-0 text-xs"
@@ -153,46 +187,40 @@ function Row(p) {
       <Show when={icon()}>
         <span class={`dumb-tree-icon size-[15px] shrink-0 ${icon()}`} />
       </Show>
-      <span class="dumb-tree-label min-w-0 flex-1 truncate">{p.node.label}</span>
+      <span class="dumb-tree-label min-w-0 flex-1 truncate">
+        {p.node.label}
+      </span>
       <Show when={p.tree.renderAction}>{p.tree.renderAction(p.node)}</Show>
       <Show when={p.node.badge !== void 0 && p.node.badge !== ""}>
-        <span class="dumb-tree-badge badge badge-sm badge-ghost tabular-nums">{p.node.badge}</span>
+        <span class="dumb-tree-badge badge badge-sm badge-ghost tabular-nums">
+          {p.node.badge}
+        </span>
       </Show>
     </>;
-  const rowProps = {
-    get class() {
-      return `dumb-tree-row flex cursor-pointer items-center gap-1.5 rounded-sm px-1 no-underline hover:bg-base-200 ${chosen() ? "bg-primary/15 text-primary font-medium" : ""} ${p.node.class ?? ""}`;
-    },
-    // Строкой, а не булевым: у ARIA `aria-current` — перечисление
-    // ('page' | 'step' | 'true' | 'false'), и компилятор второй линии рендерит
-    // булево `true` как пустое значение, то есть подсказка для скринридера
-    // молча пропадает.
-    get "aria-current"() {
-      return chosen() ? "true" : void 0;
-    },
-    get "data-open"() {
-      return open() ? "1" : void 0;
-    },
-    "data-id": p.node.id,
-    // строкой: в HTML это перечисление, и вторая линия типизирует его так же
-    get draggable() {
-      return drag() ? "true" : "false";
-    },
-    onDragStart: (ev) => {
-      const d = drag();
-      if (!d || !ev.dataTransfer) return;
-      ev.dataTransfer.setData("application/json", JSON.stringify(d));
-      ev.dataTransfer.effectAllowed = "copy";
-    },
-    onClick: () => p.tree.onSelect?.(p.node),
-    onContextMenu: (ev) => p.tree.onContextMenu?.(ev, p.node)
-  };
   return <li>
-      <Show when={p.node.href} fallback={<div {...rowProps}>{inner}</div>}>
-        <a {...rowProps} href={p.node.href}>
-          {inner}
-        </a>
-      </Show>
+      {
+    /* ОДНА строка, а не пара «div / a»: тег решает наличие `href`.
+       Атрибуты стоят В РАЗМЕТКЕ, поэтому реактивными их делает компилятор —
+       ни собранного объекта пропсов, ни геттеров руками. Объект был
+       источником тихой поломки: поле-ЗНАЧЕНИЕ читается при сборке, то есть
+       вне tracking scope, и с реактивным узлом (данные приходят стором —
+       скажем, из TanStack Query) Solid 2 ругался `STRICT_READ_UNTRACKED` на
+       каждую строку дерева. */
+  }
+      <Dynamic
+    component={p.node.href ? "a" : "div"}
+    href={p.node.href}
+    class={`dumb-tree-row flex cursor-pointer items-center gap-1.5 rounded-sm px-1 no-underline hover:bg-base-200 ${chosen() ? "bg-primary/15 text-primary font-medium" : ""} ${p.node.class ?? ""}`}
+    aria-current={chosen() ? "true" : void 0}
+    data-open={open() ? "1" : void 0}
+    data-id={p.node.id}
+    draggable={drag() ? "true" : "false"}
+    ref={(el) => ROW_NODE.set(el, () => p.node)}
+    onClick={() => p.tree.onSelect?.(p.node)}
+    onContextMenu={(ev) => p.tree.onContextMenu?.(ev, p.node)}
+  >
+        {inner}
+      </Dynamic>
       <Show when={branch() && open()}>
         <ul>
           <Branch

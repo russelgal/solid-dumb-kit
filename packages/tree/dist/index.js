@@ -1,4 +1,4 @@
-import { delegateEvents, insert, createComponent, effect, className, setAttribute, style, memo, claimElement, spread, mergeProps, template } from '@solidjs/web';
+import { delegateEvents, insert, createComponent, effect, className, setAttribute, style, memo, Dynamic, template } from '@solidjs/web';
 import { createSignal, createEffect, createMemo, Show, For } from 'solid-js';
 
 // src/DumbTree.tsx
@@ -26,9 +26,7 @@ var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="dumb-tree-twi
 var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-tree-label min-w-0 flex-1 truncate">`);
 var _tmpl$6 = /* @__PURE__ */ template(`<span class="dumb-tree-badge badge badge-sm badge-ghost tabular-nums">`);
 var _tmpl$7 = /* @__PURE__ */ template(`<span class="dumb-tree-twist shrink-0">`);
-var _tmpl$8 = /* @__PURE__ */ template(`<a>`);
-var _tmpl$9 = /* @__PURE__ */ template(`<li><!><!>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<div>`);
+var _tmpl$8 = /* @__PURE__ */ template(`<li><!><!>`);
 var STYLES = `
   /* \u0412\u0438\u0434 \u2014 daisyUI (menu, bg-base-*, text-primary) \u0432 \u0440\u0430\u0437\u043C\u0435\u0442\u043A\u0435. \u0417\u0434\u0435\u0441\u044C \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F
      \u0442\u043E, \u0447\u0435\u0433\u043E \u043A\u043B\u0430\u0441\u0441\u0430\u043C\u0438 \u043D\u0435 \u0441\u0434\u0435\u043B\u0430\u0442\u044C: \u043F\u043E\u043B\u043E\u0441\u044B \u041E\u0414\u041D\u0418\u041C \u0433\u0440\u0430\u0434\u0438\u0435\u043D\u0442\u043E\u043C \u0441 \u0448\u0430\u0433\u043E\u043C \u0432 \u0441\u0442\u0440\u043E\u043A\u0443
@@ -77,12 +75,24 @@ function createOpened(key) {
     })
   };
 }
+var ROW_NODE = /* @__PURE__ */ new WeakMap();
 function DumbTree(props) {
   injectStyle("tree", STYLES);
   const opened = createOpened(props.storageKey);
   const query = () => props.query?.().trim().toLowerCase() ?? "";
   const matches = (n) => props.match ? props.match(n, query()) : textOf(n).toLowerCase().includes(query());
+  const onDragStart = (ev) => {
+    const fn = props.getDragData;
+    if (!fn || !ev.dataTransfer) return;
+    const row = ev.target?.closest?.(".dumb-tree-row");
+    const node = row && ROW_NODE.get(row)?.();
+    const data = node && fn(node);
+    if (!data) return;
+    ev.dataTransfer.setData("application/json", JSON.stringify(data));
+    ev.dataTransfer.effectAllowed = "copy";
+  };
   var _el$ = _tmpl$();
+  _el$.addEventListener("dragstart", onDragStart);
   insert(_el$, createComponent(Branch, {
     parentId: "",
     get nodes() {
@@ -244,64 +254,41 @@ function Row(p) {
       return _el$7;
     }
   })];
-  const rowProps = {
-    get class() {
+  var _el$9 = _tmpl$8(), _el$1 = _el$9.firstChild, _el$10 = _el$1.nextSibling;
+  insert(_el$9, createComponent(Dynamic, {
+    get component() {
+      return p.node.href ? "a" : "div";
+    },
+    get href() {
+      return p.node.href;
+    },
+    get ["class"]() {
       return `dumb-tree-row flex cursor-pointer items-center gap-1.5 rounded-sm px-1 no-underline hover:bg-base-200 ${chosen() ? "bg-primary/15 text-primary font-medium" : ""} ${p.node.class ?? ""}`;
     },
-    // Строкой, а не булевым: у ARIA `aria-current` — перечисление
-    // ('page' | 'step' | 'true' | 'false'), и компилятор второй линии рендерит
-    // булево `true` как пустое значение, то есть подсказка для скринридера
-    // молча пропадает.
-    get "aria-current"() {
+    get ["aria-current"]() {
       return chosen() ? "true" : void 0;
     },
-    get "data-open"() {
+    get ["data-open"]() {
       return open() ? "1" : void 0;
     },
-    "data-id": p.node.id,
-    // строкой: в HTML это перечисление, и вторая линия типизирует его так же
+    get ["data-id"]() {
+      return p.node.id;
+    },
     get draggable() {
       return drag() ? "true" : "false";
     },
-    onDragStart: (ev) => {
-      const d = drag();
-      if (!d || !ev.dataTransfer) return;
-      ev.dataTransfer.setData("application/json", JSON.stringify(d));
-      ev.dataTransfer.effectAllowed = "copy";
-    },
+    ref: (el) => ROW_NODE.set(el, () => p.node),
     onClick: () => p.tree.onSelect?.(p.node),
-    onContextMenu: (ev) => p.tree.onContextMenu?.(ev, p.node)
-  };
-  var _el$9 = _tmpl$9(), _el$10 = _el$9.firstChild, _el$11 = _el$10.nextSibling;
-  insert(_el$9, createComponent(Show, {
-    get when() {
-      return p.node.href;
-    },
-    get fallback() {
-      var _el$12 = _tmpl$0();
-      spread(_el$12, rowProps, true);
-      insert(_el$12, inner);
-      return _el$12;
-    },
-    get children() {
-      var _el$0 = _tmpl$8();
-      claimElement(_el$0);
-      spread(_el$0, mergeProps(rowProps, {
-        get href() {
-          return p.node.href;
-        }
-      }), true);
-      insert(_el$0, inner);
-      return _el$0;
-    }
-  }), _el$10);
+    onContextMenu: (ev) => p.tree.onContextMenu?.(ev, p.node),
+    children: inner
+  }), _el$1);
   insert(_el$9, createComponent(Show, {
     get when() {
       return memo(() => !!branch())() ? open() : branch();
     },
     get children() {
-      var _el$1 = _tmpl$();
-      insert(_el$1, createComponent(Branch, {
+      var _el$0 = _tmpl$();
+      insert(_el$0, createComponent(Branch, {
         get parentId() {
           return p.node.id;
         },
@@ -321,9 +308,9 @@ function Row(p) {
           return p.depth + 1;
         }
       }));
-      return _el$1;
+      return _el$0;
     }
-  }), _el$11);
+  }), _el$10);
   return _el$9;
 }
 delegateEvents(["click"]);

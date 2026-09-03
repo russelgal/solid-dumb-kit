@@ -151,3 +151,121 @@ describe('выбор', () => {
     expect(rowFor('readme')!.getAttribute('aria-current')).toBe('true')
   })
 })
+
+describe('перетаскивание', () => {
+  /**
+   * happy-dom не строит DataTransfer сам, а `dragstart` без него бессмыслен —
+   * подкладываем минимальный: только то, чем пользуется компонент.
+   */
+  const dragEvent = () => {
+    const data = new Map<string, string>()
+    const dt = {
+      setData: (type: string, value: string) => data.set(type, value),
+      getData: (type: string) => data.get(type) ?? '',
+      effectAllowed: 'none',
+    }
+    const ev = new Event('dragstart', { bubbles: true, cancelable: true })
+    Object.defineProperty(ev, 'dataTransfer', { value: dt })
+    return { ev, dt, data }
+  }
+
+  /**
+   * Сколько слушателей события висит на элементе.
+   *
+   * Лезем во ВНУТРЕННОСТИ happy-dom (`Symbol(listeners)`), потому что снаружи
+   * слушателей не спросить никак: `el.ondragstart` happy-dom не отражает
+   * (всегда `undefined`), а патч `EventTarget.prototype.addEventListener`
+   * ничего не ловит — регистрирует он их в обход прототипного метода.
+   * Если happy-dom когда-нибудь переименует символ, тест упадёт этой строкой
+   * и внятно скажет почему — а не начнёт молча считать нули и «проходить».
+   */
+  const listenerCount = (el: Element | Document, type: string) => {
+    const sym = Object.getOwnPropertySymbols(el).find((s) => String(s) === 'Symbol(listeners)')
+    if (!sym) throw new Error('happy-dom больше не хранит слушателей в Symbol(listeners)')
+    const box = (el as unknown as Record<symbol, { bubbling: Map<string, Array<unknown>> }>)[sym]
+    return box.bubbling.get(type)?.length ?? 0
+  }
+
+  it('слушатель dragstart ОДИН на дерево, а не по одному на строку', () => {
+    // Двадцать строк, а слушатель обязан остаться один: `dragstart` Solid не
+    // делегирует (в его списке только click, contextmenu, pointer* и прочие),
+    // поэтому `onDragStart` в разметке строки означал бы двадцать настоящих
+    // слушателей — по одному на каждую, и все, кроме сработавшего, впустую.
+    const many: Array<TreeNode> = Array.from({ length: 20 }, (_, i) => ({
+      id: `n${i}`,
+      label: `Узел ${i}`,
+    }))
+    mount({ roots: many, getDragData: (node: TreeNode) => ({ id: node.id }) })
+
+    expect(rows()).toHaveLength(20)
+    expect(listenerCount(host.querySelector('.dumb-tree')!, 'dragstart')).toBe(1)
+    for (const row of rows()) expect(listenerCount(row, 'dragstart')).toBe(0)
+  })
+
+  it('слушатель один и когда getDragData не передан вовсе', () => {
+    // Раньше обработчик вешался безусловно и первым же делом выходил — то есть
+    // дерево без перетаскивания платило ровно столько же, сколько с ним.
+    mount()
+    expect(listenerCount(host.querySelector('.dumb-tree')!, 'dragstart')).toBe(1)
+    for (const row of rows()) expect(listenerCount(row, 'dragstart')).toBe(0)
+  })
+
+  it('тащим строку — в dataTransfer уезжает то, что дал getDragData', () => {
+    mount({ getDragData: (n: TreeNode) => ({ kind: 'node', id: n.id }) })
+
+    const { ev, dt, data } = dragEvent()
+    rowFor('readme')!.dispatchEvent(ev)
+
+    expect(JSON.parse(data.get('application/json')!)).toEqual({ kind: 'node', id: 'readme' })
+    expect(dt.effectAllowed).toBe('copy')
+  })
+
+  it('жест со значка внутри строки работает так же: событие всплывает', () => {
+    mount({ getDragData: (n: TreeNode) => ({ id: n.id }), icons: { leaf: 'i-leaf' } })
+
+    const { ev, data } = dragEvent()
+    rowFor('readme')!.querySelector('.dumb-tree-label')!.dispatchEvent(ev)
+
+    expect(JSON.parse(data.get('application/json')!)).toEqual({ id: 'readme' })
+  })
+
+  it('без getDragData не уезжает ничего, и строки не перетаскиваемые', () => {
+    mount()
+
+    const { ev, data } = dragEvent()
+    rowFor('readme')!.dispatchEvent(ev)
+
+    expect(data.size).toBe(0)
+    for (const row of rows()) expect(row.getAttribute('draggable')).toBe('false')
+  })
+
+  it('getDragData вернул null для узла — этот узел не тащится', () => {
+    mount({ getDragData: (n: TreeNode) => (n.id === 'readme' ? null : { id: n.id }) })
+
+    const { ev, data } = dragEvent()
+    rowFor('readme')!.dispatchEvent(ev)
+
+    expect(data.size).toBe(0)
+    expect(rowFor('readme')!.getAttribute('draggable')).toBe('false')
+    expect(rowFor('docs')!.getAttribute('draggable')).toBe('true')
+  })
+
+  it('узел подгруженной ветки тащится наравне с готовым', async () => {
+    mount({
+      roots: [{ id: 'lazy', label: 'Ленивая', isFolder: true }],
+      loadChildren: async () => [{ id: 'lazy/one', label: 'Первый' }],
+      getDragData: (n: TreeNode) => ({ id: n.id }),
+    })
+
+    twist('lazy')!.click()
+    await tick()
+    await settle()
+
+    const { ev, data } = dragEvent()
+    rowFor('lazy/one')!.dispatchEvent(ev)
+
+    // Именно тут ломался бы поиск узла по `data-id` обходом `roots`:
+    // подгруженного узла в `roots` нет вовсе.
+    expect(JSON.parse(data.get('application/json')!)).toEqual({ id: 'lazy/one' })
+  })
+})

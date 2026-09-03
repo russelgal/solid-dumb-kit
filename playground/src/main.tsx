@@ -344,6 +344,24 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 /** Путь примера. Слэш обязателен: без него `A` считает ссылку относительной. */
 const hrefOf = (id: string) => `/${id}`;
 
+/** Файл примера по id вкладки: карта, чтобы не перебирать TABS на каждое движение мыши. */
+const FILE_BY_ID = new Map(TABS.map((t) => [t.id, t.file]));
+
+/**
+ * Предзагрузка чанка примера, на который навели или перешли табом. Ловится
+ * делегированно на всём меню: пункт под курсором даёт `closest`, а между
+ * наведением и кликом обычно хватает времени скачать чанк целиком.
+ *
+ * Повторные вызовы безвредны: `preload` у ленивого компонента идемпотентен, а
+ * `mouseover` (в отличие от `mouseenter`) приходит и при переходе между
+ * потомками пункта.
+ */
+const preloadUnder = (ev: Event) => {
+  const link = (ev.target as Element | null)?.closest?.("a[href]");
+  const file = FILE_BY_ID.get(link?.getAttribute("href")?.slice(1) ?? "");
+  if (file) compOf(file).preload?.();
+};
+
 /**
  * Тема витрины. Светлая `nord`, `dark` — на ней сразу видно захардкоженный
  * светлый цвет, если он куда-то пролез, — и своя `scifi` (описана в `app.css`):
@@ -597,8 +615,11 @@ function App(props: { children?: JSX.Element }) {
               {(th) => (
                 <button
                   type="button"
-                  class="btn join-item btn-sm"
-                  classList={{ "btn-primary": theme() === th }}
+                  // `class` массивом, а НЕ `classList`: во второй линии Solid
+                  // такого атрибута нет вовсе — он молча уезжает в DOM как
+                  // `classlist="[object Object]"`, а классы не применяются.
+                  // Массив и объект принимает сам `class`.
+                  class={["btn join-item btn-sm", theme() === th && "btn-primary"]}
                   aria-pressed={theme() === th}
                   title={`Тема ${th}`}
                   onClick={() => setTheme(th)}
@@ -616,8 +637,7 @@ function App(props: { children?: JSX.Element }) {
             <div
               tabindex="0"
               role="button"
-              class="btn btn-sm"
-              classList={{ "btn-primary": isSiteTheme(theme()) }}
+              class={["btn btn-sm", isSiteTheme(theme()) && "btn-primary"]}
             >
               {isSiteTheme(theme()) ? THEME_LABEL[theme()] : "◆ сайты"}
             </div>
@@ -631,7 +651,7 @@ function App(props: { children?: JSX.Element }) {
                   <li>
                     <button
                       type="button"
-                      classList={{ "menu-active": theme() === th }}
+                      class={[theme() === th && "menu-active"]}
                       aria-pressed={theme() === th}
                       title={`Тема ${th}`}
                       // Выпадашка daisyUI держится на `:focus` — без снятия
@@ -766,7 +786,17 @@ function App(props: { children?: JSX.Element }) {
               `flex-wrap: wrap`, и при ограниченной высоте (тут `flex-1`) она
               переносит группы во ВТОРУЮ колонку вместо прокрутки — половина
               меню уезжает за край сайдбара. */}
-            <ul class="menu min-h-0 w-full flex-1 flex-nowrap gap-0.5 overflow-x-hidden overflow-y-auto p-2 [scrollbar-gutter:stable]">
+            {/* Предзагрузка чанка — ОДНОЙ парой обработчиков на всё меню, а не
+                парой на каждый из трёх десятков пунктов. `mouseover`/`focusin`
+                вместо `mouseenter`/`focus` не случайно: первые всплывают и
+                стоят в списке делегируемых у Solid — слушателя не появится ни
+                одного, вторые не всплывают вовсе, и это были семьдесят
+                настоящих слушателей на пустом месте. */}
+            <ul
+              class="menu min-h-0 w-full flex-1 flex-nowrap gap-0.5 overflow-x-hidden overflow-y-auto p-2 [scrollbar-gutter:stable]"
+              onMouseOver={preloadUnder}
+              onFocusIn={preloadUnder}
+            >
               <For each={groups()}>
                 {(group) => (
                   <li>
@@ -793,21 +823,16 @@ function App(props: { children?: JSX.Element }) {
                                 клики по ссылкам внутри своего дерева, и
                                 отдельная компонента-обёртка ему не нужна. */}
                               <a
-                                class="py-1.5"
-                                classList={{
-                                  "menu-active": tab() === t.id,
+                                class={[
+                                  "py-1.5",
+                                  tab() === t.id && "menu-active",
                                   // курсор поиска: рамкой, а не фоном — фон уже
                                   // занят активной вкладкой, и они бы спорили
-                                  "outline outline-primary": searching() && cursorId() === t.id,
-                                }}
+                                  searching() && cursorId() === t.id && "outline outline-primary",
+                                ]}
                                 href={hrefOf(t.id)}
                                 aria-current={tab() === t.id ? "page" : undefined}
                                 title={t.pkg ? `${t.hint} · @solid-dumb-kit/${t.pkg}` : t.hint}
-                                // Чанк примера — уже на наведении и на фокусе с
-                                // клавиатуры: между hover и кликом обычно хватает
-                                // времени скачать его целиком.
-                                onMouseEnter={() => compOf(t.file).preload?.()}
-                                onFocus={() => compOf(t.file).preload?.()}
                               >
                                 {/* Пункт меню у daisyUI — grid в СТРОКУ: без обёртки
                                   подпись, описание и имя пакета встали бы рядом и

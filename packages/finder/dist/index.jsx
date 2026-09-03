@@ -1299,7 +1299,7 @@ function moveSelection(args) {
 }
 var isMoveKey = (key) => key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight" || key === "Home" || key === "End" || key === "PageUp" || key === "PageDown";
 
-// ../../node_modules/.pnpm/slug@11.0.1/node_modules/slug/slug.js
+// ../../node_modules/.pnpm/slug@12.0.1/node_modules/slug/slug.js
 var base64;
 if (typeof window !== "undefined") {
   if (window.btoa) {
@@ -1396,7 +1396,7 @@ function slugify(string, opts) {
         char = localeMap[char];
       } else if (opts.charmap[char]) {
         char = opts.charmap[char].replace(opts.replacement, " ");
-      } else if (char.includes(opts.replacement)) {
+      } else if (opts.replacement !== "" && char.includes(opts.replacement)) {
         char = char.replace(opts.replacement, " ");
       } else {
         char = char.replace(disallowedChars, "");
@@ -2633,9 +2633,9 @@ function DumbFinder(props) {
   const [dropAt, setDropAt] = createSignal3(null);
   const [overFiles, setOverFiles] = createSignal3(false);
   const canMoveTo = (to) => !!src().move && editable() && dragging().length > 0 && dragging().every((k) => canMove(k, to));
-  function startDrag(ev, entry) {
+  function startDrag(ev, key) {
     if (!src().move || !editable()) return;
-    const keys = selected().has(entry.key) ? picked() : [entry.key];
+    const keys = selected().has(key) ? picked() : [key];
     setDragging(keys);
     ev.dataTransfer?.setData("text/plain", keys.join("\n"));
     if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
@@ -2691,6 +2691,56 @@ function DumbFinder(props) {
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = files ? "copy" : "move";
     setDropAt(to);
   }
+  const aim = (ev, selector, attr = "data-key") => {
+    const el = ev.target?.closest?.(selector);
+    return el ? { el, key: el.getAttribute(attr) ?? "" } : null;
+  };
+  const itemsDragStart = (ev) => {
+    const hit = aim(ev, ".dumb-finder-item");
+    if (hit) startDrag(ev, hit.key);
+  };
+  const itemsDragEnd = () => {
+    setDragging([]);
+    setDropAt(null);
+  };
+  const itemsDragOver = (ev) => {
+    const hit = aim(ev, ".dumb-finder-item");
+    if (hit?.el.dataset.dir) over(hit.key, ev);
+  };
+  const itemsDragLeave = (ev) => {
+    const hit = aim(ev, ".dumb-finder-item");
+    if (hit?.el.dataset.dir) setDropAt(null);
+  };
+  const itemsDrop = (ev) => {
+    const hit = aim(ev, ".dumb-finder-item");
+    if (!hit?.el.dataset.dir) return;
+    ev.stopPropagation();
+    void drop(hit.key, ev);
+  };
+  const treeDragOver = (ev) => {
+    const hit = aim(ev, ".dumb-finder-node");
+    if (hit) over(hit.key, ev);
+  };
+  const treeDragLeave = (ev) => {
+    if (aim(ev, ".dumb-finder-node")) setDropAt(null);
+  };
+  const treeDrop = (ev) => {
+    const hit = aim(ev, ".dumb-finder-node");
+    if (!hit) return;
+    ev.stopPropagation();
+    void drop(hit.key, ev);
+  };
+  const crumbsDragOver = (ev) => {
+    const hit = aim(ev, ".dumb-finder-crumb", "data-prefix");
+    if (hit && hit.key !== path()) over(hit.key, ev);
+  };
+  const crumbsDragLeave = (ev) => {
+    if (aim(ev, ".dumb-finder-crumb", "data-prefix")) setDropAt(null);
+  };
+  const crumbsDrop = (ev) => {
+    const hit = aim(ev, ".dumb-finder-crumb", "data-prefix");
+    if (hit) void drop(hit.key, ev);
+  };
   const [undoTick, bumpUndo] = createSignal3(0, { equals: false });
   const undoStack = createUndoStack({
     onChange: () => bumpUndo(0),
@@ -2892,17 +2942,12 @@ function DumbFinder(props) {
       return <li>
               <div
         class="dumb-finder-node"
+        data-key={e.key}
         data-here={path() === e.key ? "1" : void 0}
         data-open={open2() ? "1" : void 0}
         data-drop={dropAt() === e.key && path() !== e.key ? "1" : void 0}
         title={e.name}
         onClick={() => goto(e.key)}
-        onDragOver={(ev) => over(e.key, ev)}
-        onDragLeave={() => setDropAt(null)}
-        onDrop={(ev) => {
-          ev.stopPropagation();
-          void drop(e.key, ev);
-        }}
       >
                 {
         /* нет детей — распорка той же ширины, иначе имена скачут */
@@ -2954,7 +2999,12 @@ function DumbFinder(props) {
     value={find()}
     onInput={(ev) => setFind(ev.currentTarget.value)}
   />
-      <ul class="dumb-finder-tree">
+      <ul
+    class="dumb-finder-tree"
+    onDragOver={treeDragOver}
+    onDragLeave={treeDragLeave}
+    onDrop={treeDrop}
+  >
         <Branch prefix="" depth={0} />
       </ul>
     </nav>;
@@ -3019,6 +3069,11 @@ function DumbFinder(props) {
       itemsBox = el;
       queueMicrotask(measureCols);
     }}
+    onDragStart={itemsDragStart}
+    onDragEnd={itemsDragEnd}
+    onDragOver={itemsDragOver}
+    onDragLeave={itemsDragLeave}
+    onDrop={itemsDrop}
   >
               <For2 each={rows()}>
                 {(row) => {
@@ -3033,18 +3088,6 @@ function DumbFinder(props) {
       draggable={canWrite() && !!src().move ? "true" : "false"}
       title={entry.name}
       onDblClick={() => open(entry)}
-      onDragStart={(ev) => startDrag(ev, entry)}
-      onDragEnd={() => {
-        setDragging([]);
-        setDropAt(null);
-      }}
-      onDragOver={(ev) => entry.dir && over(entry.key, ev)}
-      onDragLeave={() => entry.dir && setDropAt(null)}
-      onDrop={(ev) => {
-        if (!entry.dir) return;
-        ev.stopPropagation();
-        void drop(entry.key, ev);
-      }}
     >
                     {props.children?.(entry, { selected: selected().has(entry.key), view: view() }) ?? <>
                         <Show2 when={view() === "list"}>
@@ -3177,7 +3220,12 @@ function DumbFinder(props) {
       погасить (`--dumb-finder-crumb-sep: none`) и не получить два подряд.
     */
   }
-        <nav class="dumb-finder-crumbs">
+        <nav
+    class="dumb-finder-crumbs"
+    onDragOver={crumbsDragOver}
+    onDragLeave={crumbsDragLeave}
+    onDrop={crumbsDrop}
+  >
           <ul>
             <For2 each={crumbs(path(), props.rootLabel ?? "\u0412\u0441\u0451")}>
               {(c) => <li>
@@ -3185,11 +3233,9 @@ function DumbFinder(props) {
     type="button"
     class="dumb-finder-crumb"
     aria-current={c.prefix === path() ? "true" : void 0}
+    data-prefix={c.prefix}
     data-drop={dropAt() === c.prefix && c.prefix !== path() ? "1" : void 0}
     onClick={() => goto(c.prefix)}
-    onDragOver={(ev) => c.prefix !== path() && over(c.prefix, ev)}
-    onDragLeave={() => setDropAt(null)}
-    onDrop={(ev) => void drop(c.prefix, ev)}
   >
                   {c.name}
                 </button>
