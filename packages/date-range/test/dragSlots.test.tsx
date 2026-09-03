@@ -47,10 +47,14 @@ function mount(extra: { busy?: Array<BusyMoment>; step?: number } = {}) {
 
 const slots = () => Array.from(host.querySelectorAll<HTMLElement>('[data-slot]'))
 const slotFor = (time: string) => slots().find((s) => s.dataset.slot === time)!
+// Ищем по `data-day` (полная ISO-дата), а НЕ по тексту кнопки. Поиск по тексту
+// был привязан к сегодняшнему числу и разваливался в те дни, когда то же число
+// встречается в хвосте предыдущего месяца: 31 августа `startsWith('31')`
+// находил 31 июля — соседний день, отрисованный в первой строке сетки и всегда
+// disabled. Клик по нему молча ничего не делал, и все шесть тестов падали
+// «слотов нет» — ровно раз в несколько месяцев, по календарю.
 const dayButton = (day: Day) =>
-  Array.from(host.querySelectorAll<HTMLButtonElement>('.dumb-cal-day')).find(
-    (b) => b.textContent?.trim().startsWith(String(Number(day.slice(8, 10)))),
-  )!
+  host.querySelector<HTMLButtonElement>(`.dumb-cal-day[data-day="${day}"]`)!
 
 /** выбрать ОДИН день: календарь берёт период двумя кликами по одной дате */
 function pickOneDay(day: Day) {

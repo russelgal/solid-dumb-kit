@@ -21,11 +21,12 @@
 - **[DumbPropsTable](docs/ru/DumbPropsTable.md)** — отладочная таблица пропсов: имя, тип и значение, включая функции и `undefined`, — то есть ровно то, что `JSON.stringify` молча выбрасывает.
 - **[DumbUserManager](docs/ru/DumbUserManager.md)** — экран администратора: выдать доступ, сменить роль, заблокировать, задать пароль, выкинуть из сессий. Кто стоит за ним, компонент не знает — каждый колбэк необязателен, поэтому один и тот же экран годится и администратору, и тому, кому можно только смотреть.
 - **[Длинные списки](docs/ru/Virtual.md)** — `createVirtualizer`: окно списка считается арифметикой по заявленному размеру строки, элементы не измеряются ни разу. Рядом `createRowIndex` — сортировка и фильтр миллиона строк в воркере, порциями и с отменой устаревшего запроса.
+- **[Locator](docs/ru/Locator.md)** — alt-клик по элементу открывает его разметку в редакторе: плагин Vite ставит на элементы место в исходнике, слушатель зовёт штатный `/__open-in-editor` дев-сервера. Только для разработки, в сборку не попадает.
 - **[Odata1C](docs/ru/Odata1C.md)** — клиент стандартного интерфейса OData 1С без привязки к фреймворку: Basic-авторизация, сборка запросов и обход капризов платформы. Работает и в браузере, и в Node.
 
 **🔗 Живое демо:** https://solid-dumb-kit.vercel.app/ · запускаемые исходники в [`examples/`](examples/).
 
-Ветка `0.x` рассчитана на **SolidJS 2** (`peerDependencies: solid-js >=2.0.0-rc.0`, `@solidjs/web`). Движки от фреймворка не зависят вовсе, а всё специфичное для Solid проходит через один слой совместимости (`@solid-dumb-kit/shared`), поэтому вернуть линию под Solid 1 недорого — но публикуемые пакеты собраны под вторую.
+Ветка `0.x` рассчитана на **SolidJS 2** (`peerDependencies: solid-js >=2.0.0-rc.0`, `@solidjs/web`). Первая линия не поддерживается и возвращаться в неё кит не будет: API второй линии зовётся напрямую, слоя совместимости нет. Движки жестов при этом от фреймворка не зависят вовсе — `sortableCore`, `selectionCore`, `gridCore` работают и без Solid.
 
 **📓 История изменений:** [CHANGELOG.md](CHANGELOG.md)
 
@@ -97,6 +98,7 @@ pnpm add "github:russelgal/solid-dumb-kit#table@0.5.0&path:/packages/table"
 | `@solid-dumb-kit/user-manager` | `DumbUserManager` — доступ сотрудников: роли, блокировки, пароли, сессии | — |
 | `@solid-dumb-kit/props-table` | `DumbPropsTable` — таблица пропсов прямо из типа | — |
 | `@solid-dumb-kit/odata-1c` | клиент OData 1С — без Solid | — |
+| `@solid-dumb-kit/locator` | alt-клик по элементу открывает его разметку в редакторе — плагин Vite и слушатель, только для разработки | `@babel/parser` |
 | `@solid-dumb-kit/utils` | формат, slug, zip, imgproxy | `fflate`, `slug` |
 
 **Основание** — на нём стоят остальные, ставится сам как зависимость:
@@ -139,6 +141,7 @@ import { SelectionArea, ResizableGrid, DumbSortable } from 'solid-dumb-kit'
 | `createRowIndex` / `RowIndexOptions` / `RowIndexResult` / `RowColumn` / `RowQuery` | примитив | [docs/ru/Virtual.md#createrowindex--сортировка-и-фильтр-вне-главного-потока](docs/ru/Virtual.md#createrowindex--сортировка-и-фильтр-вне-главного-потока) |
 | `OdataClient` / `createOdataClient` / `OdataClientOptions` / `OdataListResponse` | клиент | [docs/ru/Odata1C.md](docs/ru/Odata1C.md) |
 | `OdataError` / `odataString` / `toBase64` | клиент | [docs/ru/Odata1C.md#хелперы](docs/ru/Odata1C.md#хелперы) |
+| `createLocator` / `locator` / `markLocations` / `LocatorOptions` / `LocatorPluginOptions` | инструмент | [docs/ru/Locator.md](docs/ru/Locator.md) |
 
 ## CSS
 

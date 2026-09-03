@@ -1,13 +1,13 @@
 {
-  "name": "@solid-dumb-kit/timeline",
-  "version": "0.2.0",
-  "description": "Шахматка: ресурсы × дни, полосы с драгом и ресайзом по сетке",
+  "name": "@solid-dumb-kit/locator",
+  "version": "0.0.0",
+  "description": "Alt-клик по элементу открывает его разметку в редакторе",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/russelgal/solid-dumb-kit",
-    "directory": "packages/timeline"
+    "directory": "packages/locator"
   },
   "homepage": "https://github.com/russelgal/solid-dumb-kit#readme",
   "sideEffects": false,
@@ -16,16 +16,22 @@
     "src",
     "README.md"
   ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
+  "main": "./dist/index/index.js",
+  "module": "./dist/index/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "solid-dumb-kit-source": "./src/index.tsx",
-      "solid": "./dist/index.jsx",
+      "solid-dumb-kit-source": "./src/index.ts",
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "default": "./dist/index/index.js"
+      }
+    },
+    "./vite": {
+      "solid-dumb-kit-source": "./src/vite.ts",
+      "import": {
+        "types": "./dist/vite.d.ts",
+        "default": "./dist/vite/index.js"
       }
     }
   },
@@ -33,18 +39,10 @@
     "build": "tsup --config ../../configs/tsup.ts && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsup --config ../../configs/tsup.ts --watch"
   },
-  "peerDependencies": {
-    "@solidjs/web": ">=2.0.0-rc.0",
-    "solid-js": ">=2.0.0-rc.0"
-  },
   "dependencies": {
-    "temporal-polyfill": "^1.0.4"
+    "@babel/parser": "^8.0.4"
   },
   "publishConfig": {
     "access": "public"
-  },
-  "devDependencies": {
-    "@solid-dumb-kit/shared": "workspace:*",
-    "@solidjs/web": "2.0.0-rc.0"
   }
 }

@@ -1,25 +1,32 @@
-import { createMemo, createComponent, Show, For, flatten, sharedConfig, createRenderEffect } from 'solid-js';
+import { createMemo, createComponent, Show, For, getOwner, runWithOwner, createRenderEffect, flatten, sharedConfig } from 'solid-js';
 
-// ../../node_modules/.pnpm/@solidjs+web@2.0.0-rc.0_solid-js@2.0.0-rc.0/node_modules/@solidjs/web/dist/web.js
+// ../../node_modules/.pnpm/@solidjs+web@2.0.0-rc.4_solid-js@2.0.0-rc.4/node_modules/@solidjs/web/dist/web.js
 var $$SLOT = /* @__PURE__ */ Symbol("slot");
 var transparentOptions = {
   transparent: true,
   sync: true
 };
-var effect = (fn, effectFn, options) => createRenderEffect(fn, effectFn, options ? {
-  sync: true,
-  ...options,
-  transparent: !options.scope
-} : transparentOptions);
+function effect(fn, effectFn, options) {
+  createRenderEffect(fn, effectFn, options ? {
+    sync: true,
+    ...options,
+    transparent: !options.scope
+  } : transparentOptions);
+}
 function reconcileArrays(parentNode, a, b, marker) {
   let bLength = b.length, aEnd = a.length, bEnd = bLength, aStart = 0, bStart = 0, tail = a[aEnd - 1], tailTag = tail[$$SLOT], after = tail.parentNode === parentNode && (!tailTag || tailTag === marker) ? tail.nextSibling : marker || null, map = null, anchor, anchorTag;
+  const isLive = (n) => {
+    if (!n) return false;
+    const tag = n[$$SLOT];
+    return n.parentNode === parentNode && (!tag || tag === marker);
+  };
   while (aStart < aEnd || bStart < bEnd) {
-    if (a[aStart] === b[bStart]) {
+    if (a[aStart] === b[bStart] && isLive(a[aStart])) {
       aStart++;
       bStart++;
       continue;
     }
-    while (a[aEnd - 1] === b[bEnd - 1]) {
+    while (a[aEnd - 1] === b[bEnd - 1] && isLive(a[aEnd - 1])) {
       aEnd--;
       bEnd--;
     }
@@ -104,6 +111,7 @@ function reconcileArrays(parentNode, a, b, marker) {
     }
   }
 }
+var listDriver;
 var INNER_OWNED = {};
 function create(html, bypassGuard, flag) {
   const t = document.createElement("template");
@@ -160,6 +168,11 @@ function insert(parent, accessor, marker, initial, options) {
   const multi = marker !== void 0;
   if (multi && !initial) initial = [];
   if (hydrationRt !== null) initial = hydrationRt.claimInitial(parent, multi, initial);
+  if (listDriver !== void 0 && typeof accessor === "function" && accessor.$ll !== void 0) {
+    const listAccessor = accessor;
+    const owner = getOwner();
+    if (listDriver(parent, accessor, marker, () => runWithOwner(owner, () => insert(parent, () => listAccessor(), marker, marker !== void 0 ? [] : void 0, options)))) return;
+  }
   if (typeof accessor !== "function") {
     accessor = normalize(accessor, initial, multi, true);
     if (typeof accessor !== "function") {
@@ -233,7 +246,14 @@ function flattenClassList(list, result) {
 function insertExpression(parent, value, current, marker) {
   if (hydrationRt !== null && isHydrating(parent)) {
     if (value && value !== current) {
-      for (const n of Array.isArray(value) ? value : [value]) if (n && n.nodeType && !isHydrating(n)) return current;
+      const arr = Array.isArray(value);
+      for (const n of arr ? value : [value]) {
+        if (n && n.nodeType) {
+          if (!isHydrating(n)) return current;
+        } else if (arr && (typeof n === "string" || typeof n === "number")) {
+          return current;
+        }
+      }
     }
     return value;
   }
@@ -265,6 +285,16 @@ function insertExpression(parent, value, current, marker) {
     if (marker) value[$$SLOT] = marker;
   } else if (Array.isArray(value)) {
     const currentArray = current && Array.isArray(current);
+    for (let i = 0, len = value.length; i < len; i++) {
+      const item = value[i], t2 = typeof item;
+      if (t2 === "string" || t2 === "number") {
+        const prev = currentArray ? current[i] : void 0;
+        if (prev && prev.nodeType === 3) {
+          if (prev.data !== "" + item) prev.data = item;
+          value[i] = prev;
+        } else value[i] = document.createTextNode(item);
+      }
+    }
     if (value.length === 0) {
       cleanChildren(parent, current, marker);
     } else if (currentArray) {
@@ -285,10 +315,10 @@ function normalize(value, current, multi, doNotUnwrap) {
   });
   if (doNotUnwrap && typeof value === "function") return value;
   if (multi && !Array.isArray(value)) value = [value != null ? value : ""];
-  if (Array.isArray(value)) {
+  if (sharedConfig.hydrating && Array.isArray(value)) {
     for (let i = 0, len = value.length; i < len; i++) {
       const item = value[i], prev = current && current[i], t = typeof item;
-      if (t === "string" || t === "number") value[i] = prev && prev.nodeType === 3 && (sharedConfig.hydrating || prev.data === "" + item) ? prev : document.createTextNode(item);
+      if ((t === "string" || t === "number") && prev && prev.nodeType === 3) value[i] = prev;
     }
   }
   return value;

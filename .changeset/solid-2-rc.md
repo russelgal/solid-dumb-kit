@@ -28,4 +28,4 @@ Solid 2 дошёл до release candidate: `peerDependencies` подняты с
 Заодно починена скомпилированная ветка `dist/index.js`: сборка шла через
 компилятор первой линии (`babel-preset-solid@1`), который генерировал импорты
 из удалённой в Solid 2 сабпути `solid-js/web`. Компилятор запинен на
-`babel-preset-solid@2.0.0-rc.0`, импорт теперь идёт из `@solidjs/web`.
+`babel-preset-solid@2.0.0-rc.2`, импорт теперь идёт из `@solidjs/web`.

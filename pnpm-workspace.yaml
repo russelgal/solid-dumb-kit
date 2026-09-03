@@ -9,4 +9,4 @@ onlyBuiltDependencies:
 # а тот генерирует импорты из solid-js/web — сабпути, которого в Solid 2 нет.
 # Скомпилированная ветка dist/index.js от этого не резолвится у потребителя.
 overrides:
-  babel-preset-solid: 2.0.0-rc.0
+  babel-preset-solid: 2.0.0-rc.2

@@ -20,9 +20,21 @@ import * as preset from 'tsup-preset-solid'
  */
 const entry = () => (existsSync('src/index.tsx') ? 'src/index.tsx' : 'src/index.ts')
 
+/**
+ * Половина для СБОРЩИКА — вторым входом, тем же правилом «есть файл, значит
+ * собираем» (`locator`: плагин Vite, размечающий разметку). Она уезжает
+ * подпутём `@solid-dumb-kit/<пакет>/vite`, потому что живёт в конфиге сборки, а
+ * не в браузере, и тянет за собой парсер, которому в бандле страницы делать
+ * нечего.
+ */
+const entries = () => {
+  const main = [{ entry: entry() }]
+  return existsSync('src/vite.ts') ? [...main, { entry: 'src/vite.ts', name: 'vite' }] : main
+}
+
 export default defineConfig(config => {
   const parsed = preset.parsePresetOptions(
-    { entries: [{ entry: entry() }], drop_console: true, cjs: false },
+    { entries: entries(), drop_console: true, cjs: false },
     !!config.watch,
   )
 

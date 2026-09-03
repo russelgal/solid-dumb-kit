@@ -23,45 +23,46 @@ if (typeof (globalThis as any).localStorage?.getItem !== 'function') {
   после клика, видит пустоту.
 
   Чтобы не расставлять `await` по трём сотням мест, флашим сами: после каждого
-  события и каждого клика зовём `flush()`. Так тесты остаются синхронными и
-  одинаково работают на обеих линиях — на Solid 1 функции просто нет.
+  события и каждого клика зовём `flush()`. Так тесты остаются синхронными.
+
+  Импорт ИМЕНОВАННЫЙ, без проверки «а есть ли `flush`»: кит живёт на второй
+  линии и только на ней, первая не поддерживается. Была проверка `if (flush)` —
+  и она молча выключала весь флаш целиком, стоило рантайму переименовать
+  экспорт: тесты не падали, а начинали видеть старый DOM.
 */
-const solidRuntime = await import('solid-js')
-const flush = (solidRuntime as { flush?: () => void }).flush
+import { flush } from 'solid-js'
 
-if (flush) {
-  /*
-    Патчим не только `EventTarget.prototype`, но и `document` с `window`
-    поимённо: у happy-dom на них СВОЙ `dispatchEvent`, который прототип
-    перекрывает. Без этого события жестов (`document.dispatchEvent`
-    с `mousemove`) флаш не вызывали, и тест видел старую раскладку.
-  */
-  const patchDispatch = (target: EventTarget) => {
-    const own = target.dispatchEvent.bind(target)
-    Object.defineProperty(target, 'dispatchEvent', {
-      configurable: true,
-      value(ev: Event) {
-        const out = own(ev)
-        flush()
-        return out
-      },
-    })
-  }
+/*
+  Патчим не только `EventTarget.prototype`, но и `document` с `window`
+  поимённо: у happy-dom на них СВОЙ `dispatchEvent`, который прототип
+  перекрывает. Без этого события жестов (`document.dispatchEvent`
+  с `mousemove`) флаш не вызывали, и тест видел старую раскладку.
+*/
+const patchDispatch = (target: EventTarget) => {
+  const own = target.dispatchEvent.bind(target)
+  Object.defineProperty(target, 'dispatchEvent', {
+    configurable: true,
+    value(ev: Event) {
+      const out = own(ev)
+      flush()
+      return out
+    },
+  })
+}
 
-  const dispatch = EventTarget.prototype.dispatchEvent
-  EventTarget.prototype.dispatchEvent = function (ev: Event) {
-    const out = dispatch.call(this, ev)
-    flush()
-    return out
-  }
-  patchDispatch(document)
-  patchDispatch(window)
+const dispatch = EventTarget.prototype.dispatchEvent
+EventTarget.prototype.dispatchEvent = function (ev: Event) {
+  const out = dispatch.call(this, ev)
+  flush()
+  return out
+}
+patchDispatch(document)
+patchDispatch(window)
 
-  const click = HTMLElement.prototype.click
-  HTMLElement.prototype.click = function () {
-    click.call(this)
-    flush()
-  }
+const click = HTMLElement.prototype.click
+HTMLElement.prototype.click = function () {
+  click.call(this)
+  flush()
 }
 
 /** явное ожидание для мест, где обновление приходит не из события */
@@ -70,9 +71,9 @@ Object.defineProperty(globalThis, 'settle', {
   value: async () => {
     // Две микрозадачи, а не одна: снимок IntersectionObserver в тестах тоже
     // приходит микротаском, и его обработка занимает следующую очередь.
-    flush?.()
+    flush()
     await Promise.resolve()
-    flush?.()
+    flush()
     await Promise.resolve()
   },
 })
