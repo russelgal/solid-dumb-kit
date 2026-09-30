@@ -235,7 +235,10 @@ function Row(p) {
     }
   }), (() => {
     var _el$6 = _tmpl$5();
-    insert(_el$6, () => p.node.label);
+    insert(_el$6, (() => {
+      var _c$ = memo(() => !!p.tree.renderLabel);
+      return () => _c$() ? p.tree.renderLabel(p.node) : p.node.label;
+    })());
     return _el$6;
   })(), createComponent(Show, {
     get when() {

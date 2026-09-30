@@ -67,6 +67,22 @@ falls back to `▸`/`▾` and rows go without icons.
 the request goes out exactly when someone walks in, because a branch is only
 rendered while it's open.
 
+## A label per row
+
+```tsx
+<DumbTree
+  roots={roots()}   // label is plain text: search runs on it
+  renderLabel={(node) => (
+    <Link to="/units" search={{ unit: node.id }}>{node.label}</Link>
+  )}
+/>
+```
+
+`renderLabel` is called when a row renders — that is, only for rows that are
+visible. Markup in `label` itself is created up front for the whole tree,
+collapsed branches included, and on hundreds of nodes with router links that's
+tens of milliseconds for nothing. `label` stays text: search works on it.
+
 ## Props
 
 | prop | type | what it does |
@@ -83,6 +99,7 @@ rendered while it's open.
 | `icons` | `DumbTreeIcons` | `twist` · `folder` · `folderOpen` · `leaf`, all class names |
 | `size` | `string` | the whole tree in one type size |
 | `stripes` | `boolean` | zebra rows; on by default |
+| `renderLabel` | `(node) => JSX.Element` | your own row label instead of `label`; called for visible rows only |
 | `renderAction` | `(node) => JSX.Element` | your content on the right of a row |
 | `getDragData` | `(node) => {type, id, label} \| null` | makes the row draggable |
 

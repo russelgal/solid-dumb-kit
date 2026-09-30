@@ -91,6 +91,15 @@ export type DumbTreeProps = {
   /** полосы через строку; по умолчанию есть */
   stripes?: boolean;
 
+  /**
+   * Своя подпись строки вместо `label` — например, ссылка роутера.
+   *
+   * Зовётся при отрисовке строки, то есть только для строк, которые видны:
+   * в свёрнутых ветках подписи не строятся вовсе. Готовая разметка в `label`
+   * создаётся сразу для всего дерева — на сотнях узлов со ссылками это десятки
+   * миллисекунд впустую. `label` при этом остаётся текстом: по нему ищут.
+   */
+  renderLabel?: (node: TreeNode) => JSX.Element;
   /** свой контент справа в строке (кнопки, бейджи) */
   renderAction?: (node: TreeNode) => JSX.Element;
   /** узел можно тащить: что вернули — то и уедет в `dataTransfer` */
@@ -393,7 +402,7 @@ function Row(p: {
         <span class={`dumb-tree-icon size-[15px] shrink-0 ${icon()}`} />
       </Show>
       <span class="dumb-tree-label min-w-0 flex-1 truncate">
-        {p.node.label}
+        {p.tree.renderLabel ? p.tree.renderLabel(p.node) : p.node.label}
       </span>
       <Show when={p.tree.renderAction}>{p.tree.renderAction!(p.node)}</Show>
       <Show when={p.node.badge !== undefined && p.node.badge !== ""}>

@@ -188,7 +188,7 @@ function Row(p) {
         <span class={`dumb-tree-icon size-[15px] shrink-0 ${icon()}`} />
       </Show>
       <span class="dumb-tree-label min-w-0 flex-1 truncate">
-        {p.node.label}
+        {p.tree.renderLabel ? p.tree.renderLabel(p.node) : p.node.label}
       </span>
       <Show when={p.tree.renderAction}>{p.tree.renderAction(p.node)}</Show>
       <Show when={p.node.badge !== void 0 && p.node.badge !== ""}>

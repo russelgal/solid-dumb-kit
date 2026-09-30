@@ -80,6 +80,34 @@ describe('раскрытие', () => {
   })
 })
 
+describe('подпись по строке', () => {
+  it('renderLabel зовётся только для видимых строк, по мере раскрытия', async () => {
+    const seen: string[] = []
+    mount({
+      renderLabel: (node: TreeNode) => {
+        seen.push(node.id)
+        return <a href={`#${node.id}`}>{node.label}</a>
+      },
+    })
+
+    // Свёрнутая ветка своих подписей не строит вовсе.
+    expect(seen.sort()).toEqual(['docs', 'readme'])
+    expect(rowFor('readme')!.querySelector('a')!.getAttribute('href')).toBe('#readme')
+
+    twist('docs')!.click()
+    expect(seen).toContain('docs/act')
+    expect(rowFor('docs/act')!.querySelector('a')!.textContent).toBe('Акт')
+  })
+
+  it('поиск идёт по тексту label, а не по разметке подписи', async () => {
+    mount({
+      renderLabel: (node: TreeNode) => <b>{node.label}</b>,
+      query: () => 'счёт',
+    })
+    expect(labels()).toEqual(['Документы', 'Счёт'])
+  })
+})
+
 describe('ленивая ветка', () => {
   it('корни тянутся через loadChildren, когда roots не заданы', async () => {
     const load = vi.fn(async (parent: string) =>
