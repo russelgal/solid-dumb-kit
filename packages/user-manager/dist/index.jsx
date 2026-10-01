@@ -193,62 +193,49 @@ function DumbUserManager(props) {
               {(u) => (
     // заблокированную строку помечаем фоном, а не прозрачностью:
     // выцветший текст в ките запрещён, а прочитать его всё равно надо
+    //
+    // ⚠️ Внутри строки — условия в разметке, а не <Show>: строк
+    // десятки, и по дюжине компонентов на каждую (каждый со своим
+    // владельцем и мемо) делали создание таблицы самым дорогим
+    // местом экрана. Условие в разметке — одно вычисление; узлы
+    // появляются и пропадают с ним так же.
     <tr class={u.banned ? "bg-base-200" : ""}>
                   <td>
                     <div class="font-medium">
                       {u.name}
-                      <Show when={isSelf(u.id)}>
-                        <span class="badge badge-ghost badge-sm ml-2">{t("you")}</span>
-                      </Show>
-                      <Show when={u.isOwner}>
-                        <span class="badge badge-neutral badge-sm ml-2" title={t("ownerHint")}>
+                      {isSelf(u.id) && <span class="badge badge-ghost badge-sm ml-2">{t("you")}</span>}
+                      {u.isOwner && <span class="badge badge-neutral badge-sm ml-2" title={t("ownerHint")}>
                           {t("owner")}
-                        </span>
-                      </Show>
+                        </span>}
                     </div>
                     <div class="text-base-content text-xs">{u.email}</div>
                   </td>
 
                   <td>
-                    <Show
-      when={props.onSetRole && roles().length > 0}
-      fallback={roles().find((r) => r.value === u.role)?.label ?? u.role}
-    >
-                      <select
+                    {props.onSetRole && roles().length > 0 ? <select
       class="select select-sm w-36"
       value={u.role}
       disabled={busy() === "role:" + u.id || locked(u)}
       onChange={(e) => void run("role:" + u.id, () => props.onSetRole(u.id, e.currentTarget.value))}
     >
                         <For each={roles()}>{(r) => <option value={r.value}>{r.label}</option>}</For>
-                      </select>
-                    </Show>
+                      </select> : roles().find((r) => r.value === u.role)?.label ?? u.role}
                   </td>
 
                   <td>
-                    <Show
-      when={u.banned}
-      fallback={<span class="text-success text-xs">
-                          {t("active")}
-                          <Show when={u.sessions !== void 0 && u.sessions > 0}>
-                            <span class="text-base-content">
-                              {" \xB7 " + t("sessions") + ": " + u.sessions}
-                            </span>
-                          </Show>
-                        </span>}
-    >
-                      <span class="text-error text-xs" title={u.banReason ?? ""}>
+                    {u.banned ? <span class="text-error text-xs" title={u.banReason ?? ""}>
                         {t("banned")}
-                      </span>
-                    </Show>
+                      </span> : <span class="text-success text-xs">
+                        {t("active")}
+                        {u.sessions !== void 0 && u.sessions > 0 && <span class="text-base-content">{" \xB7 " + t("sessions") + ": " + u.sessions}</span>}
+                      </span>}
                   </td>
 
                   <td class="text-base-content text-sm whitespace-nowrap">{fmt(u.createdAt)}</td>
 
                   <td>
                     <div class="flex flex-wrap justify-end gap-1">
-                      <Show when={props.onSetPassword}>
-                        <button
+                      {props.onSetPassword && <button
       class="btn btn-sm btn-ghost"
       disabled={locked(u)}
       title={locked(u) ? t("ownerPasswordHint") : t("setPasswordHint")}
@@ -258,33 +245,24 @@ function DumbUserManager(props) {
       }}
     >
                           {t("setPassword")}
-                        </button>
-                      </Show>
+                        </button>}
 
-                      <Show when={u.banned ? props.onUnban : props.onBan}>
-                        <Show
-      when={u.banned}
-      fallback={<button
-        class="btn btn-sm btn-ghost"
-        disabled={isSelf(u.id) || locked(u) || busy() === "ban:" + u.id}
-        title={locked(u) ? t("banOwnerHint") : isSelf(u.id) ? t("banSelfHint") : t("banHint")}
-        onClick={() => void run("ban:" + u.id, () => props.onBan(u.id, ""), t("bannedOk"))}
-      >
-                              {t("ban")}
-                            </button>}
-    >
-                          <button
+                      {u.banned ? props.onUnban && <button
       class="btn btn-sm btn-ghost text-success"
       disabled={busy() === "unban:" + u.id}
       onClick={() => void run("unban:" + u.id, () => props.onUnban(u.id), t("unbannedOk"))}
     >
-                            {t("unban")}
-                          </button>
-                        </Show>
-                      </Show>
+                              {t("unban")}
+                            </button> : props.onBan && <button
+      class="btn btn-sm btn-ghost"
+      disabled={isSelf(u.id) || locked(u) || busy() === "ban:" + u.id}
+      title={locked(u) ? t("banOwnerHint") : isSelf(u.id) ? t("banSelfHint") : t("banHint")}
+      onClick={() => void run("ban:" + u.id, () => props.onBan(u.id, ""), t("bannedOk"))}
+    >
+                              {t("ban")}
+                            </button>}
 
-                      <Show when={props.onRevokeSessions}>
-                        <button
+                      {props.onRevokeSessions && <button
       class="btn btn-sm btn-ghost"
       disabled={busy() === "revoke:" + u.id || u.sessions === 0 || locked(u)}
       title={t("revokeHint")}
@@ -295,22 +273,10 @@ function DumbUserManager(props) {
       )}
     >
                           {t("revoke")}
-                        </button>
-                      </Show>
+                        </button>}
 
-                      <Show when={props.onRemove}>
-                        <Show
-      when={confirmRemove() === u.id}
-      fallback={<button
-        class="btn btn-sm btn-ghost text-error"
-        disabled={isSelf(u.id) || locked(u)}
-        title={locked(u) ? t("removeOwnerHint") : isSelf(u.id) ? t("removeSelfHint") : t("removeHint")}
-        onClick={() => setConfirmRemove(u.id)}
-      >
-                              {t("remove")}
-                            </button>}
-    >
-                          <button
+                      {props.onRemove && (confirmRemove() === u.id ? <>
+                            <button
       class="btn btn-sm btn-error"
       disabled={busy() === "remove:" + u.id}
       onClick={() => void run(
@@ -322,17 +288,22 @@ function DumbUserManager(props) {
         t("removedOk")
       )}
     >
-                            {t("removeConfirm")}
-                          </button>
-                          <button class="btn btn-sm btn-ghost" onClick={() => setConfirmRemove(null)}>
-                            {t("cancel")}
-                          </button>
-                        </Show>
-                      </Show>
+                              {t("removeConfirm")}
+                            </button>
+                            <button class="btn btn-sm btn-ghost" onClick={() => setConfirmRemove(null)}>
+                              {t("cancel")}
+                            </button>
+                          </> : <button
+      class="btn btn-sm btn-ghost text-error"
+      disabled={isSelf(u.id) || locked(u)}
+      title={locked(u) ? t("removeOwnerHint") : isSelf(u.id) ? t("removeSelfHint") : t("removeHint")}
+      onClick={() => setConfirmRemove(u.id)}
+    >
+                            {t("remove")}
+                          </button>)}
                     </div>
 
-                    <Show when={pwFor() === u.id}>
-                      <form
+                    {pwFor() === u.id && <form
       class="mt-2 flex justify-end gap-1"
       onSubmit={(e) => {
         e.preventDefault();
@@ -359,8 +330,7 @@ function DumbUserManager(props) {
                         <button type="button" class="btn btn-sm btn-ghost" onClick={() => setPwFor(null)}>
                           {t("cancel")}
                         </button>
-                      </form>
-                    </Show>
+                      </form>}
                   </td>
                 </tr>
   )}

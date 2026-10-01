@@ -30,18 +30,18 @@ var _tmpl$6 = /* @__PURE__ */ template(`<div role=alert class="alert alert-error
 var _tmpl$7 = /* @__PURE__ */ template(`<div role=alert class="alert alert-success py-2 text-sm">`);
 var _tmpl$8 = /* @__PURE__ */ template(`<div><!><!><!><div class="bg-base-100 rounded-box border-base-300 overflow-x-auto border shadow-sm"><table class=table><thead><tr><th></th><th></th><th></th><th></th><th class=text-right></th></tr></thead><tbody>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<option>`);
-var _tmpl$0 = /* @__PURE__ */ template(`<span class="badge badge-ghost badge-sm ml-2">`);
-var _tmpl$1 = /* @__PURE__ */ template(`<span class="badge badge-neutral badge-sm ml-2">`);
-var _tmpl$10 = /* @__PURE__ */ template(`<select class="select select-sm w-36">`);
-var _tmpl$11 = /* @__PURE__ */ template(`<span class="text-error text-xs">`);
-var _tmpl$12 = /* @__PURE__ */ template(`<button class="btn btn-sm btn-ghost">`);
-var _tmpl$13 = /* @__PURE__ */ template(`<button class="btn btn-sm btn-ghost text-success">`);
-var _tmpl$14 = /* @__PURE__ */ template(`<button class="btn btn-sm btn-error">`);
-var _tmpl$15 = /* @__PURE__ */ template(`<form class="mt-2 flex justify-end gap-1"><input class="input input-sm w-44"autocomplete=off><button class="btn btn-sm btn-neutral"></button><button type=button class="btn btn-sm btn-ghost">`);
-var _tmpl$16 = /* @__PURE__ */ template(`<tr><td><div class=font-medium><!><!><!></div><div class="text-base-content text-xs"></div></td><td></td><td></td><td class="text-base-content text-sm whitespace-nowrap"></td><td><div class="flex flex-wrap justify-end gap-1"><!><!><!><!>`);
-var _tmpl$17 = /* @__PURE__ */ template(`<span class=text-base-content>`);
-var _tmpl$18 = /* @__PURE__ */ template(`<span class="text-success text-xs"><!><!>`);
-var _tmpl$19 = /* @__PURE__ */ template(`<button class="btn btn-sm btn-ghost text-error">`);
+var _tmpl$0 = /* @__PURE__ */ template(`<tr><td><div class=font-medium><!><!><!></div><div class="text-base-content text-xs"></div></td><td></td><td></td><td class="text-base-content text-sm whitespace-nowrap"></td><td><div class="flex flex-wrap justify-end gap-1"><!><!><!><!>`);
+var _tmpl$1 = /* @__PURE__ */ template(`<span class="badge badge-ghost badge-sm ml-2">`);
+var _tmpl$10 = /* @__PURE__ */ template(`<span class="badge badge-neutral badge-sm ml-2">`);
+var _tmpl$11 = /* @__PURE__ */ template(`<select class="select select-sm w-36">`);
+var _tmpl$12 = /* @__PURE__ */ template(`<span class="text-error text-xs">`);
+var _tmpl$13 = /* @__PURE__ */ template(`<span class="text-success text-xs"><!><!>`);
+var _tmpl$14 = /* @__PURE__ */ template(`<span class=text-base-content>`);
+var _tmpl$15 = /* @__PURE__ */ template(`<button class="btn btn-sm btn-ghost">`);
+var _tmpl$16 = /* @__PURE__ */ template(`<button class="btn btn-sm btn-ghost text-success">`);
+var _tmpl$17 = /* @__PURE__ */ template(`<button class="btn btn-sm btn-error">`);
+var _tmpl$18 = /* @__PURE__ */ template(`<button class="btn btn-sm btn-ghost text-error">`);
+var _tmpl$19 = /* @__PURE__ */ template(`<form class="mt-2 flex justify-end gap-1"><input class="input input-sm w-44"autocomplete=off><button class="btn btn-sm btn-neutral"></button><button type=button class="btn btn-sm btn-ghost">`);
 var RU = {
   title: "\u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438",
   createTitle: "\u0412\u044B\u0434\u0430\u0442\u044C \u0434\u043E\u0441\u0442\u0443\u043F",
@@ -262,54 +262,51 @@ function DumbUserManager(props) {
     children: (u) => (
       // заблокированную строку помечаем фоном, а не прозрачностью:
       // выцветший текст в ките запрещён, а прочитать его всё равно надо
+      //
+      // ⚠️ Внутри строки — условия в разметке, а не <Show>: строк
+      // десятки, и по дюжине компонентов на каждую (каждый со своим
+      // владельцем и мемо) делали создание таблицы самым дорогим
+      // местом экрана. Условие в разметке — одно вычисление; узлы
+      // появляются и пропадают с ним так же.
       (() => {
-        var _el$33 = _tmpl$16(), _el$34 = _el$33.firstChild, _el$35 = _el$34.firstChild, _el$38 = _el$35.firstChild, _el$39 = _el$38.nextSibling, _el$40 = _el$39.nextSibling, _el$41 = _el$35.nextSibling, _el$42 = _el$34.nextSibling, _el$44 = _el$42.nextSibling, _el$46 = _el$44.nextSibling, _el$47 = _el$46.nextSibling, _el$48 = _el$47.firstChild, _el$54 = _el$48.firstChild, _el$55 = _el$54.nextSibling, _el$56 = _el$55.nextSibling, _el$57 = _el$56.nextSibling;
-        insert(_el$35, () => u.name, _el$38);
-        insert(_el$35, createComponent(Show, {
-          get when() {
-            return isSelf(u.id);
-          },
-          get children() {
-            var _el$36 = _tmpl$0();
-            insert(_el$36, () => t("you"));
-            return _el$36;
-          }
-        }), _el$39);
-        insert(_el$35, createComponent(Show, {
-          get when() {
-            return u.isOwner;
-          },
-          get children() {
-            var _el$37 = _tmpl$1();
-            insert(_el$37, () => t("owner"));
+        var _el$33 = _tmpl$0(), _el$34 = _el$33.firstChild, _el$35 = _el$34.firstChild, _el$36 = _el$35.firstChild, _el$37 = _el$36.nextSibling, _el$38 = _el$37.nextSibling, _el$39 = _el$35.nextSibling, _el$40 = _el$34.nextSibling, _el$41 = _el$40.nextSibling, _el$42 = _el$41.nextSibling, _el$43 = _el$42.nextSibling, _el$44 = _el$43.firstChild, _el$45 = _el$44.firstChild, _el$46 = _el$45.nextSibling, _el$47 = _el$46.nextSibling, _el$48 = _el$47.nextSibling;
+        insert(_el$35, () => u.name, _el$36);
+        insert(_el$35, (() => {
+          var _c$ = memo(() => !!isSelf(u.id));
+          return () => _c$() ? (() => {
+            var _el$49 = _tmpl$1();
+            insert(_el$49, () => t("you"));
+            return _el$49;
+          })() : isSelf(u.id);
+        })(), _el$37);
+        insert(_el$35, (() => {
+          var _c$2 = memo(() => !!u.isOwner);
+          return () => _c$2() ? (() => {
+            var _el$50 = _tmpl$10();
+            insert(_el$50, () => t("owner"));
             effect(() => t("ownerHint"), (_v$) => {
-              setAttribute(_el$37, "title", _v$);
+              setAttribute(_el$50, "title", _v$);
             });
-            return _el$37;
-          }
-        }), _el$40);
-        insert(_el$41, () => u.email);
-        insert(_el$42, createComponent(Show, {
-          get when() {
-            return memo(() => !!props.onSetRole)() ? roles().length > 0 : props.onSetRole;
-          },
-          get fallback() {
-            return roles().find((r) => r.value === u.role)?.label ?? u.role;
-          },
-          get children() {
-            var _el$43 = _tmpl$10();
-            _el$43.addEventListener("change", (e) => void run("role:" + u.id, () => props.onSetRole(u.id, e.currentTarget.value)));
-            insert(_el$43, createComponent(For, {
+            return _el$50;
+          })() : u.isOwner;
+        })(), _el$38);
+        insert(_el$39, () => u.email);
+        insert(_el$40, (() => {
+          var _c$3 = memo(() => !!(props.onSetRole && roles().length > 0));
+          return () => _c$3() ? (() => {
+            var _el$51 = _tmpl$11();
+            _el$51.addEventListener("change", (e) => void run("role:" + u.id, () => props.onSetRole(u.id, e.currentTarget.value)));
+            insert(_el$51, createComponent(For, {
               get each() {
                 return roles();
               },
               children: (r) => (() => {
-                var _el$62 = _tmpl$9();
-                insert(_el$62, () => r.label);
+                var _el$52 = _tmpl$9();
+                insert(_el$52, () => r.label);
                 effect(() => r.value, (_v$) => {
-                  _el$62.value = _v$;
+                  _el$52.value = _v$;
                 });
-                return _el$62;
+                return _el$52;
               })()
             }));
             effect(() => ({
@@ -319,52 +316,45 @@ function DumbUserManager(props) {
               e,
               t: t2
             }, _p$) => {
-              queueMicrotask(() => _el$43.value = e) || (_el$43.value = e);
-              t2 !== _p$?.t && setAttribute(_el$43, "disabled", t2);
+              queueMicrotask(() => _el$51.value = e) || (_el$51.value = e);
+              t2 !== _p$?.t && setAttribute(_el$51, "disabled", t2);
             });
-            return _el$43;
-          }
-        }));
-        insert(_el$44, createComponent(Show, {
-          get when() {
-            return u.banned;
-          },
-          get fallback() {
-            var _el$63 = _tmpl$18(), _el$65 = _el$63.firstChild, _el$66 = _el$65.nextSibling;
-            insert(_el$63, () => t("active"), _el$65);
-            insert(_el$63, createComponent(Show, {
-              get when() {
-                return memo(() => u.sessions !== void 0)() && u.sessions > 0;
-              },
-              get children() {
-                var _el$64 = _tmpl$17();
-                insert(_el$64, () => " \xB7 " + t("sessions") + ": " + u.sessions);
-                return _el$64;
-              }
-            }), _el$66);
-            return _el$63;
-          },
-          get children() {
-            var _el$45 = _tmpl$11();
-            insert(_el$45, () => t("banned"));
+            return _el$51;
+          })() : roles().find((r) => r.value === u.role)?.label ?? u.role;
+        })());
+        insert(_el$41, (() => {
+          var _c$4 = memo(() => !!u.banned);
+          return () => _c$4() ? (() => {
+            var _el$53 = _tmpl$12();
+            insert(_el$53, () => t("banned"));
             effect(() => u.banReason ?? "", (_v$) => {
-              setAttribute(_el$45, "title", _v$);
+              setAttribute(_el$53, "title", _v$);
             });
-            return _el$45;
-          }
-        }));
-        insert(_el$46, () => fmt(u.createdAt));
-        insert(_el$48, createComponent(Show, {
-          get when() {
-            return props.onSetPassword;
-          },
-          get children() {
-            var _el$49 = _tmpl$12();
-            _el$49.$$click = () => {
+            return _el$53;
+          })() : (() => {
+            var _el$54 = _tmpl$13(), _el$55 = _el$54.firstChild, _el$56 = _el$55.nextSibling;
+            insert(_el$54, () => t("active"), _el$55);
+            insert(_el$54, (() => {
+              var _c$0 = memo(() => !!(u.sessions !== void 0 && u.sessions > 0));
+              return () => _c$0() ? (() => {
+                var _el$57 = _tmpl$14();
+                insert(_el$57, () => " \xB7 " + t("sessions") + ": " + u.sessions);
+                return _el$57;
+              })() : u.sessions !== void 0 && u.sessions > 0;
+            })(), _el$56);
+            return _el$54;
+          })();
+        })());
+        insert(_el$42, () => fmt(u.createdAt));
+        insert(_el$44, (() => {
+          var _c$5 = memo(() => !!props.onSetPassword);
+          return () => _c$5() ? (() => {
+            var _el$58 = _tmpl$15();
+            _el$58.$$click = () => {
               setPwFor(pwFor() === u.id ? null : u.id);
               setPwValue(suggestPassword());
             };
-            insert(_el$49, () => t("setPassword"));
+            insert(_el$58, () => t("setPassword"));
             effect(() => ({
               e: locked(u),
               t: locked(u) ? t("ownerPasswordHint") : t("setPasswordHint")
@@ -372,57 +362,45 @@ function DumbUserManager(props) {
               e,
               t: t2
             }, _p$) => {
-              e !== _p$?.e && setAttribute(_el$49, "disabled", e);
-              t2 !== _p$?.t && setAttribute(_el$49, "title", t2);
+              e !== _p$?.e && setAttribute(_el$58, "disabled", e);
+              t2 !== _p$?.t && setAttribute(_el$58, "title", t2);
             });
-            return _el$49;
-          }
-        }), _el$54);
-        insert(_el$48, createComponent(Show, {
-          get when() {
-            return memo(() => !!u.banned)() ? props.onUnban : props.onBan;
-          },
-          get children() {
-            return createComponent(Show, {
-              get when() {
-                return u.banned;
-              },
-              get fallback() {
-                var _el$67 = _tmpl$12();
-                _el$67.$$click = () => void run("ban:" + u.id, () => props.onBan(u.id, ""), t("bannedOk"));
-                insert(_el$67, () => t("ban"));
-                effect(() => ({
-                  e: isSelf(u.id) || locked(u) || busy() === "ban:" + u.id,
-                  t: locked(u) ? t("banOwnerHint") : isSelf(u.id) ? t("banSelfHint") : t("banHint")
-                }), ({
-                  e,
-                  t: t2
-                }, _p$) => {
-                  e !== _p$?.e && setAttribute(_el$67, "disabled", e);
-                  t2 !== _p$?.t && setAttribute(_el$67, "title", t2);
-                });
-                return _el$67;
-              },
-              get children() {
-                var _el$50 = _tmpl$13();
-                _el$50.$$click = () => void run("unban:" + u.id, () => props.onUnban(u.id), t("unbannedOk"));
-                insert(_el$50, () => t("unban"));
-                effect(() => busy() === "unban:" + u.id, (_v$) => {
-                  setAttribute(_el$50, "disabled", _v$);
-                });
-                return _el$50;
-              }
+            return _el$58;
+          })() : props.onSetPassword;
+        })(), _el$45);
+        insert(_el$44, (() => {
+          var _c$6 = memo(() => !!u.banned);
+          return () => _c$6() ? memo(() => !!props.onUnban)() ? (() => {
+            var _el$59 = _tmpl$16();
+            _el$59.$$click = () => void run("unban:" + u.id, () => props.onUnban(u.id), t("unbannedOk"));
+            insert(_el$59, () => t("unban"));
+            effect(() => busy() === "unban:" + u.id, (_v$) => {
+              setAttribute(_el$59, "disabled", _v$);
             });
-          }
-        }), _el$55);
-        insert(_el$48, createComponent(Show, {
-          get when() {
-            return props.onRevokeSessions;
-          },
-          get children() {
-            var _el$51 = _tmpl$12();
-            _el$51.$$click = () => void run("revoke:" + u.id, () => props.onRevokeSessions(u.id), t("revokedOk"));
-            insert(_el$51, () => t("revoke"));
+            return _el$59;
+          })() : props.onUnban : memo(() => !!props.onBan)() ? (() => {
+            var _el$60 = _tmpl$15();
+            _el$60.$$click = () => void run("ban:" + u.id, () => props.onBan(u.id, ""), t("bannedOk"));
+            insert(_el$60, () => t("ban"));
+            effect(() => ({
+              e: isSelf(u.id) || locked(u) || busy() === "ban:" + u.id,
+              t: locked(u) ? t("banOwnerHint") : isSelf(u.id) ? t("banSelfHint") : t("banHint")
+            }), ({
+              e,
+              t: t2
+            }, _p$) => {
+              e !== _p$?.e && setAttribute(_el$60, "disabled", e);
+              t2 !== _p$?.t && setAttribute(_el$60, "title", t2);
+            });
+            return _el$60;
+          })() : props.onBan;
+        })(), _el$46);
+        insert(_el$44, (() => {
+          var _c$7 = memo(() => !!props.onRevokeSessions);
+          return () => _c$7() ? (() => {
+            var _el$61 = _tmpl$15();
+            _el$61.$$click = () => void run("revoke:" + u.id, () => props.onRevokeSessions(u.id), t("revokedOk"));
+            insert(_el$61, () => t("revoke"));
             effect(() => ({
               e: busy() === "revoke:" + u.id || u.sessions === 0 || locked(u),
               t: t("revokeHint")
@@ -430,66 +408,52 @@ function DumbUserManager(props) {
               e,
               t: t2
             }, _p$) => {
-              e !== _p$?.e && setAttribute(_el$51, "disabled", e);
-              t2 !== _p$?.t && setAttribute(_el$51, "title", t2);
+              e !== _p$?.e && setAttribute(_el$61, "disabled", e);
+              t2 !== _p$?.t && setAttribute(_el$61, "title", t2);
             });
-            return _el$51;
-          }
-        }), _el$56);
-        insert(_el$48, createComponent(Show, {
-          get when() {
-            return props.onRemove;
-          },
-          get children() {
-            return createComponent(Show, {
-              get when() {
-                return confirmRemove() === u.id;
-              },
-              get fallback() {
-                var _el$68 = _tmpl$19();
-                _el$68.$$click = () => setConfirmRemove(u.id);
-                insert(_el$68, () => t("remove"));
-                effect(() => ({
-                  e: isSelf(u.id) || locked(u),
-                  t: locked(u) ? t("removeOwnerHint") : isSelf(u.id) ? t("removeSelfHint") : t("removeHint")
-                }), ({
-                  e,
-                  t: t2
-                }, _p$) => {
-                  e !== _p$?.e && setAttribute(_el$68, "disabled", e);
-                  t2 !== _p$?.t && setAttribute(_el$68, "title", t2);
-                });
-                return _el$68;
-              },
-              get children() {
-                return [(() => {
-                  var _el$52 = _tmpl$14();
-                  _el$52.$$click = () => void run("remove:" + u.id, async () => {
-                    await props.onRemove(u.id);
-                    setConfirmRemove(null);
-                  }, t("removedOk"));
-                  insert(_el$52, () => t("removeConfirm"));
-                  effect(() => busy() === "remove:" + u.id, (_v$) => {
-                    setAttribute(_el$52, "disabled", _v$);
-                  });
-                  return _el$52;
-                })(), (() => {
-                  var _el$53 = _tmpl$12();
-                  _el$53.$$click = () => setConfirmRemove(null);
-                  insert(_el$53, () => t("cancel"));
-                  return _el$53;
-                })()];
-              }
+            return _el$61;
+          })() : props.onRevokeSessions;
+        })(), _el$47);
+        insert(_el$44, (() => {
+          var _c$8 = memo(() => !!props.onRemove);
+          return () => _c$8() ? confirmRemove() === u.id ? [(() => {
+            var _el$62 = _tmpl$17();
+            _el$62.$$click = () => void run("remove:" + u.id, async () => {
+              await props.onRemove(u.id);
+              setConfirmRemove(null);
+            }, t("removedOk"));
+            insert(_el$62, () => t("removeConfirm"));
+            effect(() => busy() === "remove:" + u.id, (_v$) => {
+              setAttribute(_el$62, "disabled", _v$);
             });
-          }
-        }), _el$57);
-        insert(_el$47, createComponent(Show, {
-          get when() {
-            return pwFor() === u.id;
-          },
-          get children() {
-            var _el$58 = _tmpl$15(), _el$59 = _el$58.firstChild, _el$60 = _el$59.nextSibling, _el$61 = _el$60.nextSibling;
-            _el$58.addEventListener("submit", (e) => {
+            return _el$62;
+          })(), (() => {
+            var _el$63 = _tmpl$15();
+            _el$63.$$click = () => setConfirmRemove(null);
+            insert(_el$63, () => t("cancel"));
+            return _el$63;
+          })()] : (() => {
+            var _el$64 = _tmpl$18();
+            _el$64.$$click = () => setConfirmRemove(u.id);
+            insert(_el$64, () => t("remove"));
+            effect(() => ({
+              e: isSelf(u.id) || locked(u),
+              t: locked(u) ? t("removeOwnerHint") : isSelf(u.id) ? t("removeSelfHint") : t("removeHint")
+            }), ({
+              e,
+              t: t2
+            }, _p$) => {
+              e !== _p$?.e && setAttribute(_el$64, "disabled", e);
+              t2 !== _p$?.t && setAttribute(_el$64, "title", t2);
+            });
+            return _el$64;
+          })() : props.onRemove;
+        })(), _el$48);
+        insert(_el$43, (() => {
+          var _c$9 = memo(() => pwFor() === u.id);
+          return () => _c$9() && (() => {
+            var _el$65 = _tmpl$19(), _el$66 = _el$65.firstChild, _el$67 = _el$66.nextSibling, _el$68 = _el$67.nextSibling;
+            _el$65.addEventListener("submit", (e) => {
               e.preventDefault();
               const value = pwValue();
               void run("pw:" + u.id, async () => {
@@ -497,10 +461,10 @@ function DumbUserManager(props) {
                 setPwFor(null);
               }, t("passwordSetOk")(u, value));
             });
-            _el$59.$$input = (e) => setPwValue(e.currentTarget.value);
-            insert(_el$60, () => t("apply"));
-            _el$61.$$click = () => setPwFor(null);
-            insert(_el$61, () => t("cancel"));
+            _el$66.$$input = (e) => setPwValue(e.currentTarget.value);
+            insert(_el$67, () => t("apply"));
+            _el$68.$$click = () => setPwFor(null);
+            insert(_el$68, () => t("cancel"));
             effect(() => ({
               e: pwValue(),
               t: busy() === "pw:" + u.id
@@ -508,12 +472,12 @@ function DumbUserManager(props) {
               e,
               t: t2
             }, _p$) => {
-              _el$59.value = e ?? "";
-              t2 !== _p$?.t && setAttribute(_el$60, "disabled", t2);
+              _el$66.value = e ?? "";
+              t2 !== _p$?.t && setAttribute(_el$67, "disabled", t2);
             });
-            return _el$58;
-          }
-        }), null);
+            return _el$65;
+          })();
+        })(), null);
         effect(() => u.banned ? "bg-base-200" : "", (_v$, _$p) => {
           className(_el$33, _v$, _$p);
         });
