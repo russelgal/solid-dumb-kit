@@ -56,7 +56,7 @@ import { ResizableGrid } from 'solid-dumb-kit'
 | `min` | `number` | `100` | Minimum size in px (width for columns, width for second-row columns). |
 | `max` | `number` | — | Maximum width in px (first-row columns): the handle won't drag past it. For a sidebar — the longest row. |
 | `initial` | `number` | `1` | Initial size in `fr`. |
-| `collapseAt` | `number` | — | Collapse by gesture (first-row columns only): drag the handle until the panel is narrower than this many px and it folds into a 32px rail. |
+| `collapseAt` | `number` | — | Collapse by gesture (first-row columns only): release the handle while the panel is narrower than this many px and it folds into a 32px rail. While dragging, the panel follows the cursor smoothly. |
 | `collapsedContent` | `() => JSX.Element` | `›` | What the rail of a collapsed panel shows (icon, label). |
 
 > `content` is a **function** (`() => <Panel/>`), not a JSX value. The component intentionally never reads panel JSX in resize handlers, so dragging never re-creates your panels.
@@ -66,7 +66,7 @@ import { ResizableGrid } from 'solid-dumb-kit'
 - Columns/rows are laid out with CSS Grid using `fr` tracks separated by a 6px handle.
 - Dragging a handle redistributes `fr` between the two adjacent tracks, clamped so neither drops below its `min` nor grows past its `max` (converted from px to `fr` against the live container size). At a boundary the handle snaps to it instead of freezing.
 - Each panel body is `overflow: auto` with `min-width/height: 0`, so long content scrolls instead of blowing out the track.
-- A column with `collapseAt` folds mid-drag as soon as its width drops below the threshold and unfolds if you drag back without releasing. The rail of a collapsed panel is a full-height button: a click restores the width you started the drag from. There is no handle next to a collapsed column.
+- While dragging, a column with `collapseAt` shrinks smoothly all the way down to the rail width — no jumps. Release decides: narrower than the threshold folds it into the rail, between the threshold and `min` snaps it to `min`. The rail of a collapsed panel is a full-height button: a click restores the width you started the drag from. There is no handle next to a collapsed column.
 
 ## Persistence
 

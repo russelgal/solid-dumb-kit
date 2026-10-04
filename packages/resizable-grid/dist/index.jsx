@@ -139,31 +139,38 @@ function ResizableGrid(props) {
     const rightFr = currentSizes[index + 1];
     const toFr = (px) => px / totalWidth * totalFr;
     const toPx = (fr) => fr / totalFr * totalWidth;
-    const lo = Math.max(toFr(meta.colMins[index]) - leftFr, rightFr - toFr(meta.colMaxes[index + 1]));
-    const hi = Math.min(toFr(meta.colMaxes[index]) - leftFr, rightFr - toFr(meta.colMins[index + 1]));
+    const floor = (k) => meta.colCollapseAt[k] === void 0 ? meta.colMins[k] : COLLAPSED_SIZE;
+    const lo = Math.max(toFr(floor(index)) - leftFr, rightFr - toFr(meta.colMaxes[index + 1]));
+    const hi = Math.min(toFr(meta.colMaxes[index]) - leftFr, rightFr - toFr(floor(index + 1)));
     function onMove(ev) {
-      const dx = ev.clientX - startX;
-      const dFr = dx / totalWidth * totalFr;
-      for (const [side, raw] of [[index, leftFr + dFr], [index + 1, rightFr - dFr]]) {
-        const at = meta.colCollapseAt[side];
-        if (at === void 0) continue;
-        if (toPx(raw) < at) {
-          if (!isCollapsed(side)) {
-            currentSizes[index] = leftFr;
-            currentSizes[index + 1] = rightFr;
-            setSizes((prev) => ({ ...prev, cols: [...currentSizes] }));
-            setCollapsed(side, true);
-          }
-          return;
-        }
-        if (isCollapsed(side)) setCollapsed(side, false);
-      }
+      const dFr = (ev.clientX - startX) / totalWidth * totalFr;
       const d = Math.min(hi, Math.max(lo, dFr));
       currentSizes[index] = leftFr + d;
       currentSizes[index + 1] = rightFr - d;
       setSizes((prev) => ({ ...prev, cols: [...currentSizes] }));
     }
+    function settle() {
+      for (const side of [index, index + 1]) {
+        const at = meta.colCollapseAt[side];
+        if (at === void 0) continue;
+        if (toPx(currentSizes[side]) < at) {
+          currentSizes[index] = leftFr;
+          currentSizes[index + 1] = rightFr;
+          setSizes((prev) => ({ ...prev, cols: [...currentSizes] }));
+          setCollapsed(side, true);
+          return;
+        }
+        const short = toFr(meta.colMins[side]) - currentSizes[side];
+        if (short > 0) {
+          const other = side === index ? index + 1 : index;
+          currentSizes[side] += short;
+          currentSizes[other] -= short;
+          setSizes((prev) => ({ ...prev, cols: [...currentSizes] }));
+        }
+      }
+    }
     function onUp() {
+      settle();
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       document.body.style.cursor = "";

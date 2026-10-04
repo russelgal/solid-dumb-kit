@@ -178,6 +178,11 @@ describe('персист', () => {
 describe('схлопывание жестом (collapseAt)', () => {
   const collapsible = () => [panel('left', { collapseAt: 150, collapsedContent: () => <span class="rail-icon">≡</span> }), panel('right')]
   const rail = () => host.querySelector<HTMLButtonElement>('.resizable-grid-rail')
+  /** Ширина левой колонки в px: 894 px развёрнутой ширины делятся по `fr`. */
+  const leftWidth = () => {
+    const [left, , right] = cols().split(' ').map(parseFloat)
+    return (left / (left + right)) * 894
+  }
 
   it('тянут уже порога — панель сворачивается в полосу, ширина помнится', () => {
     mount({ cols: collapsible() })
@@ -200,16 +205,26 @@ describe('схлопывание жестом (collapseAt)', () => {
     expect(cols()).toBe('1fr 6px 1fr')
   })
 
-  it('свернул и потянул обратно, не отпуская, — развернулась', () => {
+  it('пока тянут — панель плавно идёт за курсором, полоса появляется только на отпускании', () => {
     mount({ cols: collapsible() })
     const handle = colHandles()[0]
     handle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 100 }))
-    document.dispatchEvent(new MouseEvent('mousemove', { clientX: -220, clientY: 100 }))
-    expect(rail()).not.toBeNull()
+    // 447 − 340 = 107 px: уже порога, но кнопка ещё нажата — без рывка в полосу.
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: -240, clientY: 100 }))
+    expect(rail()).toBeNull()
+    expect(leftWidth()).toBeCloseTo(107, 0)
+    // Потянули обратно, не отпуская, — просто растёт.
     document.dispatchEvent(new MouseEvent('mousemove', { clientX: 50, clientY: 100 }))
     document.dispatchEvent(new MouseEvent('mouseup', {}))
     expect(rail()).toBeNull()
-    expect(host.querySelector('.body-left')).not.toBeNull()
+    expect(leftWidth()).toBeCloseTo(397, 0)
+  })
+
+  it('отпустили между порогом и min — панель встаёт на min', () => {
+    mount({ cols: [panel('left', { min: 200, collapseAt: 120 }), panel('right')] })
+    drag(colHandles()[0], -297) // 447 − 297 = 150 px
+    expect(rail()).toBeNull()
+    expect(leftWidth()).toBeCloseTo(200, 0)
   })
 
   it('без collapseAt ручка по-прежнему упирается в минимум', () => {
