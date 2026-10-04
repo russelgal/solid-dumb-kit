@@ -26,6 +26,8 @@ const PANEL_PROPS = [
   { name: 'content', type: '() => JSX.Element', about: 'Содержимое — render prop.' },
   { name: 'min', type: 'number', def: '100', about: 'Минимальный размер, px: дальше ручка не пойдёт.' },
   { name: 'initial', type: 'number', def: '1', about: 'Начальная доля во fr — до первой правки пользователем.' },
+  { name: 'collapseAt', type: 'number', about: 'Схлопывание жестом: потянули уже стольких px — панель свернулась в полосу, щелчок по полосе разворачивает.' },
+  { name: 'collapsedContent', type: '() => JSX.Element', def: '›', about: 'Что показать в полосе свёрнутой панели.' },
 ]
 
 // цвета приходят пропсами — единственное, что остаётся инлайном; по умолчанию
@@ -62,7 +64,7 @@ export default function ResizableGridExample() {
           row2Initial={1}
           rowMin={120}
           cols={[
-            { id: 'tree', min: 160, initial: 1, content: () => <Panel title="Sidebar" bg="var(--color-base-200)">{list(20, 'Item')}</Panel> },
+            { id: 'tree', min: 160, initial: 1, collapseAt: 120, collapsedContent: () => <span class="icon-[solar--sidebar-minimalistic-bold] size-4" />, content: () => <Panel title="Sidebar" bg="var(--color-base-200)">{list(20, 'Item')}</Panel> },
             { id: 'main', min: 320, initial: 3, content: () => (
               <Panel title="Editor">
                 <p class="mb-2">Main panel — grab a divider and drag.</p>

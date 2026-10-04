@@ -174,3 +174,58 @@ describe('персист', () => {
     expect(cols()).toBe('1fr 6px 1fr')
   })
 })
+
+describe('схлопывание жестом (collapseAt)', () => {
+  const collapsible = () => [panel('left', { collapseAt: 150, collapsedContent: () => <span class="rail-icon">≡</span> }), panel('right')]
+  const rail = () => host.querySelector<HTMLButtonElement>('.resizable-grid-rail')
+
+  it('тянут уже порога — панель сворачивается в полосу, ширина помнится', () => {
+    mount({ cols: collapsible() })
+    // 900 − ручка 6 = 894, левая — половина, 447 px; −320 → 127 px < 150.
+    drag(colHandles()[0], -320)
+    expect(rail()).not.toBeNull()
+    expect(host.querySelector('.rail-icon')).not.toBeNull()
+    expect(host.querySelector('.body-left')).toBeNull()
+    expect(colHandles()).toHaveLength(0)
+    expect(cols()).toBe('32px 1fr')
+    expect(JSON.parse(localStorage.getItem('rg-test')!)).toMatchObject({ cols: [1, 1], collapsed: ['left'] })
+  })
+
+  it('щелчок по полосе возвращает прежнюю ширину', () => {
+    mount({ cols: collapsible() })
+    drag(colHandles()[0], -320)
+    rail()!.click()
+    expect(rail()).toBeNull()
+    expect(host.querySelector('.body-left')).not.toBeNull()
+    expect(cols()).toBe('1fr 6px 1fr')
+  })
+
+  it('свернул и потянул обратно, не отпуская, — развернулась', () => {
+    mount({ cols: collapsible() })
+    const handle = colHandles()[0]
+    handle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 100 }))
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: -220, clientY: 100 }))
+    expect(rail()).not.toBeNull()
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 50, clientY: 100 }))
+    document.dispatchEvent(new MouseEvent('mouseup', {}))
+    expect(rail()).toBeNull()
+    expect(host.querySelector('.body-left')).not.toBeNull()
+  })
+
+  it('без collapseAt ручка по-прежнему упирается в минимум', () => {
+    mount()
+    drag(colHandles()[0], -400)
+    expect(rail()).toBeNull()
+    expect(host.querySelector('.body-left')).not.toBeNull()
+  })
+
+  it('замер контейнера — один раз на жест, а не на каждое движение', () => {
+    mount({ cols: collapsible() })
+    rectCalls = 0
+    const handle = colHandles()[0]
+    handle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 100 }))
+    for (const x of [80, 40, -100, -220, 0]) document.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: 100 }))
+    document.dispatchEvent(new MouseEvent('mouseup', {}))
+    expect(rectCalls).toBe(1)
+  })
+})

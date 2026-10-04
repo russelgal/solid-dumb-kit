@@ -14,6 +14,15 @@ export type GridPanel = {
   min?: number
   /** Начальный размер в fr (по умолчанию 1) */
   initial?: number
+  /**
+   * Схлопывается ЖЕСТОМ: потянули ручку так, что панель стала уже стольких
+   * пикселей, — она сворачивается в узкую полосу прямо во время тяги, обратно —
+   * разворачивается, пока кнопку не отпустили. Полоса — кнопка: щелчок
+   * возвращает прежнюю ширину. Только у колонок первого ряда.
+   */
+  collapseAt?: number
+  /** Что показать в полосе свёрнутой панели (значок, подпись); по умолчанию стрелка */
+  collapsedContent?: () => JSX.Element
 }
 
 export type ResizableGridProps = {
@@ -37,15 +46,20 @@ type PersistedSizes = {
   cols: number[]
   rows?: number[]
   rowSplit?: number[]
+  /** id свёрнутых колонок; их `cols` хранит ширину, к которой вернуться */
+  collapsed?: string[]
 }
 
 const HANDLE_SIZE = 6
+/** Ширина полосы свёрнутой панели, px */
+const COLLAPSED_SIZE = 32
 const DEFAULT_MIN = 100
 
 const SizesSchema = v.object({
   cols: v.array(v.number()),
   rows: v.optional(v.array(v.number())),
   rowSplit: v.optional(v.array(v.number())),
+  collapsed: v.optional(v.array(v.string())),
 })
 
 /** Валидация localStorage — если данные битые или длина не совпадает, сброс на дефолт */
@@ -67,6 +81,8 @@ export function ResizableGrid(props: ResizableGridProps) {
   // Кеш метаданных (min, initial) — НЕ обращаемся к props.cols/rows в event handlers
   // props.cols содержит JSX content, обращение к нему создаёт компоненты
   const meta = {
+    colIds: props.cols.map(c => c.id),
+    colCollapseAt: props.cols.map(c => c.collapseAt),
     colMins: props.cols.map(c => c.min ?? DEFAULT_MIN),
     colInitials: props.cols.map(c => c.initial ?? 1),
     rowMins: props.rows?.map(r => r.min ?? DEFAULT_MIN) ?? [] as number[],
@@ -102,25 +118,61 @@ export function ResizableGrid(props: ResizableGridProps) {
     return s?.rowSplit ?? [props.rowInitial ?? 1, props.row2Initial ?? 1]
   }
 
+  /** Свёрнутые колонки — по id из персиста */
+  const isCollapsed = (index: number) => sizes()?.collapsed?.includes(meta.colIds[index]) ?? false
+
+  function setCollapsed(index: number, on: boolean) {
+    const id = meta.colIds[index]
+    setSizes(prev => {
+      const rest = (prev?.collapsed ?? []).filter(x => x !== id)
+      return { ...prev, cols: prev?.cols ?? [...meta.colInitials], collapsed: on ? [...rest, id] : rest }
+    })
+  }
+
+  /** Ручка между колонками есть, только если обе развёрнуты */
+  const hasHandle = (index: number) => index > 0 && !isCollapsed(index - 1) && !isCollapsed(index)
+
   let containerRef!: HTMLDivElement
 
   // ─── Горизонтальный ресайз колонок ───
   function startColResize(index: number, e: MouseEvent) {
     e.preventDefault()
     const rect = containerRef.getBoundingClientRect()
-    const totalWidth = rect.width - HANDLE_SIZE * (meta.colMins.length - 1)
+    const open = meta.colIds.map((_, k) => !isCollapsed(k))
+    const handles = meta.colIds.filter((_, k) => hasHandle(k)).length
+    // Доли делят ширину только развёрнутых колонок: полосы и ручки — в пикселях.
+    const totalWidth = rect.width - HANDLE_SIZE * handles - COLLAPSED_SIZE * open.filter(o => !o).length
     const currentSizes = [...colSizes()]
-    const totalFr = currentSizes.reduce((a, b) => a + b, 0)
+    const totalFr = currentSizes.reduce((a, b, k) => (open[k] ? a + b : a), 0)
 
     const startX = e.clientX
     const leftFr = currentSizes[index]
     const rightFr = currentSizes[index + 1]
     const leftMin = meta.colMins[index] / totalWidth * totalFr
     const rightMin = meta.colMins[index + 1] / totalWidth * totalFr
+    const toPx = (fr: number) => fr / totalFr * totalWidth
 
     function onMove(ev: MouseEvent) {
       const dx = ev.clientX - startX
       const dFr = (dx / totalWidth) * totalFr
+
+      // Уже порога — сворачиваем; ширина в персисте остаётся та, с которой
+      // начали тянуть, — к ней панель и вернётся.
+      for (const [side, raw] of [[index, leftFr + dFr], [index + 1, rightFr - dFr]] as const) {
+        const at = meta.colCollapseAt[side]
+        if (at === undefined) continue
+        if (toPx(raw) < at) {
+          if (!isCollapsed(side)) {
+            currentSizes[index] = leftFr
+            currentSizes[index + 1] = rightFr
+            setSizes(prev => ({ ...prev, cols: [...currentSizes] }))
+            setCollapsed(side, true)
+          }
+          return
+        }
+        if (isCollapsed(side)) setCollapsed(side, false)
+      }
+
       const newLeft = Math.max(leftMin, leftFr + dFr)
       const newRight = Math.max(rightMin, rightFr - dFr)
 
@@ -230,10 +282,11 @@ export function ResizableGrid(props: ResizableGridProps) {
   }
 
   // ─── CSS Grid template ───
-  const colTemplate = () => {
-    const s = colSizes()
-    return s.map((v: number) => `${v}fr`).join(` ${HANDLE_SIZE}px `)
-  }
+  const colTemplate = () =>
+    colSizes()
+      .map((v: number, k: number) =>
+        `${hasHandle(k) ? `${HANDLE_SIZE}px ` : ''}${isCollapsed(k) ? `${COLLAPSED_SIZE}px` : `${v}fr`}`)
+      .join(' ')
 
   const row2Template = () => {
     const s = rowSizes()
@@ -268,13 +321,28 @@ export function ResizableGrid(props: ResizableGridProps) {
         <For each={props.cols}>
           {(col, i) => (
             <>
-              <Show when={i() > 0}>
+              <Show when={hasHandle(i())}>
                 <div
                   class="resizable-grid-handle-col"
                   onMouseDown={(e) => startColResize(i() - 1, e)}
                 />
               </Show>
-              <div style={{ 'min-width': '0', 'min-height': '0', overflow: 'auto' }}>{col.content()}</div>
+              <Show
+                when={isCollapsed(i())}
+                fallback={<div style={{ 'min-width': '0', 'min-height': '0', overflow: 'auto' }}>{col.content()}</div>}
+              >
+                {/* Полоса свёрнутой панели — кнопка во всю высоту: её видно
+                    сразу и попадают в неё не целясь. */}
+                <button
+                  type="button"
+                  class="resizable-grid-rail btn btn-ghost btn-sm h-full w-full rounded-none p-0"
+                  title="Развернуть"
+                  aria-label="Развернуть панель"
+                  onClick={() => setCollapsed(i(), false)}
+                >
+                  {col.collapsedContent?.() ?? '›'}
+                </button>
+              </Show>
             </>
           )}
         </For>

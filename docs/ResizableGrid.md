@@ -55,6 +55,8 @@ import { ResizableGrid } from 'solid-dumb-kit'
 | `content` | `() => JSX.Element` | — (required) | Render prop for the panel body. |
 | `min` | `number` | `100` | Minimum size in px (width for columns, width for second-row columns). |
 | `initial` | `number` | `1` | Initial size in `fr`. |
+| `collapseAt` | `number` | — | Collapse by gesture (first-row columns only): drag the handle until the panel is narrower than this many px and it folds into a 32px rail. |
+| `collapsedContent` | `() => JSX.Element` | `›` | What the rail of a collapsed panel shows (icon, label). |
 
 > `content` is a **function** (`() => <Panel/>`), not a JSX value. The component intentionally never reads panel JSX in resize handlers, so dragging never re-creates your panels.
 
@@ -63,10 +65,11 @@ import { ResizableGrid } from 'solid-dumb-kit'
 - Columns/rows are laid out with CSS Grid using `fr` tracks separated by a 6px handle.
 - Dragging a handle redistributes `fr` between the two adjacent tracks, clamped so neither drops below its `min` (converted from px to `fr` against the live container size).
 - Each panel body is `overflow: auto` with `min-width/height: 0`, so long content scrolls instead of blowing out the track.
+- A column with `collapseAt` folds mid-drag as soon as its width drops below the threshold and unfolds if you drag back without releasing. The rail of a collapsed panel is a full-height button: a click restores the width you started the drag from. There is no handle next to a collapsed column.
 
 ## Persistence
 
-Sizes are stored as `{ cols, rows?, rowSplit? }` under `storageKey`. On load they're validated with `valibot`; if the stored data is corrupt **or its column count no longer matches** the current `cols`, it falls back to the defaults from `initial`. Change `storageKey` (or your `cols` length) to invalidate old saved layouts.
+Sizes are stored as `{ cols, rows?, rowSplit?, collapsed? }` under `storageKey` (`collapsed` lists collapsed column ids; their `cols` entry keeps the width to restore). On load they're validated with `valibot`; if the stored data is corrupt **or its column count no longer matches** the current `cols`, it falls back to the defaults from `initial`. Change `storageKey` (or your `cols` length) to invalidate old saved layouts.
 
 ## Notes & limits
 
