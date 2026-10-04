@@ -12,6 +12,12 @@ export type GridPanel = {
   content: () => JSX.Element
   /** Минимальный размер в px */
   min?: number
+  /**
+   * Максимальная ширина в px (только колонки первого ряда): дальше ручка не
+   * тянет. Сайдбару — по самой длинной строке, чтобы его не растягивали в
+   * пустоту.
+   */
+  max?: number
   /** Начальный размер в fr (по умолчанию 1) */
   initial?: number
   /**
@@ -84,6 +90,7 @@ export function ResizableGrid(props: ResizableGridProps) {
     colIds: props.cols.map(c => c.id),
     colCollapseAt: props.cols.map(c => c.collapseAt),
     colMins: props.cols.map(c => c.min ?? DEFAULT_MIN),
+    colMaxes: props.cols.map(c => c.max ?? Infinity),
     colInitials: props.cols.map(c => c.initial ?? 1),
     rowMins: props.rows?.map(r => r.min ?? DEFAULT_MIN) ?? [] as number[],
     rowInitials: props.rows?.map(r => r.initial ?? 1) ?? [] as number[],
@@ -148,9 +155,12 @@ export function ResizableGrid(props: ResizableGridProps) {
     const startX = e.clientX
     const leftFr = currentSizes[index]
     const rightFr = currentSizes[index + 1]
-    const leftMin = meta.colMins[index] / totalWidth * totalFr
-    const rightMin = meta.colMins[index + 1] / totalWidth * totalFr
+    const toFr = (px: number) => px / totalWidth * totalFr
     const toPx = (fr: number) => fr / totalFr * totalWidth
+    // Сдвиг доли зажат так, чтобы обе соседки остались в своих min и max: у
+    // границы ручка ДОЕЗЖАЕТ до неё, а не замирает там, где её дёрнули резко.
+    const lo = Math.max(toFr(meta.colMins[index]) - leftFr, rightFr - toFr(meta.colMaxes[index + 1]))
+    const hi = Math.min(toFr(meta.colMaxes[index]) - leftFr, rightFr - toFr(meta.colMins[index + 1]))
 
     function onMove(ev: MouseEvent) {
       const dx = ev.clientX - startX
@@ -173,15 +183,9 @@ export function ResizableGrid(props: ResizableGridProps) {
         if (isCollapsed(side)) setCollapsed(side, false)
       }
 
-      const newLeft = Math.max(leftMin, leftFr + dFr)
-      const newRight = Math.max(rightMin, rightFr - dFr)
-
-      // Если один из них упёрся в минимум — не двигаем
-      if (newLeft <= leftMin && dFr < 0) return
-      if (newRight <= rightMin && dFr > 0) return
-
-      currentSizes[index] = newLeft
-      currentSizes[index + 1] = newRight
+      const d = Math.min(hi, Math.max(lo, dFr))
+      currentSizes[index] = leftFr + d
+      currentSizes[index + 1] = rightFr - d
       setSizes(prev => ({ ...prev, cols: [...currentSizes] }))
     }
 

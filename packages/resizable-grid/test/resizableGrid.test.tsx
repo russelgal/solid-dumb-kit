@@ -229,3 +229,23 @@ describe('схлопывание жестом (collapseAt)', () => {
     expect(rectCalls).toBe(1)
   })
 })
+
+describe('потолок ширины (max)', () => {
+  /** Доля левой колонки в пикселях: 894 px делятся по `fr`. */
+  const leftPx = () => {
+    const [left, , right] = cols().split(' ').map(parseFloat)
+    return (left / (left + right)) * 894
+  }
+
+  it('дальше max ручка не тянет — колонка встаёт ровно на потолок', () => {
+    mount({ cols: [panel('left', { max: 320 }), panel('right')] })
+    drag(colHandles()[0], 300)
+    expect(leftPx()).toBeCloseTo(320, 0)
+  })
+
+  it('у минимума ручка доезжает до границы, а не замирает', () => {
+    mount({ cols: [panel('left', { min: 200 }), panel('right')] })
+    drag(colHandles()[0], -400)
+    expect(leftPx()).toBeCloseTo(200, 0)
+  })
+})
