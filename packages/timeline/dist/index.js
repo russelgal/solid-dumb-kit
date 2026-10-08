@@ -1,6 +1,5 @@
 import { delegateEvents, ref, insert, createComponent, effect, className, setStyleProperty, setAttribute, memo, style, template } from '@solidjs/web';
 import { createMemo, createSignal, onCleanup, createEffect, Show, For, flush, getOwner, runWithOwner } from 'solid-js';
-import { Temporal as Temporal$1 } from 'temporal-polyfill';
 
 // src/DumbTimeline.tsx
 function ownedRef(fn) {
@@ -36,7 +35,9 @@ function restoreTextSelection() {
   s.userSelect = "";
   s.webkitUserSelect = "";
 }
-var Temporal = globalThis.Temporal ?? Temporal$1;
+
+// src/temporal.ts
+var Temporal = globalThis.Temporal ?? (await import('temporal-polyfill')).Temporal;
 
 // src/scale.ts
 var DAY = 1440;

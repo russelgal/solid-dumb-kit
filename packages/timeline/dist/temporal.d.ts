@@ -9,6 +9,10 @@
  * `export const Temporal = globalThis.Temporal` — остальной код не меняется,
  * он уже написан на стандартном API.
  */
-import { Temporal as Polyfill } from 'temporal-polyfill';
-/** Нативный, если он есть (Chrome 144+, Firefox 139+, Node ≥ 26), иначе полифил. */
+import type { Temporal as Polyfill } from 'temporal-polyfill';
+/**
+ * Нативный, если он есть (Chrome 144+, Firefox 139+, Node ≥ 26), иначе полифил.
+ * Полифил — динамическим импортом: статический клал его в бандл всем
+ * браузерам, хотя исполняет его только Safari (~50 КБ сжатого кода зря).
+ */
 export declare const Temporal: typeof Polyfill;

@@ -38,8 +38,7 @@ function restoreTextSelection() {
 }
 
 // src/temporal.ts
-import { Temporal as Polyfill } from "temporal-polyfill";
-var Temporal = globalThis.Temporal ?? Polyfill;
+var Temporal = globalThis.Temporal ?? (await import("temporal-polyfill")).Temporal;
 
 // src/scale.ts
 var DAY = 1440;
