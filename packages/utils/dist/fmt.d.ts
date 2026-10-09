@@ -1,3 +1,18 @@
+/**
+ * Копейки в цене: `auto` — только когда они есть («1 500 ₽», «1 416,67 ₽»),
+ * `always` — всегда двумя знаками («1 500,00 ₽»), `never` — до рубля («1 417 ₽»).
+ */
+export type PriceKopecks = 'auto' | 'always' | 'never';
+export interface PriceFormat {
+    kopecks: PriceKopecks;
+}
+/**
+ * Откуда `fmtPrice` берёт формат — ФУНКЦИЕЙ, а не значением: приложение отдаёт
+ * геттер своих настроек, и реактивный расчёт, напечатавший цену, сам
+ * подписывается на них — смена настройки перерисовывает суммы без перезагрузки.
+ * Сам кит ни от какого фреймворка не зависит: он только вызывает функцию.
+ */
+export declare function configurePrice(source: () => PriceFormat): void;
 type Numeric = number | string | null | undefined;
 /** 1 234,56 ₽ */
 export declare function RubR2(v: Numeric): string;
@@ -11,7 +26,13 @@ export declare function Rub0R(v: Numeric): string;
 export declare function Rub4(v: Numeric): string;
 /** 1 234 или — */
 export declare function fmtNum(v: Numeric): string;
-/** 1 234,56 ₽ или — */
+/**
+ * Сумма БЕЗ знака рубля по формату `configurePrice` или —. Для отдельно
+ * стоящей суммы, у которой знак рисует CSS (`::after`): так при выделении и
+ * копировании берутся только цифры.
+ */
+export declare function fmtAmount(v: Numeric): string;
+/** Цена со знаком рубля по формату `configurePrice` (по умолчанию копейки — только когда есть) или —. Для суммы внутри фразы. */
 export declare function fmtPrice(v: Numeric): string;
 type DateInput = string | number | Date | null | undefined;
 /** 23.02.2026, 16:40:22 */

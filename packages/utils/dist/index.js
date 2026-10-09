@@ -9,6 +9,17 @@ var RubIntl0 = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 0,
   minimumFractionDigits: 0
 });
+var PriceIntl = new Intl.NumberFormat("ru-RU", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 2,
+  trailingZeroDisplay: "stripIfInteger"
+});
+var PRICE_INTL = { auto: PriceIntl, always: RubIntl2, never: RubIntl0 };
+var priceFormat = () => ({ kopecks: "auto" });
+function configurePrice(source) {
+  priceFormat = source;
+}
+var RUB = "\xA0\u20BD";
 var RubIntl4 = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 4
 });
@@ -19,7 +30,7 @@ function toNum(v) {
 }
 function RubR2(v) {
   const n = toNum(v);
-  return n != null ? RubIntl2.format(n) + " \u20BD" : "";
+  return n != null ? RubIntl2.format(n) + RUB : "";
 }
 function Rub2(v) {
   const n = toNum(v);
@@ -31,7 +42,7 @@ function Rub0(v) {
 }
 function Rub0R(v) {
   const n = toNum(v);
-  return n != null ? RubIntl0.format(n) + " \u20BD" : "";
+  return n != null ? RubIntl0.format(n) + RUB : "";
 }
 function Rub4(v) {
   const n = toNum(v);
@@ -41,9 +52,13 @@ function fmtNum(v) {
   const n = toNum(v);
   return n != null ? RubIntl0.format(n) : "\u2014";
 }
+function fmtAmount(v) {
+  const n = toNum(v);
+  return n != null ? PRICE_INTL[priceFormat().kopecks].format(n) : "\u2014";
+}
 function fmtPrice(v) {
   const n = toNum(v);
-  return n != null ? RubIntl2.format(n) + " \u20BD" : "\u2014";
+  return n != null ? fmtAmount(n) + RUB : "\u2014";
 }
 var DateTimeFmt = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
@@ -204,4 +219,4 @@ function imgproxyUrl(src, opts = {}) {
   return `${base}/insecure/${processing}/${base64url(resolveSource(src))}${ext}`;
 }
 
-export { Rub0, Rub0R, Rub2, Rub4, RubR2, configureImgproxy, extractImagesFromZip, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };
+export { Rub0, Rub0R, Rub2, Rub4, RubR2, configureImgproxy, configurePrice, extractImagesFromZip, fmtAmount, fmtDate, fmtDateMonth, fmtDateTime, fmtDateTimeShort, fmtNum, fmtPrice, fmtSize, fmtTime, genSlug, imgproxyUrl, timeAgo };
