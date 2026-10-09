@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   Rub0, Rub2, Rub4, RubR2, Rub0R,
-  fmtNum, fmtPrice, configurePrice,
+  fmtNum, fmtPrice, fmtAmount, configurePrice,
   fmtDate, fmtDateTime, fmtDateTimeShort, fmtTime, fmtDateMonth,
   fmtSize,
   timeAgo,
@@ -162,6 +162,12 @@ describe('fmtPrice — цена с рублём или em dash', () => {
 
   it('парсит строковую цену', () => {
     expect(fmtPrice('2500.50')).toBe('2\u00A0500,50\u00A0\u20BD')
+  })
+
+  it('сумма без знака — тот же формат, знак рисует CSS', () => {
+    expect(fmtAmount(1500)).toBe('1\u00A0500')
+    expect(fmtAmount(1416.67)).toBe('1\u00A0416,67')
+    expect(fmtAmount(null)).toBe('\u2014')
   })
 
   it('формат копеек задаёт приложение — и читается на каждом вызове', () => {

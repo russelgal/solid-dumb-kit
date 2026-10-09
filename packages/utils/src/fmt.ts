@@ -95,10 +95,20 @@ export function fmtNum(v: Numeric): string {
   return n != null ? RubIntl0.format(n) : '\u2014'
 }
 
-/** Цена со знаком рубля по формату `configurePrice` (по умолчанию копейки — только когда есть) или — */
+/**
+ * Сумма БЕЗ знака рубля по формату `configurePrice` или —. Для отдельно
+ * стоящей суммы, у которой знак рисует CSS (`::after`): так при выделении и
+ * копировании берутся только цифры.
+ */
+export function fmtAmount(v: Numeric): string {
+  const n = toNum(v)
+  return n != null ? PRICE_INTL[priceFormat().kopecks].format(n) : '\u2014'
+}
+
+/** Цена со знаком рубля по формату `configurePrice` (по умолчанию копейки — только когда есть) или —. Для суммы внутри фразы. */
 export function fmtPrice(v: Numeric): string {
   const n = toNum(v)
-  return n != null ? PRICE_INTL[priceFormat().kopecks].format(n) + RUB : '\u2014'
+  return n != null ? fmtAmount(n) + RUB : '\u2014'
 }
 
 // --- Даты ---

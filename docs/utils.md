@@ -25,6 +25,7 @@ import { fmtPrice, timeAgo, genSlug, extractImagesFromZip, imgproxyUrl } from 's
 | `RubR2(v)` | `1 234,50 ₽` | `''` |
 | `fmtNum(v)` | `1 235` | `—` |
 | `fmtPrice(v)` | `1 234,50 ₽`; whole — `1 500 ₽` | `—` |
+| `fmtAmount(v)` | `1 234,50`; whole — `1 500` (no sign: CSS draws it, so copying takes digits only) | `—` |
 
 The space before `₽` is non-breaking: the sign never wraps away from the number. Kopecks in `fmtPrice` are set by the app — `configurePrice(() => ({ kopecks }))`: `auto` (default, only when present), `always` (two digits), `never` (whole rubles). The source is a function: a getter over reactive settings, so any computation that printed a price subscribes to it.
 
