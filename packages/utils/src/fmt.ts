@@ -10,6 +10,19 @@ const RubIntl0 = new Intl.NumberFormat('ru-RU', {
   minimumFractionDigits: 0,
 })
 
+/** Цена: копейки только когда они есть — «1 500», но «1 416,67». */
+const PriceIntl = new Intl.NumberFormat('ru-RU', {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 2,
+  trailingZeroDisplay: 'stripIfInteger',
+})
+
+/**
+ * Знак рубля — через НЕРАЗРЫВНЫЙ пробел: с обычным строка рвалась перед «₽»,
+ * и знак уезжал на следующую строку отдельно от числа.
+ */
+const RUB = '\u00A0\u20BD'
+
 const RubIntl4 = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 4,
 })
@@ -25,7 +38,7 @@ function toNum(v: Numeric): number | null {
 /** 1 234,56 ₽ */
 export function RubR2(v: Numeric): string {
   const n = toNum(v)
-  return n != null ? RubIntl2.format(n) + ' \u20BD' : ''
+  return n != null ? RubIntl2.format(n) + RUB : ''
 }
 
 /** 1 234,56 */
@@ -43,7 +56,7 @@ export function Rub0(v: Numeric): string {
 /** 1 235 ₽ */
 export function Rub0R(v: Numeric): string {
   const n = toNum(v)
-  return n != null ? RubIntl0.format(n) + ' \u20BD' : ''
+  return n != null ? RubIntl0.format(n) + RUB : ''
 }
 
 /** 1 234,5678 */
@@ -58,10 +71,10 @@ export function fmtNum(v: Numeric): string {
   return n != null ? RubIntl0.format(n) : '\u2014'
 }
 
-/** 1 234,56 ₽ или — */
+/** 1 234,56 ₽, 1 500 ₽ (копейки — только когда они есть) или — */
 export function fmtPrice(v: Numeric): string {
   const n = toNum(v)
-  return n != null ? RubIntl2.format(n) + ' \u20BD' : '\u2014'
+  return n != null ? PriceIntl.format(n) + RUB : '\u2014'
 }
 
 // --- Даты ---

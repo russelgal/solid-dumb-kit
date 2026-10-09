@@ -86,11 +86,11 @@ describe('Rub4 — число с четырьмя знаками максиму�
 
 describe('RubR2 — число с копейками и знаком рубля', () => {
   it('форматирует число с символом рубля', () => {
-    expect(RubR2(1234.5)).toBe('1\u00A0234,50 \u20BD')
+    expect(RubR2(1234.5)).toBe('1\u00A0234,50\u00A0\u20BD')
   })
 
   it('форматирует ноль', () => {
-    expect(RubR2(0)).toBe('0,00 \u20BD')
+    expect(RubR2(0)).toBe('0,00\u00A0\u20BD')
   })
 
   it('возвращает пустую строку для null', () => {
@@ -100,11 +100,11 @@ describe('RubR2 — число с копейками и знаком рубля'
 
 describe('Rub0R — целое число со знаком рубля', () => {
   it('форматирует число с символом рубля', () => {
-    expect(Rub0R(1500)).toBe('1\u00A0500 \u20BD')
+    expect(Rub0R(1500)).toBe('1\u00A0500\u00A0\u20BD')
   })
 
   it('форматирует ноль', () => {
-    expect(Rub0R(0)).toBe('0 \u20BD')
+    expect(Rub0R(0)).toBe('0\u00A0\u20BD')
   })
 
   it('возвращает пустую строку для null', () => {
@@ -135,12 +135,21 @@ describe('fmtNum — число или em dash', () => {
 })
 
 describe('fmtPrice — цена с рублём или em dash', () => {
-  it('форматирует цену', () => {
-    expect(fmtPrice(1500)).toBe('1\u00A0500,00 \u20BD')
+  it('целая цена — без копеек', () => {
+    expect(fmtPrice(1500)).toBe('1\u00A0500\u00A0\u20BD')
+  })
+
+  it('копейки — когда они есть, всегда двумя знаками', () => {
+    expect(fmtPrice(1416.67)).toBe('1\u00A0416,67\u00A0\u20BD')
+    expect(fmtPrice(1416.5)).toBe('1\u00A0416,50\u00A0\u20BD')
   })
 
   it('форматирует ноль', () => {
-    expect(fmtPrice(0)).toBe('0,00 \u20BD')
+    expect(fmtPrice(0)).toBe('0\u00A0\u20BD')
+  })
+
+  it('знак рубля не отрывается от числа: пробел перед ним неразрывный', () => {
+    expect(fmtPrice(65000)).not.toMatch(/ \u20BD/)
   })
 
   it('возвращает em dash для null', () => {
@@ -152,7 +161,7 @@ describe('fmtPrice — цена с рублём или em dash', () => {
   })
 
   it('парсит строковую цену', () => {
-    expect(fmtPrice('2500.50')).toBe('2\u00A0500,50 \u20BD')
+    expect(fmtPrice('2500.50')).toBe('2\u00A0500,50\u00A0\u20BD')
   })
 })
 
