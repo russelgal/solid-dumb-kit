@@ -18,6 +18,30 @@ const PriceIntl = new Intl.NumberFormat('ru-RU', {
 })
 
 /**
+ * Копейки в цене: `auto` — только когда они есть («1 500 ₽», «1 416,67 ₽»),
+ * `always` — всегда двумя знаками («1 500,00 ₽»), `never` — до рубля («1 417 ₽»).
+ */
+export type PriceKopecks = 'auto' | 'always' | 'never'
+
+export interface PriceFormat {
+  kopecks: PriceKopecks
+}
+
+const PRICE_INTL: Record<PriceKopecks, Intl.NumberFormat> = { auto: PriceIntl, always: RubIntl2, never: RubIntl0 }
+
+let priceFormat: () => PriceFormat = () => ({ kopecks: 'auto' })
+
+/**
+ * Откуда `fmtPrice` берёт формат — ФУНКЦИЕЙ, а не значением: приложение отдаёт
+ * геттер своих настроек, и реактивный расчёт, напечатавший цену, сам
+ * подписывается на них — смена настройки перерисовывает суммы без перезагрузки.
+ * Сам кит ни от какого фреймворка не зависит: он только вызывает функцию.
+ */
+export function configurePrice(source: () => PriceFormat): void {
+  priceFormat = source
+}
+
+/**
  * Знак рубля — через НЕРАЗРЫВНЫЙ пробел: с обычным строка рвалась перед «₽»,
  * и знак уезжал на следующую строку отдельно от числа.
  */
@@ -71,10 +95,10 @@ export function fmtNum(v: Numeric): string {
   return n != null ? RubIntl0.format(n) : '\u2014'
 }
 
-/** 1 234,56 ₽, 1 500 ₽ (копейки — только когда они есть) или — */
+/** Цена со знаком рубля по формату `configurePrice` (по умолчанию копейки — только когда есть) или — */
 export function fmtPrice(v: Numeric): string {
   const n = toNum(v)
-  return n != null ? PriceIntl.format(n) + RUB : '\u2014'
+  return n != null ? PRICE_INTL[priceFormat().kopecks].format(n) + RUB : '\u2014'
 }
 
 // --- Даты ---
