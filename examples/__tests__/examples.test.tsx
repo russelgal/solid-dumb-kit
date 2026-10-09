@@ -2,6 +2,7 @@
 // рисовать. Ловит опечатки в пропсах и рассинхрон примеров с API кита.
 import { describe, it, expect, afterEach, afterAll, beforeAll, vi } from 'vitest'
 import { render } from 'solid-js/web'
+import { RubR2 } from '@solid-dumb-kit/utils'
 import SelectionAreaExample from '../pointer/SelectionArea.example'
 import DumbSortableExample from '../pointer/DumbSortable.example'
 import ResizableGridExample from '../pointer/ResizableGrid.example'
@@ -243,7 +244,8 @@ describe('utils.example — хелперы посчитались вживую',
   it('показывает отформатированные числа и slug', () => {
     const host = mount(UtilsExample)
     const text = host.textContent ?? ''
-    expect(text).toContain('1 234,50 ₽')            // RubR2(1234.5)
+    // Ожидание — от самого форматтера: формат (пробелы, копейки) решает он.
+    expect(text).toContain(RubR2(1234.5))
     expect(text).toContain('plyazhnyj-otdyh-i-bassejny')      // genSlug(...)
   })
 
