@@ -274,4 +274,27 @@ describe('DumbPagination', () => {
     btn3.click()
     expect(page()).toBe(3)
   })
+
+  it('с href — ссылки: обычный клик идёт в onPageChange, с Ctrl — браузеру', () => {
+    const [page, setPage] = createSignal(1)
+    const host = mount(() => (
+      <DumbPagination page={page()} total={100} pageSize={10} onPageChange={setPage} href={(p) => `/list?page=${p}`} />
+    ))
+    expect(host.querySelector('button')).toBeNull()
+    const links = Array.from(host.querySelectorAll('a'))
+    expect(links.find((a) => a.textContent === '3')!.getAttribute('href')).toBe('/list?page=3')
+    expect(links.find((a) => a.textContent === '1')!.getAttribute('aria-current')).toBe('page')
+    // «назад» на первой странице — не ссылка
+    expect(links.some((a) => a.textContent === '«')).toBe(false)
+
+    const plain = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })
+    links.find((a) => a.textContent === '3')!.dispatchEvent(plain)
+    expect(plain.defaultPrevented).toBe(true)
+    expect(page()).toBe(3)
+
+    const withCtrl = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ctrlKey: true })
+    Array.from(host.querySelectorAll('a')).find((a) => a.textContent === '5')!.dispatchEvent(withCtrl)
+    expect(withCtrl.defaultPrevented).toBe(false)
+    expect(page()).toBe(3)
+  })
 })

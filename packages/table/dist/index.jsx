@@ -756,10 +756,35 @@ function buildPageNumbers(current, total) {
   pages.push(total);
   return pages;
 }
+var isModified = (event) => event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 function DumbPagination(props) {
   const pages = () => Math.max(1, Math.ceil(props.total / props.pageSize));
   const summary = () => props.summary ? props.summary({ page: props.page, pages: pages(), total: props.total }) : `${props.total} \xB7 ${props.page}/${pages()}`;
   const btn = (active) => `join-item btn btn-sm ${active ? "btn-active" : "btn-ghost"}`;
+  const PageButton = (p) => {
+    const cls = () => `${btn(!!p.active)} ${props.buttonClass ?? ""} ${p.active ? props.activeClass ?? "" : ""}`;
+    return <Show2
+      when={props.href}
+      fallback={<button class={cls()} disabled={p.disabled} onClick={() => props.onPageChange(p.page)}>
+            {p.children}
+          </button>}
+    >
+        {(href) => <Show2 when={!p.disabled} fallback={<span class={`${cls()} btn-disabled`}>{p.children}</span>}>
+            <a
+      class={cls()}
+      href={href()(p.page)}
+      aria-current={p.active ? "page" : void 0}
+      onClick={(event) => {
+        if (isModified(event)) return;
+        event.preventDefault();
+        props.onPageChange(p.page);
+      }}
+    >
+              {p.children}
+            </a>
+          </Show2>}
+      </Show2>;
+  };
   return <div class={`flex flex-wrap items-center justify-between gap-3 ${props.class ?? ""}`}>
       <div class="flex items-center gap-2">
         <span class="text-sm">{summary()}</span>
@@ -779,30 +804,19 @@ function DumbPagination(props) {
 
       <Show2 when={pages() > 1}>
         <div class="join">
-          <button
-    class={`${btn(false)} ${props.buttonClass ?? ""}`}
-    disabled={props.page <= 1}
-    onClick={() => props.onPageChange(props.page - 1)}
-  >
+          <PageButton page={props.page - 1} disabled={props.page <= 1}>
             «
-          </button>
+          </PageButton>
           <For3 each={buildPageNumbers(props.page, pages())}>
             {(p) => <Show2 when={p !== "\u2026"} fallback={<span class="join-item btn btn-sm btn-ghost btn-disabled">…</span>}>
-                <button
-    class={`${btn(props.page === p)} ${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`}
-    onClick={() => props.onPageChange(p)}
-  >
+                <PageButton page={p} active={props.page === p}>
                   {p}
-                </button>
+                </PageButton>
               </Show2>}
           </For3>
-          <button
-    class={`${btn(false)} ${props.buttonClass ?? ""}`}
-    disabled={props.page >= pages()}
-    onClick={() => props.onPageChange(props.page + 1)}
-  >
+          <PageButton page={props.page + 1} disabled={props.page >= pages()}>
             »
-          </button>
+          </PageButton>
         </div>
       </Show2>
     </div>;

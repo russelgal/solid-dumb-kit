@@ -174,6 +174,7 @@ A standalone pager — the table doesn't paginate for you, you slice `rows` your
 | --- | --- | --- |
 | `page` / `total` / `pageSize` | `number` | Current page (1-based), total item count, page size. |
 | `onPageChange` | `(page) => void` | Page click. |
+| `href` | `(page) => string` | Page URL: numbers and arrows render as `<a href>` links — crawlable, open in a new tab. A plain click still goes to `onPageChange` (your router navigates without a reload); Ctrl/Cmd or middle click is left to the browser. |
 | `pageSizes` | `Array<number>` | Shows a page-size switcher. |
 | `onPageSizeChange` | `(size) => void` | Page-size click. |
 | `summary` | `({page, pages, total}) => string` | Left-hand caption. Defaults to `total · page/pages`. |

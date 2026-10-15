@@ -1,4 +1,4 @@
-import { delegateEvents, insert, createComponent, memo, effect, className, style, setStyleProperty, addEvent, ref, setAttribute, template } from '@solidjs/web';
+import { delegateEvents, insert, createComponent, memo, effect, className, style, setStyleProperty, addEvent, ref, setAttribute, claimElement, template } from '@solidjs/web';
 import { createSignal, createMemo, Show, For, untrack, onCleanup, getOwner, runWithOwner } from 'solid-js';
 
 // src/DumbTable.tsx
@@ -870,11 +870,13 @@ function DumbTable(props) {
   return _el$2;
 }
 delegateEvents(["click", "pointerdown"]);
-var _tmpl$10 = /* @__PURE__ */ template(`<div class=join>`);
-var _tmpl$22 = /* @__PURE__ */ template(`<div class=join><button>\xAB</button><button>\xBB`);
-var _tmpl$32 = /* @__PURE__ */ template(`<div><div class="flex items-center gap-2"><span class=text-sm>`);
-var _tmpl$42 = /* @__PURE__ */ template(`<button>`);
-var _tmpl$52 = /* @__PURE__ */ template(`<span class="join-item btn btn-sm btn-ghost btn-disabled">\u2026`);
+var _tmpl$10 = /* @__PURE__ */ template(`<button>`);
+var _tmpl$22 = /* @__PURE__ */ template(`<a>`);
+var _tmpl$32 = /* @__PURE__ */ template(`<span>`);
+var _tmpl$42 = /* @__PURE__ */ template(`<div class=join>`);
+var _tmpl$52 = /* @__PURE__ */ template(`<div class=join><!><!><!>`);
+var _tmpl$62 = /* @__PURE__ */ template(`<div><div class="flex items-center gap-2"><span class=text-sm>`);
+var _tmpl$72 = /* @__PURE__ */ template(`<span class="join-item btn btn-sm btn-ghost btn-disabled">\u2026`);
 function buildPageNumbers(current, total) {
   if (total <= 10) return Array.from({
     length: total
@@ -892,6 +894,7 @@ function buildPageNumbers(current, total) {
   pages.push(total);
   return pages;
 }
+var isModified = (event) => event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 function DumbPagination(props) {
   const pages = () => Math.max(1, Math.ceil(props.total / props.pageSize));
   const summary = () => props.summary ? props.summary({
@@ -900,82 +903,143 @@ function DumbPagination(props) {
     total: props.total
   }) : `${props.total} \xB7 ${props.page}/${pages()}`;
   const btn = (active) => `join-item btn btn-sm ${active ? "btn-active" : "btn-ghost"}`;
-  var _el$ = _tmpl$32(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild;
-  insert(_el$3, summary);
-  insert(_el$2, createComponent(Show, {
+  const PageButton = (p) => {
+    const cls = () => `${btn(!!p.active)} ${props.buttonClass ?? ""} ${p.active ? props.activeClass ?? "" : ""}`;
+    return createComponent(Show, {
+      get when() {
+        return props.href;
+      },
+      get fallback() {
+        var _el$ = _tmpl$10();
+        _el$.$$click = () => props.onPageChange(p.page);
+        insert(_el$, () => p.children);
+        effect(() => ({
+          e: cls(),
+          t: p.disabled
+        }), ({
+          e,
+          t
+        }, _p$) => {
+          className(_el$, e, _p$?.e);
+          t !== _p$?.t && setAttribute(_el$, "disabled", t);
+        });
+        return _el$;
+      },
+      children: (href) => createComponent(Show, {
+        get when() {
+          return !p.disabled;
+        },
+        get fallback() {
+          var _el$3 = _tmpl$32();
+          insert(_el$3, () => p.children);
+          effect(() => `${cls()} btn-disabled`, (_v$, _$p) => {
+            className(_el$3, _v$, _$p);
+          });
+          return _el$3;
+        },
+        get children() {
+          var _el$2 = _tmpl$22();
+          _el$2.$$click = (event) => {
+            if (isModified(event)) return;
+            event.preventDefault();
+            props.onPageChange(p.page);
+          };
+          claimElement(_el$2);
+          insert(_el$2, () => p.children);
+          effect(() => ({
+            e: cls(),
+            t: href()(p.page),
+            a: p.active ? "page" : void 0
+          }), ({
+            e,
+            t,
+            a
+          }, _p$) => {
+            className(_el$2, e, _p$?.e);
+            t !== _p$?.t && setAttribute(_el$2, "href", t);
+            a !== _p$?.a && setAttribute(_el$2, "aria-current", a);
+          });
+          return _el$2;
+        }
+      })
+    });
+  };
+  var _el$4 = _tmpl$62(), _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild;
+  insert(_el$6, summary);
+  insert(_el$5, createComponent(Show, {
     get when() {
       return memo(() => !!props.pageSizes?.length)() ? props.onPageSizeChange : props.pageSizes?.length;
     },
     get children() {
-      var _el$4 = _tmpl$10();
-      insert(_el$4, createComponent(For, {
+      var _el$7 = _tmpl$42();
+      insert(_el$7, createComponent(For, {
         get each() {
           return props.pageSizes;
         },
         children: (size) => (() => {
-          var _el$8 = _tmpl$42();
-          _el$8.$$click = () => props.onPageSizeChange(size);
-          insert(_el$8, size);
+          var _el$10 = _tmpl$10();
+          _el$10.$$click = () => props.onPageSizeChange(size);
+          insert(_el$10, size);
           effect(() => `${btn(props.pageSize === size)} ${props.buttonClass ?? ""} ${props.pageSize === size ? props.activeClass ?? "" : ""}`, (_v$, _$p) => {
-            className(_el$8, _v$, _$p);
+            className(_el$10, _v$, _$p);
           });
-          return _el$8;
+          return _el$10;
         })()
       }));
-      return _el$4;
+      return _el$7;
     }
   }), null);
-  insert(_el$, createComponent(Show, {
+  insert(_el$4, createComponent(Show, {
     get when() {
       return pages() > 1;
     },
     get children() {
-      var _el$5 = _tmpl$22(), _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling;
-      _el$6.$$click = () => props.onPageChange(props.page - 1);
-      insert(_el$5, createComponent(For, {
+      var _el$8 = _tmpl$52(), _el$9 = _el$8.firstChild, _el$0 = _el$9.nextSibling, _el$1 = _el$0.nextSibling;
+      insert(_el$8, createComponent(PageButton, {
+        get page() {
+          return props.page - 1;
+        },
+        get disabled() {
+          return props.page <= 1;
+        },
+        children: "\xAB"
+      }), _el$9);
+      insert(_el$8, createComponent(For, {
         get each() {
           return buildPageNumbers(props.page, pages());
         },
         children: (p) => createComponent(Show, {
           when: p !== "\u2026",
           get fallback() {
-            return _tmpl$52();
+            return _tmpl$72();
           },
           get children() {
-            var _el$9 = _tmpl$42();
-            _el$9.$$click = () => props.onPageChange(p);
-            insert(_el$9, p);
-            effect(() => `${btn(props.page === p)} ${props.buttonClass ?? ""} ${props.page === p ? props.activeClass ?? "" : ""}`, (_v$, _$p) => {
-              className(_el$9, _v$, _$p);
+            return createComponent(PageButton, {
+              page: p,
+              get active() {
+                return props.page === p;
+              },
+              children: p
             });
-            return _el$9;
           }
         })
-      }), _el$7);
-      _el$7.$$click = () => props.onPageChange(props.page + 1);
-      effect(() => ({
-        e: `${btn(false)} ${props.buttonClass ?? ""}`,
-        t: props.page <= 1,
-        a: `${btn(false)} ${props.buttonClass ?? ""}`,
-        o: props.page >= pages()
-      }), ({
-        e,
-        t,
-        a,
-        o
-      }, _p$) => {
-        className(_el$6, e, _p$?.e);
-        t !== _p$?.t && setAttribute(_el$6, "disabled", t);
-        className(_el$7, a, _p$?.a);
-        o !== _p$?.o && setAttribute(_el$7, "disabled", o);
-      });
-      return _el$5;
+      }), _el$0);
+      insert(_el$8, createComponent(PageButton, {
+        get page() {
+          return props.page + 1;
+        },
+        get disabled() {
+          return props.page >= pages();
+        },
+        children: "\xBB"
+      }), _el$1);
+      return _el$8;
     }
   }), null);
   effect(() => `flex flex-wrap items-center justify-between gap-3 ${props.class ?? ""}`, (_v$, _$p) => {
-    className(_el$, _v$, _$p);
+    className(_el$4, _v$, _$p);
   });
-  return _el$;
+  return _el$4;
 }
 delegateEvents(["click"]);
 

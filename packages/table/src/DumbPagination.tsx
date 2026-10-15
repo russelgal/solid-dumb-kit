@@ -1,4 +1,5 @@
 import { For, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 
 // Пагинация для DumbTable (или чего угодно): номера страниц со схлопыванием
 // в «…» и опциональный переключатель размера страницы.
@@ -8,6 +9,14 @@ export type DumbPaginationProps = {
   total: number
   pageSize: number
   onPageChange: (page: number) => void
+  /**
+   * Адрес страницы. Задан — номера и стрелки рисуются ссылками `<a href>`, а
+   * не кнопками: по ним проходит поисковик, их открывают в новой вкладке и
+   * копируют. Обычный клик всё равно идёт в `onPageChange` (без перезагрузки —
+   * роутер приложения переходит сам), клик с Ctrl/Cmd/Shift или средней
+   * кнопкой браузер обрабатывает как обычную ссылку.
+   */
+  href?: (page: number) => string
   /** показывает переключатель размера страницы */
   pageSizes?: Array<number>
   onPageSizeChange?: (size: number) => void
@@ -40,6 +49,10 @@ export function buildPageNumbers(current: number, total: number): Array<number |
   return pages
 }
 
+/** Клик, который браузер должен обработать сам: новая вкладка, окно, скачивание. */
+const isModified = (event: MouseEvent) =>
+  event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+
 export function DumbPagination(props: DumbPaginationProps) {
   const pages = () => Math.max(1, Math.ceil(props.total / props.pageSize))
   const summary = () =>
@@ -55,6 +68,43 @@ export function DumbPagination(props: DumbPaginationProps) {
    */
   const btn = (active: boolean) =>
     `join-item btn btn-sm ${active ? 'btn-active' : 'btn-ghost'}`
+
+  /**
+   * Одна кнопка пагинатора: `<button>` или, с `href`, ссылка. Выключенная
+   * ссылка — `<span>`: у `<a>` нет `disabled`, а ссылка «в никуда» на краю
+   * (стрелка «назад» на первой странице) поисковику ни к чему.
+   */
+  const PageButton = (p: { page: number; active?: boolean; disabled?: boolean; children: JSX.Element }) => {
+    const cls = () =>
+      `${btn(!!p.active)} ${props.buttonClass ?? ''} ${p.active ? (props.activeClass ?? '') : ''}`
+    return (
+      <Show
+        when={props.href}
+        fallback={
+          <button class={cls()} disabled={p.disabled} onClick={() => props.onPageChange(p.page)}>
+            {p.children}
+          </button>
+        }
+      >
+        {(href) => (
+          <Show when={!p.disabled} fallback={<span class={`${cls()} btn-disabled`}>{p.children}</span>}>
+            <a
+              class={cls()}
+              href={href()(p.page)}
+              aria-current={p.active ? 'page' : undefined}
+              onClick={(event) => {
+                if (isModified(event)) return
+                event.preventDefault()
+                props.onPageChange(p.page)
+              }}
+            >
+              {p.children}
+            </a>
+          </Show>
+        )}
+      </Show>
+    )
+  }
 
   return (
     <div class={`flex flex-wrap items-center justify-between gap-3 ${props.class ?? ''}`}>
@@ -80,34 +130,21 @@ export function DumbPagination(props: DumbPaginationProps) {
 
       <Show when={pages() > 1}>
         <div class="join">
-          <button
-            class={`${btn(false)} ${props.buttonClass ?? ''}`}
-            disabled={props.page <= 1}
-            onClick={() => props.onPageChange(props.page - 1)}
-          >
+          <PageButton page={props.page - 1} disabled={props.page <= 1}>
             «
-          </button>
+          </PageButton>
           <For each={buildPageNumbers(props.page, pages())}>
             {(p) => (
               <Show when={p !== '…'} fallback={<span class="join-item btn btn-sm btn-ghost btn-disabled">…</span>}>
-                <button
-                  class={`${btn(props.page === p)} ${props.buttonClass ?? ''} ${
-                    props.page === p ? (props.activeClass ?? '') : ''
-                  }`}
-                  onClick={() => props.onPageChange(p as number)}
-                >
+                <PageButton page={p as number} active={props.page === p}>
                   {p}
-                </button>
+                </PageButton>
               </Show>
             )}
           </For>
-          <button
-            class={`${btn(false)} ${props.buttonClass ?? ''}`}
-            disabled={props.page >= pages()}
-            onClick={() => props.onPageChange(props.page + 1)}
-          >
+          <PageButton page={props.page + 1} disabled={props.page >= pages()}>
             »
-          </button>
+          </PageButton>
         </div>
       </Show>
     </div>
