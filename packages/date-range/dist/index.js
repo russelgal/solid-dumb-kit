@@ -1,5 +1,5 @@
 import { delegateEvents, insert, createComponent, effect, setAttribute, className, memo, style, template } from '@solidjs/web';
-import { createSignal, untrack, createMemo, For, Show, createEffect, onCleanup } from 'solid-js';
+import { createSignal, untrack, createMemo, onCleanup, For, Show, createEffect } from 'solid-js';
 
 // src/DumbDateRange.tsx
 var done = /* @__PURE__ */ new Set();
@@ -94,10 +94,10 @@ function reachTo(from, busy, limit) {
 
 // src/DumbDateRange.tsx
 var _tmpl$ = /* @__PURE__ */ template(`<div>`);
-var _tmpl$2 = /* @__PURE__ */ template(`<button type=button class="dumb-cal-nav btn btn-sm btn-ghost btn-circle">\u2039`);
-var _tmpl$3 = /* @__PURE__ */ template(`<button type=button class="dumb-cal-nav btn btn-sm btn-ghost btn-circle">\u203A`);
-var _tmpl$4 = /* @__PURE__ */ template(`<div class="dumb-cal-month min-w-62"><div class="dumb-cal-head mb-1.5 flex items-center gap-1"><div class="dumb-cal-title flex-1 text-center font-semibold capitalize"> <!></div><!></div><div class=dumb-cal-grid><!><!>`);
-var _tmpl$5 = /* @__PURE__ */ template(`<span class="dumb-cal-nav size-8">`);
+var _tmpl$2 = /* @__PURE__ */ template(`<div class="dumb-cal-month min-w-62"><div class="dumb-cal-head mb-1.5 flex items-center gap-1"><div class="dumb-cal-title flex-1 text-center font-semibold capitalize"> <!></div><!></div><div class=dumb-cal-grid><!><!>`);
+var _tmpl$3 = /* @__PURE__ */ template(`<span class="dumb-cal-nav size-8">`);
+var _tmpl$4 = /* @__PURE__ */ template(`<button type=button class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"data-nav=back>\u2039`);
+var _tmpl$5 = /* @__PURE__ */ template(`<button type=button class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"data-nav=fwd>\u203A`);
 var _tmpl$6 = /* @__PURE__ */ template(`<div class="dumb-cal-week pb-1 text-center text-xs font-medium">`);
 var _tmpl$7 = /* @__PURE__ */ template(`<span class=dumb-cal-extra>`);
 var _tmpl$8 = /* @__PURE__ */ template(`<button type=button><!><!>`);
@@ -124,6 +124,7 @@ var STYLES = `
 function DumbDateRange(props) {
   injectStyle("date-range", STYLES);
   const [shownMonth, setShownMonth] = createSignal(startOfMonth(untrack(() => props.value()?.from) ?? today()));
+  const [shownEnd, setShownEnd] = createSignal(startOfMonth(untrack(() => props.value()?.to) ?? today()));
   const [pending, setPending] = createSignal(null);
   const [hover, setHover] = createSignal(null);
   const busy = () => props.busy?.() ?? [];
@@ -183,6 +184,8 @@ function DumbDateRange(props) {
   let hitRaf = 0;
   let hitX = 0;
   let hitY = 0;
+  let endDrag = null;
+  onCleanup(() => endDrag?.());
   const dayAt = (x, y) => {
     const el = document.elementFromPoint(x, y);
     const btn = el?.closest("[data-day]");
@@ -220,6 +223,7 @@ function DumbDateRange(props) {
       window.removeEventListener("pointercancel", stop);
       if (hitRaf) cancelAnimationFrame(hitRaf);
       hitRaf = 0;
+      endDrag = null;
       restoreTextSelection();
     };
     const up = () => {
@@ -231,13 +235,40 @@ function DumbDateRange(props) {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", stop);
-    onCleanup(stop);
+    endDrag = stop;
   }
+  const count = () => props.months ?? 1;
+  const spread = () => !!props.spread && count() > 1;
+  const tail = () => addMonths(shownMonth(), count() - 1);
+  const lastMonth = () => spread() && diffDays(tail(), shownEnd()) > 0 ? shownEnd() : tail();
   const months = () => Array.from({
-    length: props.months ?? 1
-  }, (_, i) => addMonths(shownMonth(), i));
+    length: count()
+  }, (_, i) => i === count() - 1 ? lastMonth() : addMonths(shownMonth(), i));
   const canBack = () => !props.min || diffDays(props.min, shownMonth()) > 0;
-  const canFwd = () => !props.max || diffDays(addMonths(shownMonth(), props.months ?? 1), props.max) < 0;
+  const canFwd = () => !props.max || diffDays(addMonths(lastMonth(), 1), props.max) < 0;
+  const apart = () => diffDays(tail(), lastMonth()) > 0;
+  const navOf = (mi) => {
+    const first = mi === 0;
+    const last = mi === count() - 1;
+    const back = first ? {
+      can: canBack,
+      go: () => setShownMonth(addMonths(shownMonth(), -1))
+    } : spread() && last ? {
+      can: apart,
+      go: () => setShownEnd(addMonths(lastMonth(), -1))
+    } : null;
+    const fwd = last ? {
+      can: canFwd,
+      go: () => spread() ? setShownEnd(addMonths(lastMonth(), 1)) : setShownMonth(addMonths(shownMonth(), 1))
+    } : spread() && first ? {
+      can: apart,
+      go: () => setShownMonth(addMonths(shownMonth(), 1))
+    } : null;
+    return {
+      back,
+      fwd
+    };
+  };
   var _el$ = _tmpl$();
   _el$.addEventListener("mouseleave", () => setHover(null));
   insert(_el$, createComponent(For, {
@@ -245,50 +276,50 @@ function DumbDateRange(props) {
       return months();
     },
     children: (month, mi) => (() => {
-      var _el$2 = _tmpl$4(), _el$3 = _el$2.firstChild, _el$5 = _el$3.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$9 = _el$5.nextSibling, _el$0 = _el$3.nextSibling, _el$1 = _el$0.firstChild, _el$10 = _el$1.nextSibling;
+      var _el$2 = _tmpl$2(), _el$3 = _el$2.firstChild, _el$4 = _el$3.firstChild, _el$5 = _el$4.firstChild, _el$6 = _el$5.nextSibling, _el$7 = _el$4.nextSibling, _el$8 = _el$3.nextSibling, _el$9 = _el$8.firstChild, _el$0 = _el$9.nextSibling;
       insert(_el$3, createComponent(Show, {
         get when() {
-          return mi() === 0;
+          return navOf(mi()).back;
         },
         get fallback() {
-          return _tmpl$5();
+          return _tmpl$3();
         },
-        get children() {
-          var _el$4 = _tmpl$2();
-          _el$4.$$click = () => setShownMonth(addMonths(shownMonth(), -1));
-          effect(() => !canBack(), (_v$) => {
-            setAttribute(_el$4, "disabled", _v$);
+        children: (nav) => (() => {
+          var _el$10 = _tmpl$4();
+          _el$10.$$click = () => nav().go();
+          effect(() => !nav().can(), (_v$) => {
+            setAttribute(_el$10, "disabled", _v$);
           });
-          return _el$4;
-        }
-      }), _el$5);
-      insert(_el$5, () => MONTHS[Number(month.slice(5, 7)) - 1], _el$6);
-      insert(_el$5, () => month.slice(0, 4), _el$7);
+          return _el$10;
+        })()
+      }), _el$4);
+      insert(_el$4, () => MONTHS[Number(month.slice(5, 7)) - 1], _el$5);
+      insert(_el$4, () => month.slice(0, 4), _el$6);
       insert(_el$3, createComponent(Show, {
         get when() {
-          return mi() === (props.months ?? 1) - 1;
+          return navOf(mi()).fwd;
         },
         get fallback() {
-          return _tmpl$5();
+          return _tmpl$3();
         },
-        get children() {
-          var _el$8 = _tmpl$3();
-          _el$8.$$click = () => setShownMonth(addMonths(shownMonth(), 1));
-          effect(() => !canFwd(), (_v$) => {
-            setAttribute(_el$8, "disabled", _v$);
+        children: (nav) => (() => {
+          var _el$12 = _tmpl$5();
+          _el$12.$$click = () => nav().go();
+          effect(() => !nav().can(), (_v$) => {
+            setAttribute(_el$12, "disabled", _v$);
           });
-          return _el$8;
-        }
-      }), _el$9);
-      insert(_el$0, createComponent(For, {
+          return _el$12;
+        })()
+      }), _el$7);
+      insert(_el$8, createComponent(For, {
         each: WEEK,
         children: (w) => (() => {
           var _el$13 = _tmpl$6();
           insert(_el$13, w);
           return _el$13;
         })()
-      }), _el$1);
-      insert(_el$0, createComponent(For, {
+      }), _el$9);
+      insert(_el$8, createComponent(For, {
         get each() {
           return monthGrid(month);
         },
@@ -354,7 +385,7 @@ function DumbDateRange(props) {
           });
           return _el$14;
         }
-      }), _el$10);
+      }), _el$0);
       return _el$2;
     })()
   }));
@@ -720,6 +751,8 @@ function DumbDateTimeRange(props) {
   const [dragFrom, setDragFrom] = createSignal(null);
   const [dragTo, setDragTo] = createSignal(null);
   let hitRaf = 0;
+  let endDrag = null;
+  onCleanup(() => endDrag?.());
   let hitX = 0;
   let hitY = 0;
   const slotAt = (x, y) => {
@@ -755,6 +788,7 @@ function DumbDateTimeRange(props) {
       if (!hitRaf) hitRaf = requestAnimationFrame(hit);
     };
     const up = () => {
+      endDrag = null;
       box.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", cancel);
@@ -777,6 +811,7 @@ function DumbDateTimeRange(props) {
       queueMicrotask(commit);
     };
     const cancel = () => {
+      endDrag = null;
       setDragFrom(null);
       setDragTo(null);
       restoreTextSelection();
@@ -787,7 +822,7 @@ function DumbDateTimeRange(props) {
     box.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", cancel);
-    onCleanup(cancel);
+    endDrag = cancel;
   }
   const inDrag = (time) => {
     const a = dragFrom();

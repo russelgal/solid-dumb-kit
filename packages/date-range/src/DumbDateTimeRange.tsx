@@ -267,6 +267,13 @@ export function DumbDateTimeRange(props: DumbDateTimeRangeProps): JSX.Element {
   const [dragFrom, setDragFrom] = createSignal<Time | null>(null)
   const [dragTo, setDragTo] = createSignal<Time | null>(null)
   let hitRaf = 0
+  /**
+   * Снять начатую протяжку, если календарь уберут посреди жеста. Регистрация —
+   * в теле компонента: `onCleanup` в обработчике нажатия владельца не имеет
+   * (`NO_OWNER_CLEANUP`), и снятие не сработало бы никогда.
+   */
+  let endDrag: (() => void) | null = null
+  onCleanup(() => endDrag?.())
   let hitX = 0
   let hitY = 0
 
@@ -303,6 +310,7 @@ export function DumbDateTimeRange(props: DumbDateTimeRangeProps): JSX.Element {
       if (!hitRaf) hitRaf = requestAnimationFrame(hit)
     }
     const up = () => {
+      endDrag = null
       box.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', cancel)
@@ -325,6 +333,7 @@ export function DumbDateTimeRange(props: DumbDateTimeRangeProps): JSX.Element {
       queueMicrotask(commit)
     }
     const cancel = () => {
+      endDrag = null
       setDragFrom(null)
       setDragTo(null)
       restoreTextSelection()
@@ -336,7 +345,7 @@ export function DumbDateTimeRange(props: DumbDateTimeRangeProps): JSX.Element {
     box.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', cancel)
-    onCleanup(cancel)
+    endDrag = cancel
   }
 
   /** попадает ли слот в тянущийся сейчас период */

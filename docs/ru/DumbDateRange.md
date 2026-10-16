@@ -44,6 +44,7 @@ import { DumbDateRange } from '@solid-dumb-kit/date-range'
 | `busy` | `() => Array<BusySpan>` | занятые отрезки |
 | `marks` | `() => Record<Day, {title, class}>` | праздники и выходные |
 | `months` | `number` | сколько месяцев показывать разом |
+| `spread` | `boolean` | крайние месяцы — по краям периода: первый — месяц `from`, последний — месяц `to`, листаются порознь (при `months` от двух) |
 | `min`, `max` | `Day` | пределы |
 | `minNights`, `maxNights` | `number` | ограничения длины |
 | `dayExtra` | `(day) => JSX.Element` | цена или что угодно в углу дня |

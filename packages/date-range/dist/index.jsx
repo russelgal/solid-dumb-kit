@@ -132,6 +132,9 @@ function DumbDateRange(props) {
   const [shownMonth, setShownMonth] = createSignal2(
     startOfMonth(untrack(() => props.value()?.from) ?? today())
   );
+  const [shownEnd, setShownEnd] = createSignal2(
+    startOfMonth(untrack(() => props.value()?.to) ?? today())
+  );
   const [pending, setPending] = createSignal2(null);
   const [hover, setHover] = createSignal2(null);
   const busy = () => props.busy?.() ?? [];
@@ -182,6 +185,8 @@ function DumbDateRange(props) {
   let hitRaf = 0;
   let hitX = 0;
   let hitY = 0;
+  let endDrag = null;
+  onCleanup(() => endDrag?.());
   const dayAt = (x, y) => {
     const el = document.elementFromPoint(x, y);
     const btn = el?.closest("[data-day]");
@@ -216,6 +221,7 @@ function DumbDateRange(props) {
       window.removeEventListener("pointercancel", stop);
       if (hitRaf) cancelAnimationFrame(hitRaf);
       hitRaf = 0;
+      endDrag = null;
       restoreTextSelection();
     };
     const up = () => {
@@ -227,11 +233,23 @@ function DumbDateRange(props) {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", stop);
-    onCleanup(stop);
+    endDrag = stop;
   }
-  const months = () => Array.from({ length: props.months ?? 1 }, (_, i) => addMonths(shownMonth(), i));
+  const count = () => props.months ?? 1;
+  const spread = () => !!props.spread && count() > 1;
+  const tail = () => addMonths(shownMonth(), count() - 1);
+  const lastMonth = () => spread() && diffDays(tail(), shownEnd()) > 0 ? shownEnd() : tail();
+  const months = () => Array.from({ length: count() }, (_, i) => i === count() - 1 ? lastMonth() : addMonths(shownMonth(), i));
   const canBack = () => !props.min || diffDays(props.min, shownMonth()) > 0;
-  const canFwd = () => !props.max || diffDays(addMonths(shownMonth(), props.months ?? 1), props.max) < 0;
+  const canFwd = () => !props.max || diffDays(addMonths(lastMonth(), 1), props.max) < 0;
+  const apart = () => diffDays(tail(), lastMonth()) > 0;
+  const navOf = (mi) => {
+    const first = mi === 0;
+    const last = mi === count() - 1;
+    const back = first ? { can: canBack, go: () => setShownMonth(addMonths(shownMonth(), -1)) } : spread() && last ? { can: apart, go: () => setShownEnd(addMonths(lastMonth(), -1)) } : null;
+    const fwd = last ? { can: canFwd, go: () => spread() ? setShownEnd(addMonths(lastMonth(), 1)) : setShownMonth(addMonths(shownMonth(), 1)) } : spread() && first ? { can: apart, go: () => setShownMonth(addMonths(shownMonth(), 1)) } : null;
+    return { back, fwd };
+  };
   return <div
     class={`dumb-cal flex flex-wrap gap-5 ${props.class ?? ""}`}
     onMouseLeave={() => setHover(null)}
@@ -239,28 +257,30 @@ function DumbDateRange(props) {
       <For each={months()}>
         {(month, mi) => <div class="dumb-cal-month min-w-62">
             <div class="dumb-cal-head mb-1.5 flex items-center gap-1">
-              <Show when={mi() === 0} fallback={<span class="dumb-cal-nav size-8" />}>
-                <button
+              <Show when={navOf(mi()).back} fallback={<span class="dumb-cal-nav size-8" />}>
+                {(nav) => <button
     type="button"
     class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"
-    disabled={!canBack()}
-    onClick={() => setShownMonth(addMonths(shownMonth(), -1))}
+    data-nav="back"
+    disabled={!nav().can()}
+    onClick={() => nav().go()}
   >
-                  ‹
-                </button>
+                    ‹
+                  </button>}
               </Show>
               <div class="dumb-cal-title flex-1 text-center font-semibold capitalize">
                 {MONTHS[Number(month.slice(5, 7)) - 1]} {month.slice(0, 4)}
               </div>
-              <Show when={mi() === (props.months ?? 1) - 1} fallback={<span class="dumb-cal-nav size-8" />}>
-                <button
+              <Show when={navOf(mi()).fwd} fallback={<span class="dumb-cal-nav size-8" />}>
+                {(nav) => <button
     type="button"
     class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"
-    disabled={!canFwd()}
-    onClick={() => setShownMonth(addMonths(shownMonth(), 1))}
+    data-nav="fwd"
+    disabled={!nav().can()}
+    onClick={() => nav().go()}
   >
-                  ›
-                </button>
+                    ›
+                  </button>}
               </Show>
             </div>
 
@@ -599,6 +619,8 @@ function DumbDateTimeRange(props) {
   const [dragFrom, setDragFrom] = createSignal3(null);
   const [dragTo, setDragTo] = createSignal3(null);
   let hitRaf = 0;
+  let endDrag = null;
+  onCleanup2(() => endDrag?.());
   let hitX = 0;
   let hitY = 0;
   const slotAt = (x, y) => {
@@ -628,6 +650,7 @@ function DumbDateTimeRange(props) {
       if (!hitRaf) hitRaf = requestAnimationFrame(hit);
     };
     const up = () => {
+      endDrag = null;
       box.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", cancel);
@@ -647,6 +670,7 @@ function DumbDateTimeRange(props) {
       queueMicrotask(commit);
     };
     const cancel = () => {
+      endDrag = null;
       setDragFrom(null);
       setDragTo(null);
       restoreTextSelection();
@@ -657,7 +681,7 @@ function DumbDateTimeRange(props) {
     box.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", cancel);
-    onCleanup2(cancel);
+    endDrag = cancel;
   }
   const inDrag = (time) => {
     const a = dragFrom();

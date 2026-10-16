@@ -43,6 +43,13 @@ export type DumbDateRangeProps = {
 
   /** сколько месяцев показывать разом; по умолчанию 1 */
   months?: number
+  /**
+   * Крайние месяцы — по краям периода: первый показывает месяц `from`,
+   * последний — месяц `to`, у каждого свои стрелки. Нужно, когда период
+   * длинный («с начала года»): подряд от `from` его конца не видно.
+   * Работает при `months` от двух; по умолчанию месяцы идут подряд.
+   */
+  spread?: boolean
   /** раньше этого дня нельзя; по умолчанию без предела */
   min?: Day
   max?: Day
@@ -88,6 +95,10 @@ export function DumbDateRange(props: DumbDateRangeProps) {
   // стартовый месяц — разовое untracked-чтение: дальше месяц живёт сам
   const [shownMonth, setShownMonth] = createSignal<Day>(
     startOfMonth(untrack(() => props.value()?.from) ?? today()),
+  )
+  /** последний месяц при `spread` — месяц конца периода, тоже разовым чтением */
+  const [shownEnd, setShownEnd] = createSignal<Day>(
+    startOfMonth(untrack(() => props.value()?.to) ?? today()),
   )
   /** первый клик сделан, ждём второй */
   const [pending, setPending] = createSignal<Day | null>(null)
@@ -163,6 +174,13 @@ export function DumbDateRange(props: DumbDateRangeProps) {
   let hitRaf = 0
   let hitX = 0
   let hitY = 0
+  /**
+   * Снять начатую протяжку, если календарь уберут посреди жеста. Регистрация —
+   * в теле компонента: `onCleanup` в обработчике нажатия владельца не имеет,
+   * Solid ругается `NO_OWNER_CLEANUP`, и снятие не сработало бы никогда.
+   */
+  let endDrag: (() => void) | null = null
+  onCleanup(() => endDrag?.())
 
   const dayAt = (x: number, y: number): { day: Day; blocked: boolean } | null => {
     const el = document.elementFromPoint(x, y) as HTMLElement | null
@@ -204,6 +222,7 @@ export function DumbDateRange(props: DumbDateRangeProps) {
       window.removeEventListener('pointercancel', stop)
       if (hitRaf) cancelAnimationFrame(hitRaf)
       hitRaf = 0
+      endDrag = null
       restoreTextSelection()
     }
     const up = () => {
@@ -219,14 +238,44 @@ export function DumbDateRange(props: DumbDateRangeProps) {
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', stop)
-    onCleanup(stop)
+    endDrag = stop
   }
 
+  const count = () => props.months ?? 1
+  const spread = () => !!props.spread && count() > 1
+  /** последний месяц подряд от первого — ближе него край периода не встаёт */
+  const tail = () => addMonths(shownMonth(), count() - 1)
+  /** последний показанный месяц: при `spread` — месяц конца, но не раньше хвоста подряд */
+  const lastMonth = () => (spread() && diffDays(tail(), shownEnd()) > 0 ? shownEnd() : tail())
+
   const months = () =>
-    Array.from({ length: props.months ?? 1 }, (_, i) => addMonths(shownMonth(), i))
+    Array.from({ length: count() }, (_, i) => (i === count() - 1 ? lastMonth() : addMonths(shownMonth(), i)))
 
   const canBack = () => !props.min || diffDays(props.min, shownMonth()) > 0
-  const canFwd = () => !props.max || diffDays(addMonths(shownMonth(), props.months ?? 1), props.max) < 0
+  const canFwd = () => !props.max || diffDays(addMonths(lastMonth(), 1), props.max) < 0
+  /** между краями есть зазор: первый можно вперёд, последний — назад */
+  const apart = () => diffDays(tail(), lastMonth()) > 0
+
+  /**
+   * Стрелки месяца описаниями: у первого — «назад», у последнего — «вперёд»;
+   * при `spread` края листаются порознь, и у первого есть ещё «вперёд», у
+   * последнего — «назад», пока они не сошлись.
+   */
+  const navOf = (mi: number) => {
+    const first = mi === 0
+    const last = mi === count() - 1
+    const back = first
+      ? { can: canBack, go: () => setShownMonth(addMonths(shownMonth(), -1)) }
+      : spread() && last
+        ? { can: apart, go: () => setShownEnd(addMonths(lastMonth(), -1)) }
+        : null
+    const fwd = last
+      ? { can: canFwd, go: () => (spread() ? setShownEnd(addMonths(lastMonth(), 1)) : setShownMonth(addMonths(shownMonth(), 1))) }
+      : spread() && first
+        ? { can: apart, go: () => setShownMonth(addMonths(shownMonth(), 1)) }
+        : null
+    return { back, fwd }
+  }
 
   return (
     <div
@@ -237,28 +286,34 @@ export function DumbDateRange(props: DumbDateRangeProps) {
         {(month, mi) => (
           <div class="dumb-cal-month min-w-62">
             <div class="dumb-cal-head mb-1.5 flex items-center gap-1">
-              <Show when={mi() === 0} fallback={<span class="dumb-cal-nav size-8" />}>
-                <button
-                  type="button"
-                  class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"
-                  disabled={!canBack()}
-                  onClick={() => setShownMonth(addMonths(shownMonth(), -1))}
-                >
-                  ‹
-                </button>
+              <Show when={navOf(mi()).back} fallback={<span class="dumb-cal-nav size-8" />}>
+                {(nav) => (
+                  <button
+                    type="button"
+                    class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"
+                    data-nav="back"
+                    disabled={!nav().can()}
+                    onClick={() => nav().go()}
+                  >
+                    ‹
+                  </button>
+                )}
               </Show>
               <div class="dumb-cal-title flex-1 text-center font-semibold capitalize">
                 {MONTHS[Number(month.slice(5, 7)) - 1]} {month.slice(0, 4)}
               </div>
-              <Show when={mi() === (props.months ?? 1) - 1} fallback={<span class="dumb-cal-nav size-8" />}>
-                <button
-                  type="button"
-                  class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"
-                  disabled={!canFwd()}
-                  onClick={() => setShownMonth(addMonths(shownMonth(), 1))}
-                >
-                  ›
-                </button>
+              <Show when={navOf(mi()).fwd} fallback={<span class="dumb-cal-nav size-8" />}>
+                {(nav) => (
+                  <button
+                    type="button"
+                    class="dumb-cal-nav btn btn-sm btn-ghost btn-circle"
+                    data-nav="fwd"
+                    disabled={!nav().can()}
+                    onClick={() => nav().go()}
+                  >
+                    ›
+                  </button>
+                )}
               </Show>
             </div>
 

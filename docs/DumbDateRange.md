@@ -45,6 +45,7 @@ truly annoys in a date picker.
 | `busy` | `() => Array<BusySpan>` | taken stretches |
 | `marks` | `() => Record<Day, {title, class}>` | holidays and weekends |
 | `months` | `number` | how many months to show at once |
+| `spread` | `boolean` | edge months follow the range: the first shows `from`'s month, the last shows `to`'s, each flips on its own (with `months` of two or more) |
 | `min`, `max` | `Day` | bounds |
 | `minNights`, `maxNights` | `number` | length limits |
 | `dayExtra` | `(day) => JSX.Element` | a price or anything in the day's corner |
