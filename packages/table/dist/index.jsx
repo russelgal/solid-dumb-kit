@@ -578,6 +578,7 @@ function shouldAnimate2(explicit) {
 }
 
 // src/DumbTable.tsx
+var ALIGN = { left: "", center: "text-center", right: "text-right" };
 var withViewTransition = (on, fn) => {
   const doc = document;
   if (on && shouldAnimate2() && typeof doc.startViewTransition === "function") doc.startViewTransition(fn);
@@ -649,10 +650,7 @@ function DumbTable(props) {
     },
     onEnd: (from, to) => props.onReorder?.(from, to)
   });
-  const cellStyle = (c) => ({
-    "text-align": c.align ?? "left",
-    ...c.width ? { width: c.width } : {}
-  });
+  const cellClass = (c, ...extra) => [c.class, c.align && ALIGN[c.align], ...extra].filter(Boolean).join(" ") || void 0;
   return <div class={props.class}>
       {
     /* Пока данные едут, таблица не выцветает (её всё равно читают) — сверху
@@ -670,8 +668,8 @@ function DumbTable(props) {
               </Show>
               <For2 each={props.columns}>
                 {(c) => <th
-    class={`${c.class ?? ""} ${c.headClass ?? ""} ${c.sortable ? "cursor-pointer select-none" : ""}`.trim() || void 0}
-    style={{ ...cellStyle(c), "white-space": "nowrap" }}
+    class={cellClass(c, c.headClass, "whitespace-nowrap", c.sortable && "cursor-pointer select-none")}
+    style={c.width ? { width: c.width } : void 0}
     onClick={() => toggleSort(c)}
   >
                     {c.label ?? c.key}
@@ -716,8 +714,7 @@ function DumbTable(props) {
                   </Show>
                   <For2 each={props.columns}>
                     {(c) => <td
-      class={c.class}
-      style={cellStyle(c)}
+      class={cellClass(c)}
       onClick={c.stopClick ? (e) => e.stopPropagation() : void 0}
     >
                         {c.render ? c.render(row, index()) : String(valueOf(c, row) ?? "")}

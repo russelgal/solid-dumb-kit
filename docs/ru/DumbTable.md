@@ -42,7 +42,7 @@ const columns: DumbColumn<Product>[] = [
 | `value` | `(row) => unknown` | Значение для сортировки. По умолчанию — `row[key]`. |
 | `class` | `string` | Класс и на `<th>`, и на `<td>`. |
 | `headClass` | `string` | Класс только на `<th>`. |
-| `align` | `'left' \| 'center' \| 'right'` | Выравнивание содержимого. |
+| `align` | `'left' \| 'center' \| 'right'` | Выравнивание содержимого — классом `text-right` / `text-center` у заголовка и ячеек; `left` — по умолчанию, без класса. |
 | `width` | `string` | Ширина в CSS, например `'80px'` или `'12%'`. |
 | `stopClick` | `boolean` | Не пускать клик из этой ячейки в `onRowClick` — для кнопок и инпутов. |
 

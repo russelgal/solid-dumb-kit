@@ -42,7 +42,7 @@ const columns: DumbColumn<Product>[] = [
 | `value` | `(row) => unknown` | Value used for sorting. Defaults to `row[key]`. |
 | `class` | `string` | Class on both `<th>` and `<td>`. |
 | `headClass` | `string` | Class on `<th>` only. |
-| `align` | `'left' \| 'center' \| 'right'` | Cell alignment. |
+| `align` | `'left' \| 'center' \| 'right'` | Cell alignment — a `text-right` / `text-center` class on the header and the cells; `left` is the default and adds nothing. |
 | `width` | `string` | CSS width, e.g. `'80px'` or `'12%'`. |
 | `stopClick` | `boolean` | Stop clicks in this cell from reaching `onRowClick` — for buttons and inputs. |
 

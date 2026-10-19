@@ -579,10 +579,15 @@ var _tmpl$4 = /* @__PURE__ */ template(`<tr aria-hidden=true>`);
 var _tmpl$5 = /* @__PURE__ */ template(`<tfoot>`);
 var _tmpl$6 = /* @__PURE__ */ template(`<table><thead><tr><!><!></tr></thead><tbody><!><!><!>`);
 var _tmpl$7 = /* @__PURE__ */ template(`<div><!><!>`);
-var _tmpl$8 = /* @__PURE__ */ template(`<th style=white-space:nowrap><!><!>`);
+var _tmpl$8 = /* @__PURE__ */ template(`<th><!><!>`);
 var _tmpl$9 = /* @__PURE__ */ template(`<td class=w-px><span data-drag-handle>`);
 var _tmpl$0 = /* @__PURE__ */ template(`<tr><!><!>`);
 var _tmpl$1 = /* @__PURE__ */ template(`<td>`);
+var ALIGN = {
+  left: "",
+  center: "text-center",
+  right: "text-right"
+};
 var withViewTransition = (on, fn) => {
   const doc = document;
   if (on && shouldAnimate2() && typeof doc.startViewTransition === "function") doc.startViewTransition(fn);
@@ -675,12 +680,7 @@ function DumbTable(props) {
     },
     onEnd: (from, to) => props.onReorder?.(from, to)
   });
-  const cellStyle = (c) => ({
-    "text-align": c.align ?? "left",
-    ...c.width ? {
-      width: c.width
-    } : {}
-  });
+  const cellClass = (c, ...extra) => [c.class, c.align && ALIGN[c.align], ...extra].filter(Boolean).join(" ") || void 0;
   var _el$2 = _tmpl$7(), _el$15 = _el$2.firstChild, _el$16 = _el$15.nextSibling;
   insert(_el$2, createComponent(Show, {
     get when() {
@@ -728,10 +728,10 @@ function DumbTable(props) {
             }
           }), _el$19);
           effect(() => ({
-            e: `${c.class ?? ""} ${c.headClass ?? ""} ${c.sortable ? "cursor-pointer select-none" : ""}`.trim() || void 0,
-            t: {
-              ...cellStyle(c)
-            }
+            e: cellClass(c, c.headClass, "whitespace-nowrap", c.sortable && "cursor-pointer select-none"),
+            t: c.width ? {
+              width: c.width
+            } : void 0
           }), ({
             e,
             t
@@ -797,15 +797,8 @@ function DumbTable(props) {
                 var _c$2 = memo(() => !!c.render);
                 return () => _c$2() ? c.render(row, index()) : String(valueOf(c, row) ?? "");
               })());
-              effect(() => ({
-                e: c.class,
-                t: cellStyle(c)
-              }), ({
-                e,
-                t
-              }, _p$) => {
-                className(_el$25, e, _p$?.e);
-                style(_el$25, t, _p$?.t);
+              effect(() => cellClass(c), (_v$, _$p) => {
+                className(_el$25, _v$, _$p);
               });
               return _el$25;
             })()

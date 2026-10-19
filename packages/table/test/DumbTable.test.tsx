@@ -48,10 +48,16 @@ describe('DumbTable — колонки', () => {
     expect(bodyTexts(host, 2)).toEqual(['купить', 'купить', 'купить'])
   })
 
-  it('align и width уезжают в стиль ячейки', () => {
-    const host = mount(() => <DumbTable rows={ROWS} columns={COLS} rowId={(r) => r.id} />)
-    const priceCell = host.querySelector('tbody tr td:nth-child(2)') as HTMLElement
-    expect(priceCell.style.textAlign).toBe('right')
+  it('align — классом и только не «влево»; инлайн-стилей у ячеек нет, ширина — у заголовка', () => {
+    const cols = [{ ...COLS[0]!, width: '12rem' }, ...COLS.slice(1)]
+    const host = mount(() => <DumbTable rows={ROWS} columns={cols} rowId={(r) => r.id} />)
+    const [name, price] = Array.from(host.querySelectorAll('tbody tr:first-child td')) as HTMLElement[]
+    expect(price!.className).toBe('text-right')
+    expect(name!.hasAttribute('class')).toBe(false)
+    expect(Array.from(host.querySelectorAll('td')).some((td) => td.hasAttribute('style'))).toBe(false)
+    const head = host.querySelector('th') as HTMLElement
+    expect(head.style.width).toBe('12rem')
+    expect(head.style.textAlign).toBe('')
   })
 
   it('строки получают data-key — по нему их находит SelectionArea', () => {

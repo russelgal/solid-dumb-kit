@@ -41,6 +41,9 @@ export type DumbColumn<T> = {
   value?: (row: T) => unknown
 }
 
+/** Выравнивание колонки — классы Tailwind; «влево» — по умолчанию, без класса. */
+const ALIGN = { left: '', center: 'text-center', right: 'text-right' } as const
+
 export type DumbTableProps<T> = {
   rows: Array<T>
   columns: Array<DumbColumn<T>>
@@ -227,10 +230,13 @@ export function DumbTable<T extends Record<string, unknown>>(props: DumbTablePro
     onEnd: (from, to) => props.onReorder?.(from, to),
   })
 
-  const cellStyle = (c: DumbColumn<T>) => ({
-    'text-align': c.align ?? 'left',
-    ...(c.width ? { width: c.width } : {}),
-  })
+  /**
+   * Выравнивание — классом, и только когда оно не обычное «влево»: инлайн-стиль
+   * на каждой ячейке (`text-align: left` тысячу раз) — шум в разметке, который
+   * ничего не меняет. Ширина — у заголовка: колонка берёт её оттуда.
+   */
+  const cellClass = (c: DumbColumn<T>, ...extra: Array<string | false | undefined>) =>
+    [c.class, c.align && ALIGN[c.align], ...extra].filter(Boolean).join(' ') || undefined
 
   return (
     <div class={props.class}>
@@ -249,10 +255,8 @@ export function DumbTable<T extends Record<string, unknown>>(props: DumbTablePro
               <For each={props.columns}>
                 {(c) => (
                   <th
-                    class={`${c.class ?? ''} ${c.headClass ?? ''} ${
-                      c.sortable ? 'cursor-pointer select-none' : ''
-                    }`.trim() || undefined}
-                    style={{ ...cellStyle(c), 'white-space': 'nowrap' }}
+                    class={cellClass(c, c.headClass, 'whitespace-nowrap', c.sortable && 'cursor-pointer select-none')}
+                    style={c.width ? { width: c.width } : undefined}
                     onClick={() => toggleSort(c)}
                   >
                     {c.label ?? c.key}
@@ -312,8 +316,7 @@ export function DumbTable<T extends Record<string, unknown>>(props: DumbTablePro
                   <For each={props.columns}>
                     {(c) => (
                       <td
-                        class={c.class}
-                        style={cellStyle(c)}
+                        class={cellClass(c)}
                         onClick={c.stopClick ? (e: Event) => e.stopPropagation() : undefined}
                       >
                         {c.render ? c.render(row, index()) : String(valueOf(c, row) ?? '')}
